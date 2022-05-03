@@ -1,17 +1,16 @@
+﻿# CMakeList.txt : Top-level CMake project file, do global configuration
+# and include sub-projects here.
+#
 cmake_minimum_required (VERSION 3.8)
-
-project ("C3DEngine")
 
 set(CMAKE_CXX_STANDARD 17)
 
+project ("C3DEngine")
+
 find_package(Vulkan REQUIRED)
 
-add_subdirectory(third_party)
-
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-
-add_subdirectory(src)
-
+# Include sub-projects.
+add_subdirectory ("C3DEngine")
 
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 

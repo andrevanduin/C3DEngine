@@ -1,0 +1,18 @@
+
+#pragma once
+#include "VkTypes.h"
+#include "VkMesh.h"
+
+struct Material
+{
+	VkDescriptorSet textureSet{ nullptr };
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+};
+
+struct RenderObject
+{
+	Mesh* mesh;
+	Material* material;
+	glm::mat4 transformMatrix;
+};
