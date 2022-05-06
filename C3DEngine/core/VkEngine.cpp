@@ -908,14 +908,14 @@ void VulkanEngine::LoadImages()
 
 void VulkanEngine::InitScene()
 {
-	RenderObject monkey = {
+	const RenderObject monkey = {
 		GetMesh("monkey"),
 		GetMaterial("defaultMesh"),
 		glm::mat4{ 1.0f }
 	};
 	m_renderObjects.push_back(monkey);
 
-	RenderObject map = {
+	const RenderObject map = {
 		GetMesh("empire"),
 		GetMaterial("texturedMesh"),
 		translate(glm::vec3 { 5, -10, 0 })

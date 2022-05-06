@@ -1,6 +1,5 @@
 
 #pragma once
-#include "VkTypes.h"
 #include "VkMesh.h"
 
 struct Material
