@@ -9,117 +9,122 @@
 #include "VkRenderObject.h"
 #include "VkFrame.h"
 
-constexpr auto FRAME_OVERLAP = 2;
-constexpr uint64_t ONE_SECOND_NS = 1000000000;
-
-struct Texture
+namespace C3D
 {
-	AllocatedImage image;
-	VkImageView view;
-};
+	constexpr auto FRAME_OVERLAP = 2;
+	constexpr uint64_t ONE_SECOND_NS = 1000000000;
+	constexpr int MAX_OBJECTS = 10000;
 
-class VulkanEngine
-{
-public:
-	void Init();
+	struct Texture
+	{
+		AllocatedImage image;
+		VkImageView view;
+	};
 
-	void Cleanup();
+	class VulkanEngine
+	{
+	public:
+		void Init();
 
-	void Draw();
+		void Cleanup();
 
-	void DrawObjects(VkCommandBuffer cmd, RenderObject* first, int count);
+		void Draw();
 
-	void Run();
+		void DrawObjects(VkCommandBuffer cmd, RenderObject* first, int count);
 
-	void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
+		void Run();
 
-	bool LoadShaderModule(const char* filePath, VkShaderModule* outShaderModule) const;
+		void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 
-	Material* CreateMaterial(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
+		bool LoadShaderModule(const char* filePath, VkShaderModule* outShaderModule) const;
 
-	Material* GetMaterial(const std::string& name);
+		Material* CreateMaterial(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
 
-	Mesh* GetMesh(const std::string& name);
+		Material* GetMaterial(const std::string& name);
 
-	[[nodiscard]] AllocatedBuffer CreateBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) const;
+		Mesh* GetMesh(const std::string& name);
 
-	VmaAllocator allocator;
-	DeletionQueue deletionQueue;
-private:
-	void InitSyncStructures();
+		[[nodiscard]] AllocatedBuffer CreateBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) const;
 
-	void InitVulkan();
+		VmaAllocator allocator;
+		DeletionQueue deletionQueue;
+	private:
+		void InitSyncStructures();
 
-	void InitImGui();
+		void InitVulkan();
 
-	void InitSwapchain();
+		void InitImGui();
 
-	void InitCommands();
+		void InitSwapchain();
 
-	void InitDefaultRenderPass();
+		void InitCommands();
 
-	void InitFramebuffers();
+		void InitDefaultRenderPass();
 
-	void InitDescriptors();
+		void InitFramebuffers();
 
-	void InitPipelines();
+		void InitDescriptors();
 
-	void LoadMeshes();
+		void InitPipelines();
 
-	void LoadImages();
+		void LoadMeshes();
 
-	void InitScene();
+		void LoadImages();
 
-	void UploadMesh(Mesh& mesh);
+		void InitScene();
 
-	[[nodiscard]] size_t PadUniformBufferSize(size_t originalSize) const;
+		void UploadMesh(Mesh& mesh);
 
-	FrameData& GetCurrentFrame();
+		[[nodiscard]] size_t PadUniformBufferSize(size_t originalSize) const;
 
-	bool m_isInitialized{ false };
-	int m_frameNumber{ 0 };
+		FrameData& GetCurrentFrame();
 
-	VkExtent2D m_windowExtent{ 1700, 900 };
+		bool m_isInitialized{ false };
+		int m_frameNumber{ 0 };
 
-	struct SDL_Window* m_window{ nullptr };
+		VkExtent2D m_windowExtent{ 1700, 900 };
 
-	VkInstance m_vkInstance;
-	VkDebugUtilsMessengerEXT m_debugMessenger;
+		struct SDL_Window* m_window{ nullptr };
 
-	VkPhysicalDevice m_defaultGpu;
-	VkPhysicalDeviceProperties m_defaultGpuProperties;
+		VkInstance m_vkInstance;
+		VkDebugUtilsMessengerEXT m_debugMessenger;
 
-	VkDevice m_device;
-	VkSurfaceKHR m_surface;
+		VkPhysicalDevice m_defaultGpu;
+		VkPhysicalDeviceProperties m_defaultGpuProperties;
 
-	VkSwapchainKHR m_swapChain;
-	VkFormat m_swapchainImageFormat, m_depthFormat;
+		VkDevice m_device;
+		VkSurfaceKHR m_surface;
 
-	FrameData m_frames[FRAME_OVERLAP];
+		VkSwapchainKHR m_swapChain;
+		VkFormat m_swapchainImageFormat, m_depthFormat;
 
-	VkRenderPass m_renderPass;
+		FrameData m_frames[FRAME_OVERLAP];
 
-	VkImageView m_depthImageView;
-	AllocatedImage m_depthImage;
+		VkRenderPass m_renderPass;
 
-	GpuSceneData m_sceneData;
-	AllocatedBuffer m_sceneParameterBuffer;
+		VkImageView m_depthImageView;
+		AllocatedImage m_depthImage;
 
-	VkDescriptorSetLayout m_globalSetLayout, m_objectSetLayout, m_singleTextureSetLayout;
-	VkDescriptorPool m_descriptorPool;
+		GpuSceneData m_sceneData;
+		AllocatedBuffer m_sceneParameterBuffer;
 
-	UploadContext m_uploadContext;
+		VkDescriptorSetLayout m_globalSetLayout, m_objectSetLayout, m_singleTextureSetLayout;
+		VkDescriptorPool m_descriptorPool;
 
-	std::vector<VkImage> m_swapchainImages;
-	std::vector<VkImageView> m_swapchainImageViews;
-	std::vector<VkFramebuffer> m_frameBuffers;
+		UploadContext m_uploadContext;
 
-	std::vector<RenderObject> m_renderObjects;
+		std::vector<VkImage> m_swapchainImages;
+		std::vector<VkImageView> m_swapchainImageViews;
+		std::vector<VkFramebuffer> m_frameBuffers;
 
-	std::unordered_map<std::string, Material> m_materials;
-	std::unordered_map<std::string, Mesh> m_meshes;
-	std::unordered_map<std::string, Texture> m_textures;
+		std::vector<RenderObject> m_renderObjects;
 
-	VkQueue m_graphicsQueue;
-	uint32_t m_graphicsQueueFamily;
-};
+		std::unordered_map<std::string, Material> m_materials;
+		std::unordered_map<std::string, Mesh> m_meshes;
+		std::unordered_map<std::string, Texture> m_textures;
+
+		VkQueue m_graphicsQueue;
+		uint32_t m_graphicsQueueFamily;
+	};
+}
+

@@ -3,7 +3,7 @@
 
 int main(int argc, char* argv[])
 {
-	VulkanEngine engine;
+	C3D::VulkanEngine engine;
 
 	engine.Init();
 	engine.Run();
