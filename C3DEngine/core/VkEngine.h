@@ -8,6 +8,7 @@
 #include "VkMesh.h"
 #include "VkRenderObject.h"
 #include "VkFrame.h"
+#include "VkObjects.h"
 
 namespace C3D
 {
@@ -86,14 +87,9 @@ namespace C3D
 
 		struct SDL_Window* m_window{ nullptr };
 
-		VkInstance m_vkInstance;
+		VkObjects m_vkObjects;
+
 		VkDebugUtilsMessengerEXT m_debugMessenger;
-
-		VkPhysicalDevice m_defaultGpu;
-		VkPhysicalDeviceProperties m_defaultGpuProperties;
-
-		VkDevice m_device;
-		VkSurfaceKHR m_surface;
 
 		VkSwapchainKHR m_swapChain;
 		VkFormat m_swapchainImageFormat, m_depthFormat;

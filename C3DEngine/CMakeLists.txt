@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 3.8)
 find_package(Vulkan REQUIRED)
 
 # Add source to this project's executable.
-add_executable (C3DEngine "main.cpp" "core/VkEngine.h" "core/VkEngine.cpp" "core/VkTextures.h" "core/VkTextures.cpp" "core/VkTypes.h" "core/VkInitializers.h" "core/VkInitializers.cpp" "core/VkPipeline.h" "core/VkPipeline.cpp" "core/VkDeletionQueue.h"  "core/VkMesh.h" "core/VkMesh.cpp" "core/VkRenderObject.h"  "core/VkFrame.h" "core/Logger.h" "core/Logger.cpp")
+add_executable (C3DEngine "main.cpp" "core/VkEngine.h" "core/VkEngine.cpp" "core/VkTextures.h" "core/VkTextures.cpp" "core/VkTypes.h" "core/VkInitializers.h" "core/VkInitializers.cpp" "core/VkPipeline.h" "core/VkPipeline.cpp" "core/VkDeletionQueue.h"  "core/VkMesh.h" "core/VkMesh.cpp" "core/VkRenderObject.h"  "core/VkFrame.h" "core/Logger.h" "core/Logger.cpp" "core/VkObjects.h" "core/Utils.h" "core/Utils.cpp")
 
 # Add all the dependency pacakges
 find_package(SDL2 CONFIG REQUIRED)

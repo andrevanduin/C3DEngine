@@ -22,6 +22,7 @@
 #include "VkTextures.h"
 #include "VkInitializers.h"
 #include "VkPipeline.h"
+#include "Utils.h"
 
 #define VK_CHECK(x)															\
 	do																		\
@@ -79,13 +80,13 @@ namespace C3D
 	{
 		ImGui::Render();
 
-		VK_CHECK(vkWaitForFences(m_device, 1, &GetCurrentFrame().renderFence, true, ONE_SECOND_NS));
-		VK_CHECK(vkResetFences(m_device, 1, &GetCurrentFrame().renderFence));
+		VK_CHECK(vkWaitForFences(m_vkObjects.device, 1, &GetCurrentFrame().renderFence, true, ONE_SECOND_NS));
+		VK_CHECK(vkResetFences(m_vkObjects.device, 1, &GetCurrentFrame().renderFence));
 
 		VK_CHECK(vkResetCommandBuffer(GetCurrentFrame().commandBuffer, 0));
 
 		uint32_t swapchainImageIndex;
-		VK_CHECK(vkAcquireNextImageKHR(m_device, m_swapChain, ONE_SECOND_NS, GetCurrentFrame().presentSemaphore, nullptr, &swapchainImageIndex));
+		VK_CHECK(vkAcquireNextImageKHR(m_vkObjects.device, m_swapChain, ONE_SECOND_NS, GetCurrentFrame().presentSemaphore, nullptr, &swapchainImageIndex));
 
 		auto cmd = GetCurrentFrame().commandBuffer;
 
@@ -194,14 +195,15 @@ namespace C3D
 
 		for (int i = 0; i < count; i++)
 		{
-			auto& object = first[i];
+			const auto& object = first[i];
 
 			if (object.material != lastMaterial)
 			{
 				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
 				lastMaterial = object.material;
 
-				uint32_t uniformOffset = PadUniformBufferSize(sizeof(GpuSceneData)) * frameIndex;
+
+				auto uniformOffset = static_cast<uint32_t>(PadUniformBufferSize(sizeof(GpuSceneData))) * frameIndex;
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 0, 1, &GetCurrentFrame().globalDescriptor, 1, &uniformOffset);
 
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipelineLayout, 1, 1, &GetCurrentFrame().objectDescriptor, 0, nullptr);
@@ -270,10 +272,10 @@ namespace C3D
 
 		VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submit, m_uploadContext.uploadFence));
 
-		vkWaitForFences(m_device, 1, &m_uploadContext.uploadFence, true, ONE_SECOND_NS * 9);
-		vkResetFences(m_device, 1, &m_uploadContext.uploadFence);
+		vkWaitForFences(m_vkObjects.device, 1, &m_uploadContext.uploadFence, true, ONE_SECOND_NS * 9);
+		vkResetFences(m_vkObjects.device, 1, &m_uploadContext.uploadFence);
 
-		vkResetCommandPool(m_device, m_uploadContext.commandPool, 0);
+		vkResetCommandPool(m_vkObjects.device, m_uploadContext.commandPool, 0);
 	}
 
 	bool VulkanEngine::LoadShaderModule(const char* filePath, VkShaderModule* outShaderModule) const
@@ -301,7 +303,7 @@ namespace C3D
 		createInfo.pCode = buffer.data();
 
 		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(m_device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		if (vkCreateShaderModule(m_vkObjects.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 		{
 			return false;
 		}
@@ -336,7 +338,7 @@ namespace C3D
 
 	void VulkanEngine::InitVulkan()
 	{
-		Logger::SetPrefix("VULKAN");
+		Logger::PushPrefix("VULKAN");
 		Logger::Info("Init()");
 
 		vkb::InstanceBuilder instanceBuilder;
@@ -344,16 +346,16 @@ namespace C3D
 		auto vkbInstanceResult = instanceBuilder
 			.set_app_name("C3DEngine")
 			.request_validation_layers(true)
-			.use_default_debug_messenger()
+			.set_debug_callback(Logger::VkDebugLog)
 			.require_api_version(1, 1, 0)
 			.build();
 
 		vkb::Instance vkbInstance = vkbInstanceResult.value();
 
-		m_vkInstance = vkbInstance.instance;
+		m_vkObjects.instance = vkbInstance.instance;
 		m_debugMessenger = vkbInstance.debug_messenger;
 
-		if (!SDL_Vulkan_CreateSurface(m_window, m_vkInstance, &m_surface))
+		if (!SDL_Vulkan_CreateSurface(m_window, m_vkObjects.instance, &m_vkObjects.surface))
 		{
 			Logger::Error("Failed to create Vulkan Surface");
 			abort();
@@ -363,7 +365,7 @@ namespace C3D
 		vkb::PhysicalDeviceSelector selector{ vkbInstance };
 		vkb::PhysicalDevice physicalDevice = selector
 			.set_minimum_version(1, 1)
-			.set_surface(m_surface)
+			.set_surface(m_vkObjects.surface)
 			.add_required_extension(VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME)
 			.select()
 			.value();
@@ -372,29 +374,30 @@ namespace C3D
 		vkb::DeviceBuilder deviceBuilder{ physicalDevice };
 		vkb::Device vkbDevice = deviceBuilder.build().value();
 
-		m_device = vkbDevice.device;
-		m_defaultGpu = physicalDevice.physical_device;
+		m_vkObjects.device = vkbDevice.device;
+		m_vkObjects.physicalDevice = physicalDevice.physical_device;
 
 		m_graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
 		m_graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 
 		VmaAllocatorCreateInfo allocatorInfo = {};
-		allocatorInfo.physicalDevice = m_defaultGpu;
-		allocatorInfo.device = m_device;
-		allocatorInfo.instance = m_vkInstance;
+		allocatorInfo.physicalDevice = m_vkObjects.physicalDevice;
+		allocatorInfo.device = m_vkObjects.device;
+		allocatorInfo.instance = m_vkObjects.instance;
 		vmaCreateAllocator(&allocatorInfo, &allocator);
 
 		deletionQueue.Push([&] { vmaDestroyAllocator(allocator); });
 
-		vkGetPhysicalDeviceProperties(m_defaultGpu, &m_defaultGpuProperties);
+		vkGetPhysicalDeviceProperties(m_vkObjects.physicalDevice, &m_vkObjects.physicalDeviceProperties);
 
-		Logger::Info("GPU: {}", m_defaultGpuProperties.deviceName);
-		Logger::Info("Done Initializing Core");
+		Logger::Info("GPU            - {}", m_vkObjects.physicalDeviceProperties.deviceName);
+		Logger::Info("Driver Version - {}", Utils::GetGpuDriverVersion(m_vkObjects.physicalDeviceProperties));
+		Logger::Info("API Version    - {}", Utils::GetVulkanApiVersion(m_vkObjects.physicalDeviceProperties));
 	}
 
 	void VulkanEngine::InitImGui()
 	{
-		VkDescriptorPoolSize poolSizes[] =
+		const VkDescriptorPoolSize poolSizes[] =
 		{
 			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
 			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
@@ -417,16 +420,16 @@ namespace C3D
 		poolInfo.pPoolSizes = poolSizes;
 
 		VkDescriptorPool imguiPool;
-		VK_CHECK(vkCreateDescriptorPool(m_device, &poolInfo, nullptr, &imguiPool));
+		VK_CHECK(vkCreateDescriptorPool(m_vkObjects.device, &poolInfo, nullptr, &imguiPool));
 
 		ImGui::CreateContext();
 
 		ImGui_ImplSDL2_InitForVulkan(m_window);
 
 		ImGui_ImplVulkan_InitInfo initInfo = {};
-		initInfo.Instance = m_vkInstance;
-		initInfo.PhysicalDevice = m_defaultGpu;
-		initInfo.Device = m_device;
+		initInfo.Instance = m_vkObjects.instance;
+		initInfo.PhysicalDevice = m_vkObjects.physicalDevice;
+		initInfo.Device = m_vkObjects.device;
 		initInfo.Queue = m_graphicsQueue;
 		initInfo.DescriptorPool = imguiPool;
 		initInfo.MinImageCount = 3;
@@ -440,17 +443,17 @@ namespace C3D
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 
 		deletionQueue.Push([=]
-			{
-				vkDestroyDescriptorPool(m_device, imguiPool, nullptr);
-				ImGui_ImplVulkan_Shutdown();
-			});
+		{
+			vkDestroyDescriptorPool(m_vkObjects.device, imguiPool, nullptr);
+			ImGui_ImplVulkan_Shutdown();
+		});
 	}
 
 	void VulkanEngine::InitSwapchain()
 	{
 		Logger::Info("InitSwapchain()");
 
-		vkb::SwapchainBuilder swapchainBuilder{ m_defaultGpu, m_device, m_surface };
+		vkb::SwapchainBuilder swapchainBuilder{ m_vkObjects.physicalDevice, m_vkObjects.device, m_vkObjects.surface };
 
 		vkb::Swapchain vkbSwapchain = swapchainBuilder
 			.use_default_format_selection()
@@ -467,7 +470,7 @@ namespace C3D
 
 		m_swapchainImageFormat = vkbSwapchain.image_format;
 
-		deletionQueue.Push([=] { vkDestroySwapchainKHR(m_device, m_swapChain, nullptr); });
+		deletionQueue.Push([=] { vkDestroySwapchainKHR(m_vkObjects.device, m_swapChain, nullptr); });
 
 		VkExtent3D depthImageExtent = { m_windowExtent.width, m_windowExtent.height, 1 };
 
@@ -483,15 +486,13 @@ namespace C3D
 
 		auto depthImgViewInfo = VkInit::ImageViewCreateInfo(m_depthFormat, m_depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
 
-		VK_CHECK(vkCreateImageView(m_device, &depthImgViewInfo, nullptr, &m_depthImageView));
+		VK_CHECK(vkCreateImageView(m_vkObjects.device, &depthImgViewInfo, nullptr, &m_depthImageView));
 
 		deletionQueue.Push([=]
 		{
-			vkDestroyImageView(m_device, m_depthImageView, nullptr);
+			vkDestroyImageView(m_vkObjects.device, m_depthImageView, nullptr);
 			vmaDestroyImage(allocator, m_depthImage.image, m_depthImage.allocation);
 		});
-
-		Logger::Info("Finished initializing Swapchain");
 	}
 
 	void VulkanEngine::InitCommands()
@@ -501,23 +502,21 @@ namespace C3D
 		const auto commandPoolInfo = VkInit::CommandPoolCreateInfo(m_graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 		for (auto& frame : m_frames)
 		{
-			VK_CHECK(vkCreateCommandPool(m_device, &commandPoolInfo, nullptr, &frame.commandPool));
+			VK_CHECK(vkCreateCommandPool(m_vkObjects.device, &commandPoolInfo, nullptr, &frame.commandPool));
 
 			const auto cmdAllocInfo = VkInit::CommandBufferAllocateInfo(frame.commandPool);
-			VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &frame.commandBuffer));
+			VK_CHECK(vkAllocateCommandBuffers(m_vkObjects.device, &cmdAllocInfo, &frame.commandBuffer));
 
-			deletionQueue.Push([=] { vkDestroyCommandPool(m_device, frame.commandPool, nullptr); });
+			deletionQueue.Push([=] { vkDestroyCommandPool(m_vkObjects.device, frame.commandPool, nullptr); });
 		}
 
 		const auto uploadCommandPoolInfo = VkInit::CommandPoolCreateInfo(m_graphicsQueueFamily);
-		VK_CHECK(vkCreateCommandPool(m_device, &uploadCommandPoolInfo, nullptr, &m_uploadContext.commandPool));
+		VK_CHECK(vkCreateCommandPool(m_vkObjects.device, &uploadCommandPoolInfo, nullptr, &m_uploadContext.commandPool));
 
-		deletionQueue.Push([=] { vkDestroyCommandPool(m_device, m_uploadContext.commandPool, nullptr); });
+		deletionQueue.Push([=] { vkDestroyCommandPool(m_vkObjects.device, m_uploadContext.commandPool, nullptr); });
 
 		const auto cmdAllocInfo = VkInit::CommandBufferAllocateInfo(m_uploadContext.commandPool);
-		VK_CHECK(vkAllocateCommandBuffers(m_device, &cmdAllocInfo, &m_uploadContext.commandBuffer));
-
-		Logger::Info("Finished initializing Commands");
+		VK_CHECK(vkAllocateCommandBuffers(m_vkObjects.device, &cmdAllocInfo, &m_uploadContext.commandBuffer));
 	}
 
 	void VulkanEngine::InitDefaultRenderPass()
@@ -589,11 +588,9 @@ namespace C3D
 		renderPassInfo.dependencyCount = 2;
 		renderPassInfo.pDependencies = &dependencies[0];
 
-		VK_CHECK(vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_renderPass));
+		VK_CHECK(vkCreateRenderPass(m_vkObjects.device, &renderPassInfo, nullptr, &m_renderPass));
 
-		deletionQueue.Push([=] { vkDestroyRenderPass(m_device, m_renderPass, nullptr); });
-
-		Logger::Info("Finished initializing DefaultRenderPass");
+		deletionQueue.Push([=] { vkDestroyRenderPass(m_vkObjects.device, m_renderPass, nullptr); });
 	}
 
 	void VulkanEngine::InitFramebuffers()
@@ -622,16 +619,14 @@ namespace C3D
 			fbInfo.pAttachments = attachments;
 			fbInfo.attachmentCount = 2;
 
-			VK_CHECK(vkCreateFramebuffer(m_device, &fbInfo, nullptr, &m_frameBuffers[i]));
+			VK_CHECK(vkCreateFramebuffer(m_vkObjects.device, &fbInfo, nullptr, &m_frameBuffers[i]));
 
 			deletionQueue.Push([=]
 			{
-				vkDestroyFramebuffer(m_device, m_frameBuffers[i], nullptr);
-				vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
+				vkDestroyFramebuffer(m_vkObjects.device, m_frameBuffers[i], nullptr);
+				vkDestroyImageView(m_vkObjects.device, m_swapchainImageViews[i], nullptr);
 			});
 		}
-
-		Logger::Info("Finished initializing Framebuffers");
 	}
 
 	void VulkanEngine::InitDescriptors()
@@ -653,7 +648,7 @@ namespace C3D
 		poolInfo.poolSizeCount = static_cast<uint32_t>(sizes.size());
 		poolInfo.pPoolSizes = sizes.data();
 
-		vkCreateDescriptorPool(m_device, &poolInfo, nullptr, &m_descriptorPool);
+		vkCreateDescriptorPool(m_vkObjects.device, &poolInfo, nullptr, &m_descriptorPool);
 
 		const auto cameraBind = VkInit::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
 		const auto sceneBind = VkInit::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1);
@@ -668,7 +663,7 @@ namespace C3D
 		setInfo.flags = 0;
 		setInfo.pBindings = bindings;
 
-		vkCreateDescriptorSetLayout(m_device, &setInfo, nullptr, &m_globalSetLayout);
+		vkCreateDescriptorSetLayout(m_vkObjects.device, &setInfo, nullptr, &m_globalSetLayout);
 
 		VkDescriptorSetLayoutBinding objectBind = VkInit::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0);
 
@@ -680,7 +675,7 @@ namespace C3D
 		set2Info.flags = 0;
 		set2Info.pBindings = &objectBind;
 
-		vkCreateDescriptorSetLayout(m_device, &set2Info, nullptr, &m_objectSetLayout);
+		vkCreateDescriptorSetLayout(m_vkObjects.device, &set2Info, nullptr, &m_objectSetLayout);
 
 		const auto textureBind = VkInit::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
 
@@ -692,7 +687,7 @@ namespace C3D
 		set3Info.flags = 0;
 		set3Info.pBindings = &textureBind;
 
-		vkCreateDescriptorSetLayout(m_device, &set3Info, nullptr, &m_singleTextureSetLayout);
+		vkCreateDescriptorSetLayout(m_vkObjects.device, &set3Info, nullptr, &m_singleTextureSetLayout);
 
 		const size_t sceneParamBufferSize = FRAME_OVERLAP * PadUniformBufferSize(sizeof(GpuSceneData));
 		m_sceneParameterBuffer = CreateBuffer(sceneParamBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -713,7 +708,7 @@ namespace C3D
 			allocInfo.descriptorSetCount = 1;
 			allocInfo.pSetLayouts = &m_globalSetLayout;
 
-			vkAllocateDescriptorSets(m_device, &allocInfo, &frame.globalDescriptor);
+			vkAllocateDescriptorSets(m_vkObjects.device, &allocInfo, &frame.globalDescriptor);
 
 			VkDescriptorSetAllocateInfo objectAllocInfo = {};
 			objectAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -723,7 +718,7 @@ namespace C3D
 			objectAllocInfo.descriptorSetCount = 1;
 			objectAllocInfo.pSetLayouts = &m_objectSetLayout;
 
-			vkAllocateDescriptorSets(m_device, &objectAllocInfo, &frame.objectDescriptor);
+			vkAllocateDescriptorSets(m_vkObjects.device, &objectAllocInfo, &frame.objectDescriptor);
 
 			VkDescriptorBufferInfo cameraInfo = {};
 			cameraInfo.buffer = frame.cameraBuffer.buffer;
@@ -745,18 +740,18 @@ namespace C3D
 			const auto objectWrite = VkInit::WriteDescriptorBuffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, frame.objectDescriptor, &objectBufferInfo, 0);
 
 			const VkWriteDescriptorSet setWrites[] = { cameraWrite, sceneWrite, objectWrite };
-			vkUpdateDescriptorSets(m_device, 3, setWrites, 0, nullptr);
+			vkUpdateDescriptorSets(m_vkObjects.device, 3, setWrites, 0, nullptr);
 		}
 
 		deletionQueue.Push([&]
 		{
 			vmaDestroyBuffer(allocator, m_sceneParameterBuffer.buffer, m_sceneParameterBuffer.allocation);
 
-			vkDestroyDescriptorSetLayout(m_device, m_objectSetLayout, nullptr);
-			vkDestroyDescriptorSetLayout(m_device, m_globalSetLayout, nullptr);
-			vkDestroyDescriptorSetLayout(m_device, m_singleTextureSetLayout, nullptr);
+			vkDestroyDescriptorSetLayout(m_vkObjects.device, m_objectSetLayout, nullptr);
+			vkDestroyDescriptorSetLayout(m_vkObjects.device, m_globalSetLayout, nullptr);
+			vkDestroyDescriptorSetLayout(m_vkObjects.device, m_singleTextureSetLayout, nullptr);
 
-			vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+			vkDestroyDescriptorPool(m_vkObjects.device, m_descriptorPool, nullptr);
 
 			for (const auto& frame : m_frames)
 			{
@@ -764,8 +759,6 @@ namespace C3D
 				vmaDestroyBuffer(allocator, frame.objectBuffer.buffer, frame.objectBuffer.allocation);
 			}
 		});
-
-		Logger::Info("Finished initializing Descriptors");
 	}
 
 	void VulkanEngine::InitPipelines()
@@ -775,31 +768,34 @@ namespace C3D
 		VkShaderModule colorMeshShader;
 		if (!LoadShaderModule("../../../../shaders/default_lit.frag.spv", &colorMeshShader))
 		{
-			std::cout << "Error while building triangle fragment shader module" << std::endl;
+			Logger::Error("Error while building triangle fragment shader module");
+			abort();
 		}
 		else
 		{
-			std::cout << "Triangle Fragment shader successfully loaded" << std::endl;
+			Logger::Info("Triangle Fragment shader successfully loaded");
 		}
 
 		VkShaderModule texturedMeshShader;
 		if (!LoadShaderModule("../../../../shaders/textured_lit.frag.spv", &texturedMeshShader))
 		{
-			std::cout << "Error while building textured mesh fragment shader module" << std::endl;
+			Logger::Error("Error while building textured mesh fragment shader module");
+			abort();
 		}
 		else
 		{
-			std::cout << "Textured mesh fragment shader successfully loaded" << std::endl;
+			Logger::Info("Textured mesh fragment shader successfully loaded");
 		}
 
 		VkShaderModule meshVertShader;
 		if (!LoadShaderModule("../../../../shaders/tri_mesh.vert.spv", &meshVertShader))
 		{
-			std::cout << "Error while building triangle vertex module" << std::endl;
+			Logger::Error("Error while building triangle vertex module");
+			abort();
 		}
 		else
 		{
-			std::cout << "Triangle Vertex shader successfully loaded" << std::endl;
+			Logger::Info("Triangle Vertex shader successfully loaded");
 		}
 
 		PipelineBuilder builder;
@@ -822,7 +818,7 @@ namespace C3D
 		meshPipelineLayoutInfo.pSetLayouts = setLayouts;
 
 		VkPipelineLayout meshPipelineLayout;
-		VK_CHECK(vkCreatePipelineLayout(m_device, &meshPipelineLayoutInfo, nullptr, &meshPipelineLayout));
+		VK_CHECK(vkCreatePipelineLayout(m_vkObjects.device, &meshPipelineLayoutInfo, nullptr, &meshPipelineLayout));
 
 		auto texturedPipelineLayoutInfo = meshPipelineLayoutInfo;
 
@@ -832,7 +828,7 @@ namespace C3D
 		texturedPipelineLayoutInfo.pSetLayouts = texturedSetLayouts;
 
 		VkPipelineLayout texturedPipelineLayout;
-		VK_CHECK(vkCreatePipelineLayout(m_device, &texturedPipelineLayoutInfo, nullptr, &texturedPipelineLayout));
+		VK_CHECK(vkCreatePipelineLayout(m_vkObjects.device, &texturedPipelineLayoutInfo, nullptr, &texturedPipelineLayout));
 
 		builder.layout = meshPipelineLayout;
 
@@ -862,7 +858,7 @@ namespace C3D
 		builder.vertexInputInfo.pVertexBindingDescriptions = vertexDescription.bindings.data();
 		builder.vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexDescription.bindings.size());
 
-		VkPipeline meshPipeline = builder.Build(m_device, m_renderPass);
+		VkPipeline meshPipeline = builder.Build(m_vkObjects.device, m_renderPass);
 		CreateMaterial(meshPipeline, meshPipelineLayout, "defaultMesh");
 
 		builder.shaderStages.clear();
@@ -871,28 +867,26 @@ namespace C3D
 
 		builder.layout = texturedPipelineLayout;
 
-		VkPipeline texPipeline = builder.Build(m_device, m_renderPass);
+		VkPipeline texPipeline = builder.Build(m_vkObjects.device, m_renderPass);
 		CreateMaterial(texPipeline, texturedPipelineLayout, "texturedMesh");
 
-		vkDestroyShaderModule(m_device, meshVertShader, nullptr);
-		vkDestroyShaderModule(m_device, colorMeshShader, nullptr);
-		vkDestroyShaderModule(m_device, texturedMeshShader, nullptr);
+		vkDestroyShaderModule(m_vkObjects.device, meshVertShader, nullptr);
+		vkDestroyShaderModule(m_vkObjects.device, colorMeshShader, nullptr);
+		vkDestroyShaderModule(m_vkObjects.device, texturedMeshShader, nullptr);
 
 		deletionQueue.Push([=]
 		{
-			vkDestroyPipeline(m_device, meshPipeline, nullptr);
-			vkDestroyPipeline(m_device, texPipeline, nullptr);
+			vkDestroyPipeline(m_vkObjects.device, meshPipeline, nullptr);
+			vkDestroyPipeline(m_vkObjects.device, texPipeline, nullptr);
 
-			vkDestroyPipelineLayout(m_device, meshPipelineLayout, nullptr);
-			vkDestroyPipelineLayout(m_device, texturedPipelineLayout, nullptr);
+			vkDestroyPipelineLayout(m_vkObjects.device, meshPipelineLayout, nullptr);
+			vkDestroyPipelineLayout(m_vkObjects.device, texturedPipelineLayout, nullptr);
 		});
-
-		Logger::Info("Finished initializing Pipelines");
 	}
 
 	void VulkanEngine::LoadMeshes()
 	{
-		Logger::SetPrefix("Engine");
+		Logger::PushPrefix("Engine");
 		Logger::Info("LoadMeshes()");
 		/*
 		m_triangleMesh.vertices.resize(3);
@@ -924,8 +918,6 @@ namespace C3D
 
 		m_meshes["monkey"] = monkey;
 		m_meshes["empire"] = lostEmpire;
-
-		Logger::Info("Finished loading Meshes");
 	}
 
 	void VulkanEngine::LoadImages()
@@ -936,13 +928,11 @@ namespace C3D
 		if (!VkUtil::LoadImageFromFile(*this, "../../../../assets/lost_empire-RGBA.png", lostEmpire.image)) abort();
 
 		const auto imageCreateInfo = VkInit::ImageViewCreateInfo(VK_FORMAT_R8G8B8A8_SRGB, lostEmpire.image.image, VK_IMAGE_ASPECT_COLOR_BIT);
-		vkCreateImageView(m_device, &imageCreateInfo, nullptr, &lostEmpire.view);
+		vkCreateImageView(m_vkObjects.device, &imageCreateInfo, nullptr, &lostEmpire.view);
 
-		deletionQueue.Push([=] { vkDestroyImageView(m_device, lostEmpire.view, nullptr); });
+		deletionQueue.Push([=] { vkDestroyImageView(m_vkObjects.device, lostEmpire.view, nullptr); });
 
 		m_textures["empire_diffuse"] = lostEmpire;
-
-		Logger::Info("Finished loading Images");
 	}
 
 	void VulkanEngine::InitScene()
@@ -973,14 +963,14 @@ namespace C3D
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &m_singleTextureSetLayout;
 
-		vkAllocateDescriptorSets(m_device, &allocInfo, &texturedMaterial->textureSet);
+		vkAllocateDescriptorSets(m_vkObjects.device, &allocInfo, &texturedMaterial->textureSet);
 
 		const auto samplerInfo = VkInit::SamplerCreateInfo(VK_FILTER_NEAREST);
 
 		VkSampler blockySampler;
-		vkCreateSampler(m_device, &samplerInfo, nullptr, &blockySampler);
+		vkCreateSampler(m_vkObjects.device, &samplerInfo, nullptr, &blockySampler);
 
-		deletionQueue.Push([=] { vkDestroySampler(m_device, blockySampler, nullptr); });
+		deletionQueue.Push([=] { vkDestroySampler(m_vkObjects.device, blockySampler, nullptr); });
 
 		VkDescriptorImageInfo imageBufferInfo;
 		imageBufferInfo.sampler = blockySampler;
@@ -988,9 +978,7 @@ namespace C3D
 		imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		const auto texture1 = VkInit::WriteDescriptorImage(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, texturedMaterial->textureSet, &imageBufferInfo, 0);
-		vkUpdateDescriptorSets(m_device, 1, &texture1, 0, nullptr);
-
-		Logger::Info("Finished initializing Scene");
+		vkUpdateDescriptorSets(m_vkObjects.device, 1, &texture1, 0, nullptr);
 	}
 
 	void VulkanEngine::UploadMesh(Mesh& mesh)
@@ -1054,13 +1042,11 @@ namespace C3D
 		});
 
 		vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
-
-		Logger::Info("Finished uploading Mesh");
 	}
 
 	size_t VulkanEngine::PadUniformBufferSize(const size_t originalSize) const
 	{
-		const size_t minUboAlignment = m_defaultGpuProperties.limits.minUniformBufferOffsetAlignment;
+		const size_t minUboAlignment = m_vkObjects.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
 		size_t alignedSize = originalSize;
 		if (minUboAlignment > 0)
 		{
@@ -1086,7 +1072,6 @@ namespace C3D
 		AllocatedBuffer buffer{};
 		VK_CHECK(vmaCreateBuffer(allocator, &createInfo, &allocInfo, &buffer.buffer, &buffer.allocation, nullptr));
 
-		Logger::Info("Created Buffer");
 		return buffer;
 	}
 
@@ -1104,26 +1089,24 @@ namespace C3D
 
 		for (auto& frame : m_frames)
 		{
-			VK_CHECK(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &frame.renderFence));
+			VK_CHECK(vkCreateFence(m_vkObjects.device, &fenceCreateInfo, nullptr, &frame.renderFence));
 
-			deletionQueue.Push([=] { vkDestroyFence(m_device, frame.renderFence, nullptr); });
+			deletionQueue.Push([=] { vkDestroyFence(m_vkObjects.device, frame.renderFence, nullptr); });
 
-			VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &frame.presentSemaphore));
-			VK_CHECK(vkCreateSemaphore(m_device, &semaphoreCreateInfo, nullptr, &frame.renderSemaphore));
+			VK_CHECK(vkCreateSemaphore(m_vkObjects.device, &semaphoreCreateInfo, nullptr, &frame.presentSemaphore));
+			VK_CHECK(vkCreateSemaphore(m_vkObjects.device, &semaphoreCreateInfo, nullptr, &frame.renderSemaphore));
 
 			deletionQueue.Push([=]
-				{
-					vkDestroySemaphore(m_device, frame.presentSemaphore, nullptr);
-					vkDestroySemaphore(m_device, frame.renderSemaphore, nullptr);
-				});
+			{
+				vkDestroySemaphore(m_vkObjects.device, frame.presentSemaphore, nullptr);
+				vkDestroySemaphore(m_vkObjects.device, frame.renderSemaphore, nullptr);
+			});
 		}
 
 		const auto uploadFenceCreateInfo = VkInit::FenceCreateInfo();
-		VK_CHECK(vkCreateFence(m_device, &uploadFenceCreateInfo, nullptr, &m_uploadContext.uploadFence));
+		VK_CHECK(vkCreateFence(m_vkObjects.device, &uploadFenceCreateInfo, nullptr, &m_uploadContext.uploadFence));
 
-		deletionQueue.Push([=] { vkDestroyFence(m_device, m_uploadContext.uploadFence, nullptr); });
-
-		Logger::Info("Finished initializing SyncStructures");
+		deletionQueue.Push([=] { vkDestroyFence(m_vkObjects.device, m_uploadContext.uploadFence, nullptr); });
 	}
 
 	void VulkanEngine::Cleanup()
@@ -1132,15 +1115,15 @@ namespace C3D
 
 		if (m_isInitialized)
 		{
-			vkDeviceWaitIdle(m_device);
+			vkDeviceWaitIdle(m_vkObjects.device);
 
 			deletionQueue.Cleanup();
 
-			vkDestroySurfaceKHR(m_vkInstance, m_surface, nullptr);
+			vkDestroySurfaceKHR(m_vkObjects.instance, m_vkObjects.surface, nullptr);
 
-			vkDestroyDevice(m_device, nullptr);
-			vkb::destroy_debug_utils_messenger(m_vkInstance, m_debugMessenger);
-			vkDestroyInstance(m_vkInstance, nullptr);
+			vkDestroyDevice(m_vkObjects.device, nullptr);
+			vkb::destroy_debug_utils_messenger(m_vkObjects.instance, m_debugMessenger);
+			vkDestroyInstance(m_vkObjects.instance, nullptr);
 
 			SDL_DestroyWindow(m_window);
 		}

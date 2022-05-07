@@ -7,6 +7,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include "Logger.h"
+
 namespace C3D
 {
 	bool VkUtil::LoadImageFromFile(VulkanEngine& engine, const char* file, AllocatedImage& outImage)
@@ -16,7 +18,7 @@ namespace C3D
 		const auto pixels = stbi_load(file, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 		if (!pixels)
 		{
-			std::cout << "Failed to load texture file: " << file << std::endl;
+			Logger::Error("Failed to load texture file {}", file);
 			return false;
 		}
 
@@ -89,13 +91,13 @@ namespace C3D
 			imageBarrierToReadable.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrierToReadable);
-			});
+		});
 
 		engine.deletionQueue.Push([=] { vmaDestroyImage(engine.allocator, image.image, image.allocation); });
 
 		vmaDestroyBuffer(engine.allocator, stagingBuffer.buffer, stagingBuffer.allocation);
 
-		std::cout << "Texture loaded successfully: " << file << std::endl;
+		Logger::Info("Texture loaded successfully: {}", file);
 
 		outImage = image;
 		return true;
