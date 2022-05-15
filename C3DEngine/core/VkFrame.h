@@ -1,43 +1,61 @@
 
 #pragma once
+#include "VkPushBuffer.h"
 #include "VkTypes.h"
+#include "VkDeletionQueue.h"
 
-struct GpuCameraData
+namespace C3D
 {
-	glm::mat4 view;
-	glm::mat4 projection;
-	glm::mat4 viewProjection;
-};
+	class DescriptorAllocator;
 
-struct GpuSceneData
-{
-	glm::vec4 fogColor;
-	glm::vec4 fogDistance;
-	glm::vec4 ambientColor;
-	glm::vec4 sunlightDirection;
-	glm::vec4 sunlightColor;
-};
+	struct GpuCameraData
+	{
+		glm::mat4 view;
+		glm::mat4 projection;
+		glm::mat4 viewProjection;
+	};
 
-struct GpuObjectData
-{
-	glm::mat4 modelMatrix;
-};
+	struct GpuSceneData
+	{
+		glm::vec4 fogColor;
+		glm::vec4 fogDistance;
+		glm::vec4 ambientColor;
+		glm::vec4 sunlightDirection;
+		glm::vec4 sunlightColor;
+	};
 
-struct FrameData
-{
-	VkSemaphore presentSemaphore, renderSemaphore;
-	VkFence renderFence;
+	struct GpuObjectData
+	{
+		glm::mat4 modelMatrix;
+		glm::vec4 originRad;
+		glm::vec4 extents;
+	};
 
-	VkCommandPool commandPool;
-	VkCommandBuffer commandBuffer;
+	struct FrameData
+	{
+		VkSemaphore presentSemaphore, renderSemaphore;
+		VkFence renderFence;
 
-	AllocatedBuffer cameraBuffer, objectBuffer;
-	VkDescriptorSet globalDescriptor, objectDescriptor;
-};
+		DeletionQueue deletionQueue;
 
-struct UploadContext
-{
-	VkFence uploadFence;
-	VkCommandPool commandPool;
-	VkCommandBuffer commandBuffer;
-};
+		VkCommandPool commandPool;
+		VkCommandBuffer commandBuffer;
+
+		PushBuffer dynamicData;
+
+		AllocatedBufferUntyped debugOutputBuffer;
+
+		DescriptorAllocator* dynamicDescriptorAllocator;
+
+		std::vector<uint32_t> debugDataOffsets;
+		std::vector<std::string> debugDataNames;
+	};
+
+	struct UploadContext
+	{
+		VkFence uploadFence;
+		VkCommandPool commandPool;
+		VkCommandBuffer commandBuffer;
+	};
+}
+

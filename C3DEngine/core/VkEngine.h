@@ -3,18 +3,22 @@
 #include <vector>
 #include <unordered_map>
 
+#include "Allocator.h"
 #include "VkTypes.h"
 #include "VkDeletionQueue.h"
-#include "VkMesh.h"
-#include "VkRenderObject.h"
+#include "renderer/Mesh.h"
 #include "VkFrame.h"
 #include "VkObjects.h"
+#include "shaders/ShaderCache.h"
+#include "shaders/DescriptorLayoutCache.h"
 
 namespace C3D
 {
 	constexpr auto FRAME_OVERLAP = 2;
 	constexpr uint64_t ONE_SECOND_NS = 1000000000;
 	constexpr int MAX_OBJECTS = 10000;
+
+	constexpr size_t MEGABYTE = 1000000;
 
 	struct Texture
 	{
@@ -29,10 +33,6 @@ namespace C3D
 
 		void Cleanup();
 
-		void Draw();
-
-		void DrawObjects(VkCommandBuffer cmd, RenderObject* first, int count);
-
 		void Run();
 
 		void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
@@ -45,9 +45,18 @@ namespace C3D
 
 		Mesh* GetMesh(const std::string& name);
 
-		[[nodiscard]] AllocatedBuffer CreateBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) const;
+		[[nodiscard]] AllocatedBufferUntyped CreateBuffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkMemoryPropertyFlags requiredFlags = 0) const;
 
-		VmaAllocator allocator;
+		VkObjects vkObjects;
+
+		Allocator allocator;
+		DescriptorAllocator* descriptorAllocator;
+
+		ShaderCache shaderCache;
+		DescriptorLayoutCache* descriptorLayoutCache;
+
+		VkRenderPass renderPass;
+
 		DeletionQueue deletionQueue;
 	private:
 		void InitSyncStructures();
@@ -55,8 +64,6 @@ namespace C3D
 		void InitVulkan();
 
 		void InitImGui();
-
-		void InitSwapchain();
 
 		void InitCommands();
 
@@ -87,8 +94,6 @@ namespace C3D
 
 		struct SDL_Window* m_window{ nullptr };
 
-		VkObjects m_vkObjects;
-
 		VkDebugUtilsMessengerEXT m_debugMessenger;
 
 		VkSwapchainKHR m_swapChain;
@@ -96,13 +101,11 @@ namespace C3D
 
 		FrameData m_frames[FRAME_OVERLAP];
 
-		VkRenderPass m_renderPass;
-
 		VkImageView m_depthImageView;
 		AllocatedImage m_depthImage;
 
 		GpuSceneData m_sceneData;
-		AllocatedBuffer m_sceneParameterBuffer;
+		AllocatedBufferUntyped m_sceneParameterBuffer;
 
 		VkDescriptorSetLayout m_globalSetLayout, m_objectSetLayout, m_singleTextureSetLayout;
 		VkDescriptorPool m_descriptorPool;
@@ -112,8 +115,6 @@ namespace C3D
 		std::vector<VkImage> m_swapchainImages;
 		std::vector<VkImageView> m_swapchainImageViews;
 		std::vector<VkFramebuffer> m_frameBuffers;
-
-		std::vector<RenderObject> m_renderObjects;
 
 		std::unordered_map<std::string, Material> m_materials;
 		std::unordered_map<std::string, Mesh> m_meshes;

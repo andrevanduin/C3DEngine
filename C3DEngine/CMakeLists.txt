@@ -1,12 +1,14 @@
 ﻿# CMakeList.txt : CMake project for C3DEngine, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.13)
 
 find_package(Vulkan REQUIRED)
 
 # Add source to this project's executable.
-add_executable (C3DEngine "main.cpp" "core/VkEngine.h" "core/VkEngine.cpp" "core/VkTextures.h" "core/VkTextures.cpp" "core/VkTypes.h" "core/VkInitializers.h" "core/VkInitializers.cpp" "core/VkPipeline.h" "core/VkPipeline.cpp" "core/VkDeletionQueue.h"  "core/VkMesh.h" "core/VkMesh.cpp" "core/VkRenderObject.h"  "core/VkFrame.h" "core/Logger.h" "core/Logger.cpp" "core/VkObjects.h" "core/Utils.h" "core/Utils.cpp")
+add_executable (C3DEngine "main.cpp")
+
+add_subdirectory("core")
 
 # Add all the dependency pacakges
 find_package(SDL2 CONFIG REQUIRED)
@@ -34,5 +36,10 @@ target_include_directories(C3DEngine PRIVATE ${STB_INCLUDE_DIRS})
 
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(C3DEngine PRIVATE spdlog::spdlog spdlog::spdlog_header_only)
+
+find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+target_link_libraries(C3DEngine PRIVATE unofficial::spirv-reflect::spirv-reflect)
+
+target_link_libraries(C3DEngine PRIVATE assetlibrary)
 
 add_dependencies(C3DEngine Shaders)

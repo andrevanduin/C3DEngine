@@ -34,9 +34,10 @@ namespace C3D
 		if (m_prefixes.size() > 1) m_prefixes.pop();
 	}
 
-	VkBool32 Logger::VkDebugLog(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData)
+	VkBool32 Logger::VkDebugLog(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+								const VkDebugUtilsMessageTypeFlagsEXT messageType, 
+								const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+	                            void* pUserData)
 	{
 		PushPrefix("VKDEBUG");
 
