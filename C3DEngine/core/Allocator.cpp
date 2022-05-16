@@ -21,6 +21,11 @@ namespace C3D
 		vmaCreateImage(m_allocator, &info, &allocInfo, &outImage.image, &outImage.allocation, nullptr);
 	}
 
+	void Allocator::DestroyImage(const AllocatedImage& image) const
+	{
+		vmaDestroyImage(m_allocator, image.image, image.allocation);
+	}
+
 	void Allocator::Cleanup() const
 	{
 		vmaDestroyAllocator(m_allocator);

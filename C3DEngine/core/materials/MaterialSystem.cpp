@@ -153,7 +153,7 @@ namespace C3D
 		m_shadowBuilder.rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
 		m_shadowBuilder.rasterizer.depthBiasEnable = VK_TRUE;
 
-		m_shadowBuilder.multiSampling = VkInit::MultisamplingStateCreateInfo();
+		m_shadowBuilder.multiSampling = VkInit::MultiSamplingStateCreateInfo();
 		m_shadowBuilder.colorBlendAttachment = VkInit::ColorBlendAttachmentState();
 
 		m_shadowBuilder.depthStencil = VkInit::DepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS);
@@ -165,7 +165,7 @@ namespace C3D
 		m_forwardBuilder.rasterizer = VkInit::RasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
 		m_forwardBuilder.rasterizer.cullMode = VK_CULL_MODE_NONE;
 
-		m_forwardBuilder.multiSampling = VkInit::MultisamplingStateCreateInfo();
+		m_forwardBuilder.multiSampling = VkInit::MultiSamplingStateCreateInfo();
 		m_forwardBuilder.colorBlendAttachment = VkInit::ColorBlendAttachmentState();
 
 		m_forwardBuilder.depthStencil = VkInit::DepthStencilCreateInfo(true, true, VK_COMPARE_OP_GREATER_OR_EQUAL);

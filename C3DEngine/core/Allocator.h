@@ -11,6 +11,8 @@ namespace C3D
 
 		void CreateImage(VkImageCreateInfo info, VmaMemoryUsage usage, VkMemoryPropertyFlags flags, AllocatedImage& outImage) const;
 
+		void DestroyImage(const AllocatedImage& image) const;
+
 		void Cleanup() const;
 	private:
 		VmaAllocator m_allocator{};

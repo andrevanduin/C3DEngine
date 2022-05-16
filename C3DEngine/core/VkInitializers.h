@@ -17,7 +17,7 @@ namespace VkInit
 
 	VkPipelineRasterizationStateCreateInfo RasterizationStateCreateInfo(VkPolygonMode polygonMode);
 
-	VkPipelineMultisampleStateCreateInfo MultisamplingStateCreateInfo();
+	VkPipelineMultisampleStateCreateInfo MultiSamplingStateCreateInfo();
 
 	VkPipelineColorBlendAttachmentState ColorBlendAttachmentState();
 
@@ -31,7 +31,7 @@ namespace VkInit
 
 	VkPresentInfoKHR PresentInfo();
 
-	VkRenderPassBeginInfo RenderPassBeginInfo(VkRenderPass renderPass, VkExtent2D windowExtent, VkFramebuffer framebuffer);
+	VkRenderPassBeginInfo RenderPassBeginInfo(VkRenderPass renderPass, VkExtent2D windowExtent, VkFramebuffer frameBuffer);
 
 	VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 
@@ -46,4 +46,6 @@ namespace VkInit
 	VkSamplerCreateInfo SamplerCreateInfo(VkFilter filters, VkSamplerAddressMode samplerAddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	VkWriteDescriptorSet WriteDescriptorImage(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorImageInfo* imageInfo, uint32_t binding);
+
+	VkFramebufferCreateInfo FrameBufferCreateInfo(VkRenderPass renderPass, VkExtent2D windowExtent);
 }

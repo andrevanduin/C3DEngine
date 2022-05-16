@@ -69,8 +69,6 @@ namespace C3D
 
 		void InitDefaultRenderPass();
 
-		void InitFramebuffers();
-
 		void InitDescriptors();
 
 		void InitPipelines();

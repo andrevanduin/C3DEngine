@@ -62,7 +62,6 @@ namespace C3D
 
 		shaderCache.Init(vkObjects.device);
 
-		InitSwapchain();
 		InitCommands();
 		InitDefaultRenderPass();
 		InitFramebuffers();
@@ -560,42 +559,6 @@ namespace C3D
 		deletionQueue.Push([=] { vkDestroyRenderPass(vkObjects.device, renderPass, nullptr); });
 	}
 
-	void VulkanEngine::InitFramebuffers()
-	{
-		Logger::Info("InitFramebuffers()");
-
-		VkFramebufferCreateInfo fbInfo = {};
-		fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		fbInfo.pNext = nullptr;
-
-		fbInfo.renderPass = renderPass;
-		fbInfo.attachmentCount = 1;
-		fbInfo.width = m_windowExtent.width;
-		fbInfo.height = m_windowExtent.height;
-		fbInfo.layers = 1;
-
-		const auto swapchainImageCount = static_cast<uint32_t>(m_swapchainImages.size());
-		m_frameBuffers = std::vector<VkFramebuffer>(swapchainImageCount);
-
-		for (uint32_t i = 0; i < swapchainImageCount; i++)
-		{
-			VkImageView attachments[2];
-			attachments[0] = m_swapchainImageViews[i];
-			attachments[1] = m_depthImageView;
-
-			fbInfo.pAttachments = attachments;
-			fbInfo.attachmentCount = 2;
-
-			VK_CHECK(vkCreateFramebuffer(vkObjects.device, &fbInfo, nullptr, &m_frameBuffers[i]));
-
-			deletionQueue.Push([=]
-			{
-				vkDestroyFramebuffer(vkObjects.device, m_frameBuffers[i], nullptr);
-				vkDestroyImageView(vkObjects.device, m_swapchainImageViews[i], nullptr);
-			});
-		}
-	}
-
 	void VulkanEngine::InitDescriptors()
 	{
 		Logger::Info("InitDescriptors()");
@@ -715,7 +678,7 @@ namespace C3D
 		builder.scissor.extent = m_windowExtent;
 
 		builder.rasterizer = VkInit::RasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
-		builder.multiSampling = VkInit::MultisamplingStateCreateInfo();
+		builder.multiSampling = VkInit::MultiSamplingStateCreateInfo();
 		builder.colorBlendAttachment = VkInit::ColorBlendAttachmentState();
 		builder.depthStencil = VkInit::DepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 

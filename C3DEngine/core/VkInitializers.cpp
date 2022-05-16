@@ -78,7 +78,7 @@ VkPipelineRasterizationStateCreateInfo VkInit::RasterizationStateCreateInfo(cons
 	return info;
 }
 
-VkPipelineMultisampleStateCreateInfo VkInit::MultisamplingStateCreateInfo()
+VkPipelineMultisampleStateCreateInfo VkInit::MultiSamplingStateCreateInfo()
 {
 	VkPipelineMultisampleStateCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
 	info.pNext = nullptr;
@@ -161,7 +161,7 @@ VkPresentInfoKHR VkInit::PresentInfo()
 	return info;
 }
 
-VkRenderPassBeginInfo VkInit::RenderPassBeginInfo(VkRenderPass renderPass, const VkExtent2D windowExtent, VkFramebuffer framebuffer)
+VkRenderPassBeginInfo VkInit::RenderPassBeginInfo(VkRenderPass renderPass, const VkExtent2D windowExtent, VkFramebuffer frameBuffer)
 {
 	VkRenderPassBeginInfo info = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	info.pNext = nullptr;
@@ -172,7 +172,7 @@ VkRenderPassBeginInfo VkInit::RenderPassBeginInfo(VkRenderPass renderPass, const
 	info.renderArea.extent = windowExtent;
 	info.clearValueCount = 1;
 	info.pClearValues = nullptr;
-	info.framebuffer = framebuffer;
+	info.framebuffer = frameBuffer;
 
 	return info;
 }
@@ -276,4 +276,18 @@ VkWriteDescriptorSet VkInit::WriteDescriptorImage(const VkDescriptorType type, V
 	write.pImageInfo = imageInfo;
 
 	return write;
+}
+
+VkFramebufferCreateInfo VkInit::FrameBufferCreateInfo(VkRenderPass renderPass, const VkExtent2D windowExtent)
+{
+	VkFramebufferCreateInfo info = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+	info.pNext = nullptr;
+
+	info.renderPass = renderPass;
+	info.attachmentCount = 1;
+	info.width = windowExtent.width;
+	info.height = windowExtent.height;
+	info.layers = 1;
+
+	return info;
 }
