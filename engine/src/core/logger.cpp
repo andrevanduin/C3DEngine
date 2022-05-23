@@ -1,5 +1,5 @@
 
-#include "Logger.h"
+#include "logger.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace C3D
@@ -34,10 +34,11 @@ namespace C3D
 		if (m_prefixes.size() > 1) m_prefixes.pop();
 	}
 
+	/*
 	VkBool32 Logger::VkDebugLog(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-								const VkDebugUtilsMessageTypeFlagsEXT messageType, 
-								const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	                            void* pUserData)
+		const VkDebugUtilsMessageTypeFlagsEXT messageType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* pUserData)
 	{
 		PushPrefix("VKDEBUG");
 
@@ -61,5 +62,5 @@ namespace C3D
 
 		PopPrefix();
 		return VK_FALSE;
-	}
+	}*/
 }
