@@ -11,9 +11,10 @@ project ("C3DEngine")
 find_package(Vulkan REQUIRED)
 
 # Include sub-projects.
-add_subdirectory ("C3DEngine")
-add_subdirectory ("AssetLibrary")
-add_subdirectory ("AssetConverter")
+add_subdirectory ("engine")
+add_subdirectory ("testenv")
+
+add_dependencies(TestEnv C3DEngine)
 
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
