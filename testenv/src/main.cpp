@@ -1,11 +1,12 @@
 
-#include <core/logger.h>
+#include <entry.h>
+#include <core/memory.h>
 
-int main(int argc, char** argv)
+#include "game.h"
+
+const C3D::ApplicationConfig CONFIG = { "Test Game", 640, 360, 1280, 720 };
+
+C3D::Application* C3D::CreateApplication()
 {
-	C3D::Logger::Init();
-	C3D::Logger::PushPrefix("Rens");
-
-	C3D::Logger::Info("Ik ben lekker rens! {}", 17);
-	return 0;
+	return Memory::New<TestEnv>(MemoryType::Game, CONFIG);
 }

@@ -1,9 +1,13 @@
 
 #include "logger.h"
+
+#include <iostream>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace C3D
 {
+	bool Logger::m_initialized = false;
+
 	std::shared_ptr<spdlog::logger> Logger::s_coreLogger;
 	std::shared_ptr<spdlog::logger> Logger::s_debugLogger;
 	std::stack<std::string> Logger::m_prefixes = std::stack<std::string>();
@@ -19,10 +23,13 @@ namespace C3D
 		s_debugLogger->set_pattern("%^ [source %s] [function %!] [line %#] [%T] %v%$");
 
 		m_prefixes.push("CORE");
+		m_initialized = true;
 	}
 
 	void Logger::PushPrefix(const std::string& prefix)
 	{
+		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized");
+
 		if (!m_prefixes.empty() && m_prefixes.top() != prefix)
 		{
 			m_prefixes.push(prefix);
@@ -31,6 +38,8 @@ namespace C3D
 
 	void Logger::PopPrefix()
 	{
+		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized");
+
 		if (m_prefixes.size() > 1) m_prefixes.pop();
 	}
 

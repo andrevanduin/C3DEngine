@@ -14,8 +14,6 @@ find_package(Vulkan REQUIRED)
 add_subdirectory ("engine")
 add_subdirectory ("testenv")
 
-add_dependencies(TestEnv C3DEngine)
-
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
 ## find all the shader files under the shaders folder
