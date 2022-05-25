@@ -2,6 +2,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include <type_traits>
 
 typedef uint8_t		u8;
 typedef uint16_t	u16;
@@ -28,6 +29,12 @@ static_assert(sizeof(i16) == 2, "Expected i16 to be 2 bytes");
 static_assert(sizeof(i32) == 4, "Expected i32 to be 4 bytes");
 static_assert(sizeof(i64) == 8, "Expected i64 to be 8 bytes");
 
+template <typename E>
+constexpr auto ToUnderlying(E e) noexcept
+{
+    return static_cast<std::underlying_type_t<E>>(e);
+}
+
 #ifdef C3D_EXPORT
 #ifdef _MSC_VER
 #define C3D_API __declspec(dllexport)
@@ -41,3 +48,5 @@ static_assert(sizeof(i64) == 8, "Expected i64 to be 8 bytes");
 #define C3D_API
 #endif
 #endif
+
+#define C3D_CLAMP(value, min, max) ((value) <= (min)) ? (min) : ((value) >= (max)) ? (max) : (value);

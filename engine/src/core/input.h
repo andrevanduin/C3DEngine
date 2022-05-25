@@ -7,7 +7,7 @@
 
 namespace C3D
 {
-	enum Keys : u8
+	enum class Keys : u8
 	{
         /** @Brief The Backspace Key. */
         KeyBackspace = 0x08,
@@ -265,7 +265,7 @@ namespace C3D
         MaxKeys
 	};
 
-	enum Buttons : u8
+	enum class Buttons : u8
 	{
 		ButtonLeft = SDL_BUTTON_LEFT,
         ButtonMiddle = SDL_BUTTON_MIDDLE,
@@ -278,13 +278,13 @@ namespace C3D
 	{
 		struct KeyBoardState
 		{
-			bool keys[MaxKeys];
+			bool keys[static_cast<u8>(Keys::MaxKeys)];
 		};
 
 		struct MouseState
 		{
 			i16 x, y;
-			bool buttons[MaxButtons];
+			bool buttons[static_cast<u8>(Buttons::MaxButtons)];
 		};
 
 		struct InputState

@@ -25,6 +25,7 @@ namespace C3D
 
 	void EventSystem::Shutdown()
 	{
+		Logger::PrefixInfo("EVENT", "Shutting Down");
 		for (auto& [events] : m_state.registered)
 		{
 			if (!events.empty()) events.clear();

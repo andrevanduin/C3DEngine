@@ -40,6 +40,9 @@ namespace C3D
 
 		static void* Allocate(u64 size, MemoryType type);
 
+		template<class T>
+		static T* Allocate(u64 count, MemoryType type);
+
 		template<class T, class... Args>
 		static T* New(MemoryType type, Args&&... args);
 
@@ -60,6 +63,12 @@ namespace C3D
 	T* Memory::New(const MemoryType type, Args&&... args)
 	{ 
 		return new(Allocate(sizeof T, type)) T(std::forward<Args>(args)...);
+	}
+
+	template <class T>
+	T* Memory::Allocate(const u64 count, const MemoryType type)
+	{
+		return static_cast<T*>(Allocate(sizeof(T) * count, type));
 	}
 }
 

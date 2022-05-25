@@ -30,7 +30,7 @@ namespace C3D
 		} data;
 	};
 
-	enum SystemEventCode : u16
+	enum class SystemEventCode: u16
 	{
 		ApplicationQuit = 0x01,
 		KeyPressed = 0x02,

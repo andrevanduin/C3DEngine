@@ -7,6 +7,8 @@
 #include <spdlog/spdlog.h>
 #pragma warning(pop)
 
+#include <vulkan/vulkan_core.h>
+
 #include "defines.h"
 #include "asserts.h"
 
@@ -41,9 +43,8 @@ namespace C3D
 		template <class... Args>
 		static void Fatal(const string& format, Args&& ... args);
 
-		/*
 		static VkBool32 VkDebugLog(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
-			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);*/
+			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
 		static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_coreLogger; }
 	private:
@@ -69,6 +70,7 @@ namespace C3D
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
 		s_coreLogger->critical("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+		abort();
 	}
 
 	template <class ... Args>

@@ -54,9 +54,9 @@ namespace C3D
 		return nowTime.QuadPart * CLOCK_FREQUENCY;
 	}
 
-	void Platform::Sleep(const u64 ms)
+	void Platform::SleepMs(const u64 ms)
 	{
-		Sleep(ms);
+		Sleep(static_cast<u32>(ms));
 	}
 }
 

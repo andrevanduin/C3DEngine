@@ -22,7 +22,7 @@ namespace C3D
 
 	void InputSystem::Shutdown()
 	{
-		Logger::PrefixInfo("INPUT", "Shutting down");
+		Logger::PrefixInfo("INPUT", "Shutting Down");
 		m_initialized = false;
 	}
 
@@ -43,7 +43,9 @@ namespace C3D
 			EventContext context{};
 			context.data.u16[0] = static_cast<u16>(key);
 
-			EventSystem::Fire(pressed ? KeyPressed : KeyReleased, nullptr, context);
+
+			auto code = pressed ? SystemEventCode::KeyPressed : SystemEventCode::KeyReleased;
+			EventSystem::Fire(static_cast<u16>(code), nullptr, context);
 		}
 	}
 
@@ -55,7 +57,9 @@ namespace C3D
 
 			EventContext context{};
 			context.data.u16[0] = button;
-			EventSystem::Fire(pressed ? ButtonPressed : ButtonReleased, nullptr, context);
+
+			const auto code = pressed ? SystemEventCode::ButtonPressed : SystemEventCode::ButtonReleased;
+			EventSystem::Fire(ToUnderlying(code), nullptr, context);
 		}
 	}
 
@@ -72,7 +76,8 @@ namespace C3D
 			EventContext context{};
 			context.data.i16[0] = x;
 			context.data.i16[1] = y;
-			EventSystem::Fire(MouseMoved, nullptr, context);
+
+			EventSystem::Fire(ToUnderlying(SystemEventCode::MouseMoved), nullptr, context);
 		}
 	}
 
@@ -80,55 +85,55 @@ namespace C3D
 	{
 		EventContext context{};
 		context.data.i8[0] = static_cast<i8>(delta);
-		EventSystem::Fire(MouseWheel, nullptr, context);
+		EventSystem::Fire(ToUnderlying(SystemEventCode::MouseWheel), nullptr, context);
 	}
 
 	bool InputSystem::IsKeyDown(const Keys key)
 	{
 		if (!m_initialized) return false;
-		return m_state.keyboardCurrent.keys[key];
+		return m_state.keyboardCurrent.keys[ToUnderlying(key)];
 	}
 
 	bool InputSystem::IsKeyUp(const Keys key)
 	{
 		if (!m_initialized) return true;
-		return !m_state.keyboardCurrent.keys[key];
+		return !m_state.keyboardCurrent.keys[ToUnderlying(key)];
 	}
 
 	bool InputSystem::WasKeyDown(const Keys key)
 	{
 		if (!m_initialized) return false;
-		return m_state.keyboardPrevious.keys[key];
+		return m_state.keyboardPrevious.keys[ToUnderlying(key)];
 	}
 
 	bool InputSystem::WasKeyUp(const Keys key)
 	{
 		if (!m_initialized) return true;
-		return !m_state.keyboardPrevious.keys[key];
+		return !m_state.keyboardPrevious.keys[ToUnderlying(key)];
 	}
 
 	bool InputSystem::IsButtonDown(const Buttons button)
 	{
 		if (!m_initialized) return false;
-		return m_state.mouseCurrent.buttons[button];
+		return m_state.mouseCurrent.buttons[ToUnderlying(button)];
 	}
 
 	bool InputSystem::IsButtonUp(const Buttons button)
 	{
 		if (!m_initialized) return true;
-		return !m_state.mouseCurrent.buttons[button];
+		return !m_state.mouseCurrent.buttons[ToUnderlying(button)];
 	}
 
 	bool InputSystem::WasButtonDown(const Buttons button)
 	{
 		if (!m_initialized) return false;
-		return m_state.mousePrevious.buttons[button];
+		return m_state.mousePrevious.buttons[ToUnderlying(button)];
 	}
 
 	bool InputSystem::WasButtonUp(const Buttons button)
 	{
 		if (!m_initialized) return true;
-		return !m_state.mousePrevious.buttons[button];
+		return !m_state.mousePrevious.buttons[ToUnderlying(button)];
 	}
 
 	void InputSystem::GetMousePosition(i16* x, i16* y)

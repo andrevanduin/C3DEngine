@@ -9,6 +9,7 @@
 #include <SDL2/SDL.h>
 
 #include "platform/platform.h"
+#include "renderer/renderer_frontend.h"
 
 namespace C3D
 {
@@ -43,10 +44,18 @@ namespace C3D
 		}
 
 		Logger::Info("Successfully created SDL Window");
+
+		if (!Renderer::Init(config.name, m_window))
+		{
+			Logger::Fatal("Failed to initialize Renderer");
+		}
+
+		Logger::Info("Successfully created Renderer");
 		Logger::PopPrefix();
 
 		m_running = true;
 		m_initialized = true;
+		m_lastTime = 0;
 	}
 
 	Application::~Application() = default;
@@ -60,7 +69,7 @@ namespace C3D
 
 		f64 runningTime = 0;
 		u8 frameCount = 0;
-		constexpr f64 targetFrameSeconds = 1.0f / 60;
+		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
 		Logger::Info(Memory::GetMemoryUsageString());
 		
@@ -99,6 +108,10 @@ namespace C3D
 				OnUpdate(delta);
 				OnRender(delta);
 
+				//TODO: Refactor this
+				RenderPacket packet = { static_cast<f32>(delta) };
+				Renderer::DrawFrame(&packet);
+
 				const f64 frameEndTime = Platform::GetAbsoluteTime();
 				const f64 frameElapsedTime = frameEndTime - frameStartTime;
 				runningTime += frameElapsedTime;
@@ -106,12 +119,12 @@ namespace C3D
 
 				if (remainingSeconds > 0)
 				{
-					const u64 remainingMs = (remainingSeconds * 1000);
+					const u64 remainingMs = static_cast<u64>(remainingSeconds) * 1000;
 
 					constexpr bool limitFrames = false;
 					if (remainingMs > 0 && limitFrames)
 					{
-						Platform::Sleep(remainingMs - 1);
+						Platform::SleepMs(remainingMs - 1);
 					}
 
 					frameCount++;
@@ -137,6 +150,7 @@ namespace C3D
 
 		InputSystem::Shutdown();
 		EventSystem::Shutdown();
+		Renderer::Shutdown();
 
 		SDL_DestroyWindow(m_window);
 

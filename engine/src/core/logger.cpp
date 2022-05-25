@@ -1,8 +1,8 @@
 
 #include "logger.h"
 
-#include <iostream>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <VkBootstrap.h>
 
 namespace C3D
 {
@@ -43,13 +43,12 @@ namespace C3D
 		if (m_prefixes.size() > 1) m_prefixes.pop();
 	}
 
-	/*
 	VkBool32 Logger::VkDebugLog(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		const VkDebugUtilsMessageTypeFlagsEXT messageType,
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 		void* pUserData)
 	{
-		PushPrefix("VKDEBUG");
+		PushPrefix("VK_DEBUG");
 
 		auto type = vkb::to_string_message_type(messageType);
 		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
@@ -71,5 +70,5 @@ namespace C3D
 
 		PopPrefix();
 		return VK_FALSE;
-	}*/
+	}
 }

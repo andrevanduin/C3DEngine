@@ -14,6 +14,6 @@ namespace C3D
 		static void* SetMemory(void* dest, i32 value, u64 size);
 
 		static f64 GetAbsoluteTime();
-		static void Sleep(u64 ms);
+		static void SleepMs(u64 ms);
 	};
 }
