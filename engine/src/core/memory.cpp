@@ -11,6 +11,7 @@ namespace C3D
 	{
 		"Unknown         ",
 		"Array           ",
+		"Linear_Allocator",
 		"DynamicArray    ",
 		"Dictionary      ",
 		"RingQueue       ",

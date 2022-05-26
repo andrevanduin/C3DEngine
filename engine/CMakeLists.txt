@@ -10,6 +10,9 @@ add_library(C3DEngine SHARED ${C3DEngine_SRC})
 add_compile_definitions(C3D_EXPORT)
 add_compile_definitions(C3D_PLATFORM_WINDOWS)
 
+find_package(Vulkan REQUIRED)
+target_link_libraries(C3DEngine PUBLIC Vulkan::Vulkan)
+
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(C3DEngine PUBLIC spdlog::spdlog spdlog::spdlog_header_only)
 

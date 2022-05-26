@@ -34,8 +34,40 @@ namespace C3D
 		Memory::Copy(&m_state.mousePrevious, &m_state.mouseCurrent, sizeof MouseState);
 	}
 
-	void InputSystem::ProcessKey(const SDL_Keycode key, const bool pressed)
+	void InputSystem::ProcessKey(const SDL_Keycode sdlKey, const bool pressed)
 	{
+		u16 key;
+		switch (sdlKey)
+		{
+			case SDLK_LALT:
+				key = KeyLAlt;
+				break;
+			case SDLK_RALT:
+				key = KeyRAlt;
+				break;
+			case SDLK_LSHIFT:
+				key = KeyLShift;
+				break;
+			case SDLK_RSHIFT:
+				key = KeyRShift;
+				break;
+			case SDLK_LCTRL:
+				key = KeyLControl;
+				break;
+			case SDLK_RCTRL:
+				key = KeyRControl;
+				break;
+			default:
+				key = static_cast<u8>(sdlKey);
+				break;
+		}
+
+		if (key >= Keys::MaxKeys)
+		{
+			Logger::PrefixWarn("INPUT", "Key that was {} was larger than expected {}", pressed ? "pressed" : "released", key);
+			return;
+		}
+
 		if (m_state.keyboardCurrent.keys[key] != pressed)
 		{
 			m_state.keyboardCurrent.keys[key] = pressed;

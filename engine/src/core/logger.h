@@ -27,6 +27,9 @@ namespace C3D
 		static void Debug(const string& format, Args&& ... args);
 
 		template <class... Args>
+		static void PrefixTrace(const string& prefix, const string& format, Args&& ... args);
+
+		template <class... Args>
 		static void Trace(const string& format, Args&& ... args);
 
 		template <class... Args>
@@ -93,6 +96,14 @@ namespace C3D
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
 		s_coreLogger->debug("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+	}
+
+	template <class ... Args>
+	void Logger::PrefixTrace(const string& prefix, const string& format, Args&&... args)
+	{
+		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
+
+		s_coreLogger->trace("[" + prefix + "] - " + format, std::forward<Args>(args)...);
 	}
 
 	template <class ... Args>

@@ -7,7 +7,7 @@
 
 namespace C3D
 {
-	enum class Keys : u8
+	enum Keys : u8
 	{
         /** @Brief The Backspace Key. */
         KeyBackspace = 0x08,
@@ -301,7 +301,7 @@ namespace C3D
 
 		static void Update(f64 deltaTime);
 
-		static void ProcessKey(SDL_Keycode key, bool pressed);
+		static void ProcessKey(SDL_Keycode sdlKey, bool pressed);
 		static void ProcessButton(u8 button, bool pressed);
 		static void ProcessMouseMove(i32 sdlX, i32 sdlY);
 		static void ProcessMouseWheel(i32 delta);

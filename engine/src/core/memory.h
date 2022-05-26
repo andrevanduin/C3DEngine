@@ -8,6 +8,7 @@ namespace C3D
 	{
 		Unknown,
 		Array,
+		LinearAllocator,
 		DynamicArray,
 		Dictionary,
 		RingQueue,

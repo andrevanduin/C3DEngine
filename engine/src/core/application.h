@@ -57,6 +57,8 @@ namespace C3D
 		bool OnMinimizeEvent(u16 code, void* sender, void* listener, EventContext context);
 		bool OnFocusGainedEvent(u16 code, void* sender, void* listener, EventContext context);
 
+		bool OnKeyEvent(u16 code, void* sender, void* listener, EventContext context);
+
 		SDL_Window* m_window{ nullptr };
 
 		friend int ::main(int argc, char** argv);

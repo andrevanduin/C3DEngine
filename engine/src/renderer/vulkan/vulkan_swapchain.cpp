@@ -42,7 +42,6 @@ namespace C3D
 		Logger::PushPrefix("VULKAN_SWAP_CHAIN_MANAGER");
 
 		VkExtent2D extent = { width, height };
-		swapChain->maxFramesInFlight = 2;
 		swapChain->imageFormat = GetSurfaceFormat(context);
 		swapChain->presentMode = GetPresentMode(context);
 
@@ -65,6 +64,8 @@ namespace C3D
 		{
 			imageCount = context->device.swapChainSupport.capabilities.maxImageCount;
 		}
+
+		swapChain->maxFramesInFlight = static_cast<u8>(imageCount) - 1;
 
 		VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 		swapChainCreateInfo.surface = context->surface;

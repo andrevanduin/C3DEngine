@@ -4,17 +4,17 @@
 
 namespace C3D
 {
-	class Clock
+	class C3D_API Clock
 	{
 	public:
-		static void Update();
-		static void Start();
-		static void Stop();
+		void Update();
+		void Start();
+		void Stop();
 
-		static f64 GetElapsed();
+		[[nodiscard]] f64 GetElapsed() const;
 
 	private:
-		static f64 m_elapsedTime;
-		static f64 m_startTime;
+		f64 m_elapsedTime = 0;
+		f64 m_startTime = 0;
 	};
 }

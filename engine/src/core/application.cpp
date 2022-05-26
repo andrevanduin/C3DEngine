@@ -32,6 +32,8 @@ namespace C3D
 		EventSystem::Register(SystemEventCode::Resized, nullptr, new EventCallback(this, &Application::OnResizeEvent));
 		EventSystem::Register(SystemEventCode::Minimized, nullptr, new EventCallback(this, &Application::OnMinimizeEvent));
 		EventSystem::Register(SystemEventCode::FocusGained, nullptr, new EventCallback(this, &Application::OnFocusGainedEvent));
+		EventSystem::Register(SystemEventCode::KeyPressed, nullptr, new EventCallback(this, &Application::OnKeyEvent));
+		EventSystem::Register(SystemEventCode::KeyReleased, nullptr, new EventCallback(this, &Application::OnKeyEvent));
 
 		if (!InputSystem::Init())
 		{
@@ -70,10 +72,12 @@ namespace C3D
 
 	void Application::Run()
 	{
-		Clock::Start();
-		Clock::Update();
+		Clock clock;
 
-		m_state.lastTime = Clock::GetElapsed();
+		clock.Start();
+		clock.Update();
+
+		m_state.lastTime = clock.GetElapsed();
 
 		f64 runningTime = 0;
 		u8 frameCount = 0;
@@ -87,8 +91,8 @@ namespace C3D
 
 			if (!m_state.suspended)
 			{
-				Clock::Update();
-				const f64 currentTime = Clock::GetElapsed();
+				clock.Update();
+				const f64 currentTime = clock.GetElapsed();
 				const f64 delta = currentTime - m_state.lastTime;
 				const f64 frameStartTime = Platform::GetAbsoluteTime();
 
@@ -200,9 +204,12 @@ namespace C3D
 						context.data.u16[1] = static_cast<u16>(m_state.height);
 						EventSystem::Fire(SystemEventCode::FocusGained, nullptr, context);
 					}
-					break; 
+					break;
+				case SDL_TEXTINPUT:
+					// TODO: Possibly change this is the future. But currently this spams the console if letters are pressed
+					break;
 				default:
-					Logger::Trace("Unhandled SDL Event: {}", e.type);
+					Logger::PrefixTrace("INPUT", "Unhandled SDL Event: {}", e.type);
 					break;
 			}
 		}
@@ -262,6 +269,19 @@ namespace C3D
 			Renderer::OnResize(width, height);
 		}
 
+		return false;
+	}
+
+	bool Application::OnKeyEvent(u16 code, void* sender, void* listener, EventContext context)
+	{
+		if (code == SystemEventCode::KeyPressed)
+		{
+			Logger::Debug("Key Pressed: {}", static_cast<char>(context.data.u16[0]));
+		}
+		else if (code == SystemEventCode::KeyReleased)
+		{
+			Logger::Debug("Key Released: {}", static_cast<char>(context.data.u16[0]));
+		}
 		return false;
 	}
 }

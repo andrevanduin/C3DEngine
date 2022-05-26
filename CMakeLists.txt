@@ -11,6 +11,7 @@ project ("C3DEngine")
 # Include sub-projects.
 add_subdirectory ("engine")
 add_subdirectory ("testenv")
+add_subdirectory ("tests")
 
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 

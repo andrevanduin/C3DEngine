@@ -4,9 +4,6 @@
 
 namespace C3D
 {
-	f64 Clock::m_elapsedTime;
-	f64 Clock::m_startTime;
-
 	void Clock::Update()
 	{
 		if (m_startTime != 0)
@@ -26,7 +23,7 @@ namespace C3D
 		m_startTime = 0;
 	}
 
-	f64 Clock::GetElapsed()
+	f64 Clock::GetElapsed() const
 	{
 		return m_elapsedTime;
 	}
