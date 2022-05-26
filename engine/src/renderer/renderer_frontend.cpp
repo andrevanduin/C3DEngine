@@ -2,6 +2,7 @@
 #include "renderer_frontend.h"
 #include "core/logger.h"
 #include "core/memory.h"
+#include "core/application.h"
 
 #include "renderer/vulkan/renderer_vulkan.h"
 
@@ -9,7 +10,7 @@ namespace C3D
 {
 	RendererBackend* Renderer::m_backend = nullptr;
 
-	bool Renderer::Init(const string& applicationName, SDL_Window* window)
+	bool Renderer::Init(Application* application)
 	{
 		Logger::PushPrefix("RENDERER");
 
@@ -21,7 +22,7 @@ namespace C3D
 
 		Logger::Info("Created Vulkan Renderer Backend");
 
-		if (!m_backend->Init(applicationName, window))
+		if (!m_backend->Init(application))
 		{
 			Logger::Fatal("Failed to Initialize Renderer Backend.");
 			return false;
@@ -37,6 +38,11 @@ namespace C3D
 		Logger::PrefixInfo("RENDERER", "Shutting Down");
 		m_backend->Shutdown();
 		DestroyBackend();
+	}
+
+	void Renderer::OnResize(const u16 width, const u16 height)
+	{
+		m_backend->OnResize(width, height);
 	}
 
 	bool Renderer::DrawFrame(const RenderPacket* packet)

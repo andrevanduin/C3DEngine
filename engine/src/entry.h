@@ -4,8 +4,6 @@
 #include "core/memory.h"
 #include "core/logger.h"
 
-extern C3D::Application* C3D::CreateApplication();
-
 int main(int argc, char** argv)
 {
 	C3D::Memory::Init();
@@ -13,7 +11,6 @@ int main(int argc, char** argv)
 
 	const auto app = C3D::CreateApplication();
 	app->Run();
-
 	delete app;
 
 	C3D::Memory::Shutdown();

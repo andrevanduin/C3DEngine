@@ -75,6 +75,16 @@ namespace C3D
 		VulkanRenderPassState state;
 	};
 
+	struct VulkanFrameBuffer
+	{
+		VkFramebuffer handle;
+
+		u32 attachmentCount;
+		VkImageView* attachments;
+
+		VulkanRenderPass* renderPass;
+	};
+
 	struct VulkanSwapChain
 	{
 		u8 maxFramesInFlight;
@@ -90,6 +100,8 @@ namespace C3D
 		VkImageView* views;
 
 		VulkanImage depthAttachment;
+
+		std::vector<VulkanFrameBuffer> frameBuffers;
 	};
 
 	enum class VulkanCommandBufferState : u8
@@ -101,6 +113,12 @@ namespace C3D
 	{
 		VkCommandBuffer handle;
 		VulkanCommandBufferState state;
+	};
+
+	struct VulkanFence
+	{
+		VkFence handle;
+		bool isSignaled;
 	};
 
 	struct VulkanContext
@@ -115,9 +133,19 @@ namespace C3D
 
 		std::vector<VulkanCommandBuffer> graphicsCommandBuffers;
 
+		std::vector<VkSemaphore> imageAvailableSemaphores;
+		std::vector<VkSemaphore> queueCompleteSemaphores;
+		std::vector<VulkanFence> inFlightFences;
+		std::vector<VulkanFence*> imagesInFlight;
+
 		u32 imageIndex;
 		u32 currentFrame;
+
 		u32 frameBufferWidth, frameBufferHeight;
+		u32 cachedFrameBufferWidth, cachedFrameBufferHeight;
+
+		u64 frameBufferSizeGeneration;
+		u64 frameBufferSizeLastGeneration;
 
 		bool recreatingSwapChain;
 

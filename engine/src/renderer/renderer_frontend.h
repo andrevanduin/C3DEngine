@@ -6,10 +6,12 @@
 
 namespace C3D
 {
+	class Application;
+
 	class Renderer
 	{
 	public:
-		static bool Init(const string& applicationName, SDL_Window* window);
+		static bool Init(Application* application);
 		static void Shutdown();
 
 		static void OnResize(u16 width, u16 height);

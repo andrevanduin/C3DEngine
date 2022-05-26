@@ -1,7 +1,7 @@
 
 #include "input.h"
 
-#include "event.h"
+#include "events/event.h"
 #include "logger.h"
 #include "memory.h"
 

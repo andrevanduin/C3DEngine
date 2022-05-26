@@ -9,7 +9,6 @@ namespace C3D
 	bool Logger::m_initialized = false;
 
 	std::shared_ptr<spdlog::logger> Logger::s_coreLogger;
-	std::shared_ptr<spdlog::logger> Logger::s_debugLogger;
 	std::stack<std::string> Logger::m_prefixes = std::stack<std::string>();
 
 	void Logger::Init()
@@ -17,10 +16,6 @@ namespace C3D
 		spdlog::set_pattern("%^ [%T] %v%$");
 		s_coreLogger = spdlog::stdout_color_mt("C3D");
 		s_coreLogger->set_level(spdlog::level::trace);
-
-		s_debugLogger = spdlog::stdout_color_mt("C3DDebug");
-		s_debugLogger->set_level(spdlog::level::trace);
-		s_debugLogger->set_pattern("%^ [source %s] [function %!] [line %#] [%T] %v%$");
 
 		m_prefixes.push("CORE");
 		m_initialized = true;

@@ -39,7 +39,7 @@ namespace C3D
 
 	void CreateInternal(VulkanContext* context, const u32 width, const u32 height, VulkanSwapChain* swapChain)
 	{
-		Logger::PushPrefix("VULAN_SWAPCHAIN_MANAGER");
+		Logger::PushPrefix("VULKAN_SWAP_CHAIN_MANAGER");
 
 		VkExtent2D extent = { width, height };
 		swapChain->maxFramesInFlight = 2;
@@ -143,6 +143,7 @@ namespace C3D
 
 	void DestroyInternal(const VulkanContext* context, VulkanSwapChain* swapChain)
 	{
+		vkDeviceWaitIdle(context->device.logicalDevice);
 		VulkanImageManager::Destroy(context, &swapChain->depthAttachment);
 
 		for (u32 i = 0; i < swapChain->imageCount; i++)
@@ -166,7 +167,7 @@ namespace C3D
 
 	void VulkanSwapChainManager::Destroy(const VulkanContext* context, VulkanSwapChain* swapChain)
 	{
-		Logger::PrefixInfo("VULKAN_SWAPCHAIN", "Destroying SwapChain");
+		Logger::PrefixInfo("VULKAN_SWAP_CHAIN_MANAGER", "Destroying SwapChain");
 		DestroyInternal(context, swapChain);
 	}
 
@@ -212,5 +213,7 @@ namespace C3D
 		{
 			Logger::Fatal("Failed to present SwapChain image");
 		}
+
+		context->currentFrame = (context->currentFrame + 1) % swapChain->maxFramesInFlight;
 	}
 }

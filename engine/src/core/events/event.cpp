@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "logger.h"
-#include "memory.h"
+#include "core/logger.h"
+#include "core/memory.h"
 
 namespace C3D
 {
@@ -33,7 +33,7 @@ namespace C3D
 		m_initialized = false;
 	}
 
-	bool EventSystem::Register(u16 code, void* listener, const pOnEvent onEvent)
+	bool EventSystem::Register(u16 code, void* listener, IEventCallback* onEvent)
 	{
 		if (!m_initialized) return false;
 
@@ -52,7 +52,7 @@ namespace C3D
 		return true;
 	}
 
-	bool EventSystem::UnRegister(const u16 code, const void* listener, const pOnEvent onEvent)
+	bool EventSystem::UnRegister(const u16 code, const void* listener, const IEventCallback* onEvent)
 	{
 		if (!m_initialized) return false;
 
@@ -93,7 +93,7 @@ namespace C3D
 		return std::any_of(m_state.registered[code].events.begin(), m_state.registered[code].events.end(), 
 		[&](const RegisteredEvent& e)
 		{
-			return e.callback(code, sender, e.listener, data);
+			return e.callback->Invoke(code, sender, e.listener, data);
 		});
 	}
 }

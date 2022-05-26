@@ -1,14 +1,27 @@
 
 #include "vulkan_renderpass.h"
-#include "../../core/memory.h"
+#include "core/memory.h"
 #include "core/logger.h"
 
 namespace C3D
 {
-	void VulkanRenderPassManager::Create(VulkanContext* context, VulkanRenderPass* outRenderPass, f32 x, f32 y, f32 w, f32 h,
+	void VulkanRenderPassManager::Create(VulkanContext* context, VulkanRenderPass* renderPass, f32 x, f32 y, f32 w, f32 h,
 		f32 r, f32 g, f32 b, f32 a, f32 depth, u32 stencil)
 	{
 		Logger::PushPrefix("VULKAN_RENDER_PASS");
+
+		renderPass->x = x;
+		renderPass->y = y;
+		renderPass->w = w;
+		renderPass->h = h;
+
+		renderPass->r = r;
+		renderPass->g = g;
+		renderPass->b = b;
+		renderPass->a = a;
+
+		renderPass->depth = depth;
+		renderPass->stencil = stencil;
 
 		VkSubpassDescription subPass = {};
 		subPass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -87,7 +100,7 @@ namespace C3D
 		createInfo.pNext = nullptr;
 		createInfo.flags = 0;
 
-		VK_CHECK(vkCreateRenderPass(context->device.logicalDevice, &createInfo, context->allocator, &outRenderPass->handle));
+		VK_CHECK(vkCreateRenderPass(context->device.logicalDevice, &createInfo, context->allocator, &renderPass->handle));
 
 		Logger::Info("RenderPass successfully created");
 		Logger::PopPrefix();

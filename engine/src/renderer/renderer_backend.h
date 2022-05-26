@@ -7,10 +7,12 @@ struct SDL_Window;
 
 namespace C3D
 {
+	class Application;
+
 	class RendererBackend
 	{
 	public:
-		bool virtual Init(const string& applicationName, SDL_Window* window) { return true; }
+		bool virtual Init(Application* application) { return true; }
 		void virtual Shutdown() {}
 
 		void virtual OnResize(u16 width, u16 height) {}

@@ -9,6 +9,7 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include "application.h"
 #include "defines.h"
 #include "asserts.h"
 
@@ -35,7 +36,13 @@ namespace C3D
 		static void Info(const string& format, Args&& ... args);
 
 		template <class... Args>
+		static void PrefixWarn(const string& prefix, const string& format, Args&& ... args);
+
+		template <class... Args>
 		static void Warn(const string& format, Args&& ... args);
+
+		template <class... Args>
+		static void PrefixError(const string& prefix, const string& format, Args&& ... args);
 
 		template <class... Args>
 		static void Error(const string& format, Args&& ... args);
@@ -53,7 +60,6 @@ namespace C3D
 		static std::stack<string> m_prefixes;
 
 		static std::shared_ptr<spdlog::logger> s_coreLogger;
-		static std::shared_ptr<spdlog::logger> s_debugLogger;
 	};
 
 	template <class... Args>
@@ -62,6 +68,14 @@ namespace C3D
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
 		s_coreLogger->error("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+	}
+
+	template <class... Args>
+	void Logger::PrefixError(const string& prefix, const string& format, Args&&... args)
+	{
+		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
+
+		s_coreLogger->error("[" + prefix + "] - " + format, std::forward<Args>(args)...);
 	}
 
 	template <class ... Args>
@@ -78,7 +92,7 @@ namespace C3D
 	{
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
-		s_debugLogger->debug("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+		s_coreLogger->debug("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
 	}
 
 	template <class ... Args>
@@ -111,5 +125,13 @@ namespace C3D
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
 		s_coreLogger->warn("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+	}
+
+	template <class... Args>
+	void Logger::PrefixWarn(const string& prefix, const string& format, Args&&... args)
+	{
+		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
+
+		s_coreLogger->warn("[" + prefix + "] - " + format, std::forward<Args>(args)...);
 	}
 }

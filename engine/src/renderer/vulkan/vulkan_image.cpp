@@ -3,8 +3,8 @@
 
 #include "vulkan_device.h"
 
-#include "../../core/memory.h"
-#include "../../core/logger.h"
+#include "core/memory.h"
+#include "core/logger.h"
 
 namespace C3D
 {
