@@ -22,4 +22,7 @@ target_link_libraries(C3DEngine PRIVATE Vulkan::Vulkan)
 find_package(vk-bootstrap CONFIG REQUIRED)
 target_link_libraries(C3DEngine PRIVATE vk-bootstrap::vk-bootstrap)
 
+find_package(glm CONFIG REQUIRED)
+target_link_libraries(C3DEngine PRIVATE glm::glm)
+
 target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")

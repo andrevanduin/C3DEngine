@@ -50,3 +50,11 @@ constexpr auto ToUnderlying(E e) noexcept
 #endif
 
 #define C3D_CLAMP(value, min, max) ((value) <= (min)) ? (min) : ((value) >= (max)) ? (max) : (value);
+
+#ifdef _MSC_VER
+#define C3D_INLINE __forceinline
+#define C3D_NO_INLINE __declspec(noinline)
+#else
+#define C3D_INLINE static inline
+#define C3D_NO_INLINE
+#endif

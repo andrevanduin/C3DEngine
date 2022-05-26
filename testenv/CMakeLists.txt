@@ -15,3 +15,4 @@ add_custom_target(CopyDLL
 )
 
 add_dependencies(TestEnv CopyDLL)
+add_dependencies(TestEnv Shaders)

@@ -8,8 +8,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd26812")
 
 project ("C3DEngine")
 
-find_package(Vulkan REQUIRED)
-
 # Include sub-projects.
 add_subdirectory ("engine")
 add_subdirectory ("testenv")
@@ -23,12 +21,15 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
     "${PROJECT_SOURCE_DIR}/shaders/*.comp"
     )
 
+message(STATUS "Building Shaders")
+
 ## iterate each shader
 foreach(GLSL ${GLSL_SOURCE_FILES})
-  message(STATUS "BUILDING SHADER")
   get_filename_component(FILE_NAME ${GLSL} NAME)
-  set(SPIRV "${PROJECT_SOURCE_DIR}/shaders/${FILE_NAME}.spv")
-  message(STATUS ${GLSL})
+  message(STATUS "Building ${FILE_NAME}")
+
+  set(SPIRV "${CMAKE_BINARY_DIR}/testenv/assets/shaders/${FILE_NAME}.spv")
+
   ##execute glslang command to compile that specific shader
   add_custom_command(
     OUTPUT ${SPIRV}
@@ -37,7 +38,4 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
   list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)
 
-add_custom_target(
-    Shaders 
-    DEPENDS ${SPIRV_BINARY_FILES}
-    )
+add_custom_target(Shaders DEPENDS ${SPIRV_BINARY_FILES})

@@ -5,3 +5,4 @@
 #define C3D_API __attribute__((visibility("default")))
 #define C3D_API __declspec(dllimport)
 #define C3D_API
+#define C3D_INLINE
