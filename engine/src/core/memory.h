@@ -30,6 +30,7 @@ namespace C3D
 	struct MemoryStats
 	{
 		u64 totalAllocated;
+		u64 allocCount;
 		u64 taggedAllocations[static_cast<u8>(MemoryType::MaxType)];
 	};
 
@@ -56,6 +57,7 @@ namespace C3D
 		static void* Set(void* dest, i32 value, u64 size);
 
 		static string GetMemoryUsageString();
+		static u64 GetAllocCount();
 	private:
 		static MemoryStats m_stats;
 	};

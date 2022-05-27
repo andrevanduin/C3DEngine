@@ -47,6 +47,7 @@ namespace C3D
 		}
 
 		m_stats.totalAllocated += size;
+		m_stats.allocCount++;
 		m_stats.taggedAllocations[static_cast<u8>(type)] += size;
 
 		// TODO: Memory alignment
@@ -123,4 +124,10 @@ namespace C3D
 		}
 		return buffer;
 	}
+
+	u64 Memory::GetAllocCount()
+	{
+		return m_stats.allocCount;
+	}
+
 }

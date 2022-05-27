@@ -28,14 +28,6 @@ namespace C3D
 		m_state.width = config.width;
 		m_state.height = config.height;
 
-		Services::Init();
-
-		Services::Event().Register(SystemEventCode::Resized, nullptr, new EventCallback(this, &Application::OnResizeEvent));
-		Services::Event().Register(SystemEventCode::Minimized, nullptr, new EventCallback(this, &Application::OnMinimizeEvent));
-		Services::Event().Register(SystemEventCode::FocusGained, nullptr, new EventCallback(this, &Application::OnFocusGainedEvent));
-		Services::Event().Register(SystemEventCode::KeyPressed, nullptr, new EventCallback(this, &Application::OnKeyEvent));
-		Services::Event().Register(SystemEventCode::KeyReleased, nullptr, new EventCallback(this, &Application::OnKeyEvent));
-
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
 			Logger::Fatal("Failed to initialize SDL: {}", SDL_GetError());
@@ -51,12 +43,14 @@ namespace C3D
 
 		Logger::Info("Successfully created SDL Window");
 
-		if (!Renderer::Init(this))
-		{
-			Logger::Fatal("Failed to initialize Renderer");
-		}
+		Services::Init(this);
 
-		Logger::Info("Successfully created Renderer");
+		Services::Event().Register(SystemEventCode::Resized, nullptr, new EventCallback(this, &Application::OnResizeEvent));
+		Services::Event().Register(SystemEventCode::Minimized, nullptr, new EventCallback(this, &Application::OnMinimizeEvent));
+		Services::Event().Register(SystemEventCode::FocusGained, nullptr, new EventCallback(this, &Application::OnFocusGainedEvent));
+		Services::Event().Register(SystemEventCode::KeyPressed, nullptr, new EventCallback(this, &Application::OnKeyEvent));
+		Services::Event().Register(SystemEventCode::KeyReleased, nullptr, new EventCallback(this, &Application::OnKeyEvent));
+
 		Logger::PopPrefix();
 
 		m_state.initialized = true;
@@ -100,7 +94,7 @@ namespace C3D
 
 				//TODO: Refactor this
 				RenderPacket packet = { static_cast<f32>(delta) };
-				Renderer::DrawFrame(&packet);
+				Services::Renderer().DrawFrame(&packet);
 
 				const f64 frameEndTime = Platform::GetAbsoluteTime();
 				const f64 frameElapsedTime = frameEndTime - frameStartTime;
@@ -153,7 +147,6 @@ namespace C3D
 		Logger::Info("Shutdown()");
 
 		Services::Shutdown();
-		Renderer::Shutdown();
 
 		SDL_DestroyWindow(m_window);
 
@@ -240,7 +233,7 @@ namespace C3D
 				m_state.height = height;
 
 				OnResize(width, height);
-				Renderer::OnResize(width, height);
+				Services::Renderer().OnResize(width, height);
 			}
 		}
 
@@ -269,7 +262,7 @@ namespace C3D
 			const u16 height = context.data.u16[1];
 
 			OnResize(width, height);
-			Renderer::OnResize(width, height);
+			Services::Renderer().OnResize(width, height);
 		}
 
 		return false;
@@ -279,11 +272,13 @@ namespace C3D
 	{
 		if (code == SystemEventCode::KeyPressed)
 		{
-			Logger::Debug("Key Pressed: {}", static_cast<char>(context.data.u16[0]));
+			const auto key = context.data.u16[0];
+			Logger::Debug("Key Pressed: {}", static_cast<char>(key));
 		}
 		else if (code == SystemEventCode::KeyReleased)
 		{
-			Logger::Debug("Key Released: {}", static_cast<char>(context.data.u16[0]));
+			const auto key = context.data.u16[0];
+			Logger::Debug("Key Released: {}", static_cast<char>(key));
 		}
 		return false;
 	}
