@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "services/services.h"
 #include "core/logger.h"
+#include "core/memory.h"
 
 namespace C3D
 {

@@ -4,6 +4,7 @@
 #include "events/event.h"
 #include "logger.h"
 
+#include "core/memory.h"
 #include "services/services.h"
 
 namespace C3D
@@ -115,52 +116,52 @@ namespace C3D
 		Services::Event().Fire(ToUnderlying(SystemEventCode::MouseWheel), nullptr, context);
 	}
 
-	bool InputSystem::IsKeyDown(const Keys key) const
+	bool InputSystem::IsKeyDown(const u8 key) const
 	{
 		if (!m_initialized) return false;
-		return m_state.keyboardCurrent.keys[ToUnderlying(key)];
+		return m_state.keyboardCurrent.keys[key];
 	}
 
-	bool InputSystem::IsKeyUp(const Keys key) const
+	bool InputSystem::IsKeyUp(const u8 key) const
 	{
 		if (!m_initialized) return true;
-		return !m_state.keyboardCurrent.keys[ToUnderlying(key)];
+		return !m_state.keyboardCurrent.keys[key];
 	}
 
-	bool InputSystem::WasKeyDown(const Keys key) const
+	bool InputSystem::WasKeyDown(const u8 key) const
 	{
 		if (!m_initialized) return false;
-		return m_state.keyboardPrevious.keys[ToUnderlying(key)];
+		return m_state.keyboardPrevious.keys[key];
 	}
 
-	bool InputSystem::WasKeyUp(const Keys key) const
+	bool InputSystem::WasKeyUp(const u8 key) const
 	{
 		if (!m_initialized) return true;
-		return !m_state.keyboardPrevious.keys[ToUnderlying(key)];
+		return !m_state.keyboardPrevious.keys[key];
 	}
 
 	bool InputSystem::IsButtonDown(const Buttons button) const
 	{
 		if (!m_initialized) return false;
-		return m_state.mouseCurrent.buttons[ToUnderlying(button)];
+		return m_state.mouseCurrent.buttons[button];
 	}
 
 	bool InputSystem::IsButtonUp(const Buttons button) const
 	{
 		if (!m_initialized) return true;
-		return !m_state.mouseCurrent.buttons[ToUnderlying(button)];
+		return !m_state.mouseCurrent.buttons[button];
 	}
 
 	bool InputSystem::WasButtonDown(const Buttons button) const
 	{
 		if (!m_initialized) return false;
-		return m_state.mousePrevious.buttons[ToUnderlying(button)];
+		return m_state.mousePrevious.buttons[button];
 	}
 
 	bool InputSystem::WasButtonUp(const Buttons button) const
 	{
 		if (!m_initialized) return true;
-		return !m_state.mousePrevious.buttons[ToUnderlying(button)];
+		return !m_state.mousePrevious.buttons[button];
 	}
 
 	void InputSystem::GetMousePosition(i16* x, i16* y)

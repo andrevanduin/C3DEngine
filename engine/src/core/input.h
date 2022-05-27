@@ -7,8 +7,8 @@
 
 namespace C3D
 {
-	enum Keys : u8
-	{
+    enum Keys : u8
+    {
         /** @Brief The Backspace Key. */
         KeyBackspace = 0x08,
         /** @Brief The Enter Key. */
@@ -81,57 +81,57 @@ namespace C3D
         Key9 = 0x39,
 
         /** @Brief The A Key. */
-        KeyA = 0x41,
+        KeyA = 'a',
         /** @Brief The B Key. */
-        KeyB = 0x42,
+        KeyB = 'b',
         /** @Brief The C Key. */
-        KeyC = 0x43,
+        KeyC = 'c',
         /** @Brief The D Key. */
-        KeyD = 0x44,
+        KeyD = 'd',
         /** @Brief The E Key. */
-        KeyE = 0x45,
+        KeyE = 'e',
         /** @Brief The F Key. */
-        KeyF = 0x46,
+        KeyF = 'f',
         /** @Brief The G Key. */
-        KeyG = 0x47,
+        KeyG = 'g',
         /** @Brief The H Key. */
-        KeyH = 0x48,
+        KeyH = 'h',
         /** @Brief The I Key. */
-        KeyI = 0x49,
+        KeyI = 'i',
         /** @Brief The J Key. */
-        KeyJ = 0x4a,
+        KeyJ = 'j',
         /** @Brief The K Key. */
-        KeyK = 0x4b,
+        KeyK = 'k',
         /** @Brief The L Key. */
-        KeyL = 0x4c,
+        KeyL = 'l',
         /** @Brief The M Key. */
-        KeyM = 0x4d,
+        KeyM = 'm',
         /** @Brief The N Key. */
-        KeyN = 0x4e,
+        KeyN = 'n',
         /** @Brief The O Key. */
-        KeyO = 0x4f,
+        KeyO = 'o',
         /** @Brief The P Key. */
-        KeyP = 0x50,
+        KeyP = 'p',
         /** @Brief The Q Key. */
-        KeyQ = 0x51,
+        KeyQ = 'q',
         /** @Brief The R Key. */
-        KeyR = 0x52,
+        KeyR = 'r',
         /** @Brief The S Key. */
-        KeyS = 0x53,
+        KeyS = 's',
         /** @Brief The T Key. */
-        KeyT = 0x54,
+        KeyT = 't',
         /** @Brief The U Key. */
-        KeyU = 0x55,
+        KeyU = 'u',
         /** @Brief The V Key. */
-        KeyV = 0x56,
+        KeyV = 'v',
         /** @Brief The W Key. */
-        KeyW = 0x57,
+        KeyW = 'w',
         /** @Brief The X Key. */
-        KeyX = 0x58,
+        KeyX = 'x',
         /** @Brief The Y Key. */
-        KeyY = 0x59,
+        KeyY = 'y',
         /** @Brief The Z Key. */
-        KeyZ = 0x5a,
+        KeyZ = 'z',
 
         /** @Brief The Left Windows/Super Key. */
         KeyLWin = 0x5b,
@@ -265,7 +265,7 @@ namespace C3D
         MaxKeys
 	};
 
-	enum class Buttons : u8
+	enum Buttons : u8
 	{
 		ButtonLeft = SDL_BUTTON_LEFT,
         ButtonMiddle = SDL_BUTTON_MIDDLE,
@@ -306,21 +306,20 @@ namespace C3D
 		void ProcessMouseMove(i32 sdlX, i32 sdlY);
 		void ProcessMouseWheel(i32 delta);
 
-		[[nodiscard]] bool IsKeyDown(Keys key) const;
-		[[nodiscard]] bool IsKeyUp(Keys key) const;
+		C3D_API [[nodiscard]] bool IsKeyDown(u8 key) const;
+        C3D_API [[nodiscard]] bool IsKeyUp(u8 key) const;
 
-		[[nodiscard]] bool WasKeyDown(Keys key) const;
-		[[nodiscard]] bool WasKeyUp(Keys key) const;
+        C3D_API [[nodiscard]] bool WasKeyDown(u8 key) const;
+        C3D_API [[nodiscard]] bool WasKeyUp(u8 key) const;
 
-		[[nodiscard]] bool IsButtonDown(Buttons button) const;
-		[[nodiscard]] bool IsButtonUp(Buttons button) const;
+        C3D_API [[nodiscard]] bool IsButtonDown(Buttons button) const;
+        C3D_API [[nodiscard]] bool IsButtonUp(Buttons button) const;
 
-		[[nodiscard]] bool WasButtonDown(Buttons button) const;
-		[[nodiscard]] bool WasButtonUp(Buttons button) const;
+        C3D_API [[nodiscard]] bool WasButtonDown(Buttons button) const;
+        C3D_API [[nodiscard]] bool WasButtonUp(Buttons button) const;
 
-		void GetMousePosition(i16* x, i16* y);
-		void GetPreviousMousePosition(i16* x, i16* y);
-
+        C3D_API void GetMousePosition(i16* x, i16* y);
+        C3D_API void GetPreviousMousePosition(i16* x, i16* y);
 	private:
         bool m_initialized = false;
 		InputState m_state{};
