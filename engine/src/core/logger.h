@@ -9,7 +9,6 @@
 
 #include <vulkan/vulkan_core.h>
 
-#include "application.h"
 #include "defines.h"
 #include "asserts.h"
 
@@ -69,7 +68,6 @@ namespace C3D
 	void Logger::Error(const string& format, Args&&... args)
 	{
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-
 		s_coreLogger->error("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
 	}
 

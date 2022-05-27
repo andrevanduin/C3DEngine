@@ -2,6 +2,8 @@
 #include "logger.h"
 
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
+
 #include <VkBootstrap.h>
 
 namespace C3D
@@ -13,11 +15,18 @@ namespace C3D
 
 	void Logger::Init()
 	{
-		spdlog::set_pattern("%^ [%T] %v%$");
-		s_coreLogger = spdlog::stdout_color_mt("C3D");
+		auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+		consoleSink->set_pattern("%^ [%T] %v%$");
+		consoleSink->set_level(spdlog::level::debug);
+
+		auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("console.log", true);
+		consoleSink->set_pattern("%^ [%T] %v%$");
+		consoleSink->set_level(spdlog::level::trace);
+
+		s_coreLogger = std::make_shared<spdlog::logger>(spdlog::logger("core", { consoleSink, fileSink }));
 		s_coreLogger->set_level(spdlog::level::trace);
 
-		m_prefixes.push("CORE");
+		m_prefixes.push("LOGGER");
 		m_initialized = true;
 	}
 
