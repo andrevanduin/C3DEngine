@@ -11,14 +11,14 @@
 namespace C3D
 {
 	VulkanBuffer::VulkanBuffer()
-		: m_totalSize(0), m_handle(nullptr), m_usage(), m_memory(nullptr),
+		: handle(nullptr), m_totalSize(0), m_usage(), m_memory(nullptr),
 		  m_memoryIndex(0),m_memoryPropertyFlags(0), m_isLocked(false)
 	{}
 
-	bool VulkanBuffer::Create(const VulkanContext* context, const u64 size, const VkBufferUsageFlagBits usage, const u32 memoryPropertyFlags, bool bindOnCreate)
+	bool VulkanBuffer::Create(const VulkanContext* context, const u64 size, const u32 usage, const u32 memoryPropertyFlags, const bool bindOnCreate)
 	{
 		m_totalSize = size;
-		m_usage = usage;
+		m_usage = static_cast<VkBufferUsageFlagBits>(usage);
 		m_memoryPropertyFlags = memoryPropertyFlags;
 
 		VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
@@ -26,11 +26,11 @@ namespace C3D
 		bufferCreateInfo.usage = usage;
 		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // NOTE: we assume this is only used in one queue
 
-		VK_CHECK(vkCreateBuffer(context->device.logicalDevice, &bufferCreateInfo, context->allocator, &m_handle));
+		VK_CHECK(vkCreateBuffer(context->device.logicalDevice, &bufferCreateInfo, context->allocator, &handle));
 
 		// Gather memory requirements
 		VkMemoryRequirements requirements;
-		vkGetBufferMemoryRequirements(context->device.logicalDevice, m_handle, &requirements);
+		vkGetBufferMemoryRequirements(context->device.logicalDevice, handle, &requirements);
 		m_memoryIndex = context->FindMemoryIndex(requirements.memoryTypeBits, m_memoryPropertyFlags);
 		if (m_memoryIndex == -1)
 		{
@@ -61,10 +61,10 @@ namespace C3D
 		{
 			vkFreeMemory(context->device.logicalDevice, m_memory, context->allocator);
 		}
-		if (m_handle)
+		if (handle)
 		{
-			vkDestroyBuffer(context->device.logicalDevice, m_handle, context->allocator);
-			m_handle = nullptr;
+			vkDestroyBuffer(context->device.logicalDevice, handle, context->allocator);
+			handle = nullptr;
 		}
 		m_totalSize = 0;
 		m_usage = {};
@@ -114,23 +114,23 @@ namespace C3D
 			vkFreeMemory(context->device.logicalDevice, m_memory, context->allocator);
 			m_memory = nullptr;
 		}
-		if (m_handle)
+		if (handle)
 		{
-			vkDestroyBuffer(context->device.logicalDevice, m_handle, context->allocator);
-			m_handle = nullptr;
+			vkDestroyBuffer(context->device.logicalDevice, handle, context->allocator);
+			handle = nullptr;
 		}
 
 		// Set our new properties
 		m_totalSize = newSize;
 		m_memory = newMemory;
-		m_handle = newBuffer;
+		handle = newBuffer;
 
 		return true;
 	}
 
 	void VulkanBuffer::Bind(const VulkanContext* context, const u64 offset) const
 	{
-		VK_CHECK(vkBindBufferMemory(context->device.logicalDevice, m_handle, m_memory, offset));
+		VK_CHECK(vkBindBufferMemory(context->device.logicalDevice, handle, m_memory, offset));
 	}
 
 	void* VulkanBuffer::LockMemory(const VulkanContext* context, const u64 offset, const u64 size, const u32 flags) const
@@ -166,7 +166,7 @@ namespace C3D
 		copyRegion.dstOffset = destOffset;
 		copyRegion.size = size;
 
-		vkCmdCopyBuffer(tempCommandBuffer.handle, m_handle, dest, 1, &copyRegion);
+		vkCmdCopyBuffer(tempCommandBuffer.handle, handle, dest, 1, &copyRegion);
 
 		// Submit the buffer for execution and wait for it to complete.
 		VulkanCommandBufferManager::EndSingleUse(context, pool, &tempCommandBuffer, queue);

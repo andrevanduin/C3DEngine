@@ -96,7 +96,9 @@ namespace C3D
 		Logger::PopPrefix();
 	}
 
-	void VulkanObjectShader::Use(VulkanContext* context)
+	void VulkanObjectShader::Use(const VulkanContext* context) const
 	{
+		const u32 imageIndex = context->imageIndex;
+		m_pipeline.Bind(&context->graphicsCommandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
 	}
 }

@@ -14,7 +14,7 @@ namespace C3D
 
 		void Destroy(const VulkanContext* context);
 
-		void Use(VulkanContext* context);
+		void Use(const VulkanContext* context) const;
 
 	private:
 		VulkanShaderStage m_stages[OBJECT_SHADER_STAGE_COUNT];
