@@ -3,8 +3,8 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "../../core/defines.h"
-#include "../../core/asserts.h"
+#include "core/defines.h"
+#include "core/asserts.h"
 
 #define VK_CHECK(expr)							\
 	{											\
@@ -119,6 +119,13 @@ namespace C3D
 	{
 		VkFence handle;
 		bool isSignaled;
+	};
+
+	struct VulkanShaderStage
+	{
+		VkShaderModuleCreateInfo createInfo;
+		VkShaderModule module;
+		VkPipelineShaderStageCreateInfo shaderStageCreateInfo;
 	};
 
 	struct VulkanContext

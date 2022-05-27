@@ -10,10 +10,10 @@ namespace C3D
 	{
 		Logger::PushPrefix("VULKAN_RENDER_PASS");
 
-		renderPass->x = x;
-		renderPass->y = y;
-		renderPass->w = w;
-		renderPass->h = h;
+		renderPass->x = static_cast<i32>(x);
+		renderPass->y = static_cast<i32>(y);
+		renderPass->w = static_cast<i32>(w);
+		renderPass->h = static_cast<i32>(h);
 
 		renderPass->r = r;
 		renderPass->g = g;
