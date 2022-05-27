@@ -8,22 +8,23 @@ namespace C3D
 {
 	class Application;
 
-	class Renderer
+	class RenderSystem
 	{
 	public:
-		static bool Init(Application* application);
-		static void Shutdown();
+		bool Init(Application* application);
+		void Shutdown();
 
-		static void OnResize(u16 width, u16 height);
+		void OnResize(u16 width, u16 height) const;
 
-		static bool DrawFrame(const RenderPacket* packet);
-		static bool BeginFrame(f32 deltaTime);
-		static bool EndFrame(f32 deltaTime);
+		bool DrawFrame(const RenderPacket* packet) const;
+
+		[[nodiscard]] bool BeginFrame(f32 deltaTime) const;
+		[[nodiscard]] bool EndFrame(f32 deltaTime) const;
 		
 	private:
-		static bool CreateBackend(RendererBackendType type);
-		static void DestroyBackend();
+		bool CreateBackend(RendererBackendType type);
+		void DestroyBackend() const;
 
-		static RendererBackend* m_backend;
+		RendererBackend* m_backend{ nullptr };
 	};
 }

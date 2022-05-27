@@ -9,9 +9,7 @@
 
 namespace C3D
 {
-	RendererBackend* Renderer::m_backend = nullptr;
-
-	bool Renderer::Init(Application* application)
+	bool RenderSystem::Init(Application* application)
 	{
 		Logger::PushPrefix("RENDERER");
 
@@ -34,44 +32,44 @@ namespace C3D
 		return true;
 	}
 
-	void Renderer::Shutdown()
+	void RenderSystem::Shutdown()
 	{
 		Logger::PrefixInfo("RENDERER", "Shutting Down");
 		m_backend->Shutdown();
 		DestroyBackend();
 	}
 
-	void Renderer::OnResize(const u16 width, const u16 height)
+	void RenderSystem::OnResize(const u16 width, const u16 height) const
 	{
 		m_backend->OnResize(width, height);
 	}
 
-	bool Renderer::DrawFrame(const RenderPacket* packet)
+	bool RenderSystem::DrawFrame(const RenderPacket* packet) const
 	{
 		if (!BeginFrame(packet->deltaTime)) return true;
 
 
 		if (!EndFrame(packet->deltaTime))
 		{
-			Logger::Error("Renderer::EndFrame() failed.");
+			Logger::Error("RenderSystem::EndFrame() failed.");
 			return false;
 		}
 		return true;
 	}
 
-	bool Renderer::BeginFrame(const f32 deltaTime)
+	bool RenderSystem::BeginFrame(const f32 deltaTime) const
 	{
 		return m_backend->BeginFrame(deltaTime);
 	}
 
-	bool Renderer::EndFrame(const f32 deltaTime)
+	bool RenderSystem::EndFrame(const f32 deltaTime) const
 	{
 		const bool result = m_backend->EndFrame(deltaTime);
 		m_backend->state.frameNumber++;
 		return result;
 	}
 
-	bool Renderer::CreateBackend(const RendererBackendType type)
+	bool RenderSystem::CreateBackend(const RendererBackendType type)
 	{
 		if (type == RendererBackendType::Vulkan)
 		{
@@ -83,7 +81,7 @@ namespace C3D
 		return false;
 	}
 
-	void Renderer::DestroyBackend()
+	void RenderSystem::DestroyBackend() const
 	{
 		if (m_backend->type == RendererBackendType::Vulkan)
 		{

@@ -1,6 +1,7 @@
 
 #include "services.h"
 
+#include "core/application.h"
 #include "core/input.h"
 #include "core/events/event.h"
 
@@ -11,10 +12,11 @@ namespace C3D
 	LinearAllocator Services::m_allocator;
 
 	// Systems
-	InputSystem* Services::m_pInput = nullptr;
-	EventSystem* Services::m_pEvents = nullptr;
+	InputSystem* Services::m_pInput		= nullptr;
+	EventSystem* Services::m_pEvents	= nullptr;
+	RenderSystem* Services::m_pRenderer = nullptr;
 
-	bool Services::Init()
+	bool Services::Init(Application* application)
 	{
 		Logger::PushPrefix("SERVICES");
 
@@ -36,6 +38,13 @@ namespace C3D
 			Logger::Fatal("Input System failed to be Initialized");
 		}
 
+		// Render System
+		m_pRenderer = m_allocator.New<RenderSystem>();
+		if (!m_pRenderer->Init(application))
+		{
+			Logger::Fatal("Render System failed to be Initialized");
+		}
+
 		Logger::PopPrefix();
 		return true;
 	}
@@ -45,6 +54,7 @@ namespace C3D
 		Logger::PushPrefix("SERVICES");
 		Logger::Info("Shutting down all services");
 
+		m_pRenderer->Shutdown();
 		m_pInput->Shutdown();
 		m_pEvents->Shutdown();
 
