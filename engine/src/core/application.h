@@ -1,6 +1,7 @@
 
 #pragma once
 #include "defines.h"
+#include "memory/linear_allocator.h"
 
 int C3D_API main(int argc, char** argv);
 
@@ -38,6 +39,9 @@ namespace C3D
 		virtual ~Application();
 
 		void Run();
+		void Quit();
+
+		virtual void OnCreate() {}
 		virtual void OnUpdate(f64 deltaTime) {}
 		virtual void OnRender(f64 deltaTime) {}
 
@@ -65,4 +69,5 @@ namespace C3D
 	};
 
 	Application* CreateApplication();
+	void DestroyApplication(Application* app);
 }

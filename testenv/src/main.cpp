@@ -10,3 +10,9 @@ C3D::Application* C3D::CreateApplication()
 {
 	return Memory::New<TestEnv>(MemoryType::Game, CONFIG);
 }
+
+void C3D::DestroyApplication(Application* app)
+{
+	Memory::Free(app, sizeof(TestEnv), MemoryType::Game);
+}
+

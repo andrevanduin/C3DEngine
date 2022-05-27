@@ -1,11 +1,11 @@
 
 #include "vulkan_swapchain.h"
 
-#include "../../core/logger.h"
-#include "../../core/memory.h"
-
 #include "vulkan_device.h"
 #include "vulkan_image.h"
+
+#include "core/memory.h"
+#include "core/logger.h"
 
 namespace C3D
 {

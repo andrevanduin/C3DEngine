@@ -1,7 +1,7 @@
 
 #pragma once
-#include <SDL_keycode.h>
-#include <SDL_mouse.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_mouse.h>
 
 #include "defines.h"
 
@@ -296,33 +296,33 @@ namespace C3D
 			MouseState mousePrevious;
 		};
 	public:
-		static bool Init();
-		static void Shutdown();
+		bool Init();
+		void Shutdown();
 
-		static void Update(f64 deltaTime);
+		void Update(f64 deltaTime);
 
-		static void ProcessKey(SDL_Keycode sdlKey, bool pressed);
-		static void ProcessButton(u8 button, bool pressed);
-		static void ProcessMouseMove(i32 sdlX, i32 sdlY);
-		static void ProcessMouseWheel(i32 delta);
+		void ProcessKey(SDL_Keycode sdlKey, bool pressed);
+		void ProcessButton(u8 button, bool pressed);
+		void ProcessMouseMove(i32 sdlX, i32 sdlY);
+		void ProcessMouseWheel(i32 delta);
 
-		C3D_API static bool IsKeyDown(Keys key);
-		C3D_API static bool IsKeyUp(Keys key);
+		[[nodiscard]] bool IsKeyDown(Keys key) const;
+		[[nodiscard]] bool IsKeyUp(Keys key) const;
 
-		C3D_API static bool WasKeyDown(Keys key);
-		C3D_API static bool WasKeyUp(Keys key);
+		[[nodiscard]] bool WasKeyDown(Keys key) const;
+		[[nodiscard]] bool WasKeyUp(Keys key) const;
 
-		C3D_API static bool IsButtonDown(Buttons button);
-		C3D_API static bool IsButtonUp(Buttons button);
+		[[nodiscard]] bool IsButtonDown(Buttons button) const;
+		[[nodiscard]] bool IsButtonUp(Buttons button) const;
 
-		C3D_API static bool WasButtonDown(Buttons button);
-		C3D_API static bool WasButtonUp(Buttons button);
+		[[nodiscard]] bool WasButtonDown(Buttons button) const;
+		[[nodiscard]] bool WasButtonUp(Buttons button) const;
 
-		C3D_API static void GetMousePosition(i16* x, i16* y);
-		C3D_API static void GetPreviousMousePosition(i16* x, i16* y);
+		void GetMousePosition(i16* x, i16* y);
+		void GetPreviousMousePosition(i16* x, i16* y);
 
 	private:
-		static bool m_initialized;
-		static InputState m_state;
+        bool m_initialized = false;
+		InputState m_state{};
 	};
 }

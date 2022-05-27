@@ -11,11 +11,15 @@
 #include "platform/platform.h"
 #include "renderer/renderer_frontend.h"
 
+#include "services/services.h"
+
 namespace C3D
 {
 	Application::Application(const ApplicationConfig& config)
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice")
+
+		Logger::Init();
 
 		Logger::PushPrefix("APPLICATION");
 		Logger::Info("Starting");
@@ -24,21 +28,13 @@ namespace C3D
 		m_state.width = config.width;
 		m_state.height = config.height;
 
-		if (!EventSystem::Init())
-		{
-			Logger::Fatal("Event System failed to be Initialized");
-		}
+		Services::Init();
 
-		EventSystem::Register(SystemEventCode::Resized, nullptr, new EventCallback(this, &Application::OnResizeEvent));
-		EventSystem::Register(SystemEventCode::Minimized, nullptr, new EventCallback(this, &Application::OnMinimizeEvent));
-		EventSystem::Register(SystemEventCode::FocusGained, nullptr, new EventCallback(this, &Application::OnFocusGainedEvent));
-		EventSystem::Register(SystemEventCode::KeyPressed, nullptr, new EventCallback(this, &Application::OnKeyEvent));
-		EventSystem::Register(SystemEventCode::KeyReleased, nullptr, new EventCallback(this, &Application::OnKeyEvent));
-
-		if (!InputSystem::Init())
-		{
-			Logger::Fatal("Input System failed to be Initialized");
-		}
+		Services::Event().Register(SystemEventCode::Resized, nullptr, new EventCallback(this, &Application::OnResizeEvent));
+		Services::Event().Register(SystemEventCode::Minimized, nullptr, new EventCallback(this, &Application::OnMinimizeEvent));
+		Services::Event().Register(SystemEventCode::FocusGained, nullptr, new EventCallback(this, &Application::OnFocusGainedEvent));
+		Services::Event().Register(SystemEventCode::KeyPressed, nullptr, new EventCallback(this, &Application::OnKeyEvent));
+		Services::Event().Register(SystemEventCode::KeyReleased, nullptr, new EventCallback(this, &Application::OnKeyEvent));
 
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
@@ -63,7 +59,6 @@ namespace C3D
 		Logger::Info("Successfully created Renderer");
 		Logger::PopPrefix();
 
-		m_state.running = true;
 		m_state.initialized = true;
 		m_state.lastTime = 0;
 	}
@@ -72,12 +67,16 @@ namespace C3D
 
 	void Application::Run()
 	{
+		m_state.running = true;
+
 		Clock clock;
 
 		clock.Start();
 		clock.Update();
 
 		m_state.lastTime = clock.GetElapsed();
+
+		OnCreate();
 
 		f64 runningTime = 0;
 		u8 frameCount = 0;
@@ -110,24 +109,29 @@ namespace C3D
 
 				if (remainingSeconds > 0)
 				{
-					const u64 remainingMs = static_cast<u64>(remainingSeconds) * 1000;
+					/*const u64 remainingMs = static_cast<u64>(remainingSeconds) * 1000;
 
 					constexpr bool limitFrames = false;
-					if (remainingMs > 0 && limitFrames)
+					/if (remainingMs > 0 && limitFrames)
 					{
 						Platform::SleepMs(remainingMs - 1);
-					}
+					}*/
 
 					frameCount++;
 				}
 
-				InputSystem::Update(delta);
+				Services::Input().Update(delta);
 
 				m_state.lastTime = currentTime;
 			}
 		}
 
 		Shutdown();
+	}
+
+	void Application::Quit()
+	{
+		m_state.running = false;
 	}
 
 	void Application::GetFrameBufferSize(u32* width, u32* height) const
@@ -143,13 +147,12 @@ namespace C3D
 
 	void Application::Shutdown()
 	{
-		C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized");
+		C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized")
 
 		Logger::PushPrefix("PLATFORM");
 		Logger::Info("Shutdown()");
 
-		InputSystem::Shutdown();
-		EventSystem::Shutdown();
+		Services::Shutdown();
 		Renderer::Shutdown();
 
 		SDL_DestroyWindow(m_window);
@@ -172,37 +175,37 @@ namespace C3D
 					break;
 				case SDL_KEYDOWN:
 				case SDL_KEYUP:
-					InputSystem::ProcessKey(e.key.keysym.sym, e.type == SDL_KEYDOWN);
+					Services::Input().ProcessKey(e.key.keysym.sym, e.type == SDL_KEYDOWN);
 					break;
 				case SDL_MOUSEBUTTONDOWN:
 				case SDL_MOUSEBUTTONUP:
-					InputSystem::ProcessButton(e.button.button, e.type == SDL_MOUSEBUTTONDOWN);
+					Services::Input().ProcessButton(e.button.button, e.type == SDL_MOUSEBUTTONDOWN);
 					break;
 				case SDL_MOUSEMOTION:
-					InputSystem::ProcessMouseMove(e.motion.x, e.motion.y);
+					Services::Input().ProcessMouseMove(e.motion.x, e.motion.y);
 					break;
 				case SDL_MOUSEWHEEL:
-					InputSystem::ProcessMouseWheel(e.wheel.y);
+					Services::Input().ProcessMouseWheel(e.wheel.y);
 					break;
 				case SDL_WINDOWEVENT:
 					if (e.window.event == SDL_WINDOWEVENT_RESIZED)
 					{
-						EventContext context;
+						EventContext context{};
 						context.data.u16[0] = static_cast<u16>(e.window.data1);
 						context.data.u16[1] = static_cast<u16>(e.window.data2);
-						EventSystem::Fire(SystemEventCode::Resized, nullptr, context);
+						Services::Event().Fire(SystemEventCode::Resized, nullptr, context);
 					}
 					else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED)
 					{
 						constexpr EventContext context{};
-						EventSystem::Fire(SystemEventCode::Minimized, nullptr, context);
+						Services::Event().Fire(SystemEventCode::Minimized, nullptr, context);
 					}
 					else if (e.window.event == SDL_WINDOWEVENT_ENTER && m_state.suspended)
 					{
 						EventContext context;
 						context.data.u16[0] = static_cast<u16>(m_state.width);
 						context.data.u16[1] = static_cast<u16>(m_state.height);
-						EventSystem::Fire(SystemEventCode::FocusGained, nullptr, context);
+						Services::Event().Fire(SystemEventCode::FocusGained, nullptr, context);
 					}
 					break;
 				case SDL_TEXTINPUT:

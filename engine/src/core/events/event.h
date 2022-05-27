@@ -11,7 +11,7 @@ namespace C3D
 {
 	constexpr auto MAX_MESSAGE_CODES = 16384;
 
-	class C3D_API EventSystem
+	class EventSystem
 	{
 		struct RegisteredEvent
 		{
@@ -30,16 +30,15 @@ namespace C3D
 		};
 
 	public:
-		static bool Init();
-		static void Shutdown();
+		bool Init();
+		void Shutdown();
 
-		static bool Register(u16 code, void* listener, IEventCallback* onEvent);
-		static bool UnRegister(u16 code, const void* listener, const IEventCallback* onEvent);
+		bool Register(u16 code, void* listener, IEventCallback* onEvent);
+		bool UnRegister(u16 code, const void* listener, const IEventCallback* onEvent);
 
-		static bool Fire(u16 code, void* sender, EventContext data);
+		bool Fire(u16 code, void* sender, EventContext data);
 
 	private:
-		static bool m_initialized;
-		static EventSystemState m_state;
+		EventSystemState m_state;
 	};
 }

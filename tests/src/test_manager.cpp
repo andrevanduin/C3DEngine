@@ -53,9 +53,9 @@ void TestManager::RunTests()
 		totalTime.Update();
 
 		auto status = failed ? "*** FAILED ***" : "SUCCESS";
-		C3D::Logger::Info("Executed {} of {} (skipped {}) {} ({:.4} sec / {:.4} sec total", i, m_tests.size(), skipped, status, testTime.GetElapsed(), totalTime.GetElapsed());
+		C3D::Logger::Info("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total", i, m_tests.size(), skipped, status, testTime.GetElapsed(), totalTime.GetElapsed());
 	}
 
 	totalTime.Stop();
-	C3D::Logger::Info("Results: {} passed, {} failed and {} skipped. Ran in {:.4} sec", passed, failed, skipped, totalTime.GetElapsed());
+	C3D::Logger::Info("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec", passed, failed, skipped, totalTime.GetElapsed());
 }

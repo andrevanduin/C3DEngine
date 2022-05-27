@@ -3,23 +3,16 @@
 
 #include <algorithm>
 
+#include "services/services.h"
 #include "core/logger.h"
-#include "core/memory.h"
 
 namespace C3D
 {
-	bool EventSystem::m_initialized = false;
-	EventSystem::EventSystemState EventSystem::m_state;
-
 	bool EventSystem::Init()
 	{
 		Logger::PrefixInfo("EVENT", "Init()");
-
-		if (m_initialized) return false;
-
 		Memory::Zero(&m_state, sizeof m_state);
 
-		m_initialized = true;
 		return true;
 	}
 
@@ -30,13 +23,10 @@ namespace C3D
 		{
 			if (!events.empty()) events.clear();
 		}
-		m_initialized = false;
 	}
 
 	bool EventSystem::Register(u16 code, void* listener, IEventCallback* onEvent)
 	{
-		if (!m_initialized) return false;
-
 		for (const auto& event : m_state.registered[code].events)
 		{
 			if (event.listener == listener)
@@ -54,8 +44,6 @@ namespace C3D
 
 	bool EventSystem::UnRegister(const u16 code, const void* listener, const IEventCallback* onEvent)
 	{
-		if (!m_initialized) return false;
-
 		if (m_state.registered[code].events.empty())
 		{
 			Logger::Warn("Tried to UnRegister Event for a code that has no events");
@@ -83,8 +71,6 @@ namespace C3D
 
 	bool EventSystem::Fire(const u16 code, void* sender, const EventContext data)
 	{
-		if (!m_initialized) return false;
-
 		if (m_state.registered[code].events.empty())
 		{
 			return false;

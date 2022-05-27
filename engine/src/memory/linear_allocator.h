@@ -7,10 +7,18 @@ namespace C3D
 	class C3D_API LinearAllocator
 	{
 	public:
-		void Create(u64 totalSize, void* memory);
+		void Create(u64 totalSize, void* memory = nullptr);
+		
 		void Destroy();
 
 		void* Allocate(u64 size);
+
+		template<class T>
+		T* New()
+		{
+			return new(Allocate(sizeof T)) T();
+		}
+
 		void FreeAll();
 
 		[[nodiscard]] u64 GetTotalSize() const { return m_totalSize; }

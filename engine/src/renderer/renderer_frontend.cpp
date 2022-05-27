@@ -1,5 +1,6 @@
 
 #include "renderer_frontend.h"
+
 #include "core/logger.h"
 #include "core/memory.h"
 #include "core/application.h"
