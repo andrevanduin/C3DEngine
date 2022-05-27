@@ -16,7 +16,7 @@ namespace C3D::VulkanCommandBufferManager
 
 	void Reset(VulkanCommandBuffer* commandBuffer);
 
-	void AllocateAndBeginSingleUse(VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer, VkQueue queue);
+	void AllocateAndBeginSingleUse(VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer);
 
 	void EndSingleUse(const VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer, VkQueue queue);
 }

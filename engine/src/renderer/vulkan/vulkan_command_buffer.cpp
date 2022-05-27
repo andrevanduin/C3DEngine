@@ -1,6 +1,6 @@
 
 #include "vulkan_command_buffer.h"
-#include "services/services.h"
+#include "core/memory.h"
 
 namespace C3D
 {
@@ -57,7 +57,7 @@ namespace C3D
 		commandBuffer->state = VulkanCommandBufferState::Ready;
 	}
 
-	void VulkanCommandBufferManager::AllocateAndBeginSingleUse(VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer, VkQueue queue)
+	void VulkanCommandBufferManager::AllocateAndBeginSingleUse(VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer)
 	{
 		Allocate(context, pool, true, commandBuffer);
 		Begin(commandBuffer, true, false, false);

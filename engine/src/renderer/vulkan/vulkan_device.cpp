@@ -1,7 +1,7 @@
 
 #include "vulkan_device.h"
 
-#include "services/services.h"
+#include "core/memory.h"
 #include "core/logger.h"
 
 namespace C3D
