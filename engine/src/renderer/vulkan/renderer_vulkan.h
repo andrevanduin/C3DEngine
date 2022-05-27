@@ -1,7 +1,9 @@
 
 #pragma once
-#include "../renderer_backend.h"
 #include "vulkan_types.h"
+#include "vulkan_buffer.h"
+
+#include "../renderer_backend.h"
 #include "shaders/vulkan_object_shader.h"
 
 struct SDL_Window;
@@ -27,9 +29,17 @@ namespace C3D
 		bool RecreateSwapChain();
 		bool CreateBuffers();
 
+		// TEMP
+		void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, const VulkanBuffer* buffer, u64 offset, u64 size, const void* data);
+
 		VulkanContext m_context;
 
 		VulkanObjectShader m_objectShader;
+
+		VulkanBuffer m_objectVertexBuffer, m_objectIndexBuffer;
+
+		u64 m_geometryVertexOffset;
+		u64 m_geometryIndexOffset;
 
 		VkDebugUtilsMessengerEXT m_debugMessenger{ nullptr };
 	};

@@ -14,6 +14,9 @@
 
 #include "core/logger.h"
 #include "core/application.h"
+#include "core/memory.h"
+
+#include "renderer/vertex.h"
 
 namespace C3D
 {
@@ -100,6 +103,30 @@ namespace C3D
 		}
 
 		CreateBuffers();
+
+		// TODO: Temporary test code
+		constexpr u32 vertexCount = 4;
+		Vertex3D vertices[vertexCount];
+		Memory::Zero(vertices, sizeof(Vertex3D) * vertexCount);
+
+		vertices[0].position.x = 0.0f;
+		vertices[0].position.y = -0.5f;
+
+		vertices[1].position.x = 0.5f;
+		vertices[1].position.y = 0.5f;
+
+		vertices[2].position.x = 0.0f;
+		vertices[2].position.y = 0.5f;
+
+		vertices[3].position.x = 0.5f;
+		vertices[3].position.y = -0.5f;
+
+		constexpr u32 indexCount = 6;
+		u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
+
+		UploadDataRange(m_context.device.graphicsCommandPool, nullptr, m_context.device.graphicsQueue, &m_objectVertexBuffer, 0, sizeof(Vertex3D) * vertexCount, vertices);
+		UploadDataRange(m_context.device.graphicsCommandPool, nullptr, m_context.device.graphicsQueue, &m_objectIndexBuffer, 0, sizeof(u32) * indexCount, indices);
+		// TODO End of temporary test code
 
 		Logger::Info("Successfully Initialized");
 		Logger::PopPrefix();
@@ -197,6 +224,17 @@ namespace C3D
 		VulkanRenderPassManager::Begin(commandBuffer, &m_context.mainRenderPass, 
 			m_context.swapChain.frameBuffers[m_context.imageIndex].handle);
 
+		// TODO: Temporary test code
+		m_objectShader.Use(&m_context);
+
+		constexpr VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer->handle, 0, 1, &m_objectVertexBuffer.handle, offsets);
+
+		vkCmdBindIndexBuffer(commandBuffer->handle, m_objectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdDrawIndexed(commandBuffer->handle, 6, 1, 0, 0, 0);
+		// TODO: End temporary test code
+
 		return true;
 	}
 
@@ -262,6 +300,9 @@ namespace C3D
 		vkDeviceWaitIdle(m_context.device.logicalDevice);
 
 		// Destroy stuff in opposite order of creation
+		m_objectVertexBuffer.Destroy(&m_context);
+		m_objectIndexBuffer.Destroy(&m_context);
+
 		m_objectShader.Destroy(&m_context);
 
 		Logger::Info("Destroying Semaphores and Fences");
@@ -407,6 +448,37 @@ namespace C3D
 
 	bool RendererVulkan::CreateBuffers()
 	{
+		constexpr auto baseFlagBits = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+		constexpr auto memoryPropertyFlagBits = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
+		constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 1024 * 1024;
+		if (!m_objectVertexBuffer.Create(&m_context, vertexBufferSize, baseFlagBits | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, memoryPropertyFlagBits, true))
+		{
+			Logger::PrefixError("VULKAN_RENDERER", "Error creating vertex buffer");
+			return false;
+		}
+		m_geometryVertexOffset = 0;
+
+		constexpr u64 indexBufferSize = sizeof(u32) * 1024 * 1024;
+		if (!m_objectIndexBuffer.Create(&m_context, indexBufferSize, baseFlagBits | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, memoryPropertyFlagBits, true))
+		{
+			Logger::PrefixError("VULKAN_RENDERER", "Error creating index buffer");
+			return false;
+		}
+		m_geometryIndexOffset = 0;
+
+		return true;
+	}
+
+	void RendererVulkan::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, const VulkanBuffer* buffer, const u64 offset, const u64 size, const void* data)
+	{
+		constexpr VkBufferUsageFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		VulkanBuffer staging;
+		staging.Create(&m_context, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, flags, true);
+
+		staging.LoadData(&m_context, 0, size, 0, data);
+		staging.CopyTo(&m_context, pool, fence, queue, 0, buffer->handle, offset, size);
+
+		staging.Destroy(&m_context);
 	}
 }
