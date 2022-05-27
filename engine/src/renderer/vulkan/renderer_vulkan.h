@@ -2,6 +2,7 @@
 #pragma once
 #include "../renderer_backend.h"
 #include "vulkan_types.h"
+#include "shaders/vulkan_object_shader.h"
 
 struct SDL_Window;
 
@@ -22,10 +23,14 @@ namespace C3D
 	private:
 		void CreateCommandBuffers();
 		void RegenerateFrameBuffers(const VulkanSwapChain* swapChain, VulkanRenderPass* renderPass);
-
+		
 		bool RecreateSwapChain();
+		bool CreateBuffers();
 
 		VulkanContext m_context;
+
+		VulkanObjectShader m_objectShader;
+
 		VkDebugUtilsMessengerEXT m_debugMessenger{ nullptr };
 	};
 }

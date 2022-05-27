@@ -93,6 +93,14 @@ namespace C3D
 			m_context.imagesInFlight[i] = nullptr;
 		}
 
+		if (!m_objectShader.Create(&m_context))
+		{
+			Logger::Error("Loading built-in object shader failed");
+			return false;
+		}
+
+		CreateBuffers();
+
 		Logger::Info("Successfully Initialized");
 		Logger::PopPrefix();
 		return true;
@@ -253,6 +261,9 @@ namespace C3D
 
 		vkDeviceWaitIdle(m_context.device.logicalDevice);
 
+		// Destroy stuff in opposite order of creation
+		m_objectShader.Destroy(&m_context);
+
 		Logger::Info("Destroying Semaphores and Fences");
 		for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
 		{
@@ -392,5 +403,10 @@ namespace C3D
 
 		m_context.recreatingSwapChain = false;
 		return true;
+	}
+
+	bool RendererVulkan::CreateBuffers()
+	{
+
 	}
 }
