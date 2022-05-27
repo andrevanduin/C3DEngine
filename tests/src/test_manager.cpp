@@ -35,7 +35,7 @@ void TestManager::RunTests()
 		C3D::Clock testTime;
 		testTime.Start();
 
-		const bool result = test.func();
+		const u8 result = test.func();
 
 		testTime.Update();
 		if (result == PASSED) passed++;
@@ -53,7 +53,7 @@ void TestManager::RunTests()
 		totalTime.Update();
 
 		auto status = failed ? "*** FAILED ***" : "SUCCESS";
-		C3D::Logger::Info("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total", i, m_tests.size(), skipped, status, testTime.GetElapsed(), totalTime.GetElapsed());
+		C3D::Logger::Info("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total)", i, m_tests.size(), skipped, status, testTime.GetElapsed(), totalTime.GetElapsed());
 	}
 
 	totalTime.Stop();
