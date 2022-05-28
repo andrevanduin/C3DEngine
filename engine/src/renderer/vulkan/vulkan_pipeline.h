@@ -15,8 +15,8 @@ namespace C3D
 
 		void Bind(const VulkanCommandBuffer* commandBuffer, VkPipelineBindPoint bindPoint) const;
 
+		VkPipelineLayout layout;
 	private:
 		VkPipeline m_handle;
-		VkPipelineLayout m_layout;
 	};
 }

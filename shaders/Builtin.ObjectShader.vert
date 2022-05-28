@@ -4,10 +4,19 @@
 
 layout(location = 0) in vec3 inPosition;
 
-layout(location = 0) out vec3 outPosition;
+layout(set = 0, binding = 0) uniform globalUniformObject 
+{
+	mat4 projection;
+	mat4 view;
+} globalUbo;
+
+layout(push_constant) uniform pushConstants 
+{
+	// Push constants are only guaranteed to be a total of 128 bytes.
+	mat4 model; // 64 bytes
+} uPushConstants;
 
 void main()
 {
-	gl_Position = vec4(inPosition, 1.0);
-	outPosition = inPosition;
+	gl_Position = globalUbo.projection * globalUbo.view * uPushConstants.model * vec4(inPosition, 1.0);
 }

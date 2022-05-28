@@ -13,11 +13,18 @@ namespace C3D
 	class RendererVulkan : public RendererBackend
 	{
 	public:
+		RendererVulkan();
+
 		bool Init(Application* application) override;
 
 		void OnResize(u16 width, u16 height) override;
 
 		bool BeginFrame(f32 deltaTime) override;
+
+		void UpdateGlobalState(mat4 projection, mat4 view, vec3 viewPosition, vec4 ambientColor, i32 mode) override;
+
+		void UpdateObject(mat4 model) override;
+
 		bool EndFrame(f32 deltaTime) override;
 
 		void Shutdown() override;

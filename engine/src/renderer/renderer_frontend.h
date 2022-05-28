@@ -12,7 +12,7 @@ namespace C3D
 	{
 	public:
 		bool Init(Application* application);
-		void Shutdown();
+		void Shutdown() const;
 
 		void OnResize(u16 width, u16 height) const;
 

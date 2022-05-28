@@ -92,15 +92,29 @@ namespace C3D
 		vertexInputCreateInfo.vertexAttributeDescriptionCount = attributeCount;
 		vertexInputCreateInfo.pVertexAttributeDescriptions = attributes;
 
+		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
 		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
+		// Pipeline layout create info
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+
+		// Push constants
+		VkPushConstantRange pushConstant;
+		pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		pushConstant.offset = sizeof(mat4) * 0;
+		pushConstant.size = sizeof(mat4) * 2;
+
+		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+		pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstant;
+
+		// Descriptor set layouts
 		pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayoutCount;
 		pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts;
 
-		VK_CHECK(vkCreatePipelineLayout(context->device.logicalDevice, &pipelineLayoutCreateInfo, context->allocator, &m_layout));
+		// Create our pipeline layout
+		VK_CHECK(vkCreatePipelineLayout(context->device.logicalDevice, &pipelineLayoutCreateInfo, context->allocator, &layout));
 
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 		pipelineCreateInfo.stageCount = stageCount;
@@ -116,7 +130,7 @@ namespace C3D
 		pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
 		pipelineCreateInfo.pTessellationState = nullptr;
 
-		pipelineCreateInfo.layout = m_layout;
+		pipelineCreateInfo.layout = layout;
 
 		pipelineCreateInfo.renderPass = renderPass->handle;
 		pipelineCreateInfo.subpass = 0;
@@ -141,10 +155,10 @@ namespace C3D
 			vkDestroyPipeline(context->device.logicalDevice, m_handle, context->allocator);
 			m_handle = nullptr;
 		}
-		if (m_layout)
+		if (layout)
 		{
-			vkDestroyPipelineLayout(context->device.logicalDevice, m_layout, context->allocator);
-			m_layout = nullptr;
+			vkDestroyPipelineLayout(context->device.logicalDevice, layout, context->allocator);
+			layout = nullptr;
 		}
 	}
 

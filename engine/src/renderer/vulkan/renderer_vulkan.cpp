@@ -20,6 +20,8 @@
 
 namespace C3D
 {
+	RendererVulkan::RendererVulkan(): m_context(), m_geometryVertexOffset(0), m_geometryIndexOffset(0) {}
+
 	bool RendererVulkan::Init(Application* application)
 	{
 		Logger::PushPrefix("VULKAN_RENDERER");
@@ -109,17 +111,19 @@ namespace C3D
 		Vertex3D vertices[vertexCount];
 		Memory::Zero(vertices, sizeof(Vertex3D) * vertexCount);
 
-		vertices[0].position.x = 0.0f;
-		vertices[0].position.y = -0.5f;
+		constexpr f32 f = 10.0f;
 
-		vertices[1].position.x = 0.5f;
-		vertices[1].position.y = 0.5f;
+		vertices[0].position.x = -0.5f * f;
+		vertices[0].position.y = -0.5f * f;
 
-		vertices[2].position.x = 0.0f;
-		vertices[2].position.y = 0.5f;
+		vertices[1].position.x = 0.5f * f;
+		vertices[1].position.y = 0.5f * f;
 
-		vertices[3].position.x = 0.5f;
-		vertices[3].position.y = -0.5f;
+		vertices[2].position.x = -0.5f * f;
+		vertices[2].position.y = 0.5f * f;
+
+		vertices[3].position.x = 0.5f * f;
+		vertices[3].position.y = -0.5f * f;
 
 		constexpr u32 indexCount = 6;
 		u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
@@ -217,12 +221,32 @@ namespace C3D
 		vkCmdSetViewport(commandBuffer->handle, 0, 1, &viewport);
 		vkCmdSetScissor(commandBuffer->handle, 0, 1, &scissor);
 
-		m_context.mainRenderPass.w = m_context.frameBufferWidth;
-		m_context.mainRenderPass.h = m_context.frameBufferHeight;
+		m_context.mainRenderPass.w = static_cast<i32>(m_context.frameBufferWidth);
+		m_context.mainRenderPass.h = static_cast<i32>(m_context.frameBufferHeight);
 
 		// Begin the RenderPass
 		VulkanRenderPassManager::Begin(commandBuffer, &m_context.mainRenderPass, 
 			m_context.swapChain.frameBuffers[m_context.imageIndex].handle);
+
+		return true;
+	}
+
+	void RendererVulkan::UpdateGlobalState(const mat4 projection, const mat4 view, vec3 viewPosition, vec4 ambientColor, i32 mode)
+	{
+		m_objectShader.Use(&m_context);
+
+		m_objectShader.globalUbo.projection = projection;
+		m_objectShader.globalUbo.view = view;
+		// TODO: other ubo properties here
+
+		m_objectShader.UpdateGlobalState(&m_context);
+	}
+
+	void RendererVulkan::UpdateObject(const mat4 model)
+	{
+		const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
+
+		m_objectShader.UpdateObject(&m_context, model);
 
 		// TODO: Temporary test code
 		m_objectShader.Use(&m_context);
@@ -234,8 +258,6 @@ namespace C3D
 
 		vkCmdDrawIndexed(commandBuffer->handle, 6, 1, 0, 0, 0);
 		// TODO: End temporary test code
-
-		return true;
 	}
 
 	bool RendererVulkan::EndFrame(f32 deltaTime)

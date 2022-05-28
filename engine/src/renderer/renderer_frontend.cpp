@@ -5,6 +5,8 @@
 #include "core/memory.h"
 #include "core/application.h"
 
+#include "math/c3d_math.h"
+
 #include "renderer/vulkan/renderer_vulkan.h"
 
 namespace C3D
@@ -32,7 +34,7 @@ namespace C3D
 		return true;
 	}
 
-	void RenderSystem::Shutdown()
+	void RenderSystem::Shutdown() const
 	{
 		Logger::PrefixInfo("RENDERER", "Shutting Down");
 		m_backend->Shutdown();
@@ -48,6 +50,25 @@ namespace C3D
 	{
 		if (!BeginFrame(packet->deltaTime)) return true;
 
+		const mat4 projection = glm::perspective(DegToRad(45.0f), 1280.0f / 720.0f, 0.1f, 1000.0f);
+		static f32 z = -10.0f, modifier;
+
+		if (z >= -10.0f) modifier = -0.01f;
+		if (z <= -50.0f) modifier = 0.01f;
+
+		z += modifier;
+
+		const mat4 view = glm::translate(vec3(0, 0, z)); // 30.0f
+
+		m_backend->UpdateGlobalState(projection, view, vec3(0.0f), vec4(1.0f), 0);
+
+		static f32 angle = 0.0f;
+		angle += 0.001f;
+
+		mat4 model = glm::translate(vec3(0, 0, 0));
+		model = glm::rotate(model, angle, vec3(0, 0, -1.0f));
+
+		m_backend->UpdateObject(model);
 
 		if (!EndFrame(packet->deltaTime))
 		{
