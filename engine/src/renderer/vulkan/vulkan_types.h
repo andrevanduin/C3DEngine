@@ -5,6 +5,7 @@
 
 #include "vulkan_renderpass.h"
 #include "vulkan_swapchain.h"
+#include "vulkan_device.h"
 
 #include "core/defines.h"
 #include "core/asserts.h"
@@ -17,42 +18,6 @@
 namespace C3D
 {
 	class VulkanImage;
-
-	struct VulkanSwapChainSupportInfo
-	{
-		VkSurfaceCapabilitiesKHR capabilities;
-
-		u32 formatCount;
-
-		VkSurfaceFormatKHR* formats;
-		u32 presentModeCount;
-
-		VkPresentModeKHR* presentModes;
-	};
-
-	struct VulkanDevice
-	{
-		VkPhysicalDevice physicalDevice;
-		VkDevice logicalDevice;
-
-		VulkanSwapChainSupportInfo swapChainSupport;
-
-		VkPhysicalDeviceProperties properties;
-		VkPhysicalDeviceFeatures features;
-		VkPhysicalDeviceMemoryProperties memory;
-
-		VkFormat depthFormat;
-
-		VkQueue graphicsQueue;
-		VkQueue presentQueue;
-		VkQueue transferQueue;
-
-		VkCommandPool graphicsCommandPool;
-
-		u32 graphicsQueueIndex;
-		u32 presentQueueIndex;
-		u32 transferQueueIndex;
-	};
 
 	struct VulkanFence
 	{
@@ -67,8 +32,16 @@ namespace C3D
 		VkPipelineShaderStageCreateInfo shaderStageCreateInfo;
 	};
 
+	struct VulkanTextureData
+	{
+		VulkanImage image;
+		VkSampler sampler;
+	};
+
 	struct VulkanContext
 	{
+		f32 frameDeltaTime;
+
 		VkInstance instance;
 		VkAllocationCallbacks* allocator;
 		VkSurfaceKHR surface;

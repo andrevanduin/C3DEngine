@@ -15,17 +15,21 @@
 #include "core/application.h"
 #include "core/memory.h"
 
+#include "resources/texture.h"
+
 #include "renderer/vertex.h"
 
 namespace C3D
 {
 	RendererVulkan::RendererVulkan(): m_context(), m_geometryVertexOffset(0), m_geometryIndexOffset(0) {}
 
-	bool RendererVulkan::Init(Application* application)
+	bool RendererVulkan::Init(Application* application, Texture* defaultDiffuse)
 	{
 		Logger::PushPrefix("VULKAN_RENDERER");
 
 		type = RendererBackendType::Vulkan;
+
+		state.defaultDiffuseTexture = defaultDiffuse;
 
 		// TODO: Possibly add a custom allocator
 		m_context.allocator = nullptr;
@@ -59,8 +63,7 @@ namespace C3D
 		}
 
 		Logger::Info("SDL Surface Initialized");
-
-		if (!VulkanDeviceManager::Create(vkbInstance, &m_context))
+		if (!m_context.device.Create(vkbInstance, &m_context))
 		{
 			Logger::Error("Failed to create Vulkan Device");
 			return false;
@@ -99,7 +102,7 @@ namespace C3D
 			m_context.imagesInFlight[i] = nullptr;
 		}
 
-		if (!m_objectShader.Create(&m_context))
+		if (!m_objectShader.Create(&m_context, state.defaultDiffuseTexture))
 		{
 			Logger::Error("Loading built-in object shader failed");
 			return false;
@@ -116,21 +119,37 @@ namespace C3D
 
 		vertices[0].position.x = -0.5f * f;
 		vertices[0].position.y = -0.5f * f;
+		vertices[0].texture.x = 0.0f;
+		vertices[0].texture.y = 0.0f;
 
 		vertices[1].position.x = 0.5f * f;
 		vertices[1].position.y = 0.5f * f;
+		vertices[1].texture.x = 1.0f;
+		vertices[1].texture.y = 1.0f;
 
 		vertices[2].position.x = -0.5f * f;
 		vertices[2].position.y = 0.5f * f;
+		vertices[2].texture.x = 0.0f;
+		vertices[2].texture.y = 1.0f;
 
 		vertices[3].position.x = 0.5f * f;
 		vertices[3].position.y = -0.5f * f;
+		vertices[3].texture.x = 1.0f;
+		vertices[3].texture.y = 0.0f;
 
 		constexpr u32 indexCount = 6;
 		u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
 
 		UploadDataRange(m_context.device.graphicsCommandPool, nullptr, m_context.device.graphicsQueue, &m_objectVertexBuffer, 0, sizeof(Vertex3D) * vertexCount, vertices);
 		UploadDataRange(m_context.device.graphicsCommandPool, nullptr, m_context.device.graphicsQueue, &m_objectIndexBuffer, 0, sizeof(u32) * indexCount, indices);
+
+		u32 objectId = 0;
+		if (!m_objectShader.AcquireResources(&m_context, &objectId))
+		{
+			Logger::Error("Failed to acquire shader resources");
+			return false;
+		}
+
 		// TODO End of temporary test code
 
 		Logger::Info("Successfully Initialized");
@@ -147,16 +166,18 @@ namespace C3D
 		Logger::PrefixInfo("VULKAN_RENDERER", "OnResize() w/h/gen {}/{}/{}", width, height, m_context.frameBufferSizeGeneration);
 	}
 
-	bool RendererVulkan::BeginFrame(f32 deltaTime)
+	bool RendererVulkan::BeginFrame(const f32 deltaTime)
 	{
-		const auto& device = m_context.device;
 		Logger::PushPrefix("VULKAN_RENDERER");
+
+		m_context.frameDeltaTime = deltaTime;
+		const auto& device = m_context.device;
 
 		// If we are recreating the SwapChain we should stop this frame
 		if (m_context.recreatingSwapChain)
 		{
 			const auto result = vkDeviceWaitIdle(device.logicalDevice);
-			if (!VulkanUtils::ResultIsSuccess(result))
+			if (!VulkanUtils::IsSuccess(result))
 			{
 				Logger::Error("vkDeviceWaitIdle (1) failed: {}", VulkanUtils::ResultString(result, true));
 				return false;
@@ -170,7 +191,7 @@ namespace C3D
 		{
 			// FrameBuffer was resized. We need to recreate it.
 			const auto result = vkDeviceWaitIdle(device.logicalDevice);
-			if (!VulkanUtils::ResultIsSuccess(result))
+			if (!VulkanUtils::IsSuccess(result))
 			{
 				Logger::Error("vkDeviceWaitIdle (2) failed: {}", VulkanUtils::ResultString(result, true));
 				return false;
@@ -238,14 +259,14 @@ namespace C3D
 		m_objectShader.globalUbo.view = view;
 		// TODO: other ubo properties here
 
-		m_objectShader.UpdateGlobalState(&m_context);
+		m_objectShader.UpdateGlobalState(&m_context, m_context.frameDeltaTime);
 	}
 
-	void RendererVulkan::UpdateObject(const mat4 model)
+	void RendererVulkan::UpdateObject(const GeometryRenderData data)
 	{
 		const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
 
-		m_objectShader.UpdateObject(&m_context, model);
+		m_objectShader.UpdateObject(&m_context, data);
 
 		// TODO: Temporary test code
 		m_objectShader.Use(&m_context);
@@ -359,7 +380,7 @@ namespace C3D
 
 		m_context.swapChain.Destroy(&m_context);
 
-		VulkanDeviceManager::Destroy(&m_context);
+		m_context.device.Destroy(&m_context);
 
 		vkDestroySurfaceKHR(m_context.instance, m_context.surface, m_context.allocator);
 
@@ -368,6 +389,97 @@ namespace C3D
 		vkDestroyInstance(m_context.instance, m_context.allocator);
 
 		Logger::PopPrefix();
+	}
+
+	void RendererVulkan::CreateTexture(const string& name, bool autoRelease, const i32 width, const i32 height, const i32 channelCount, const u8* pixels, const bool hasTransparency, Texture* outTexture)
+	{
+		outTexture->width = width;
+		outTexture->height = height;
+		outTexture->channelCount = static_cast<u8>(channelCount);
+		outTexture->generation = INVALID_ID;
+
+		// Internal data creation
+		// TODO: use an allocator for this
+		outTexture->internalData = Memory::Allocate<VulkanTextureData>(1, MemoryType::Texture);
+
+		const auto data = static_cast<VulkanTextureData*>(outTexture->internalData);
+
+		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * channelCount;
+		constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM; // NOTE: Assumes 8 bits per channel
+
+		constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		constexpr VkMemoryPropertyFlags memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+		VulkanBuffer staging;
+		staging.Create(&m_context, imageSize, usage, memoryPropertyFlags, true);
+
+		staging.LoadData(&m_context, 0, imageSize, 0, pixels);
+
+		// NOTE: Lots of assumptions here, different texture types will require different options here!
+		data->image.Create(&m_context, VK_IMAGE_TYPE_2D, width, height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		VulkanCommandBuffer tempBuffer;
+		VkCommandPool pool = m_context.device.graphicsCommandPool;
+
+		tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
+
+		data->image.TransitionLayout(&m_context, &tempBuffer, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		data->image.CopyFromBuffer(&m_context, staging.handle, &tempBuffer);
+
+		data->image.TransitionLayout(&m_context, &tempBuffer, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		tempBuffer.EndSingleUse(&m_context, pool, m_context.device.graphicsQueue);
+
+		staging.Destroy(&m_context);
+
+		// TODO: These filters should be configurable
+		VkSamplerCreateInfo samplerCreateInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+		samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+		samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+		samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerCreateInfo.anisotropyEnable = VK_TRUE;
+		samplerCreateInfo.maxAnisotropy = 16;
+		samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerCreateInfo.compareEnable = VK_FALSE;
+		samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerCreateInfo.mipLodBias = 0.0f;
+		samplerCreateInfo.minLod = 0.0f;
+		samplerCreateInfo.maxLod = 0.0f;
+
+		const VkResult result = vkCreateSampler(m_context.device.logicalDevice, &samplerCreateInfo, m_context.allocator, &data->sampler);
+		if (!VulkanUtils::IsSuccess(result))
+		{
+			Logger::PrefixError("VULKAN_RENDERER", "Error creating texture sampler: {}", VulkanUtils::ResultString(result, true));
+			return;
+		}
+
+		outTexture->hasTransparency = hasTransparency;
+		outTexture->generation++;
+	}
+
+	void RendererVulkan::DestroyTexture(Texture* texture)
+	{
+		vkDeviceWaitIdle(m_context.device.logicalDevice);
+
+		const auto data = static_cast<VulkanTextureData*>(texture->internalData);
+		if (data)
+		{
+			data->image.Destroy(&m_context);
+			Memory::Zero(&data->image, sizeof(VulkanImage));
+
+			vkDestroySampler(m_context.device.logicalDevice, data->sampler, m_context.allocator);
+			data->sampler = nullptr;
+
+			Memory::Free(texture->internalData, sizeof(VulkanTextureData), MemoryType::Texture);
+		}
+		
+		Memory::Zero(texture, sizeof(Texture));
 	}
 
 	void RendererVulkan::CreateCommandBuffers()
@@ -427,8 +539,8 @@ namespace C3D
 		}
 
 		// Re-query the SwapChain support and depth format since it might have changed
-		VulkanDeviceManager::QuerySwapChainSupport(m_context.device.physicalDevice, m_context.surface, &m_context.device.swapChainSupport);
-		VulkanDeviceManager::DetectDepthFormat(&m_context.device);
+		m_context.device.QuerySwapChainSupport(m_context.surface, &m_context.device.swapChainSupport);
+		m_context.device.DetectDepthFormat();
 
 		m_context.swapChain.Recreate(&m_context, m_context.cachedFrameBufferWidth, m_context.cachedFrameBufferHeight);
 
@@ -457,8 +569,8 @@ namespace C3D
 
 		m_context.mainRenderPass.area.x = 0;
 		m_context.mainRenderPass.area.y = 0;
-		m_context.mainRenderPass.area.z = m_context.frameBufferWidth;
-		m_context.mainRenderPass.area.w = m_context.frameBufferHeight;
+		m_context.mainRenderPass.area.z = static_cast<i32>(m_context.frameBufferWidth);
+		m_context.mainRenderPass.area.w = static_cast<i32>(m_context.frameBufferHeight);
 
 		RegenerateFrameBuffers(&m_context.swapChain, &m_context.mainRenderPass);
 		CreateCommandBuffers();

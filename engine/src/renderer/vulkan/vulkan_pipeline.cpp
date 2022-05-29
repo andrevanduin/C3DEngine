@@ -138,7 +138,7 @@ namespace C3D
 		pipelineCreateInfo.basePipelineIndex = -1;
 
 		VkResult result = vkCreateGraphicsPipelines(context->device.logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, context->allocator, &m_handle);
-		if (VulkanUtils::ResultIsSuccess(result))
+		if (VulkanUtils::IsSuccess(result))
 		{
 			Logger::Debug("Graphics pipeline created");
 			return true;

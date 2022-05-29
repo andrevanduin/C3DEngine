@@ -50,6 +50,9 @@ namespace C3D
 		static void Error(const string& format, Args&& ... args);
 
 		template <class... Args>
+		static void PrefixFatal(const string& prefix, const string& format, Args&& ... args);
+
+		template <class... Args>
 		static void Fatal(const string& format, Args&& ... args);
 
 		static VkBool32 VkDebugLog(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -69,6 +72,15 @@ namespace C3D
 	{
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 		s_coreLogger->error("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+	}
+
+	template <class ... Args>
+	void Logger::PrefixFatal(const string& prefix, const string& format, Args&&... args)
+	{
+		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
+
+		s_coreLogger->critical("[" + prefix + "] - " + format, std::forward<Args>(args)...);
+		abort();
 	}
 
 	template <class... Args>

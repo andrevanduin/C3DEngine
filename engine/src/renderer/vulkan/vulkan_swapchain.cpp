@@ -3,6 +3,7 @@
 
 #include "vulkan_device.h"
 #include "vulkan_image.h"
+#include "vulkan_types.h"
 
 #include "core/memory.h"
 #include "core/logger.h"
@@ -110,7 +111,7 @@ namespace C3D
 		m_presentMode = GetPresentMode(context);
 
 		// Query SwapChain support again to see if anything changed since last time (for example different resolution or monitor)
-		VulkanDeviceManager::QuerySwapChainSupport(context->device.physicalDevice, context->surface, &context->device.swapChainSupport);
+		context->device.QuerySwapChainSupport(context->surface, &context->device.swapChainSupport);
 
 		if (context->device.swapChainSupport.capabilities.currentExtent.width != UINT32_MAX)
 		{
@@ -192,7 +193,7 @@ namespace C3D
 			VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewInfo, context->allocator, &views[i]));
 		}
 
-		if (!VulkanDeviceManager::DetectDepthFormat(&context->device))
+		if (!context->device.DetectDepthFormat())
 		{
 			context->device.depthFormat = VK_FORMAT_UNDEFINED;
 			Logger::Fatal("Failed to find a supported Depth Format");

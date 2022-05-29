@@ -35,6 +35,12 @@ constexpr auto ToUnderlying(E e) noexcept
     return static_cast<std::underlying_type_t<E>>(e);
 }
 
+/**
+ * @brief Any id set to this value should be considered invalid,
+ * and not actually pointing to a real object.
+ */
+#define INVALID_ID UINT32_MAX
+
 #ifdef C3D_EXPORT
 #ifdef _MSC_VER
 #define C3D_API __declspec(dllexport)

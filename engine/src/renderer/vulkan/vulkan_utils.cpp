@@ -3,7 +3,7 @@
 
 namespace C3D
 {
-	bool VulkanUtils::ResultIsSuccess(const VkResult result)
+	bool VulkanUtils::IsSuccess(const VkResult result)
 	{
 		// From: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkResult.html
 		switch (result) {

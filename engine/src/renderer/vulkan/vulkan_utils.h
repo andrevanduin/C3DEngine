@@ -4,7 +4,7 @@
 
 namespace C3D::VulkanUtils
 {
-	bool ResultIsSuccess(VkResult result);
+	bool IsSuccess(VkResult result);
 
-	const char* ResultString(VkResult result, bool getExtended);
+	const char* ResultString(VkResult result, bool getExtended = true);
 }

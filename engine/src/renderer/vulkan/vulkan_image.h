@@ -1,7 +1,10 @@
 
 #pragma once
 #include <vulkan/vulkan.h>
+
 #include "core/defines.h"
+
+#include "vulkan_command_buffer.h"
 
 namespace C3D
 {
@@ -17,6 +20,11 @@ namespace C3D
 			VkImageAspectFlags viewAspectFlags);
 
 		void CreateView(const VulkanContext* context, VkFormat format, VkImageAspectFlags aspectFlags);
+
+		void TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer, VkFormat format, 
+			VkImageLayout oldLayout, VkImageLayout newLayout) const;
+
+		void CopyFromBuffer(const VulkanContext* context, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
 
 		void Destroy(const VulkanContext* context);
 

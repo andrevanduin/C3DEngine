@@ -45,12 +45,12 @@ namespace C3D
 
 		Services::Init(this);
 
-		Event.Register(SystemEventCode::Resized, nullptr, new EventCallback(this, &Application::OnResizeEvent));
-		Event.Register(SystemEventCode::Minimized, nullptr, new EventCallback(this, &Application::OnMinimizeEvent));
-		Event.Register(SystemEventCode::FocusGained, nullptr, new EventCallback(this, &Application::OnFocusGainedEvent));
+		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
+		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
+		Event.Register(SystemEventCode::FocusGained, new EventCallback(this, &Application::OnFocusGainedEvent));
 
-		Event.Register(SystemEventCode::KeyPressed, nullptr, new StaticEventCallback(&OnKeyEvent));
-		Event.Register(SystemEventCode::KeyReleased, nullptr, new StaticEventCallback(&OnKeyEvent));
+		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
+		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
 
 		Logger::PopPrefix();
 
@@ -217,7 +217,7 @@ namespace C3D
 		}
 	}
 
-	bool Application::OnResizeEvent(const u16 code, void* sender, void* listener, const EventContext context)
+	bool Application::OnResizeEvent(const u16 code, void* sender, const EventContext context)
 	{
 		if (code == SystemEventCode::Resized)
 		{
@@ -246,7 +246,7 @@ namespace C3D
 		return false;
 	}
 
-	bool Application::OnMinimizeEvent(const u16 code, void* sender, void* listener, EventContext context)
+	bool Application::OnMinimizeEvent(const u16 code, void* sender, EventContext context)
 	{
 		if (code == SystemEventCode::Minimized)
 		{
@@ -257,7 +257,7 @@ namespace C3D
 		return false;
 	}
 
-	bool Application::OnFocusGainedEvent(const u16 code, void* sender, void* listener, const EventContext context)
+	bool Application::OnFocusGainedEvent(const u16 code, void* sender, const EventContext context)
 	{
 		if (code == SystemEventCode::FocusGained)
 		{
@@ -274,7 +274,7 @@ namespace C3D
 		return false;
 	}
 
-	bool Application::OnKeyEvent(const u16 code, void* sender, void* listener, const EventContext context)
+	bool Application::OnKeyEvent(const u16 code, void* sender, const EventContext context)
 	{
 		if (code == SystemEventCode::KeyPressed)
 		{

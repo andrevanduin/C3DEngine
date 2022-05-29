@@ -4,64 +4,53 @@
 #include <algorithm>
 
 #include "core/logger.h"
-#include "core/memory.h"
 
 namespace C3D
 {
 	bool EventSystem::Init()
 	{
 		Logger::PrefixInfo("EVENT", "Init()");
-		Memory::Zero(&m_state, sizeof m_state);
-
 		return true;
 	}
 
 	void EventSystem::Shutdown()
 	{
 		Logger::PrefixInfo("EVENT", "Shutting Down");
-		for (auto& [events] : m_state.registered)
+		for (auto& [events] : m_registered)
 		{
 			if (!events.empty()) events.clear();
 		}
 	}
 
-	bool EventSystem::Register(u16 code, void* listener, IEventCallback* onEvent)
+	bool EventSystem::Register(u16 code, IEventCallback* onEvent)
 	{
-		for (const auto& event : m_state.registered[code].events)
+		auto& events = m_registered[code].events;
+		for (const auto& event : events)
 		{
-			if (event.listener == listener)
+			if (event->Equals(onEvent))
 			{
 				Logger::Warn("This listener has already been Registered for {}", code);
 				return false;
 			}
 		}
 
-		const RegisteredEvent event{ listener, onEvent };
-		m_state.registered[code].events.push_back(event);
-
+		events.push_back(onEvent);
 		return true;
 	}
 
-	bool EventSystem::UnRegister(const u16 code, const void* listener, const IEventCallback* onEvent)
+	bool EventSystem::UnRegister(const u16 code, const IEventCallback* onEvent)
 	{
-		if (m_state.registered[code].events.empty())
+		auto& events = m_registered[code].events;
+		if (events.empty())
 		{
 			Logger::Warn("Tried to UnRegister Event for a code that has no events");
 			return false;
 		}
 
-		const auto it = std::find_if(
-			m_state.registered[code].events.begin(), 
-			m_state.registered[code].events.end(), 
-			[&](const RegisteredEvent& e)
-			{
-				return e.listener == listener && e.callback == onEvent;
-			}
-		);
-
-		if (it != m_state.registered[code].events.end())
+		const auto it = std::find_if(events.begin(), events.end(), [&](IEventCallback* e) { return e->Equals(onEvent); });
+		if (it != events.end())
 		{
-			m_state.registered[code].events.erase(it);
+			events.erase(it);
 			return true;
 		}
 
@@ -71,15 +60,11 @@ namespace C3D
 
 	bool EventSystem::Fire(const u16 code, void* sender, const EventContext data)
 	{
-		if (m_state.registered[code].events.empty())
+		auto& events = m_registered[code].events;
+		if (events.empty())
 		{
 			return false;
 		}
-
-		return std::any_of(m_state.registered[code].events.begin(), m_state.registered[code].events.end(), 
-		[&](const RegisteredEvent& e)
-		{
-			return e.callback->Invoke(code, sender, e.listener, data);
-		});
+		return std::any_of(events.begin(), events.end(), [&](IEventCallback* e){ return e->Invoke(code, sender, data); });
 	}
 }

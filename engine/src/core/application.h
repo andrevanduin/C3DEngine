@@ -57,11 +57,11 @@ namespace C3D
 		void Shutdown();
 		void HandleSdlEvents();
 
-		bool OnResizeEvent(u16 code, void* sender, void* listener, EventContext context);
-		bool OnMinimizeEvent(u16 code, void* sender, void* listener, EventContext context);
-		bool OnFocusGainedEvent(u16 code, void* sender, void* listener, EventContext context);
+		bool OnResizeEvent(u16 code, void* sender, EventContext context);
+		bool OnMinimizeEvent(u16 code, void* sender, EventContext context);
+		bool OnFocusGainedEvent(u16 code, void* sender, EventContext context);
 
-		static bool OnKeyEvent(u16 code, void* sender, void* listener, EventContext context);
+		static bool OnKeyEvent(u16 code, void* sender, EventContext context);
 
 		SDL_Window* m_window{ nullptr };
 

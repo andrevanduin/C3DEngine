@@ -10,7 +10,7 @@
 
 #define Input		C3D::Services::GetInput()
 #define Event		C3D::Services::GetEvent()
-#define Renderer	C3D::Services::GetRenderer()
+#define Render		C3D::Services::GetRenderer()
 
 namespace C3D
 {

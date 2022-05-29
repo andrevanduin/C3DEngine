@@ -3,6 +3,8 @@
 #include "vulkan_types.h"
 #include "vulkan_buffer.h"
 
+#include "resources/texture.h"
+
 #include "../renderer_backend.h"
 #include "shaders/vulkan_object_shader.h"
 
@@ -10,12 +12,13 @@ struct SDL_Window;
 
 namespace C3D
 {
-	class RendererVulkan : public RendererBackend
+	class RendererVulkan final : public RendererBackend
 	{
 	public:
 		RendererVulkan();
+		virtual ~RendererVulkan() = default;
 
-		bool Init(Application* application) override;
+		bool Init(Application* application, Texture* defaultDiffuse) override;
 
 		void OnResize(u16 width, u16 height) override;
 
@@ -23,11 +26,15 @@ namespace C3D
 
 		void UpdateGlobalState(mat4 projection, mat4 view, vec3 viewPosition, vec4 ambientColor, i32 mode) override;
 
-		void UpdateObject(mat4 model) override;
+		void UpdateObject(GeometryRenderData data) override;
 
 		bool EndFrame(f32 deltaTime) override;
 
 		void Shutdown() override;
+
+		void CreateTexture(const string& name, bool autoRelease, i32 width, i32 height, i32 channelCount, const u8* pixels, bool hasTransparency, Texture* outTexture) override;
+
+		void DestroyTexture(Texture* texture) override;
 
 	private:
 		void CreateCommandBuffers();

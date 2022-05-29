@@ -28,4 +28,7 @@ target_link_libraries(C3DEngine PRIVATE vk-bootstrap::vk-bootstrap)
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(C3DEngine PRIVATE glm::glm)
 
+find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
+target_include_directories(C3DEngine PRIVATE ${STB_INCLUDE_DIRS})
+
 target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")

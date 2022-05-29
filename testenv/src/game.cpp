@@ -63,6 +63,15 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 
 	}
 
+	// TEMP
+	if (Input.IsKeyUp('t') && Input.WasKeyDown('t'))
+	{
+		C3D::Logger::Debug("Swapping Texture");
+		C3D::EventContext context = {};
+		Event.Fire(C3D::SystemEventCode::Debug0, this, context);
+	}
+	// TEMP END
+
 	if (Input.IsKeyDown('s'))
 	{
 		const vec3 backward(m_view[0][2], m_view[1][2], m_view[2][2]);
@@ -105,7 +114,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	RecalculateViewMatrix();
 
 	// HACK: This is just for testing
-	Renderer.SetView(m_view);
+	Render.SetView(m_view);
 }
 
 void TestEnv::OnRender(f64 deltaTime)

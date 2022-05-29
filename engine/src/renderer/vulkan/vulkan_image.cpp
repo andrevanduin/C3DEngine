@@ -82,6 +82,75 @@ namespace C3D
 		VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewCreateInfo, context->allocator, &view));
 	}
 
+	void VulkanImage::TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer,
+		VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout) const
+	{
+		VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
+		barrier.srcQueueFamilyIndex = context->device.graphicsQueueIndex;
+		barrier.dstQueueFamilyIndex = context->device.graphicsQueueIndex;
+		barrier.image = handle;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+
+		VkPipelineStageFlags sourceStage, destStage;
+
+		// Don't care about the old layout - transfer to optimal layout for the GPU's underlying implementation
+		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			// Don't care what stage the pipeline is in at the start
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+			// Used for copying
+			destStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		// Transition from a transfer destination to a shader-readonly layout
+		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			// From a copying stage to
+			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			// The fragment stage
+			destStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+		else
+		{
+			Logger::PrefixFatal("VULKAN_IMAGE", "Unsupported layout transition");
+			return;
+		}
+
+		vkCmdPipelineBarrier(commandBuffer->handle, sourceStage, destStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	}
+
+	void VulkanImage::CopyFromBuffer(const VulkanContext* context, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
+	{
+		VkBufferImageCopy region;
+		Memory::Zero(&region, sizeof(VkBufferImageCopy));
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+
+		region.imageExtent.width = m_width;
+		region.imageExtent.height = m_height;
+		region.imageExtent.depth = 1;
+
+		vkCmdCopyBufferToImage(commandBuffer->handle, buffer, handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	}
+
 	void VulkanImage::Destroy(const VulkanContext* context)
 	{
 		if (view)

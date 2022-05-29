@@ -7,5 +7,6 @@ namespace C3D
 	struct Vertex3D
 	{
 		vec3 position;
+		vec2 texture;
 	};
 }

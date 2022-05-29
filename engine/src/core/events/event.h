@@ -13,32 +13,21 @@ namespace C3D
 
 	class EventSystem
 	{
-		struct RegisteredEvent
-		{
-			void*			listener;
-			IEventCallback* callback;
-		};
-
 		struct EventCodeEntry
 		{
-			std::vector<RegisteredEvent> events;
-		};
-
-		struct EventSystemState
-		{
-			EventCodeEntry registered[MAX_MESSAGE_CODES];
+			std::vector<IEventCallback*> events;
 		};
 
 	public:
 		bool Init();
 		void Shutdown();
 
-		bool Register(u16 code, void* listener, IEventCallback* onEvent);
-		bool UnRegister(u16 code, const void* listener, const IEventCallback* onEvent);
+		C3D_API bool Register(u16 code, IEventCallback* onEvent);
+		C3D_API bool UnRegister(u16 code, const IEventCallback* onEvent);
 
-		bool Fire(u16 code, void* sender, EventContext data);
+		C3D_API bool Fire(u16 code, void* sender, EventContext data);
 
 	private:
-		EventSystemState m_state;
+		EventCodeEntry m_registered[MAX_MESSAGE_CODES];
 	};
 }

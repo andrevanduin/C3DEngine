@@ -4,62 +4,80 @@
 
 namespace C3D
 {
+	typedef bool (*pStaticFunc)(u16 code, void* sender, EventContext context);
+
 	class IEventCallback
 	{
 	public:
-		virtual bool Invoke(u16 code, void* sender, void* listener, EventContext context) = 0;
-		virtual bool operator== (IEventCallback* other) = 0;
+		IEventCallback() = default;
+		virtual ~IEventCallback() = default;
+
+		virtual bool Invoke(u16 code, void* sender, EventContext context) = 0;
+
+		virtual bool Equals(IEventCallback* other) = 0;
+		virtual bool Equals(const IEventCallback* other) = 0;
 	};
 
 	class StaticEventCallback final : public IEventCallback
 	{
 	public:
-		explicit StaticEventCallback(bool (*function)(u16 code, void* sender, void* listener, EventContext context))
-			: function(function) {}
+		explicit StaticEventCallback(const pStaticFunc func) : function(func) {}
 
-		virtual ~StaticEventCallback() = default;
+		~StaticEventCallback() override = default;
 
-		bool Invoke(const u16 code, void* sender, void* listener, const EventContext context) override
+		bool Invoke(const u16 code, void* sender, const EventContext context) override
 		{
-			return function(code, sender, listener, context);
+			return function(code, sender, context);
 		}
 
-		bool operator== (IEventCallback* other) override
+		bool Equals(IEventCallback* other) override
 		{
-			const StaticEventCallback* otherEventCallback = dynamic_cast<StaticEventCallback*>(other);
+			const auto* otherEventCallback = dynamic_cast<StaticEventCallback*>(other);
 			if (otherEventCallback == nullptr) return false;
 			return otherEventCallback->function == function;
 		}
 
-	private:
-		bool (*function)(u16 code, void* sender, void* listener, EventContext context);
+		bool Equals(const IEventCallback* other) override
+		{
+			const auto* otherEventCallback = dynamic_cast<const StaticEventCallback*>(other);
+			if (otherEventCallback == nullptr) return false;
+			return otherEventCallback->function == function;
+		}
+
+		pStaticFunc function;
 	};
 
 	template<typename T>
 	class EventCallback final : public IEventCallback
 	{
 	public:
-		EventCallback(T* instance, bool (T::* function)(u16 code, void* sender, void* listener, EventContext context))
-			: instance(instance), function(function) {}
+		EventCallback(T* instance, bool (T::* function)(u16 code, void* sender, EventContext context)) : instance(instance), function(function) {}
 
-		virtual ~EventCallback() = default;
+		~EventCallback() override = default;
 
-		bool Invoke(u16 code, void* sender, void* listener, EventContext context) override
+		bool Invoke(u16 code, void* sender, EventContext context) override
 		{
-			return (instance->*function)(code, sender, listener, context);
+			return (instance->*function)(code, sender, context);
 		}
 
-		bool operator== (IEventCallback* other) override
+		bool Equals(IEventCallback* other) override
 		{
-			const EventCallback* otherEventCallback = dynamic_cast<EventCallback*>(other);
+			const auto* otherEventCallback = dynamic_cast<EventCallback*>(other);
 			if (otherEventCallback == nullptr) return false;
 
-			return this->function == otherEventCallback->function &&
-				this->instance == otherEventCallback->instance;
+			return otherEventCallback->instance == instance && otherEventCallback->function == function;
 		}
-	private:
+
+		bool Equals(const IEventCallback* other) override
+		{
+			const auto* otherEventCallback = dynamic_cast<const EventCallback*>(other);
+			if (otherEventCallback == nullptr) return false;
+
+			return otherEventCallback->instance == instance && otherEventCallback->function == function;
+		}
+
 		T* instance;
-		bool (T::* function)(u16 code, void* sender, void* listener, EventContext context);
+		bool (T::* function)(u16 code, void* sender, EventContext context);
 	};
 }
 

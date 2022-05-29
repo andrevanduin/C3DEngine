@@ -37,7 +37,14 @@ namespace C3D
 		MouseWheel = 0x07,
 		Resized = 0x08,
 		Minimized = 0x09,
-		FocusGained = 0x10,
+		FocusGained = 0x0a,
+
+		Debug0 = 0x10,
+		Debug1 = 0x11,
+		Debug2 = 0x12,
+		Debug3 = 0x13,
+		Debug4 = 0x14,
+
 		MaxCode = 0xFF
 	};
 }
