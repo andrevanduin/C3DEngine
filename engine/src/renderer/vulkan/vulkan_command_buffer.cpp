@@ -1,34 +1,37 @@
 
 #include "vulkan_command_buffer.h"
-#include "core/memory.h"
+#include "vulkan_types.h"
 
 namespace C3D
 {
-	void VulkanCommandBufferManager::Allocate(VulkanContext* context, VkCommandPool pool, const bool isPrimary, VulkanCommandBuffer* commandBuffer)
+	VulkanCommandBuffer::VulkanCommandBuffer()
+		: handle(nullptr), state()
 	{
-		Memory::Zero(commandBuffer, sizeof(VulkanCommandBuffer));
+	}
 
+	void VulkanCommandBuffer::Allocate(const VulkanContext* context, VkCommandPool pool, const bool isPrimary)
+	{
 		VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 		allocateInfo.commandPool = pool;
 		allocateInfo.level = isPrimary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 		allocateInfo.commandBufferCount = 1;
 		allocateInfo.pNext = nullptr;
 
-		commandBuffer->state = VulkanCommandBufferState::NotAllocated;
-		VK_CHECK(vkAllocateCommandBuffers(context->device.logicalDevice, &allocateInfo, &commandBuffer->handle));
+		state = VulkanCommandBufferState::NotAllocated;
+		VK_CHECK(vkAllocateCommandBuffers(context->device.logicalDevice, &allocateInfo, &handle));
 
-		commandBuffer->state = VulkanCommandBufferState::Ready;
+		state = VulkanCommandBufferState::Ready;
 	}
 
-	void VulkanCommandBufferManager::Free(const VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer)
+	void VulkanCommandBuffer::Free(const VulkanContext* context, VkCommandPool pool)
 	{
-		vkFreeCommandBuffers(context->device.logicalDevice, pool, 1, &commandBuffer->handle);
+		vkFreeCommandBuffers(context->device.logicalDevice, pool, 1, &handle);
 
-		commandBuffer->handle = nullptr;
-		commandBuffer->state = VulkanCommandBufferState::NotAllocated;
+		handle = nullptr;
+		state = VulkanCommandBufferState::NotAllocated;
 	}
 
-	void VulkanCommandBufferManager::Begin(VulkanCommandBuffer* commandBuffer, const bool isSingleUse, const bool isRenderPassContinue, const bool isSimultaneousUse)
+	void VulkanCommandBuffer::Begin(const bool isSingleUse, const bool isRenderPassContinue, const bool isSimultaneousUse)
 	{
 		VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 		beginInfo.flags = 0;
@@ -37,43 +40,43 @@ namespace C3D
 		if (isRenderPassContinue) beginInfo.flags |= VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 		if (isSimultaneousUse) beginInfo.flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-		VK_CHECK(vkBeginCommandBuffer(commandBuffer->handle, &beginInfo));
-		commandBuffer->state = VulkanCommandBufferState::Recording;
+		VK_CHECK(vkBeginCommandBuffer(handle, &beginInfo));
+		state = VulkanCommandBufferState::Recording;
 	}
 
-	void VulkanCommandBufferManager::End(VulkanCommandBuffer* commandBuffer)
+	void VulkanCommandBuffer::End()
 	{
-		VK_CHECK(vkEndCommandBuffer(commandBuffer->handle));
-		commandBuffer->state = VulkanCommandBufferState::RecordingEnded;
+		VK_CHECK(vkEndCommandBuffer(handle));
+		state = VulkanCommandBufferState::RecordingEnded;
 	}
 
-	void VulkanCommandBufferManager::UpdateSubmitted(VulkanCommandBuffer* commandBuffer)
+	void VulkanCommandBuffer::UpdateSubmitted()
 	{
-		commandBuffer->state = VulkanCommandBufferState::Submitted;
+		state = VulkanCommandBufferState::Submitted;
 	}
 
-	void VulkanCommandBufferManager::Reset(VulkanCommandBuffer* commandBuffer)
+	void VulkanCommandBuffer::Reset()
 	{
-		commandBuffer->state = VulkanCommandBufferState::Ready;
+		state = VulkanCommandBufferState::Ready;
 	}
 
-	void VulkanCommandBufferManager::AllocateAndBeginSingleUse(VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer)
+	void VulkanCommandBuffer::AllocateAndBeginSingleUse(const VulkanContext* context, VkCommandPool pool)
 	{
-		Allocate(context, pool, true, commandBuffer);
-		Begin(commandBuffer, true, false, false);
+		Allocate(context, pool, true);
+		Begin(true, false, false);
 	}
 
-	void VulkanCommandBufferManager::EndSingleUse(const VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer, VkQueue queue)
+	void VulkanCommandBuffer::EndSingleUse(const VulkanContext* context, VkCommandPool pool, VkQueue queue)
 	{
-		End(commandBuffer);
+		End();
 
 		VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffer->handle;
+		submitInfo.pCommandBuffers = &handle;
 		VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, 0));
 
 		VK_CHECK(vkQueueWaitIdle(queue));
 
-		Free(context, pool, commandBuffer);
+		Free(context, pool);
 	}
 }

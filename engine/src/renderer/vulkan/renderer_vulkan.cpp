@@ -9,7 +9,6 @@
 #include "vulkan_renderpass.h"
 #include "vulkan_command_buffer.h"
 #include "vulkan_fence.h"
-#include "vulkan_framebuffer.h"
 #include "vulkan_utils.h"
 
 #include "core/logger.h"
@@ -67,10 +66,12 @@ namespace C3D
 			return false;
 		}
 
-		VulkanSwapChainManager::Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, &m_context.swapChain);
+		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
 
-		VulkanRenderPassManager::Create(&m_context, &m_context.mainRenderPass, 0, 0, static_cast<f32>(m_context.frameBufferWidth), 
-			static_cast<f32>(m_context.frameBufferHeight), 0.0f, 0.0f, 0.2f, 1.0f, 1.0f, 0);
+		const auto area = ivec4(0, 0, static_cast<f32>(m_context.frameBufferWidth), static_cast<f32>(m_context.frameBufferHeight));
+		constexpr auto clearColor = vec4(0.0f, 0.0f, 0.2f, 1.0f);
+
+		m_context.mainRenderPass.Create(&m_context, area, clearColor, 1.0f, 0);
 
 		m_context.swapChain.frameBuffers.resize(m_context.swapChain.imageCount);
 		RegenerateFrameBuffers(&m_context.swapChain, &m_context.mainRenderPass);
@@ -193,7 +194,7 @@ namespace C3D
 
 		// Acquire the next image from the SwapChain. Pass along the semaphore that should be signaled when this completes.
 		// This same semaphore will later be waited on by the queue submission to ensure this image is available.
-		if (!VulkanSwapChainManager::AcquireNextImageIndex(&m_context, &m_context.swapChain, UINT64_MAX, 
+		if (!m_context.swapChain.AcquireNextImageIndex(&m_context, UINT64_MAX, 
 			m_context.imageAvailableSemaphores[m_context.currentFrame], nullptr, &m_context.imageIndex))
 		{
 			return false;
@@ -201,8 +202,8 @@ namespace C3D
 
 		// We can begin recording commands
 		const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-		VulkanCommandBufferManager::Reset(commandBuffer);
-		VulkanCommandBufferManager::Begin(commandBuffer, false, false, false);
+		commandBuffer->Reset();
+		commandBuffer->Begin(false, false, false);
 
 		// Dynamic state
 		VkViewport viewport;
@@ -221,13 +222,11 @@ namespace C3D
 		vkCmdSetViewport(commandBuffer->handle, 0, 1, &viewport);
 		vkCmdSetScissor(commandBuffer->handle, 0, 1, &scissor);
 
-		m_context.mainRenderPass.w = static_cast<i32>(m_context.frameBufferWidth);
-		m_context.mainRenderPass.h = static_cast<i32>(m_context.frameBufferHeight);
+		m_context.mainRenderPass.area.z = static_cast<i32>(m_context.frameBufferWidth);
+		m_context.mainRenderPass.area.w = static_cast<i32>(m_context.frameBufferHeight);
 
 		// Begin the RenderPass
-		VulkanRenderPassManager::Begin(commandBuffer, &m_context.mainRenderPass, 
-			m_context.swapChain.frameBuffers[m_context.imageIndex].handle);
-
+		m_context.mainRenderPass.Begin(commandBuffer, m_context.swapChain.frameBuffers[m_context.imageIndex].handle);
 		return true;
 	}
 
@@ -265,9 +264,9 @@ namespace C3D
 		const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
 
 		// End the RenderPass
-		VulkanRenderPassManager::End(commandBuffer, &m_context.mainRenderPass);
+		m_context.mainRenderPass.End(commandBuffer);
 		// End the CommandBuffer
-		VulkanCommandBufferManager::End(commandBuffer);
+		commandBuffer->End();
 
 		// Ensure that the previous frame is not using this image
 		if (m_context.imagesInFlight[m_context.imageIndex] != VK_NULL_HANDLE)
@@ -305,10 +304,10 @@ namespace C3D
 		}
 
 		// Queue submission is done
-		VulkanCommandBufferManager::UpdateSubmitted(commandBuffer);
+		commandBuffer->UpdateSubmitted();
 
 		// Present the image (and give it back to the SwapChain)
-		VulkanSwapChainManager::Present(&m_context, &m_context.swapChain, m_context.device.graphicsQueue, 
+		m_context.swapChain.Present(&m_context, m_context.device.graphicsQueue,
 			m_context.device.presentQueue, m_context.queueCompleteSemaphores[m_context.currentFrame], m_context.imageIndex);
 
 		return true;
@@ -353,12 +352,12 @@ namespace C3D
 		Logger::Info("Destroying FrameBuffers");
 		for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
 		{
-			VulkanFrameBufferManager::Destroy(&m_context, &m_context.swapChain.frameBuffers[i]);
+			m_context.swapChain.frameBuffers[i].Destroy(&m_context);
 		}
 
-		VulkanRenderPassManager::Destroy(&m_context, &m_context.mainRenderPass);
+		m_context.mainRenderPass.Destroy(&m_context);
 
-		VulkanSwapChainManager::Destroy(&m_context, &m_context.swapChain);
+		m_context.swapChain.Destroy(&m_context);
 
 		VulkanDeviceManager::Destroy(&m_context);
 
@@ -382,10 +381,10 @@ namespace C3D
 		{
 			if (m_context.graphicsCommandBuffers[i].handle)
 			{
-				VulkanCommandBufferManager::Free(&m_context, m_context.device.graphicsCommandPool, &m_context.graphicsCommandBuffers[i]);
+				m_context.graphicsCommandBuffers[i].Free(&m_context, m_context.device.graphicsCommandPool);
 			}
 
-			VulkanCommandBufferManager::Allocate(&m_context, m_context.device.graphicsCommandPool, true, &m_context.graphicsCommandBuffers[i]);
+			m_context.graphicsCommandBuffers[i].Allocate(&m_context, m_context.device.graphicsCommandPool, true);
 		}
 	}
 
@@ -397,8 +396,8 @@ namespace C3D
 			constexpr u32 attachmentCount = 2;
 			const VkImageView attachments[] = { swapChain->views[i], swapChain->depthAttachment.view };
 
-			VulkanFrameBufferManager::Create(&m_context, renderPass, m_context.frameBufferWidth, m_context.frameBufferHeight, 
-				attachmentCount, attachments, &m_context.swapChain.frameBuffers[i]);
+			m_context.swapChain.frameBuffers[i].Create(&m_context, renderPass, m_context.frameBufferWidth, 
+				m_context.frameBufferHeight, attachmentCount, attachments);
 		}
 	}
 
@@ -431,13 +430,13 @@ namespace C3D
 		VulkanDeviceManager::QuerySwapChainSupport(m_context.device.physicalDevice, m_context.surface, &m_context.device.swapChainSupport);
 		VulkanDeviceManager::DetectDepthFormat(&m_context.device);
 
-		VulkanSwapChainManager::Recreate(&m_context, m_context.cachedFrameBufferWidth, m_context.cachedFrameBufferHeight, &m_context.swapChain);
+		m_context.swapChain.Recreate(&m_context, m_context.cachedFrameBufferWidth, m_context.cachedFrameBufferHeight);
 
 		// Sync the FrameBuffer size with the cached sizes
 		m_context.frameBufferWidth = m_context.cachedFrameBufferWidth;
 		m_context.frameBufferHeight = m_context.cachedFrameBufferHeight;
-		m_context.mainRenderPass.w = m_context.frameBufferWidth;
-		m_context.mainRenderPass.h = m_context.frameBufferHeight;
+		m_context.mainRenderPass.area.z = m_context.frameBufferWidth;
+		m_context.mainRenderPass.area.w = m_context.frameBufferHeight;
 		m_context.cachedFrameBufferWidth = 0;
 		m_context.cachedFrameBufferHeight = 0;
 
@@ -447,19 +446,19 @@ namespace C3D
 		// Cleanup SwapChain
 		for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
 		{
-			VulkanCommandBufferManager::Free(&m_context, m_context.device.graphicsCommandPool, &m_context.graphicsCommandBuffers[i]);
+			m_context.graphicsCommandBuffers[i].Free(&m_context, m_context.device.graphicsCommandPool);
 		}
 
 		// Destroy FrameBuffers
 		for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
 		{
-			VulkanFrameBufferManager::Destroy(&m_context, &m_context.swapChain.frameBuffers[i]);
+			m_context.swapChain.frameBuffers[i].Destroy(&m_context);
 		}
 
-		m_context.mainRenderPass.x = 0;
-		m_context.mainRenderPass.y = 0;
-		m_context.mainRenderPass.w = m_context.frameBufferWidth;
-		m_context.mainRenderPass.h = m_context.frameBufferHeight;
+		m_context.mainRenderPass.area.x = 0;
+		m_context.mainRenderPass.area.y = 0;
+		m_context.mainRenderPass.area.z = m_context.frameBufferWidth;
+		m_context.mainRenderPass.area.w = m_context.frameBufferHeight;
 
 		RegenerateFrameBuffers(&m_context.swapChain, &m_context.mainRenderPass);
 		CreateCommandBuffers();

@@ -1,27 +1,25 @@
 
 #include "vulkan_renderpass.h"
+#include "vulkan_types.h"
+
 #include "core/memory.h"
 #include "core/logger.h"
 
 namespace C3D
 {
-	void VulkanRenderPassManager::Create(VulkanContext* context, VulkanRenderPass* renderPass, f32 x, f32 y, f32 w, f32 h,
-		f32 r, f32 g, f32 b, f32 a, f32 depth, u32 stencil)
+	VulkanRenderPass::VulkanRenderPass()
+		: handle(nullptr), state(), area(), m_clearColor(), m_depth(0), m_stencil(0)
+	{
+	}
+
+	void VulkanRenderPass::Create(VulkanContext* context, const ivec4& renderArea, const vec4& clearColor, f32 depth, u32 stencil)
 	{
 		Logger::PushPrefix("VULKAN_RENDER_PASS");
 
-		renderPass->x = static_cast<i32>(x);
-		renderPass->y = static_cast<i32>(y);
-		renderPass->w = static_cast<i32>(w);
-		renderPass->h = static_cast<i32>(h);
-
-		renderPass->r = r;
-		renderPass->g = g;
-		renderPass->b = b;
-		renderPass->a = a;
-
-		renderPass->depth = depth;
-		renderPass->stencil = stencil;
+		area = renderArea;
+		m_clearColor = clearColor;
+		m_depth = depth;
+		m_stencil = stencil;
 
 		VkSubpassDescription subPass = {};
 		subPass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -100,43 +98,43 @@ namespace C3D
 		createInfo.pNext = nullptr;
 		createInfo.flags = 0;
 
-		VK_CHECK(vkCreateRenderPass(context->device.logicalDevice, &createInfo, context->allocator, &renderPass->handle));
+		VK_CHECK(vkCreateRenderPass(context->device.logicalDevice, &createInfo, context->allocator, &handle));
 
 		Logger::Info("RenderPass successfully created");
 		Logger::PopPrefix();
 	}
 
-	void VulkanRenderPassManager::Destroy(const VulkanContext* context, VulkanRenderPass* renderPass)
+	void VulkanRenderPass::Destroy(const VulkanContext* context)
 	{
 		Logger::PrefixInfo("VULKAN_RENDER_PASS", "Destroying RenderPass");
 
-		if (renderPass && renderPass->handle)
+		if (handle)
 		{
-			vkDestroyRenderPass(context->device.logicalDevice, renderPass->handle, context->allocator);
-			renderPass->handle = nullptr;
+			vkDestroyRenderPass(context->device.logicalDevice, handle, context->allocator);
+			handle = nullptr;
 		}
 	}
 
-	void VulkanRenderPassManager::Begin(VulkanCommandBuffer* commandBuffer, const VulkanRenderPass* renderPass, VkFramebuffer frameBuffer)
+	void VulkanRenderPass::Begin(VulkanCommandBuffer* commandBuffer, VkFramebuffer frameBuffer) const
 	{
 		VkRenderPassBeginInfo beginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-		beginInfo.renderPass = renderPass->handle;
+		beginInfo.renderPass = handle;
 		beginInfo.framebuffer = frameBuffer;
-		beginInfo.renderArea.offset.x = renderPass->x;
-		beginInfo.renderArea.offset.y = renderPass->y;
-		beginInfo.renderArea.extent.width = renderPass->w;
-		beginInfo.renderArea.extent.height = renderPass->h;
+		beginInfo.renderArea.offset.x = area.x;
+		beginInfo.renderArea.offset.y = area.y;
+		beginInfo.renderArea.extent.width = area.z;
+		beginInfo.renderArea.extent.height = area.w;
 
 		VkClearValue clearValues[2];
 		Memory::Zero(clearValues, sizeof(VkClearValue) * 2);
 
-		clearValues[0].color.float32[0] = renderPass->r;
-		clearValues[0].color.float32[1] = renderPass->g;
-		clearValues[0].color.float32[2] = renderPass->b;
-		clearValues[0].color.float32[3] = renderPass->a;
+		clearValues[0].color.float32[0] = m_clearColor.r;
+		clearValues[0].color.float32[1] = m_clearColor.g;
+		clearValues[0].color.float32[2] = m_clearColor.b;
+		clearValues[0].color.float32[3] = m_clearColor.a;
 
-		clearValues[1].depthStencil.depth = renderPass->depth;
-		clearValues[1].depthStencil.stencil = renderPass->stencil;
+		clearValues[1].depthStencil.depth = m_depth;
+		clearValues[1].depthStencil.stencil = m_stencil;
 
 		beginInfo.clearValueCount = 2;
 		beginInfo.pClearValues = clearValues;
@@ -145,7 +143,7 @@ namespace C3D
 		commandBuffer->state = VulkanCommandBufferState::InRenderPass;
 	}
 
-	void VulkanRenderPassManager::End(VulkanCommandBuffer* commandBuffer, VulkanRenderPass* renderPass)
+	void VulkanRenderPass::End(VulkanCommandBuffer* commandBuffer) const
 	{
 		vkCmdEndRenderPass(commandBuffer->handle);
 		commandBuffer->state = VulkanCommandBufferState::Recording;

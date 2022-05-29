@@ -45,11 +45,12 @@ namespace C3D
 
 		Services::Init(this);
 
-		Services::Event().Register(SystemEventCode::Resized, nullptr, new EventCallback(this, &Application::OnResizeEvent));
-		Services::Event().Register(SystemEventCode::Minimized, nullptr, new EventCallback(this, &Application::OnMinimizeEvent));
-		Services::Event().Register(SystemEventCode::FocusGained, nullptr, new EventCallback(this, &Application::OnFocusGainedEvent));
-		Services::Event().Register(SystemEventCode::KeyPressed, nullptr, new EventCallback(this, &Application::OnKeyEvent));
-		Services::Event().Register(SystemEventCode::KeyReleased, nullptr, new EventCallback(this, &Application::OnKeyEvent));
+		Event.Register(SystemEventCode::Resized, nullptr, new EventCallback(this, &Application::OnResizeEvent));
+		Event.Register(SystemEventCode::Minimized, nullptr, new EventCallback(this, &Application::OnMinimizeEvent));
+		Event.Register(SystemEventCode::FocusGained, nullptr, new EventCallback(this, &Application::OnFocusGainedEvent));
+
+		Event.Register(SystemEventCode::KeyPressed, nullptr, new StaticEventCallback(&OnKeyEvent));
+		Event.Register(SystemEventCode::KeyReleased, nullptr, new StaticEventCallback(&OnKeyEvent));
 
 		Logger::PopPrefix();
 
@@ -94,7 +95,7 @@ namespace C3D
 
 				//TODO: Refactor this
 				RenderPacket packet = { static_cast<f32>(delta) };
-				Services::Renderer().DrawFrame(&packet);
+				Services::GetRenderer().DrawFrame(&packet);
 
 				const f64 frameEndTime = Platform::GetAbsoluteTime();
 				const f64 frameElapsedTime = frameEndTime - frameStartTime;
@@ -114,7 +115,7 @@ namespace C3D
 					frameCount++;
 				}
 
-				Services::Input().Update(delta);
+				Services::GetInput().Update(delta);
 
 				m_state.lastTime = currentTime;
 			}
@@ -137,6 +138,11 @@ namespace C3D
 	SDL_Window* Application::GetWindow() const
 	{
 		return m_window;
+	}
+
+	const ApplicationState* Application::GetState() const
+	{
+		return &m_state;
 	}
 
 	void Application::Shutdown()
@@ -168,17 +174,17 @@ namespace C3D
 					break;
 				case SDL_KEYDOWN:
 				case SDL_KEYUP:
-					Services::Input().ProcessKey(e.key.keysym.sym, e.type == SDL_KEYDOWN);
+					Services::GetInput().ProcessKey(e.key.keysym.sym, e.type == SDL_KEYDOWN);
 					break;
 				case SDL_MOUSEBUTTONDOWN:
 				case SDL_MOUSEBUTTONUP:
-					Services::Input().ProcessButton(e.button.button, e.type == SDL_MOUSEBUTTONDOWN);
+					Services::GetInput().ProcessButton(e.button.button, e.type == SDL_MOUSEBUTTONDOWN);
 					break;
 				case SDL_MOUSEMOTION:
-					Services::Input().ProcessMouseMove(e.motion.x, e.motion.y);
+					Services::GetInput().ProcessMouseMove(e.motion.x, e.motion.y);
 					break;
 				case SDL_MOUSEWHEEL:
-					Services::Input().ProcessMouseWheel(e.wheel.y);
+					Services::GetInput().ProcessMouseWheel(e.wheel.y);
 					break;
 				case SDL_WINDOWEVENT:
 					if (e.window.event == SDL_WINDOWEVENT_RESIZED)
@@ -186,19 +192,19 @@ namespace C3D
 						EventContext context{};
 						context.data.u16[0] = static_cast<u16>(e.window.data1);
 						context.data.u16[1] = static_cast<u16>(e.window.data2);
-						Services::Event().Fire(SystemEventCode::Resized, nullptr, context);
+						Event.Fire(SystemEventCode::Resized, nullptr, context);
 					}
 					else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED)
 					{
 						constexpr EventContext context{};
-						Services::Event().Fire(SystemEventCode::Minimized, nullptr, context);
+						Event.Fire(SystemEventCode::Minimized, nullptr, context);
 					}
 					else if (e.window.event == SDL_WINDOWEVENT_ENTER && m_state.suspended)
 					{
 						EventContext context;
 						context.data.u16[0] = static_cast<u16>(m_state.width);
 						context.data.u16[1] = static_cast<u16>(m_state.height);
-						Services::Event().Fire(SystemEventCode::FocusGained, nullptr, context);
+						Event.Fire(SystemEventCode::FocusGained, nullptr, context);
 					}
 					break;
 				case SDL_TEXTINPUT:
@@ -233,7 +239,7 @@ namespace C3D
 				m_state.height = height;
 
 				OnResize(width, height);
-				Services::Renderer().OnResize(width, height);
+				Services::GetRenderer().OnResize(width, height);
 			}
 		}
 
@@ -262,13 +268,13 @@ namespace C3D
 			const u16 height = context.data.u16[1];
 
 			OnResize(width, height);
-			Services::Renderer().OnResize(width, height);
+			Services::GetRenderer().OnResize(width, height);
 		}
 
 		return false;
 	}
 
-	bool Application::OnKeyEvent(u16 code, void* sender, void* listener, EventContext context)
+	bool Application::OnKeyEvent(const u16 code, void* sender, void* listener, const EventContext context)
 	{
 		if (code == SystemEventCode::KeyPressed)
 		{

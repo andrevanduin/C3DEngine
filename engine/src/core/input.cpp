@@ -36,6 +36,12 @@ namespace C3D
 		u16 key;
 		switch (sdlKey)
 		{
+			case SDLK_UP:
+				key = KeyUp;
+				break;
+			case SDLK_DOWN:
+				key = KeyDown;
+				break;
 			case SDLK_LALT:
 				key = KeyLAlt;
 				break;
@@ -73,7 +79,7 @@ namespace C3D
 			context.data.u16[0] = static_cast<u16>(key);
 			
 			const auto code = pressed ? SystemEventCode::KeyPressed : SystemEventCode::KeyReleased;
-			Services::Event().Fire(static_cast<u16>(code), nullptr, context);
+			Services::GetEvent().Fire(static_cast<u16>(code), nullptr, context);
 		}
 	}
 
@@ -87,7 +93,7 @@ namespace C3D
 			context.data.u16[0] = button;
 
 			const auto code = pressed ? SystemEventCode::ButtonPressed : SystemEventCode::ButtonReleased;
-			Services::Event().Fire(ToUnderlying(code), nullptr, context);
+			Services::GetEvent().Fire(ToUnderlying(code), nullptr, context);
 		}
 	}
 
@@ -105,7 +111,7 @@ namespace C3D
 			context.data.i16[0] = x;
 			context.data.i16[1] = y;
 
-			Services::Event().Fire(ToUnderlying(SystemEventCode::MouseMoved), nullptr, context);
+			Services::GetEvent().Fire(ToUnderlying(SystemEventCode::MouseMoved), nullptr, context);
 		}
 	}
 
@@ -113,7 +119,7 @@ namespace C3D
 	{
 		EventContext context{};
 		context.data.i8[0] = static_cast<i8>(delta);
-		Services::Event().Fire(ToUnderlying(SystemEventCode::MouseWheel), nullptr, context);
+		Services::GetEvent().Fire(ToUnderlying(SystemEventCode::MouseWheel), nullptr, context);
 	}
 
 	bool InputSystem::IsKeyDown(const u8 key) const

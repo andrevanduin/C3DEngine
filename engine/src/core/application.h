@@ -50,6 +50,7 @@ namespace C3D
 
 		[[nodiscard]] SDL_Window* GetWindow() const;
 
+		[[nodiscard]] const ApplicationState* GetState() const;
 	private:
 		ApplicationState m_state;
 
@@ -60,7 +61,7 @@ namespace C3D
 		bool OnMinimizeEvent(u16 code, void* sender, void* listener, EventContext context);
 		bool OnFocusGainedEvent(u16 code, void* sender, void* listener, EventContext context);
 
-		bool OnKeyEvent(u16 code, void* sender, void* listener, EventContext context);
+		static bool OnKeyEvent(u16 code, void* sender, void* listener, EventContext context);
 
 		SDL_Window* m_window{ nullptr };
 

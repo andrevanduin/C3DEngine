@@ -1,11 +1,26 @@
 
 #pragma once
-#include "vulkan_types.h"
+#include <vulkan/vulkan.h>
+#include "core/defines.h"
 
-namespace C3D::VulkanFrameBufferManager
+#include "vulkan_renderpass.h"
+
+namespace C3D
 {
-	void Create(const VulkanContext* context, VulkanRenderPass* renderPass, u32 width, u32 height, u32 attachmentCount,
-	            const VkImageView* attachments, VulkanFrameBuffer* frameBuffer);
+	class VulkanFrameBuffer
+	{
+	public:
+		VulkanFrameBuffer();
 
-	void Destroy(const VulkanContext* context, VulkanFrameBuffer* frameBuffer);
+		void Create(const VulkanContext* context, VulkanRenderPass* renderPass, u32 width, u32 height, u32 attachmentCount, const VkImageView* attachments);
+
+		void Destroy(const VulkanContext* context);
+
+		VkFramebuffer handle;
+	private:
+		u32 m_attachmentCount;
+		VkImageView* m_attachments;
+
+		VulkanRenderPass* m_renderPass;
+	};
 }

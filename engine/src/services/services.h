@@ -8,8 +8,9 @@
 #include "core/events/event.h"
 #include "renderer/renderer_frontend.h"
 
-#define INPUT C3D::Services::Input()
-#define EVENT C3D::Services::Event()
+#define Input		C3D::Services::GetInput()
+#define Event		C3D::Services::GetEvent()
+#define Renderer	C3D::Services::GetRenderer()
 
 namespace C3D
 {
@@ -21,9 +22,9 @@ namespace C3D
 		static bool Init(Application* application);
 		static void Shutdown();
 
-		static InputSystem&  Input()	{ return *m_pInput;		}
-		static EventSystem&  Event()	{ return *m_pEvents;	}
-		static RenderSystem& Renderer()	{ return *m_pRenderer;	}
+		static InputSystem&  GetInput()		{ return *m_pInput;		}
+		static EventSystem&  GetEvent()		{ return *m_pEvents;	}
+		static RenderSystem& GetRenderer()	{ return *m_pRenderer;	}
 
 	private:
 		static EventSystem*  m_pEvents;

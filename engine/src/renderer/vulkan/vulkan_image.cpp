@@ -2,20 +2,26 @@
 #include "vulkan_image.h"
 
 #include "vulkan_device.h"
+#include "vulkan_types.h"
 
 #include "core/memory.h"
 #include "core/logger.h"
 
 namespace C3D
 {
-	void VulkanImageManager::CreateImage(const VulkanContext* context, VkImageType imageType, const u32 width, const u32 height, const VkFormat format,
-	                                     const VkImageTiling tiling, const VkImageUsageFlags usage, const VkMemoryPropertyFlags memoryFlags, const bool createView,
-	                                     const VkImageAspectFlags viewAspectFlags, VulkanImage* outImage)
+	VulkanImage::VulkanImage()
+		: handle(nullptr), view(nullptr), m_memory(nullptr), m_width(0), m_height(0)
+	{
+	}
+
+	void VulkanImage::Create(const VulkanContext* context, VkImageType imageType, const u32 width, const u32 height, const VkFormat format,
+	                         const VkImageTiling tiling, const VkImageUsageFlags usage, const VkMemoryPropertyFlags memoryFlags, const bool createView,
+							 const VkImageAspectFlags viewAspectFlags)
 	{
 		Logger::PushPrefix("IMAGE");
 
-		outImage->width = width;
-		outImage->height = height;
+		m_width = width;
+		m_height = height;
 
 		VkImageCreateInfo imageCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -31,10 +37,10 @@ namespace C3D
 		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;			// TODO: Configurable sample count.
 		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;	// TODO: Configurable sharing mode.
 
-		VK_CHECK(vkCreateImage(context->device.logicalDevice, &imageCreateInfo, context->allocator, &outImage->handle));
+		VK_CHECK(vkCreateImage(context->device.logicalDevice, &imageCreateInfo, context->allocator, &handle));
 
 		VkMemoryRequirements memoryRequirements;
-		vkGetImageMemoryRequirements(context->device.logicalDevice, outImage->handle, &memoryRequirements);
+		vkGetImageMemoryRequirements(context->device.logicalDevice, handle, &memoryRequirements);
 
 		const i32 memoryType = context->FindMemoryIndex(memoryRequirements.memoryTypeBits, memoryFlags);
 		if (memoryType == -1)
@@ -46,23 +52,23 @@ namespace C3D
 		VkMemoryAllocateInfo memoryAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 		memoryAllocateInfo.allocationSize = memoryRequirements.size;
 		memoryAllocateInfo.memoryTypeIndex = memoryType;
-		VK_CHECK(vkAllocateMemory(context->device.logicalDevice, &memoryAllocateInfo, context->allocator, &outImage->memory));
+		VK_CHECK(vkAllocateMemory(context->device.logicalDevice, &memoryAllocateInfo, context->allocator, &m_memory));
 
-		VK_CHECK(vkBindImageMemory(context->device.logicalDevice, outImage->handle, outImage->memory, 0)); // TODO: Configurable memory offset.
+		VK_CHECK(vkBindImageMemory(context->device.logicalDevice, handle, m_memory, 0)); // TODO: Configurable memory offset.
 
 		if (createView)
 		{
-			outImage->view = nullptr;
-			CreateView(context, format, outImage, viewAspectFlags);
+			view = nullptr;
+			CreateView(context, format, viewAspectFlags);
 		}
 
 		Logger::PopPrefix();
 	}
 
-	void VulkanImageManager::CreateView(const VulkanContext* context, const VkFormat format, VulkanImage* image, VkImageAspectFlags aspectFlags)
+	void VulkanImage::CreateView(const VulkanContext* context, const VkFormat format, const VkImageAspectFlags aspectFlags)
 	{
 		VkImageViewCreateInfo viewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-		viewCreateInfo.image = image->handle;
+		viewCreateInfo.image = handle;
 		viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;	// TODO: Make configurable.
 		viewCreateInfo.format = format;
 		viewCreateInfo.subresourceRange.aspectMask = aspectFlags;
@@ -73,25 +79,25 @@ namespace C3D
 		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
 		viewCreateInfo.subresourceRange.layerCount = 1;
 
-		VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewCreateInfo, context->allocator, &image->view));
+		VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewCreateInfo, context->allocator, &view));
 	}
 
-	void VulkanImageManager::Destroy(const VulkanContext* context, VulkanImage* image)
+	void VulkanImage::Destroy(const VulkanContext* context)
 	{
-		if (image->view)
+		if (view)
 		{
-			vkDestroyImageView(context->device.logicalDevice, image->view, context->allocator);
-			image->view = nullptr;
+			vkDestroyImageView(context->device.logicalDevice, view, context->allocator);
+			view = nullptr;
 		}
-		if (image->memory)
+		if (m_memory)
 		{
-			vkFreeMemory(context->device.logicalDevice, image->memory, context->allocator);
-			image->memory = nullptr;
+			vkFreeMemory(context->device.logicalDevice, m_memory, context->allocator);
+			m_memory = nullptr;
 		}
-		if (image->handle)
+		if (handle)
 		{
-			vkDestroyImage(context->device.logicalDevice, image->handle, context->allocator);
-			image->handle = nullptr;
+			vkDestroyImage(context->device.logicalDevice, handle, context->allocator);
+			handle = nullptr;
 		}
 	}
 }

@@ -11,6 +11,11 @@
 
 namespace C3D
 {
+	RenderSystem::RenderSystem()
+		: m_projection(), m_view(), m_nearClip(0.1f), m_farClip(1000.0f)
+	{
+	}
+
 	bool RenderSystem::Init(Application* application)
 	{
 		Logger::PushPrefix("RENDERER");
@@ -29,6 +34,12 @@ namespace C3D
 			return false;
 		}
 
+		const auto appState = application->GetState();
+
+		const auto aspectRatio = static_cast<float>(appState->width) / static_cast<float>(appState->height);
+
+		m_projection = glm::perspectiveRH_NO(DegToRad(45.0f), aspectRatio, m_nearClip, m_farClip);
+
 		Logger::Info("Initialized Vulkan Renderer Backend");
 		Logger::PopPrefix();
 		return true;
@@ -41,8 +52,16 @@ namespace C3D
 		DestroyBackend();
 	}
 
-	void RenderSystem::OnResize(const u16 width, const u16 height) const
+	void RenderSystem::SetView(const mat4 view)
 	{
+		m_view = view;
+	}
+
+	void RenderSystem::OnResize(const u16 width, const u16 height)
+	{
+		const auto aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+		m_projection = glm::perspectiveRH_NO(DegToRad(45.0f), aspectRatio, m_nearClip, m_farClip);
+
 		m_backend->OnResize(width, height);
 	}
 
@@ -50,17 +69,7 @@ namespace C3D
 	{
 		if (!BeginFrame(packet->deltaTime)) return true;
 
-		const mat4 projection = glm::perspective(DegToRad(45.0f), 1280.0f / 720.0f, 0.1f, 1000.0f);
-		static f32 z = -10.0f, modifier;
-
-		if (z >= -10.0f) modifier = -0.01f;
-		if (z <= -50.0f) modifier = 0.01f;
-
-		z += modifier;
-
-		const mat4 view = glm::translate(vec3(0, 0, z)); // 30.0f
-
-		m_backend->UpdateGlobalState(projection, view, vec3(0.0f), vec4(1.0f), 0);
+		m_backend->UpdateGlobalState(m_projection, m_view, vec3(0.0f), vec4(1.0f), 0);
 
 		static f32 angle = 0.0f;
 		angle += 0.001f;

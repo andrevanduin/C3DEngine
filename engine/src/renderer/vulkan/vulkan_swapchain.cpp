@@ -37,13 +37,77 @@ namespace C3D
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	void CreateInternal(VulkanContext* context, const u32 width, const u32 height, VulkanSwapChain* swapChain)
+	VulkanSwapChain::VulkanSwapChain()
+		: handle(nullptr), imageFormat(), imageCount(0), maxFramesInFlight(0), views(nullptr), m_presentMode(), m_images(nullptr)
+	{
+	}
+
+	void VulkanSwapChain::Create(VulkanContext* context, const u32 width, const u32 height)
+	{
+		CreateInternal(context, width, height);
+	}
+
+	void VulkanSwapChain::Recreate(VulkanContext* context, const u32 width, const u32 height)
+	{
+		DestroyInternal(context);
+		CreateInternal(context, width, height);
+	}
+
+	void VulkanSwapChain::Destroy(const VulkanContext* context)
+	{
+		Logger::PrefixInfo("VULKAN_SWAP_CHAIN_MANAGER", "Destroying SwapChain");
+		DestroyInternal(context);
+	}
+
+	bool VulkanSwapChain::AcquireNextImageIndex(VulkanContext* context, const u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
+	{
+		const auto result = vkAcquireNextImageKHR(context->device.logicalDevice, handle, timeoutNs, imageAvailableSemaphore, fence, outImageIndex);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			Recreate(context, context->frameBufferWidth, context->frameBufferHeight);
+			return false;
+		}
+		if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		{
+			Logger::Fatal("Failed to acquire SwapChain image");
+			return false;
+		}
+		return true;
+	}
+
+	void VulkanSwapChain::Present(VulkanContext* context, VkQueue graphicsQueue, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, const u32 presentImageIndex)
+	{
+		// Return the image to the SwapChain for presentation
+		VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = &renderCompleteSemaphore;
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = &handle;
+		presentInfo.pImageIndices = &presentImageIndex;
+		presentInfo.pResults = nullptr;
+
+		const auto result = vkQueuePresentKHR(presentQueue, &presentInfo);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		{
+			// Our SwapChain is out of date, suboptimal or a FrameBuffer resize has occurred.
+			// We trigger a SwapChain recreation.
+			Recreate(context, context->frameBufferWidth, context->frameBufferHeight);
+		}
+		else if (result != VK_SUCCESS)
+		{
+			Logger::Fatal("Failed to present SwapChain image");
+		}
+
+		context->currentFrame = (context->currentFrame + 1) % maxFramesInFlight;
+	}
+
+	void VulkanSwapChain::CreateInternal(VulkanContext* context, const u32 width, const u32 height)
 	{
 		Logger::PushPrefix("VULKAN_SWAP_CHAIN_MANAGER");
 
 		VkExtent2D extent = { width, height };
-		swapChain->imageFormat = GetSurfaceFormat(context);
-		swapChain->presentMode = GetPresentMode(context);
+		imageFormat = GetSurfaceFormat(context);
+		m_presentMode = GetPresentMode(context);
 
 		// Query SwapChain support again to see if anything changed since last time (for example different resolution or monitor)
 		VulkanDeviceManager::QuerySwapChainSupport(context->device.physicalDevice, context->surface, &context->device.swapChainSupport);
@@ -59,19 +123,19 @@ namespace C3D
 		extent.width = C3D_CLAMP(extent.width, min.width, max.width);
 		extent.height = C3D_CLAMP(extent.height, min.height, max.height);
 
-		u32 imageCount = context->device.swapChainSupport.capabilities.minImageCount + 1;
-		if (context->device.swapChainSupport.capabilities.maxImageCount > 0 && imageCount > context->device.swapChainSupport.capabilities.maxImageCount)
+		u32 imgCount = context->device.swapChainSupport.capabilities.minImageCount + 1;
+		if (context->device.swapChainSupport.capabilities.maxImageCount > 0 && imgCount > context->device.swapChainSupport.capabilities.maxImageCount)
 		{
-			imageCount = context->device.swapChainSupport.capabilities.maxImageCount;
+			imgCount = context->device.swapChainSupport.capabilities.maxImageCount;
 		}
 
-		swapChain->maxFramesInFlight = static_cast<u8>(imageCount) - 1;
+		maxFramesInFlight = static_cast<u8>(imgCount) - 1;
 
 		VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
 		swapChainCreateInfo.surface = context->surface;
-		swapChainCreateInfo.minImageCount = imageCount;
-		swapChainCreateInfo.imageFormat = swapChain->imageFormat.format;
-		swapChainCreateInfo.imageColorSpace = swapChain->imageFormat.colorSpace;
+		swapChainCreateInfo.minImageCount = imgCount;
+		swapChainCreateInfo.imageFormat = imageFormat.format;
+		swapChainCreateInfo.imageColorSpace = imageFormat.colorSpace;
 		swapChainCreateInfo.imageExtent = extent;
 		swapChainCreateInfo.imageArrayLayers = 1;
 		swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -93,39 +157,39 @@ namespace C3D
 
 		swapChainCreateInfo.preTransform = context->device.swapChainSupport.capabilities.currentTransform;
 		swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-		swapChainCreateInfo.presentMode = swapChain->presentMode;
+		swapChainCreateInfo.presentMode = m_presentMode;
 		swapChainCreateInfo.clipped = VK_TRUE;
 		swapChainCreateInfo.oldSwapchain = nullptr; // TODO: pass the old SwapChain here for better performance
 
-		VK_CHECK(vkCreateSwapchainKHR(context->device.logicalDevice, &swapChainCreateInfo, context->allocator, &swapChain->handle));
+		VK_CHECK(vkCreateSwapchainKHR(context->device.logicalDevice, &swapChainCreateInfo, context->allocator, &handle));
 
 		context->currentFrame = 0;
 
-		swapChain->imageCount = 0;
-		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, swapChain->handle, &swapChain->imageCount, nullptr));
-		if (!swapChain->images)
+		imageCount = 0;
+		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, nullptr));
+		if (!m_images)
 		{
-			swapChain->images = Memory::Allocate<VkImage>(swapChain->imageCount, MemoryType::Renderer);
+			m_images = Memory::Allocate<VkImage>(imageCount, MemoryType::Renderer);
 		}
-		if (!swapChain->views)
+		if (!views)
 		{
-			swapChain->views = Memory::Allocate<VkImageView>(swapChain->imageCount, MemoryType::Renderer);
+			views = Memory::Allocate<VkImageView>(imageCount, MemoryType::Renderer);
 		}
-		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, swapChain->handle, &swapChain->imageCount, swapChain->images));
+		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, m_images));
 
-		for (u32 i = 0; i < swapChain->imageCount; i++)
+		for (u32 i = 0; i < imageCount; i++)
 		{
 			VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-			viewInfo.image = swapChain->images[i];
+			viewInfo.image = m_images[i];
 			viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			viewInfo.format = swapChain->imageFormat.format;
+			viewInfo.format = imageFormat.format;
 			viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			viewInfo.subresourceRange.baseMipLevel = 0;
 			viewInfo.subresourceRange.levelCount = 1;
 			viewInfo.subresourceRange.baseArrayLayer = 0;
 			viewInfo.subresourceRange.layerCount = 1;
 
-			VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewInfo, context->allocator, &swapChain->views[i]));
+			VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewInfo, context->allocator, &views[i]));
 		}
 
 		if (!VulkanDeviceManager::DetectDepthFormat(&context->device))
@@ -134,87 +198,24 @@ namespace C3D
 			Logger::Fatal("Failed to find a supported Depth Format");
 		}
 
-		VulkanImageManager::CreateImage(context, VK_IMAGE_TYPE_2D, extent.width, extent.height, context->device.depthFormat,
+		depthAttachment.Create(context, VK_IMAGE_TYPE_2D, extent.width, extent.height, context->device.depthFormat,
 			VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			true, VK_IMAGE_ASPECT_DEPTH_BIT, &swapChain->depthAttachment);
+			true, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 		Logger::Info("SwapChain successfully created");
 		Logger::PopPrefix();
 	}
 
-	void DestroyInternal(const VulkanContext* context, VulkanSwapChain* swapChain)
+	void VulkanSwapChain::DestroyInternal(const VulkanContext* context)
 	{
 		vkDeviceWaitIdle(context->device.logicalDevice);
-		VulkanImageManager::Destroy(context, &swapChain->depthAttachment);
+		depthAttachment.Destroy(context);
 
-		for (u32 i = 0; i < swapChain->imageCount; i++)
+		for (u32 i = 0; i < imageCount; i++)
 		{
-			vkDestroyImageView(context->device.logicalDevice, swapChain->views[i], context->allocator);
+			vkDestroyImageView(context->device.logicalDevice, views[i], context->allocator);
 		}
 
-		vkDestroySwapchainKHR(context->device.logicalDevice, swapChain->handle, context->allocator);
-	}
-
-	void VulkanSwapChainManager::Create(VulkanContext* context, const u32 width, const u32 height, VulkanSwapChain* outSwapChain)
-	{
-		CreateInternal(context, width, height, outSwapChain);
-	}
-
-	void VulkanSwapChainManager::Recreate(VulkanContext* context, const u32 width, const u32 height, VulkanSwapChain* swapChain)
-	{
-		DestroyInternal(context, swapChain);
-		CreateInternal(context, width, height, swapChain);
-	}
-
-	void VulkanSwapChainManager::Destroy(const VulkanContext* context, VulkanSwapChain* swapChain)
-	{
-		Logger::PrefixInfo("VULKAN_SWAP_CHAIN_MANAGER", "Destroying SwapChain");
-		DestroyInternal(context, swapChain);
-	}
-
-	bool VulkanSwapChainManager::AcquireNextImageIndex(VulkanContext* context, VulkanSwapChain* swapChain,
-	    const u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
-	{
-		const auto result = vkAcquireNextImageKHR(context->device.logicalDevice, swapChain->handle, timeoutNs,
-			imageAvailableSemaphore, fence, outImageIndex);
-
-		if (result == VK_ERROR_OUT_OF_DATE_KHR)
-		{
-			Recreate(context, context->frameBufferWidth, context->frameBufferHeight, swapChain);
-			return false;
-		}
-		if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-		{
-			Logger::Fatal("Failed to acquire SwapChain image");
-			return false;
-		}
-		return true;
-	}
-
-	void VulkanSwapChainManager::Present(VulkanContext* context, VulkanSwapChain* swapChain, VkQueue graphicsQueue,
-		VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, u32 presentImageIndex)
-	{
-		// Return the image to the SwapChain for presentation
-		VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &renderCompleteSemaphore;
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = &swapChain->handle;
-		presentInfo.pImageIndices = &presentImageIndex;
-		presentInfo.pResults = nullptr;
-
-		const auto result = vkQueuePresentKHR(presentQueue, &presentInfo);
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-		{
-			// Our SwapChain is out of date, suboptimal or a FrameBuffer resize has occurred.
-			// We trigger a SwapChain recreation.
-			Recreate(context, context->frameBufferWidth, context->frameBufferHeight, swapChain);
-		}
-		else if (result != VK_SUCCESS)
-		{
-			Logger::Fatal("Failed to present SwapChain image");
-		}
-
-		context->currentFrame = (context->currentFrame + 1) % swapChain->maxFramesInFlight;
+		vkDestroySwapchainKHR(context->device.logicalDevice, handle, context->allocator);
 	}
 }

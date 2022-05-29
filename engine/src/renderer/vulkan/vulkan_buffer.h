@@ -23,7 +23,7 @@ namespace C3D
 
 		void LoadData(const VulkanContext* context, u64 offset, u64 size, u32 flags, const void* data) const;
 
-		void CopyTo(VulkanContext* context, VkCommandPool pool, VkFence fence, VkQueue queue, u64 sourceOffset, VkBuffer dest, u64 destOffset, u64 size) const;
+		void CopyTo(const VulkanContext* context, VkCommandPool pool, VkFence fence, VkQueue queue, u64 sourceOffset, VkBuffer dest, u64 destOffset, u64 size) const;
 
 		VkBuffer handle;
 	private:

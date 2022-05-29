@@ -24,18 +24,18 @@ namespace C3D
 		constexpr u64 systemsAllocatorTotalSize = static_cast<u64>(64) * 1024 * 1024;
 		m_allocator.Create(systemsAllocatorTotalSize);
 
-		// Event System
+		// GetEvent System
 		m_pEvents = m_allocator.New<EventSystem>();
 		if (!m_pEvents->Init())
 		{
-			Logger::Fatal("Event System failed to be Initialized");
+			Logger::Fatal("GetEvent System failed to be Initialized");
 		}
 
-		// Input System
+		// GetInput System
 		m_pInput = m_allocator.New<InputSystem>();
 		if (!m_pInput->Init())
 		{
-			Logger::Fatal("Input System failed to be Initialized");
+			Logger::Fatal("GetInput System failed to be Initialized");
 		}
 
 		// Render System

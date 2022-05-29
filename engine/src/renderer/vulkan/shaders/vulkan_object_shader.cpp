@@ -4,7 +4,9 @@
 #include "core/logger.h"
 #include "core/memory.h"
 #include "math/math_types.h"
+
 #include "renderer/vulkan/vulkan_shader_utils.h"
+#include "renderer/vulkan/vulkan_utils.h"
 
 constexpr auto BUILTIN_SHADER_NAME_OBJECT = "Builtin.ObjectShader";
 
@@ -124,7 +126,13 @@ namespace C3D
 		allocInfo.descriptorPool = m_globalDescriptorPool;
 		allocInfo.descriptorSetCount = 3;
 		allocInfo.pSetLayouts = globalLayouts;
-		VK_CHECK(vkAllocateDescriptorSets(context->device.logicalDevice, &allocInfo, m_globalDescriptorSets));
+
+		const auto result = vkAllocateDescriptorSets(context->device.logicalDevice, &allocInfo, m_globalDescriptorSets);
+		if (!VulkanUtils::ResultIsSuccess(result))
+		{
+			Logger::Error("Failed to allocate descriptor sets: {}", VulkanUtils::ResultString(result, true));
+			return false;
+		}
 
 		return true;
 	}

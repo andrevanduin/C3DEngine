@@ -3,16 +3,21 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
+#include "vulkan_renderpass.h"
+#include "vulkan_swapchain.h"
+
 #include "core/defines.h"
 #include "core/asserts.h"
 
 #define VK_CHECK(expr)							\
 	{											\
-		C3D_ASSERT((expr) == VK_SUCCESS)	\
+		C3D_ASSERT((expr) == VK_SUCCESS)		\
 	}
 
 namespace C3D
 {
+	class VulkanImage;
+
 	struct VulkanSwapChainSupportInfo
 	{
 		VkSurfaceCapabilitiesKHR capabilities;
@@ -47,72 +52,6 @@ namespace C3D
 		u32 graphicsQueueIndex;
 		u32 presentQueueIndex;
 		u32 transferQueueIndex;
-	};
-
-	struct VulkanImage
-	{
-		VkImage handle;
-		VkDeviceMemory memory;
-		VkImageView view;
-
-		u32 width, height;
-	};
-
-	enum class VulkanRenderPassState : u8
-	{
-		Ready, Recording, InRenderPass, RecordingEnded, Submitted, NotAllocated
-	};
-
-	struct VulkanRenderPass
-	{
-		VkRenderPass handle;
-		i32 x, y, w, h;
-		f32 r, g, b, a;
-
-		f32 depth;
-		u32 stencil;
-
-		VulkanRenderPassState state;
-	};
-
-	struct VulkanFrameBuffer
-	{
-		VkFramebuffer handle;
-
-		u32 attachmentCount;
-		VkImageView* attachments;
-
-		VulkanRenderPass* renderPass;
-	};
-
-	struct VulkanSwapChain
-	{
-		u8 maxFramesInFlight;
-
-		VkSurfaceFormatKHR imageFormat;
-		VkPresentModeKHR presentMode;
-
-		VkSwapchainKHR handle;
-
-		u32 imageCount;
-
-		VkImage* images;
-		VkImageView* views;
-
-		VulkanImage depthAttachment;
-
-		std::vector<VulkanFrameBuffer> frameBuffers;
-	};
-
-	enum class VulkanCommandBufferState : u8
-	{
-		Ready, Recording, InRenderPass, RecordingEnded, Submitted, NotAllocated		
-	};
-
-	struct VulkanCommandBuffer
-	{
-		VkCommandBuffer handle;
-		VulkanCommandBufferState state;
 	};
 
 	struct VulkanFence

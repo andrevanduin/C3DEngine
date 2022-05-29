@@ -1,15 +1,40 @@
 
 #pragma once
-#include "vulkan_types.h"
+#include "core/defines.h"
+#include "math/math_types.h"
 
-namespace C3D::VulkanRenderPassManager
+#include "vulkan_command_buffer.h"
+
+namespace C3D
 {
-	void Create(VulkanContext* context, VulkanRenderPass* renderPass, f32 x, f32 y, f32 w, f32 h, 
-		f32 r, f32 g, f32 b, f32 a, f32 depth, u32 stencil);
+	struct VulkanContext;
 
-	void Destroy(const VulkanContext* context, VulkanRenderPass* renderPass);
+	enum class VulkanRenderPassState : u8
+	{
+		Ready, Recording, InRenderPass, RecordingEnded, Submitted, NotAllocated
+	};
 
-	void Begin(VulkanCommandBuffer* commandBuffer, const VulkanRenderPass* renderPass, VkFramebuffer frameBuffer);
+	class VulkanRenderPass
+	{
+	public:
+		VulkanRenderPass();
 
-	void End(VulkanCommandBuffer* commandBuffer, VulkanRenderPass* renderPass);
+		void Create(VulkanContext* context, const ivec4& renderArea, const vec4& clearColor, f32 depth, u32 stencil);
+
+		void Destroy(const VulkanContext* context);
+
+		void Begin(VulkanCommandBuffer* commandBuffer, VkFramebuffer frameBuffer) const;
+
+		void End(VulkanCommandBuffer* commandBuffer) const;
+
+		VkRenderPass handle;
+		VulkanRenderPassState state;
+
+		ivec4 area;
+	private:
+		vec4 m_clearColor;
+
+		f32 m_depth;
+		u32 m_stencil;
+	};
 }

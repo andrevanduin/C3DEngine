@@ -11,12 +11,38 @@ namespace C3D
 		virtual bool operator== (IEventCallback* other) = 0;
 	};
 
+	class StaticEventCallback final : public IEventCallback
+	{
+	public:
+		explicit StaticEventCallback(bool (*function)(u16 code, void* sender, void* listener, EventContext context))
+			: function(function) {}
+
+		virtual ~StaticEventCallback() = default;
+
+		bool Invoke(const u16 code, void* sender, void* listener, const EventContext context) override
+		{
+			return function(code, sender, listener, context);
+		}
+
+		bool operator== (IEventCallback* other) override
+		{
+			const StaticEventCallback* otherEventCallback = dynamic_cast<StaticEventCallback*>(other);
+			if (otherEventCallback == nullptr) return false;
+			return otherEventCallback->function == function;
+		}
+
+	private:
+		bool (*function)(u16 code, void* sender, void* listener, EventContext context);
+	};
+
 	template<typename T>
-	class EventCallback : public IEventCallback
+	class EventCallback final : public IEventCallback
 	{
 	public:
 		EventCallback(T* instance, bool (T::* function)(u16 code, void* sender, void* listener, EventContext context))
 			: instance(instance), function(function) {}
+
+		virtual ~EventCallback() = default;
 
 		bool Invoke(u16 code, void* sender, void* listener, EventContext context) override
 		{
@@ -25,7 +51,7 @@ namespace C3D
 
 		bool operator== (IEventCallback* other) override
 		{
-			EventCallback* otherEventCallback = dynamic_cast<EventCallback*>(other);
+			const EventCallback* otherEventCallback = dynamic_cast<EventCallback*>(other);
 			if (otherEventCallback == nullptr) return false;
 
 			return this->function == otherEventCallback->function &&

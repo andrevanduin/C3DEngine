@@ -1,22 +1,40 @@
 
 #pragma once
-#include "vulkan_types.h"
+#include <vulkan/vulkan.h>
 
-namespace C3D::VulkanCommandBufferManager
+#include "core/defines.h"
+
+namespace C3D
 {
-	void Allocate(VulkanContext* context, VkCommandPool pool, bool isPrimary, VulkanCommandBuffer* commandBuffer);
+	struct VulkanContext;
 
-	void Free(const VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer);
+	enum class VulkanCommandBufferState : u8
+	{
+		Ready, Recording, InRenderPass, RecordingEnded, Submitted, NotAllocated
+	};
 
-	void Begin(VulkanCommandBuffer* commandBuffer, bool isSingleUse, bool isRenderPassContinue, bool isSimultaneousUse);
+	class VulkanCommandBuffer
+	{
+	public:
+		VulkanCommandBuffer();
 
-	void End(VulkanCommandBuffer* commandBuffer);
+		void Allocate(const VulkanContext* context, VkCommandPool pool, bool isPrimary);
 
-	void UpdateSubmitted(VulkanCommandBuffer* commandBuffer);
+		void Free(const VulkanContext* context, VkCommandPool pool);
 
-	void Reset(VulkanCommandBuffer* commandBuffer);
+		void Begin(bool isSingleUse, bool isRenderPassContinue, bool isSimultaneousUse);
 
-	void AllocateAndBeginSingleUse(VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer);
+		void End();
 
-	void EndSingleUse(const VulkanContext* context, VkCommandPool pool, VulkanCommandBuffer* commandBuffer, VkQueue queue);
+		void UpdateSubmitted();
+
+		void Reset();
+
+		void AllocateAndBeginSingleUse(const VulkanContext* context, VkCommandPool pool);
+
+		void EndSingleUse(const VulkanContext* context, VkCommandPool pool, VkQueue queue);
+
+		VkCommandBuffer handle;
+		VulkanCommandBufferState state;
+	};
 }

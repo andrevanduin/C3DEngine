@@ -3,7 +3,6 @@
 
 #include "vulkan_device.h"
 #include "vulkan_command_buffer.h"
-#include "vulkan_utils.h"
 
 #include "core/logger.h"
 #include "core/memory.h"
@@ -153,12 +152,12 @@ namespace C3D
 		vkUnmapMemory(context->device.logicalDevice, m_memory);
 	}
 
-	void VulkanBuffer::CopyTo(VulkanContext* context, VkCommandPool pool, VkFence fence, VkQueue queue, const u64 sourceOffset, VkBuffer dest, const u64 destOffset, const u64 size) const
+	void VulkanBuffer::CopyTo(const VulkanContext* context, VkCommandPool pool, VkFence fence, VkQueue queue, const u64 sourceOffset, VkBuffer dest, const u64 destOffset, const u64 size) const
 	{
 		vkQueueWaitIdle(queue);
 		// Create a one-time-use command buffer
 		VulkanCommandBuffer tempCommandBuffer;
-		VulkanCommandBufferManager::AllocateAndBeginSingleUse(context, pool, &tempCommandBuffer);
+		tempCommandBuffer.AllocateAndBeginSingleUse(context, pool);
 
 		// Prepare the copy command and add it to the command buffer
 		VkBufferCopy copyRegion;
@@ -169,6 +168,6 @@ namespace C3D
 		vkCmdCopyBuffer(tempCommandBuffer.handle, handle, dest, 1, &copyRegion);
 
 		// Submit the buffer for execution and wait for it to complete.
-		VulkanCommandBufferManager::EndSingleUse(context, pool, &tempCommandBuffer, queue);
+		tempCommandBuffer.EndSingleUse(context, pool, queue);
 	}
 }

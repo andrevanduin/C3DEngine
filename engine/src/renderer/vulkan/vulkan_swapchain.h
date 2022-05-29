@@ -1,18 +1,51 @@
 
 #pragma once
-#include "vulkan_types.h"
+#include <vector>
 
-namespace C3D::VulkanSwapChainManager
+#include <vulkan/vulkan.h>
+
+#include "vulkan_image.h"
+#include "vulkan_framebuffer.h"
+
+namespace C3D
 {
-	void Create(VulkanContext* context, u32 width, u32 height, VulkanSwapChain* outSwapChain);
+	struct VulkanContext;
 
-	void Recreate(VulkanContext* context, u32 width, u32 height, VulkanSwapChain* swapChain);
+	class VulkanSwapChain
+	{
+	public:
+		VulkanSwapChain();
 
-	void Destroy(const VulkanContext* context, VulkanSwapChain* swapChain);
+		void Create(VulkanContext* context, u32 width, u32 height);
 
-	bool AcquireNextImageIndex(VulkanContext* context, VulkanSwapChain* swapChain, u64 timeoutNs, 
-	                           VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex);
+		void Recreate(VulkanContext* context, u32 width, u32 height);
 
-	void Present(VulkanContext* context, VulkanSwapChain* swapChain, VkQueue graphicsQueue, VkQueue presentQueue, 
-		VkSemaphore renderCompleteSemaphore, u32 presentImageIndex);
+		void Destroy(const VulkanContext* context);
+
+		bool AcquireNextImageIndex(VulkanContext* context, u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex);
+
+		void Present(VulkanContext* context, VkQueue graphicsQueue, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, u32 presentImageIndex);
+
+		VkSwapchainKHR handle;
+
+		VkSurfaceFormatKHR imageFormat;
+		u32 imageCount;
+
+		u8 maxFramesInFlight;
+
+		VkImageView* views;
+
+		VulkanImage depthAttachment;
+
+		std::vector<VulkanFrameBuffer> frameBuffers;
+	private:
+		void CreateInternal(VulkanContext* context, u32 width, u32 height);
+
+		void DestroyInternal(const VulkanContext* context);
+		
+		VkPresentModeKHR m_presentMode;
+
+		VkImage* m_images;
+		
+	};
 }
