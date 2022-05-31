@@ -47,11 +47,12 @@ namespace C3D
 
 		Logger::Info("Successfully created SDL Window");
 
-		constexpr TextureSystemConfig textureSystemConfig{ 65536 };
-		constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
-		constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
+		constexpr ResourceSystemConfig resourceSystemConfig { 32, "../../../../assets" };
+		constexpr TextureSystemConfig  textureSystemConfig  { 65536 };
+		constexpr MaterialSystemConfig materialSystemConfig { 4096 };
+		constexpr GeometrySystemConfig geometrySystemConfig { 4096 };
 
-		Services::Init(this, textureSystemConfig, materialSystemConfig, geometrySystemConfig);
+		Services::Init(this, resourceSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));

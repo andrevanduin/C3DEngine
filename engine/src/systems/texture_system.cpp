@@ -8,10 +8,6 @@
 
 #include "services/services.h"
 
-// TODO: Resource loader
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
 namespace C3D
 {
 	TextureSystem::TextureSystem()
@@ -230,80 +226,60 @@ namespace C3D
 
 	bool TextureSystem::LoadTexture(const string& name, Texture* texture)
 	{
-		// TODO: Should be able to be located anywhere
-
-		constexpr i32 requiredChannelCount = 4;
-		stbi_set_flip_vertically_on_load(true);
-
-		// TODO: try different extensions
-		const auto fullPath = "assets/textures/" + name + ".png";
-
-		// Use a temporary texture to load into
-		Texture temp;
-
-		u8* data = stbi_load(fullPath.c_str(), reinterpret_cast<i32*>(&temp.width), reinterpret_cast<i32*>(&temp.height),
-			reinterpret_cast<i32*>(&temp.channelCount), requiredChannelCount);
-
-		temp.channelCount = requiredChannelCount;
-		if (data)
+		Resource imgResource{};
+		if (Resources.Load(name, ResourceType::Image, &imgResource))
 		{
-			const u32 currentGeneration = texture->generation;
-			texture->generation = INVALID_ID;
-
-			const u64 totalSize = temp.width * temp.height * requiredChannelCount;
-			bool hasTransparency = false;
-			for (u64 i = 0; i < totalSize; i += requiredChannelCount)
-			{
-				if (const u8 a = data[i + 3]; a < 255)
-				{
-					hasTransparency = true;
-					break;
-				}
-			}
-
-			if (stbi_failure_reason())
-			{
-				Logger::Warn("loadTexture() failed to load file {}: {}", fullPath, stbi_failure_reason());
-				stbi__err(nullptr , 0); // Clear the stbi error so next load doesn't fail
-				return false;
-			}
-
-			StringNCopy(temp.name, name.c_str(), TEXTURE_NAME_MAX_LENGTH);
-			temp.generation = INVALID_ID;
-			temp.hasTransparency = hasTransparency;
-
-			Renderer.CreateTexture(data, &temp);
-
-			// Take a copy of the old texture
-			Texture old = *texture;
-			// And assign our newly loaded to the provided texture
-			*texture = temp;
-			// Destroy the old texture
-			Renderer.DestroyTexture(&old);
-
-			if (currentGeneration == INVALID_ID)
-			{
-				// Texture is new so it's generation starts at 0
-				texture->generation = 0;
-			}
-			else
-			{
-				// Texture already existed so we increment it's generation
-				texture->generation = currentGeneration + 1;
-			}
-
-			// Cleanup our data
-			stbi_image_free(data);
-			return true;
+			Logger::PrefixError("TEXTURE_SYSTEM", "Failed to load image resource for texture '{}'", name);
+			return false;
 		}
 
-		if (stbi_failure_reason())
+		const auto resourceData = static_cast<ImageResourceData*>(imgResource.data);
+
+		Texture temp{};
+		temp.width = resourceData->width;
+		temp.height = resourceData->height;
+		temp.channelCount = resourceData->channelCount;
+
+		const u32 currentGeneration = texture->generation;
+		texture->generation = INVALID_ID;
+
+		const u64 totalSize = static_cast<u64>(temp.width) * temp.height * temp.channelCount;
+		bool hasTransparency = false;
+		for (u64 i = 0; i < totalSize; i += temp.channelCount)
 		{
-			Logger::Warn("LoadTexture() failed to load file: {}: {}", fullPath, stbi_failure_reason());
-			stbi__err(nullptr, 0); // Clear the stbi error so next load doesn't fail
+			if (const u8 a = resourceData->pixels[i + 3]; a < 255)
+			{
+				hasTransparency = true;
+				break;
+			}
 		}
 
-		return false;
+		StringNCopy(temp.name, name.c_str(), TEXTURE_NAME_MAX_LENGTH);
+		temp.generation = INVALID_ID;
+		temp.hasTransparency = hasTransparency;
+
+		Renderer.CreateTexture(resourceData->pixels, &temp);
+
+		// Take a copy of the old texture
+		Texture old = *texture;
+		// And assign our newly loaded to the provided texture
+		*texture = temp;
+		// Destroy the old texture
+		Renderer.DestroyTexture(&old);
+
+		if (currentGeneration == INVALID_ID)
+		{
+			// Texture is new so it's generation starts at 0
+			texture->generation = 0;
+		}
+		else
+		{
+			// Texture already existed so we increment it's generation
+			texture->generation = currentGeneration + 1;
+		}
+
+		Resources.Unload(&imgResource);
+		return true;
 	}
 
 	void TextureSystem::DestroyTexture(Texture* texture)

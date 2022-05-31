@@ -12,15 +12,16 @@ namespace C3D
 	LinearAllocator Services::m_allocator;
 
 	// Systems
-	InputSystem* Services::m_pInput				= nullptr;
-	EventSystem* Services::m_pEvents			= nullptr;
-	RenderSystem* Services::m_pRenderer			= nullptr;
-	TextureSystem* Services::m_pTextureSystem	= nullptr;
+	InputSystem*	Services::m_pInput			= nullptr;
+	EventSystem*	Services::m_pEvents			= nullptr;
+	RenderSystem*	Services::m_pRenderer		= nullptr;
+	ResourceSystem* Services::m_pResourceSystem = nullptr;
+	TextureSystem*	Services::m_pTextureSystem	= nullptr;
 	MaterialSystem* Services::m_pMaterialSystem = nullptr;
 	GeometrySystem* Services::m_pGeometrySystem = nullptr;
 
-	bool Services::Init(Application* application, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, 
-		const GeometrySystemConfig& geometrySystemConfig)
+	bool Services::Init(Application* application, const ResourceSystemConfig& resourceSystemConfig, const TextureSystemConfig& textureSystemConfig, 
+		const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig)
 	{
 		Logger::PushPrefix("SERVICES");
 
@@ -49,22 +50,32 @@ namespace C3D
 			Logger::Fatal("Render System failed to be Initialized");
 		}
 
+		// Resource System
+		m_pResourceSystem = m_allocator.New<ResourceSystem>();
+		if (!m_pResourceSystem->Init(resourceSystemConfig))
+		{
+			Logger::Fatal("Resource System failed to be Initialized");
+		}
+
+		// Texture System
 		m_pTextureSystem = m_allocator.New<TextureSystem>();
 		if (!m_pTextureSystem->Init(textureSystemConfig))
 		{
 			Logger::Fatal("Texture System failed to be Initialized");
 		}
 
+		// Material System
 		m_pMaterialSystem = m_allocator.New<MaterialSystem>();
 		if (!m_pMaterialSystem->Init(materialSystemConfig))
 		{
 			Logger::Fatal("Material System failed to be Initialized");
 		}
 
+		// Geometry System
 		m_pGeometrySystem = m_allocator.New<GeometrySystem>();
 		if (!m_pGeometrySystem->Init(geometrySystemConfig))
 		{
-			
+			Logger::Fatal("Geometry System failed to be Initialized");
 		}
 
 		Logger::PopPrefix();
@@ -76,8 +87,10 @@ namespace C3D
 		Logger::PushPrefix("SERVICES");
 		Logger::Info("Shutting down all services");
 
+		m_pGeometrySystem->Shutdown();
 		m_pMaterialSystem->Shutdown();
 		m_pTextureSystem->Shutdown();
+		m_pResourceSystem->Shutdown();
 		m_pRenderer->Shutdown();
 		m_pInput->Shutdown();
 		m_pEvents->Shutdown();

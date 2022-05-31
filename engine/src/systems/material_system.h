@@ -5,6 +5,7 @@
 #include "core/defines.h"
 
 #include "resources/material.h"
+#include "resources/resource_types.h"
 
 namespace C3D
 {
@@ -13,14 +14,6 @@ namespace C3D
 	struct MaterialSystemConfig
 	{
 		u32 maxMaterialCount;
-	};
-
-	struct MaterialConfig
-	{
-		char name[MATERIAL_NAME_MAX_LENGTH];
-		bool autoRelease;
-		vec4 diffuseColor;
-		char diffuseMapName[TEXTURE_NAME_MAX_LENGTH];
 	};
 
 	struct MaterialReference

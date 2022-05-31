@@ -4,8 +4,13 @@
 #include <algorithm>
 #include <locale>
 #include <cctype>
+#include <cstdarg>
 
 #include "memory.h"
+
+#ifndef _MSC_VER
+#include <strings.h>
+#endif
 
 namespace C3D
 {
@@ -64,6 +69,41 @@ namespace C3D
 	{
 		if (str) str[0] = 0;
 		return str;
+	}
+
+	i32 StringFormat(char* dest, const char* format, ...)
+	{
+		if (dest) {
+			va_list argPtr;
+			va_start(argPtr, format);
+			const i32 written = StringFormatV(dest, format, argPtr);
+			va_end(argPtr);
+			return written;
+		}
+		return -1;
+	}
+
+	i32 StringFormatV(char* dest, const char* format, void* vaList)
+	{
+		if (dest) {
+			// Big, but can fit on the stack.
+			char buffer[16000];
+			const i32 written = vsnprintf(buffer, 16000, format, static_cast<va_list>(vaList));
+			buffer[written] = 0;
+			Memory::Copy(dest, buffer, written + 1);
+
+			return written;
+		}
+		return -1;
+	}
+
+	char* StringDuplicate(const char* str)
+	{
+		const u64 length = StringLength(str);
+		char* copy = Memory::Allocate<char>(length + 1, MemoryType::String);
+		Memory::Copy(copy, str, length);
+		copy[length] = 0;
+		return copy;
 	}
 
 	bool StringToVec4(const char* str, vec4* outVec)

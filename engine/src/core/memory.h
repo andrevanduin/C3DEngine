@@ -15,6 +15,7 @@ namespace C3D
 		Bst,
 		String,
 		Application,
+		ResourceLoader,
 		Job,
 		Texture,
 		MaterialInstance,
@@ -44,6 +45,9 @@ namespace C3D
 		static void* Allocate(u64 size, MemoryType type);
 
 		template<class T>
+		static T* Allocate(MemoryType type);
+
+		template<class T>
 		static T* Allocate(u64 count, MemoryType type);
 
 		template<class T, class... Args>
@@ -67,6 +71,12 @@ namespace C3D
 	T* Memory::New(const MemoryType type, Args&&... args)
 	{ 
 		return new(Allocate(sizeof T, type)) T(std::forward<Args>(args)...);
+	}
+
+	template <class T>
+	T* Memory::Allocate(const MemoryType type)
+	{
+		return static_cast<T*>(Allocate(sizeof(T), type));
 	}
 
 	template <class T>

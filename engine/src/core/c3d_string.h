@@ -73,6 +73,12 @@ namespace C3D
 	 */
 	char* StringEmpty(char* str);
 
+	C3D_API i32 StringFormat(char* dest, const char* format, ...);
+
+	C3D_API i32 StringFormatV(char* dest, const char* format, void* vaList);
+
+	C3D_API char* StringDuplicate(const char* str);
+
 	/*
 	 * @brief Attempts to parse a vec4 from a string
 	 *

@@ -12,6 +12,7 @@
 #include "systems/texture_system.h"
 #include "systems/material_system.h"
 #include "systems/geometry_system.h"
+#include "systems/resource_system.h"
 
 #define Input		C3D::Services::GetInput()
 #define Event		C3D::Services::GetEvent()
@@ -19,6 +20,7 @@
 #define Textures	C3D::Services::GetTextureSystem()
 #define Materials	C3D::Services::GetMaterialSystem()
 #define Geometric	C3D::Services::GetGeometrySystem()
+#define Resources	C3D::Services::GetResourceSystem()
 
 namespace C3D
 {
@@ -27,8 +29,8 @@ namespace C3D
 	class C3D_API Services
 	{
 	public:
-		static bool Init(Application* application, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, 
-			const GeometrySystemConfig& geometrySystemConfig);
+		static bool Init(Application* application, const ResourceSystemConfig& resourceSystemConfig, const TextureSystemConfig& textureSystemConfig,
+			const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig);
 
 		static void Shutdown();
 
@@ -38,6 +40,7 @@ namespace C3D
 		static TextureSystem&	GetTextureSystem()	{ return *m_pTextureSystem;		}
 		static MaterialSystem&	GetMaterialSystem()	{ return *m_pMaterialSystem;	}
 		static GeometrySystem&	GetGeometrySystem()	{ return *m_pGeometrySystem;	}
+		static ResourceSystem&	GetResourceSystem() { return *m_pResourceSystem;	}
 
 	private:
 		static EventSystem*		m_pEvents;
@@ -46,6 +49,7 @@ namespace C3D
 		static TextureSystem*	m_pTextureSystem;
 		static MaterialSystem*	m_pMaterialSystem;
 		static GeometrySystem*	m_pGeometrySystem;
+		static ResourceSystem*	m_pResourceSystem;
 
 		static LinearAllocator m_allocator;
 	};

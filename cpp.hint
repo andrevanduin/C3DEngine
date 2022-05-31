@@ -12,3 +12,6 @@
 #define stbi__err(x, y)
 #define stbi__err(x, y) stbi__err(y)
 #define stbi__err(x, y) stbi__err(x)
+#define Resources C3D::Services::GetResourceSystem()
+#define Resources C3D::Services::GetResourceSystem()
+#define Renderer C3D::Services::GetRenderer()

@@ -18,6 +18,7 @@ namespace C3D
 		"Bst             ",
 		"String          ",
 		"Application     ",
+		"ResourceLoader  ",
 		"Job             ",
 		"Texture         ",
 		"MaterialInstance",
