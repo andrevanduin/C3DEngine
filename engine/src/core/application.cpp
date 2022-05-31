@@ -9,13 +9,17 @@
 
 #include "events/event.h"
 #include "platform/platform.h"
-#include "renderer/renderer_frontend.h"
 
 #include "services/services.h"
+
+// TEMP
+#include "math/c3d_math.h"
+//
 
 namespace C3D
 {
 	Application::Application(const ApplicationConfig& config)
+		: m_testGeometry(nullptr)
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice")
 
@@ -43,14 +47,31 @@ namespace C3D
 
 		Logger::Info("Successfully created SDL Window");
 
-		Services::Init(this);
+		constexpr TextureSystemConfig textureSystemConfig{ 65536 };
+		constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
+		constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
+
+		Services::Init(this, textureSystemConfig, materialSystemConfig, geometrySystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
 		Event.Register(SystemEventCode::FocusGained, new EventCallback(this, &Application::OnFocusGainedEvent));
+		Event.Register(SystemEventCode::Debug0, new EventCallback(this, &Application::OnDebugEvent));
 
 		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
+
+		// TEMP
+		// Load up a plane configuration, and load geometry for it
+		const GeometryConfig gConfig = Geometric.GeneratePlaneConfig(10.0f, 5.0f, 16, 16, 4.0f, 4.0f, "test geometry", "test_material");
+		m_testGeometry = Geometric.AcquireFromConfig(gConfig, true);
+
+		// Cleanup the allocations that we just did
+		Memory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.vertexCount, MemoryType::Array);
+		Memory::Free(gConfig.indices, sizeof(u32) * gConfig.indexCount, MemoryType::Array);
+
+		//m_testGeometry = Geometric.GetDefault();
+		// TEMP END
 
 		Logger::PopPrefix();
 
@@ -95,7 +116,17 @@ namespace C3D
 
 				//TODO: Refactor this
 				RenderPacket packet = { static_cast<f32>(delta) };
-				Services::GetRenderer().DrawFrame(&packet);
+
+				// TEMP
+				GeometryRenderData testRender{};
+				testRender.geometry = m_testGeometry;
+				testRender.model = mat4(1.0f);
+
+				packet.geometryCount = 1;
+				packet.geometries = &testRender;
+				// TEMP END
+
+				Renderer.DrawFrame(&packet);
 
 				const f64 frameEndTime = Platform::GetAbsoluteTime();
 				const f64 frameElapsedTime = frameEndTime - frameStartTime;
@@ -151,6 +182,18 @@ namespace C3D
 
 		Logger::PushPrefix("PLATFORM");
 		Logger::Info("Shutdown()");
+
+		Logger::Info("UnRegistering events");
+
+		Event.UnRegister(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
+		Event.UnRegister(SystemEventCode::Minimized, new EventCallback(this, &Application::OnMinimizeEvent));
+		Event.UnRegister(SystemEventCode::FocusGained, new EventCallback(this, &Application::OnFocusGainedEvent));
+		// TEMP
+		Event.UnRegister(SystemEventCode::Debug0, new EventCallback(this, &Application::OnDebugEvent));
+		// TEMP END
+
+		Event.UnRegister(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
+		Event.UnRegister(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
 
 		Services::Shutdown();
 
@@ -273,6 +316,33 @@ namespace C3D
 
 		return false;
 	}
+
+	// TEMP
+	bool Application::OnDebugEvent(u16 code, void* sender, EventContext context)
+	{
+		const char* names[3] = { "cobblestone", "paving", "paving2" };
+		static i8 choice = 2;
+
+		const char* oldName = names[choice];
+
+		choice++;
+		choice %= 3;
+
+		if (m_testGeometry)
+		{
+			m_testGeometry->material->diffuseMap.texture = Textures.Acquire(names[choice], true);
+			if (!m_testGeometry->material->diffuseMap.texture)
+			{
+				Logger::PrefixWarn("ON_DEBUG_EVENT", "No texture! Using default");
+				m_testGeometry->material->diffuseMap.texture = Textures.GetDefaultTexture();
+			}
+
+			Textures.Release(oldName);
+		}
+
+		return true;
+	}
+	// TEMP END
 
 	bool Application::OnKeyEvent(const u16 code, void* sender, const EventContext context)
 	{

@@ -2,7 +2,9 @@
 #pragma once
 #include "defines.h"
 
-int C3D_API main(int argc, char** argv);
+#include "resources/geometry.h"
+
+int main(int argc, char** argv);
 
 struct SDL_Window;
 namespace C3D
@@ -61,9 +63,17 @@ namespace C3D
 		bool OnMinimizeEvent(u16 code, void* sender, EventContext context);
 		bool OnFocusGainedEvent(u16 code, void* sender, EventContext context);
 
+		// TEMP
+		bool OnDebugEvent(u16 code, void* sender, EventContext context);
+		// TEMP END
+
 		static bool OnKeyEvent(u16 code, void* sender, EventContext context);
 
 		SDL_Window* m_window{ nullptr };
+
+		// TEMP
+		Geometry* m_testGeometry;
+		// TEMP END
 
 		friend int ::main(int argc, char** argv);
 	};

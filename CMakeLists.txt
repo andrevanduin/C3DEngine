@@ -29,7 +29,7 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
   get_filename_component(FILE_NAME ${GLSL} NAME)
   message(STATUS "Building ${FILE_NAME}")
 
-  set(SPIRV "${CMAKE_BINARY_DIR}/testenv/assets/shaders/${FILE_NAME}.spv")
+  set(SPIRV "${PROJECT_SOURCE_DIR}/assets/shaders/${FILE_NAME}.spv")
 
   ##execute glslang command to compile that specific shader
   add_custom_command(

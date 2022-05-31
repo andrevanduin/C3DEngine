@@ -12,11 +12,15 @@ namespace C3D
 	LinearAllocator Services::m_allocator;
 
 	// Systems
-	InputSystem* Services::m_pInput		= nullptr;
-	EventSystem* Services::m_pEvents	= nullptr;
-	RenderSystem* Services::m_pRenderer = nullptr;
+	InputSystem* Services::m_pInput				= nullptr;
+	EventSystem* Services::m_pEvents			= nullptr;
+	RenderSystem* Services::m_pRenderer			= nullptr;
+	TextureSystem* Services::m_pTextureSystem	= nullptr;
+	MaterialSystem* Services::m_pMaterialSystem = nullptr;
+	GeometrySystem* Services::m_pGeometrySystem = nullptr;
 
-	bool Services::Init(Application* application)
+	bool Services::Init(Application* application, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, 
+		const GeometrySystemConfig& geometrySystemConfig)
 	{
 		Logger::PushPrefix("SERVICES");
 
@@ -45,6 +49,24 @@ namespace C3D
 			Logger::Fatal("Render System failed to be Initialized");
 		}
 
+		m_pTextureSystem = m_allocator.New<TextureSystem>();
+		if (!m_pTextureSystem->Init(textureSystemConfig))
+		{
+			Logger::Fatal("Texture System failed to be Initialized");
+		}
+
+		m_pMaterialSystem = m_allocator.New<MaterialSystem>();
+		if (!m_pMaterialSystem->Init(materialSystemConfig))
+		{
+			Logger::Fatal("Material System failed to be Initialized");
+		}
+
+		m_pGeometrySystem = m_allocator.New<GeometrySystem>();
+		if (!m_pGeometrySystem->Init(geometrySystemConfig))
+		{
+			
+		}
+
 		Logger::PopPrefix();
 		return true;
 	}
@@ -54,6 +76,8 @@ namespace C3D
 		Logger::PushPrefix("SERVICES");
 		Logger::Info("Shutting down all services");
 
+		m_pMaterialSystem->Shutdown();
+		m_pTextureSystem->Shutdown();
 		m_pRenderer->Shutdown();
 		m_pInput->Shutdown();
 		m_pEvents->Shutdown();

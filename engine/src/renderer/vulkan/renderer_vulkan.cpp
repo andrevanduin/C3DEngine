@@ -18,18 +18,17 @@
 #include "resources/texture.h"
 
 #include "renderer/vertex.h"
+#include "services/services.h"
 
 namespace C3D
 {
 	RendererVulkan::RendererVulkan(): m_context(), m_geometryVertexOffset(0), m_geometryIndexOffset(0) {}
 
-	bool RendererVulkan::Init(Application* application, Texture* defaultDiffuse)
+	bool RendererVulkan::Init(Application* application)
 	{
 		Logger::PushPrefix("VULKAN_RENDERER");
 
 		type = RendererBackendType::Vulkan;
-
-		state.defaultDiffuseTexture = defaultDiffuse;
 
 		// TODO: Possibly add a custom allocator
 		m_context.allocator = nullptr;
@@ -74,6 +73,7 @@ namespace C3D
 		const auto area = ivec4(0, 0, static_cast<f32>(m_context.frameBufferWidth), static_cast<f32>(m_context.frameBufferHeight));
 		constexpr auto clearColor = vec4(0.0f, 0.0f, 0.2f, 1.0f);
 
+
 		m_context.mainRenderPass.Create(&m_context, area, clearColor, 1.0f, 0);
 
 		m_context.swapChain.frameBuffers.resize(m_context.swapChain.imageCount);
@@ -102,7 +102,7 @@ namespace C3D
 			m_context.imagesInFlight[i] = nullptr;
 		}
 
-		if (!m_objectShader.Create(&m_context, state.defaultDiffuseTexture))
+		if (!m_materialShader.Create(&m_context))
 		{
 			Logger::Error("Loading built-in object shader failed");
 			return false;
@@ -110,47 +110,11 @@ namespace C3D
 
 		CreateBuffers();
 
-		// TODO: Temporary test code
-		constexpr u32 vertexCount = 4;
-		Vertex3D vertices[vertexCount];
-		Memory::Zero(vertices, sizeof(Vertex3D) * vertexCount);
-
-		constexpr f32 f = 10.0f;
-
-		vertices[0].position.x = -0.5f * f;
-		vertices[0].position.y = -0.5f * f;
-		vertices[0].texture.x = 0.0f;
-		vertices[0].texture.y = 0.0f;
-
-		vertices[1].position.x = 0.5f * f;
-		vertices[1].position.y = 0.5f * f;
-		vertices[1].texture.x = 1.0f;
-		vertices[1].texture.y = 1.0f;
-
-		vertices[2].position.x = -0.5f * f;
-		vertices[2].position.y = 0.5f * f;
-		vertices[2].texture.x = 0.0f;
-		vertices[2].texture.y = 1.0f;
-
-		vertices[3].position.x = 0.5f * f;
-		vertices[3].position.y = -0.5f * f;
-		vertices[3].texture.x = 1.0f;
-		vertices[3].texture.y = 0.0f;
-
-		constexpr u32 indexCount = 6;
-		u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
-
-		UploadDataRange(m_context.device.graphicsCommandPool, nullptr, m_context.device.graphicsQueue, &m_objectVertexBuffer, 0, sizeof(Vertex3D) * vertexCount, vertices);
-		UploadDataRange(m_context.device.graphicsCommandPool, nullptr, m_context.device.graphicsQueue, &m_objectIndexBuffer, 0, sizeof(u32) * indexCount, indices);
-
-		u32 objectId = 0;
-		if (!m_objectShader.AcquireResources(&m_context, &objectId))
+		// Mark all the geometry as invalid
+		for (auto& geometry : m_geometries)
 		{
-			Logger::Error("Failed to acquire shader resources");
-			return false;
+			geometry.id = INVALID_ID;
 		}
-
-		// TODO End of temporary test code
 
 		Logger::Info("Successfully Initialized");
 		Logger::PopPrefix();
@@ -253,31 +217,46 @@ namespace C3D
 
 	void RendererVulkan::UpdateGlobalState(const mat4 projection, const mat4 view, vec3 viewPosition, vec4 ambientColor, i32 mode)
 	{
-		m_objectShader.Use(&m_context);
+		m_materialShader.Use(&m_context);
 
-		m_objectShader.globalUbo.projection = projection;
-		m_objectShader.globalUbo.view = view;
+		m_materialShader.globalUbo.projection = projection;
+		m_materialShader.globalUbo.view = view;
 		// TODO: other ubo properties here
 
-		m_objectShader.UpdateGlobalState(&m_context, m_context.frameDeltaTime);
+		m_materialShader.UpdateGlobalState(&m_context, m_context.frameDeltaTime);
 	}
 
-	void RendererVulkan::UpdateObject(const GeometryRenderData data)
+	void RendererVulkan::DrawGeometry(const GeometryRenderData data)
 	{
+		if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
+
+		const auto bufferData = &m_geometries[data.geometry->internalId];
 		const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
 
-		m_objectShader.UpdateObject(&m_context, data);
+		// TODO: check if this is actually needed
+		m_materialShader.Use(&m_context);
 
-		// TODO: Temporary test code
-		m_objectShader.Use(&m_context);
+		m_materialShader.SetModel(&m_context, data.model);
 
-		constexpr VkDeviceSize offsets[1] = { 0 };
+		Material* m = data.geometry->material ? data.geometry->material : Materials.GetDefault();
+		m_materialShader.ApplyMaterial(&m_context, m);
+
+		// Bind vertex buffer at offset
+		const VkDeviceSize offsets[1] = { bufferData->vertexBufferOffset };
 		vkCmdBindVertexBuffers(commandBuffer->handle, 0, 1, &m_objectVertexBuffer.handle, offsets);
 
-		vkCmdBindIndexBuffer(commandBuffer->handle, m_objectIndexBuffer.handle, 0, VK_INDEX_TYPE_UINT32);
+		if (bufferData->indexCount > 0)
+		{
+			// Bind index buffer at offset
+			vkCmdBindIndexBuffer(commandBuffer->handle, m_objectIndexBuffer.handle, bufferData->indexBufferOffset, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(commandBuffer->handle, 6, 1, 0, 0, 0);
-		// TODO: End temporary test code
+			// Issue the draw
+			vkCmdDrawIndexed(commandBuffer->handle, bufferData->indexCount, 1, 0, 0, 0);
+		}
+		else
+		{
+			vkCmdDraw(commandBuffer->handle, bufferData->vertexCount, 1, 0, 0);
+		}
 	}
 
 	bool RendererVulkan::EndFrame(f32 deltaTime)
@@ -345,7 +324,7 @@ namespace C3D
 		m_objectVertexBuffer.Destroy(&m_context);
 		m_objectIndexBuffer.Destroy(&m_context);
 
-		m_objectShader.Destroy(&m_context);
+		m_materialShader.Destroy(&m_context);
 
 		Logger::Info("Destroying Semaphores and Fences");
 		for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
@@ -391,20 +370,15 @@ namespace C3D
 		Logger::PopPrefix();
 	}
 
-	void RendererVulkan::CreateTexture(const string& name, bool autoRelease, const i32 width, const i32 height, const i32 channelCount, const u8* pixels, const bool hasTransparency, Texture* outTexture)
+	void RendererVulkan::CreateTexture(const u8* pixels, Texture* texture)
 	{
-		outTexture->width = width;
-		outTexture->height = height;
-		outTexture->channelCount = static_cast<u8>(channelCount);
-		outTexture->generation = INVALID_ID;
-
 		// Internal data creation
 		// TODO: use an allocator for this
-		outTexture->internalData = Memory::Allocate<VulkanTextureData>(1, MemoryType::Texture);
+		texture->internalData = Memory::Allocate<VulkanTextureData>(1, MemoryType::Texture);
 
-		const auto data = static_cast<VulkanTextureData*>(outTexture->internalData);
+		const auto data = static_cast<VulkanTextureData*>(texture->internalData);
 
-		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * channelCount;
+		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height * texture->channelCount;
 		constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM; // NOTE: Assumes 8 bits per channel
 
 		constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -416,7 +390,7 @@ namespace C3D
 		staging.LoadData(&m_context, 0, imageSize, 0, pixels);
 
 		// NOTE: Lots of assumptions here, different texture types will require different options here!
-		data->image.Create(&m_context, VK_IMAGE_TYPE_2D, width, height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+		data->image.Create(&m_context, VK_IMAGE_TYPE_2D, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
 			VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -459,8 +433,111 @@ namespace C3D
 			return;
 		}
 
-		outTexture->hasTransparency = hasTransparency;
-		outTexture->generation++;
+		texture->generation++;
+	}
+
+	bool RendererVulkan::CreateMaterial(Material* material)
+	{
+		if (material)
+		{
+			if (!m_materialShader.AcquireResources(&m_context, material))
+			{
+				Logger::PrefixError("VULKAN_RENDERER", "CreateMaterial() failed to acquire resources");
+				return false;
+			}
+
+			Logger::PrefixTrace("VULKAN_RENDERER", "Material Created");
+			return true;
+		}
+
+		Logger::PrefixError("VULKAN_RENDERER", "CreateMaterial() called with nullptr. Creation failed");
+		return false;
+	}
+
+	bool RendererVulkan::CreateGeometry(Geometry* geometry, u32 vertexCount, const Vertex3D* vertices, u32 indexCount, const u32* indices)
+	{
+		if (!vertexCount || !vertices)
+		{
+			Logger::PrefixError("VULKAN_RENDERER", "CreateGeometry() requires vertex data and none was supplied.");
+			return false;
+		}
+
+		// Check if this is a re-upload. If it is we need to free the old data afterwards
+		const bool isReupload = geometry->internalId != INVALID_ID;
+		VulkanGeometryData oldRange{};
+		VulkanGeometryData* internalData = nullptr;
+		if (isReupload)
+		{
+			internalData = &m_geometries[geometry->internalId];
+
+			// Take a copy of the old data
+			oldRange.indexBufferOffset = internalData->indexBufferOffset;
+			oldRange.indexCount = internalData->indexCount;
+			oldRange.indexSize = internalData->indexSize;
+			oldRange.vertexBufferOffset = internalData->vertexBufferOffset;
+			oldRange.vertexCount = internalData->vertexCount;
+			oldRange.vertexSize = internalData->vertexSize;
+		}
+		else
+		{
+			for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; i++)
+			{
+				if (m_geometries[i].id == INVALID_ID)
+				{
+					geometry->internalId = i;
+					m_geometries[i].id = i;
+					internalData = &m_geometries[i];
+					break;
+				}
+			}
+		}
+
+		if (!internalData)
+		{
+			Logger::PrefixFatal("VULKAN_RENDERER", "CreateGeometry() failed to find a free index for a new geometry upload. Adjust the config to allow for more");
+			return false;
+		}
+
+		VkCommandPool pool = m_context.device.graphicsCommandPool;
+		VkQueue queue = m_context.device.graphicsQueue;
+
+		// Vertex data
+		internalData->vertexBufferOffset = m_geometryVertexOffset;
+		internalData->vertexCount = vertexCount;
+		internalData->vertexSize = sizeof(Vertex3D) * vertexCount;
+
+		UploadDataRange(pool, nullptr, queue, &m_objectVertexBuffer, internalData->vertexBufferOffset, internalData->vertexSize, vertices);
+		// TODO: should maintain a free list instead of this
+		m_geometryVertexOffset += internalData->vertexSize;
+
+		// Index data, if applicable
+		if (indexCount && indices)
+		{
+			internalData->indexBufferOffset = m_geometryIndexOffset;
+			internalData->indexCount = indexCount;
+			internalData->indexSize = sizeof(u32) * indexCount;
+
+			UploadDataRange(pool, nullptr, queue, &m_objectIndexBuffer, internalData->indexBufferOffset, internalData->indexSize, indices);
+			// TODO: should maintain a free list instead of this
+			m_geometryIndexOffset += internalData->indexSize;
+		}
+
+		if (internalData->generation == INVALID_ID) internalData->generation = 0;
+		else internalData->generation++;
+
+		if (isReupload)
+		{
+			// Free vertex data
+			FreeDataRange(&m_objectVertexBuffer, oldRange.vertexBufferOffset, oldRange.vertexSize);
+
+			// Free index data, if applicable
+			if (oldRange.indexSize > 0)
+			{
+				FreeDataRange(&m_objectIndexBuffer, oldRange.indexBufferOffset, oldRange.indexSize);
+			}
+		}
+
+		return true;
 	}
 
 	void RendererVulkan::DestroyTexture(Texture* texture)
@@ -480,6 +557,49 @@ namespace C3D
 		}
 		
 		Memory::Zero(texture, sizeof(Texture));
+	}
+
+	void RendererVulkan::DestroyMaterial(Material* material)
+	{
+		if (material)
+		{
+			if (material->internalId != INVALID_ID)
+			{
+				m_materialShader.ReleaseResources(&m_context, material);
+			}
+			else
+			{
+				Logger::PrefixWarn("VULKAN_RENDERER", "DestroyMaterial() called with internalId = INVALID_ID. Ignoring request");
+			}
+		}
+		else
+		{
+			Logger::PrefixWarn("VULKAN_RENDERER", "DestroyMaterial() called with nullptr. Ignoring request");
+		}
+	}
+
+	void RendererVulkan::DestroyGeometry(Geometry* geometry)
+	{
+		if (geometry && geometry->internalId != INVALID_ID)
+		{
+			vkDeviceWaitIdle(m_context.device.logicalDevice);
+
+			VulkanGeometryData* internalData = &m_geometries[geometry->internalId];
+
+			// Free vertex data
+			FreeDataRange(&m_objectVertexBuffer, internalData->vertexBufferOffset, internalData->vertexSize);
+
+			// Free index data, if applicable
+			if (internalData->indexSize > 0)
+			{
+				FreeDataRange(&m_objectIndexBuffer, internalData->indexBufferOffset, internalData->indexSize);
+			}
+
+			// Clean up data
+			Memory::Zero(internalData, sizeof(VulkanGeometryData));
+			internalData->id = INVALID_ID;
+			internalData->generation = INVALID_ID;
+		}
 	}
 
 	void RendererVulkan::CreateCommandBuffers()
@@ -603,7 +723,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, const VulkanBuffer* buffer, const u64 offset, const u64 size, const void* data)
+	void RendererVulkan::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, const VulkanBuffer* buffer, const u64 offset, const u64 size, const void* data) const
 	{
 		constexpr VkBufferUsageFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 		VulkanBuffer staging;
@@ -613,5 +733,11 @@ namespace C3D
 		staging.CopyTo(&m_context, pool, fence, queue, 0, buffer->handle, offset, size);
 
 		staging.Destroy(&m_context);
+	}
+
+	void RendererVulkan::FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size)
+	{
+		// TODO: Free this in the buffer
+		// TODO: update free list with this range being free
 	}
 }

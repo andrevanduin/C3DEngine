@@ -7,3 +7,8 @@
 #define C3D_API
 #define C3D_INLINE
 #define INVALID_ID
+#define Render C3D::Services::GetRenderer()
+#define Textures C3D::Services::GetTextureSystem()
+#define stbi__err(x, y)
+#define stbi__err(x, y) stbi__err(y)
+#define stbi__err(x, y) stbi__err(x)

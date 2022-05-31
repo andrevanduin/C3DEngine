@@ -18,6 +18,7 @@ namespace C3D
 		Job,
 		Texture,
 		MaterialInstance,
+		Geometry,
 		Renderer,
 		Game,
 		Transform,

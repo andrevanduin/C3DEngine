@@ -114,7 +114,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	RecalculateViewMatrix();
 
 	// HACK: This is just for testing
-	Render.SetView(m_view);
+	Renderer.SetView(m_view);
 }
 
 void TestEnv::OnRender(f64 deltaTime)

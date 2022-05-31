@@ -3,7 +3,7 @@
 #include "core/defines.h"
 
 #include "math/math_types.h"
-#include "resources/texture.h"
+#include "resources/geometry.h"
 
 namespace C3D
 {
@@ -25,7 +25,7 @@ namespace C3D
 	};
 
 	// This structure should be 64 bytes
-	struct ObjectUniformObject
+	struct MaterialUniformObject
 	{
 		vec4 diffuseColor;	// 16 bytes
 		vec4 vec4Padding0;	// 16 bytes, reserved for future use
@@ -35,19 +35,20 @@ namespace C3D
 
 	struct GeometryRenderData
 	{
-		u32 objectId;
 		mat4 model;
-		Texture* textures[16];
+		Geometry* geometry;
 	};
 
 	struct RenderPacket
 	{
 		f32 deltaTime;
+
+		u32 geometryCount;
+		GeometryRenderData* geometries;
 	};
 
 	struct RendererBackendState
 	{
 		u64 frameNumber;
-		Texture* defaultDiffuseTexture;
 	};
 }
