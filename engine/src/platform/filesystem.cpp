@@ -73,24 +73,19 @@ namespace C3D
 		return true;
 	}
 
-	bool File::ReadAllBytes(char** outBytes, u64* outBytesRead)
+	bool File::ReadAll(char* outBytes, u64* outBytesRead)
 	{
 		if (!isValid) return false;
 
-		// Go to the end of the file
-		m_file.seekg(0, std::ios::end);
-		// Check it's length
-		const u64 length = m_file.tellg();
-		// Go back to the start of the file
-		m_file.seekg(0, std::ios::beg);
-		// Allocate enough space for the file contents
-		*outBytes = Memory::Allocate<char>(length, MemoryType::String);
+		u64 size;
+		if (!Size(&size)) return false;
+
 		// Read the data
-		m_file.read(*outBytes, static_cast<std::streamsize>(length));
+		m_file.read(outBytes, static_cast<std::streamsize>(size));
 		// Get the amount of bytes read
 		*outBytesRead = m_file.gcount();
 		// If we did not read all bytes we return false
-		if (*outBytesRead != length) return false;
+		if (*outBytesRead != size) return false;
 		// Otherwise reading was successful 
 		return true;
 	}
@@ -112,6 +107,19 @@ namespace C3D
 		// If we did not write all the expected bytes we return false
 		if (*outBytesWritten != dataSize) return false;
 
+		return true;
+	}
+
+	bool File::Size(u64* outSize)
+	{
+		if (!isValid) return false;
+
+		// Go to the end of the file
+		m_file.seekg(0, std::ios::end);
+		// Check it's length
+		*outSize = m_file.tellg();
+		// Go back to the start of the file
+		m_file.seekg(0, std::ios::beg);
 		return true;
 	}
 }

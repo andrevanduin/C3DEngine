@@ -13,20 +13,19 @@
 #include "services/services.h"
 
 // TEMP
+#include "c3d_string.h"
 #include "math/c3d_math.h"
 //
 
 namespace C3D
 {
 	Application::Application(const ApplicationConfig& config)
-		: m_testGeometry(nullptr)
+		: m_logger("APPLICATION"), m_testGeometry(nullptr)
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice")
 
 		Logger::Init();
-
-		Logger::PushPrefix("APPLICATION");
-		Logger::Info("Starting");
+		m_logger.Info("Starting");
 
 		m_state.name = config.name;
 		m_state.width = config.width;
@@ -34,18 +33,18 @@ namespace C3D
 
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
-			Logger::Fatal("Failed to initialize SDL: {}", SDL_GetError());
+			m_logger.Fatal("Failed to initialize SDL: {}", SDL_GetError());
 		}
 
-		Logger::Info("Successfully initialized SDL");
+		m_logger.Info("Successfully initialized SDL");
 
 		m_window = SDL_CreateWindow(("C3DEngine - " + config.name).c_str(), config.x, config.y, config.width, config.height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 		if (m_window == nullptr)
 		{
-			Logger::Fatal("Failed to create a Window: {}", SDL_GetError());
+			m_logger.Fatal("Failed to create a Window: {}", SDL_GetError());
 		}
 
-		Logger::Info("Successfully created SDL Window");
+		m_logger.Info("Successfully created SDL Window");
 
 		constexpr ResourceSystemConfig resourceSystemConfig { 32, "../../../../assets" };
 		constexpr TextureSystemConfig  textureSystemConfig  { 65536 };
@@ -71,10 +70,45 @@ namespace C3D
 		Memory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.vertexCount, MemoryType::Array);
 		Memory::Free(gConfig.indices, sizeof(u32) * gConfig.indexCount, MemoryType::Array);
 
-		//m_testGeometry = Geometric.GetDefault();
-		// TEMP END
+		// Load up our test ui geometry
+		GeometryConfig uiConfig;
+		uiConfig.vertexSize = sizeof(Vertex2D);
+		uiConfig.vertexCount = 4;
+		uiConfig.indexSize = sizeof(u32);
+		uiConfig.indexCount = 6;
+		StringNCopy(uiConfig.materialName, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
+		StringNCopy(uiConfig.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
 
-		Logger::PopPrefix();
+		constexpr f32 f = 512.0f;
+		Vertex2D uiVertices[4];
+		uiVertices[0].position.x = 0.0f;
+		uiVertices[0].position.y = 0.0f;
+		uiVertices[0].texture.x = 0.0f;
+		uiVertices[0].texture.y = 0.0f;
+
+		uiVertices[1].position.x = f;
+		uiVertices[1].position.y = f;
+		uiVertices[1].texture.x = 1.0f;
+		uiVertices[1].texture.y = 1.0f;
+
+		uiVertices[2].position.x = 0.0f;
+		uiVertices[2].position.y = f;
+		uiVertices[2].texture.x = 0.0f;
+		uiVertices[2].texture.y = 1.0f;
+
+		uiVertices[3].position.x = f;
+		uiVertices[3].position.y = 0.0f;
+		uiVertices[3].texture.x = 1.0f;
+		uiVertices[3].texture.y = 0.0f;
+
+		uiConfig.vertices = uiVertices;
+
+		// Counter-clockwise
+		u32 uiIndices[6] = { 2, 1, 0, 3, 0, 1 };
+		uiConfig.indices = uiIndices;
+
+		m_testUiGeometry = Geometric.AcquireFromConfig(uiConfig, true);
+		// TEMP END
 
 		m_state.initialized = true;
 		m_state.lastTime = 0;
@@ -99,7 +133,7 @@ namespace C3D
 		u8 frameCount = 0;
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
-		Logger::Info(Memory::GetMemoryUsageString());
+		m_logger.Info(Memory::GetMemoryUsageString());
 
 		while (m_state.running)
 		{
@@ -125,6 +159,13 @@ namespace C3D
 
 				packet.geometryCount = 1;
 				packet.geometries = &testRender;
+
+				GeometryRenderData testUiRender{};
+				testUiRender.geometry = m_testUiGeometry;
+				testUiRender.model = mat4(1.0f);
+
+				packet.uiGeometryCount = 1;
+				packet.uiGeometries = &testUiRender;
 				// TEMP END
 
 				Renderer.DrawFrame(&packet);
@@ -181,10 +222,8 @@ namespace C3D
 	{
 		C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized")
 
-		Logger::PushPrefix("PLATFORM");
-		Logger::Info("Shutdown()");
-
-		Logger::Info("UnRegistering events");
+		m_logger.Info("Shutdown()");
+		m_logger.Info("UnRegistering events");
 
 		Event.UnRegister(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.UnRegister(SystemEventCode::Minimized, new EventCallback(this, &Application::OnMinimizeEvent));
@@ -201,7 +240,6 @@ namespace C3D
 		SDL_DestroyWindow(m_window);
 
 		m_state.initialized = false;
-		Logger::PopPrefix();
 	}
 
 	void Application::HandleSdlEvents()
@@ -255,7 +293,7 @@ namespace C3D
 					// TODO: Possibly change this is the future. But currently this spams the console if letters are pressed
 					break;
 				default:
-					Logger::PrefixTrace("INPUT", "Unhandled SDL Event: {}", e.type);
+					m_logger.Trace("Unhandled SDL Event: {}", e.type);
 					break;
 			}
 		}
@@ -271,11 +309,11 @@ namespace C3D
 			// We only update out width and height if they actually changed
 			if (width != m_state.width || height != m_state.height)
 			{
-				Logger::Debug("Window Resize: {} {}", width, height);
+				m_logger.Debug("Window Resize: {} {}", width, height);
 
 				if (width == 0 || height == 0)
 				{
-					Logger::Warn("Invalid width or height");
+					m_logger.Warn("Invalid width or height");
 					return true;
 				}
 
@@ -294,7 +332,7 @@ namespace C3D
 	{
 		if (code == SystemEventCode::Minimized)
 		{
-			Logger::Info("Window was minimized - suspending application");
+			m_logger.Info("Window was minimized - suspending application");
 			m_state.suspended = true;
 		}
 
@@ -305,7 +343,7 @@ namespace C3D
 	{
 		if (code == SystemEventCode::FocusGained)
 		{
-			Logger::Info("Window has regained focus - resuming application");
+			m_logger.Info("Window has regained focus - resuming application");
 			m_state.suspended = false;
 
 			const u16 width = context.data.u16[0];
@@ -334,7 +372,7 @@ namespace C3D
 			m_testGeometry->material->diffuseMap.texture = Textures.Acquire(names[choice], true);
 			if (!m_testGeometry->material->diffuseMap.texture)
 			{
-				Logger::PrefixWarn("ON_DEBUG_EVENT", "No texture! Using default");
+				Logger::Warn("[ON_DEBUG_EVENT] - No texture! Using default");
 				m_testGeometry->material->diffuseMap.texture = Textures.GetDefaultTexture();
 			}
 

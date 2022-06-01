@@ -9,9 +9,11 @@
 
 namespace C3D
 {
-	bool VulkanPipeline::Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 attributeCount, VkVertexInputAttributeDescription* attributes, 
+	VulkanPipeline::VulkanPipeline() : layout(nullptr), m_handle(nullptr) {}
+
+	bool VulkanPipeline::Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 stride, u32 attributeCount, VkVertexInputAttributeDescription* attributes,
 		u32 descriptorSetLayoutCount, VkDescriptorSetLayout* descriptorSetLayouts, u32 stageCount, VkPipelineShaderStageCreateInfo* stages,
-		const VkViewport viewport, const VkRect2D scissor, const bool isWireFrame)
+		VkViewport viewport, VkRect2D scissor, bool isWireFrame, bool depthTestEnabled)
 	{
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 		viewportState.viewportCount = 1;
@@ -41,12 +43,16 @@ namespace C3D
 		multiSampleCreateInfo.alphaToCoverageEnable = VK_FALSE;
 		multiSampleCreateInfo.alphaToOneEnable = VK_FALSE;
 
+		// Depth and stencil testing
 		VkPipelineDepthStencilStateCreateInfo depthStencil = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-		depthStencil.depthTestEnable = VK_TRUE;
-		depthStencil.depthWriteEnable = VK_TRUE;
-		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-		depthStencil.depthBoundsTestEnable = VK_FALSE;
-		depthStencil.stencilTestEnable = VK_FALSE;
+		if (depthTestEnabled)
+		{
+			depthStencil.depthTestEnable = VK_TRUE;
+			depthStencil.depthWriteEnable = VK_TRUE;
+			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+			depthStencil.depthBoundsTestEnable = VK_FALSE;
+			depthStencil.stencilTestEnable = VK_FALSE;
+		}
 
 		VkPipelineColorBlendAttachmentState colorBlendAttachmentState;
 		Memory::Zero(&colorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
@@ -83,7 +89,7 @@ namespace C3D
 
 		VkVertexInputBindingDescription bindingDescription;
 		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex3D);
+		bindingDescription.stride = stride;
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
@@ -125,7 +131,7 @@ namespace C3D
 		pipelineCreateInfo.pViewportState = &viewportState;
 		pipelineCreateInfo.pRasterizationState = &rasterizerCreateInfo;
 		pipelineCreateInfo.pMultisampleState = &multiSampleCreateInfo;
-		pipelineCreateInfo.pDepthStencilState = &depthStencil;
+		pipelineCreateInfo.pDepthStencilState = depthTestEnabled ? &depthStencil : nullptr;
 		pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
 		pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
 		pipelineCreateInfo.pTessellationState = nullptr;
@@ -140,11 +146,11 @@ namespace C3D
 		VkResult result = vkCreateGraphicsPipelines(context->device.logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, context->allocator, &m_handle);
 		if (VulkanUtils::IsSuccess(result))
 		{
-			Logger::Debug("Graphics pipeline created");
+			Logger::Debug("[VULKAN_PIPELINE] - Graphics pipeline created");
 			return true;
 		}
 
-		Logger::PrefixError("VULKAN_PIPELINE", "vkCreateGraphicsPipelines failed with: {}", VulkanUtils::ResultString(result, true));
+		Logger::Error("[VULKAN_PIPELINE] - vkCreateGraphicsPipelines failed with: {}", VulkanUtils::ResultString(result, true));
 		return false;
 	}
 

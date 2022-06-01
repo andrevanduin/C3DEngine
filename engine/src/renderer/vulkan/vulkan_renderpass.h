@@ -14,12 +14,20 @@ namespace C3D
 		Ready, Recording, InRenderPass, RecordingEnded, Submitted, NotAllocated
 	};
 
+	enum RenderPassClearFlags : u8
+	{
+		ClearNone = 0x0,
+		ClearColor = 0x1,
+		ClearDepth = 0x2,
+		ClearStencil = 0x4
+	};
+
 	class VulkanRenderPass
 	{
 	public:
 		VulkanRenderPass();
 
-		void Create(VulkanContext* context, const ivec4& renderArea, const vec4& clearColor, f32 depth, u32 stencil);
+		void Create(VulkanContext* context, const ivec4& renderArea, const vec4& clearColor, f32 depth, u32 stencil, u8 clearFlags, bool hasPrevPass, bool hasNextPass);
 
 		void Destroy(const VulkanContext* context);
 
@@ -36,5 +44,8 @@ namespace C3D
 
 		f32 m_depth;
 		u32 m_stencil;
+
+		u8 m_clearFlags;
+		bool m_hasPrevPass, m_hasNextPass;
 	};
 }

@@ -9,4 +9,10 @@ namespace C3D
 		vec3 position;
 		vec2 texture;
 	};
+
+	struct Vertex2D
+	{
+		vec2 position;
+		vec2 texture;
+	};
 }

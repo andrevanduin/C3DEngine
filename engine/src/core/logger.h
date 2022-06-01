@@ -19,38 +19,20 @@ namespace C3D
 	public:
 		static void Init();
 
-		static void PushPrefix(const string& prefix);
-		static void PopPrefix();
-
 		template <class... Args>
 		static void Debug(const string& format, Args&& ... args);
-
-		template <class... Args>
-		static void PrefixTrace(const string& prefix, const string& format, Args&& ... args);
 
 		template <class... Args>
 		static void Trace(const string& format, Args&& ... args);
 
 		template <class... Args>
-		static void PrefixInfo(const string& prefix, const string& format, Args&& ... args);
-
-		template <class... Args>
 		static void Info(const string& format, Args&& ... args);
-
-		template <class... Args>
-		static void PrefixWarn(const string& prefix, const string& format, Args&& ... args);
 
 		template <class... Args>
 		static void Warn(const string& format, Args&& ... args);
 
 		template <class... Args>
-		static void PrefixError(const string& prefix, const string& format, Args&& ... args);
-
-		template <class... Args>
 		static void Error(const string& format, Args&& ... args);
-
-		template <class... Args>
-		static void PrefixFatal(const string& prefix, const string& format, Args&& ... args);
 
 		template <class... Args>
 		static void Fatal(const string& format, Args&& ... args);
@@ -62,58 +44,48 @@ namespace C3D
 	private:
 		static bool m_initialized;
 
-		static std::stack<string> m_prefixes;
-
 		static std::shared_ptr<spdlog::logger> s_coreLogger;
 	};
 
-	template <class... Args>
-	void Logger::Error(const string& format, Args&&... args)
+	class LoggerInstance
 	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-		s_coreLogger->error("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
-	}
+	public:
+		explicit LoggerInstance(std::string prefix) : m_prefix(std::move(prefix)) {}
 
-	template <class ... Args>
-	void Logger::PrefixFatal(const string& prefix, const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
+		template <class... Args>
+		void Debug(const string& format, Args&& ... args) const;
 
-		s_coreLogger->critical("[" + prefix + "] - " + format, std::forward<Args>(args)...);
-		abort();
-	}
+		template <class... Args>
+		void Trace(const string& format, Args&& ... args) const;
 
-	template <class... Args>
-	void Logger::PrefixError(const string& prefix, const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
+		template <class... Args>
+		void Info(const string& format, Args&& ... args) const;
 
-		s_coreLogger->error("[" + prefix + "] - " + format, std::forward<Args>(args)...);
-	}
+		template <class... Args>
+		void Warn(const string& format, Args&& ... args) const;
 
-	template <class ... Args>
-	void Logger::Fatal(const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
+		template <class... Args>
+		void Error(const string& format, Args&& ... args) const;
 
-		s_coreLogger->critical("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
-		abort();
-	}
+		template <class... Args>
+		void Fatal(const string& format, Args&& ... args) const;
+
+	private:
+		std::string m_prefix;
+	};
 
 	template <class ... Args>
 	void Logger::Debug(const string& format, Args&&... args)
 	{
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
-		s_coreLogger->debug("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+		s_coreLogger->debug(format, std::forward<Args>(args)...);
 	}
 
 	template <class ... Args>
-	void Logger::PrefixTrace(const string& prefix, const string& format, Args&&... args)
+	void LoggerInstance::Debug(const string& format, Args&&... args) const
 	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-
-		s_coreLogger->trace("[" + prefix + "] - " + format, std::forward<Args>(args)...);
+		return Logger::Debug("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
 	}
 
 	template <class ... Args>
@@ -121,7 +93,13 @@ namespace C3D
 	{
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
-		s_coreLogger->trace("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+		s_coreLogger->trace(format, std::forward<Args>(args)...);
+	}
+
+	template <class ... Args>
+	void LoggerInstance::Trace(const string& format, Args&&... args) const
+	{
+		return Logger::Trace("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
 	}
 
 	template <class ... Args>
@@ -129,15 +107,13 @@ namespace C3D
 	{
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
-		s_coreLogger->info("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+		s_coreLogger->info(format, std::forward<Args>(args)...);
 	}
 
 	template <class ... Args>
-	void Logger::PrefixInfo(const string& prefix, const string& format, Args&&... args)
+	void LoggerInstance::Info(const string& format, Args&&... args) const
 	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-
-		s_coreLogger->info("[" + prefix + "] - " + format, std::forward<Args>(args)...);
+		return Logger::Info("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
@@ -145,14 +121,41 @@ namespace C3D
 	{
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
-		s_coreLogger->warn("[" + m_prefixes.top() + "] - " + format, std::forward<Args>(args)...);
+		s_coreLogger->warn(format, std::forward<Args>(args)...);
+	}
+
+	template <class ... Args>
+	void LoggerInstance::Warn(const string& format, Args&&... args) const
+	{
+		return Logger::Warn("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	void Logger::PrefixWarn(const string& prefix, const string& format, Args&&... args)
+	void Logger::Error(const string& format, Args&&... args)
+	{
+		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
+		s_coreLogger->error(format, std::forward<Args>(args)...);
+	}
+
+	template <class ... Args>
+	void LoggerInstance::Error(const string& format, Args&&... args) const
+	{
+		return Logger::Error("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
+	}
+
+
+	template <class ... Args>
+	void Logger::Fatal(const string& format, Args&&... args)
 	{
 		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
 
-		s_coreLogger->warn("[" + prefix + "] - " + format, std::forward<Args>(args)...);
+		s_coreLogger->critical(format, std::forward<Args>(args)...);
+		abort();
+	}
+
+	template <class ... Args>
+	void LoggerInstance::Fatal(const string& format, Args&&... args) const
+	{
+		return Logger::Fatal("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
 	}
 }

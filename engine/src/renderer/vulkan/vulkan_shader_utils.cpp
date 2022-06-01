@@ -1,55 +1,45 @@
 
 #include "vulkan_shader_utils.h"
 
+#include "core/c3d_string.h"
 #include "core/logger.h"
 #include "core/memory.h"
 
-#include "platform/filesystem.h"
+#include "resources/resource_types.h"
+#include "services/services.h"
 
 namespace C3D
 {
 	bool CreateShaderModule(const VulkanContext* context, const std::string& name, const std::string& type,
 	                        const VkShaderStageFlagBits shaderStageFlag, const u32 stageIndex, VulkanShaderStage* shaderStages)
 	{
-		// Build the file path to the shader
-		const auto fileName = "assets/shaders/" + name + "." + type + ".spv";
+		// Build the file name which will also be the resource name
+		char fileName[512];
+		StringFormat(fileName, "shaders/%s.%s.spv", name.data(), type.data());
+
+		// Load the resource
+		Resource binaryResource{};
+		if (!Resources.Load(fileName, ResourceType::Binary, &binaryResource))
+		{
+			Logger::Error("[CREATE_SHADER_MODULE] - Unable to read shader module '{}'", fileName);
+			return false;
+		}
 
 		Memory::Zero(&shaderStages[stageIndex].createInfo, sizeof(VkShaderModuleCreateInfo));
 		shaderStages[stageIndex].createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-
-		File file;
-		if (!file.Open(fileName, FileModeRead | FileModeBinary))
-		{
-			Logger::PrefixError("CREATE_SHADER_MODULE", "Unable to open shader module {}", fileName);
-			return false;
-		}
-
-		u64 size = 0;
-		char* fileBuffer = nullptr;
-		if (!file.ReadAllBytes(&fileBuffer, &size))
-		{
-			Logger::PrefixError("CREATE_SHADER_MODULE", "Unable to binary read shader module {}", fileName);
-			return false;
-		}
-
-		shaderStages[stageIndex].createInfo.codeSize = size;
-		shaderStages[stageIndex].createInfo.pCode = reinterpret_cast<u32*>(fileBuffer);
-
-		file.Close();
+		// Use the resource's size and data directly
+		shaderStages[stageIndex].createInfo.codeSize = binaryResource.dataSize;
+		shaderStages[stageIndex].createInfo.pCode = binaryResource.GetData<u32*>();
 
 		VK_CHECK(vkCreateShaderModule(context->device.logicalDevice, &shaderStages[stageIndex].createInfo, context->allocator, &shaderStages[stageIndex].module));
+
+		Resources.Unload(&binaryResource);
 
 		Memory::Zero(&shaderStages[stageIndex].shaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
 		shaderStages[stageIndex].shaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStages[stageIndex].shaderStageCreateInfo.stage = shaderStageFlag;
 		shaderStages[stageIndex].shaderStageCreateInfo.module = shaderStages[stageIndex].module;
 		shaderStages[stageIndex].shaderStageCreateInfo.pName = "main"; // TODO: possibly make this configurable in the future
-
-		if (fileBuffer)
-		{
-			Memory::Free(fileBuffer, sizeof(char) * size, MemoryType::String);
-			fileBuffer = nullptr;
-		}
 
 		return true;
 	}

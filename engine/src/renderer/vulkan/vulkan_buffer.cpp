@@ -33,7 +33,7 @@ namespace C3D
 		m_memoryIndex = context->FindMemoryIndex(requirements.memoryTypeBits, m_memoryPropertyFlags);
 		if (m_memoryIndex == -1)
 		{
-			Logger::PrefixError("VULKAN_BUFFER", "Unable to create because the required memory type index was not found");
+			Logger::Error("[VULKAN_BUFFER] - Unable to create because the required memory type index was not found");
 			return false;
 		}
 
@@ -45,7 +45,7 @@ namespace C3D
 		const VkResult result = vkAllocateMemory(context->device.logicalDevice, &allocateInfo, context->allocator, &m_memory);
 		if (result != VK_SUCCESS)
 		{
-			Logger::PrefixError("VULKAN_BUFFER", "Unable to create because the required memory allocation failed. Error: {}", result);
+			Logger::Error("[VULKAN_BUFFER] - Unable to create because the required memory allocation failed. Error: {}", result);
 			return false;
 		}
 
@@ -70,7 +70,7 @@ namespace C3D
 		m_isLocked = false;
 	}
 
-	bool VulkanBuffer::Resize(VulkanContext* context, const u64 newSize, const VkQueue queue, const VkCommandPool pool)
+	bool VulkanBuffer::Resize(const VulkanContext* context, const u64 newSize, const VkQueue queue, const VkCommandPool pool)
 	{
 		VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCreateInfo.size = newSize;
@@ -94,7 +94,7 @@ namespace C3D
 		VkResult result = vkAllocateMemory(context->device.logicalDevice, &allocateInfo, context->allocator, &newMemory);
 		if (result != VK_SUCCESS)
 		{
-			Logger::PrefixError("VULKAN_BUFFER", "Unable to resize because the required memory allocation failed. Error: {}", result);
+			Logger::Error("[VULKAN_BUFFER] - Unable to resize because the required memory allocation failed. Error: {}", result);
 			return false;
 		}
 

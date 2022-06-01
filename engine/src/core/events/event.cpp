@@ -7,15 +7,17 @@
 
 namespace C3D
 {
-	bool EventSystem::Init()
+	EventSystem::EventSystem() : m_logger("EVENT"), m_registered{} {}
+
+	bool EventSystem::Init() const
 	{
-		Logger::PrefixInfo("EVENT", "Init()");
+		m_logger.Info("Init()");
 		return true;
 	}
 
 	void EventSystem::Shutdown()
 	{
-		Logger::PrefixInfo("EVENT", "Shutting Down");
+		m_logger.Info("Shutting Down");
 		for (auto& [events] : m_registered)
 		{
 			if (!events.empty()) events.clear();
@@ -29,7 +31,7 @@ namespace C3D
 		{
 			if (event->Equals(onEvent))
 			{
-				Logger::Warn("This listener has already been Registered for {}", code);
+				m_logger.Warn("This listener has already been Registered for {}", code);
 				return false;
 			}
 		}
@@ -43,7 +45,7 @@ namespace C3D
 		auto& events = m_registered[code].events;
 		if (events.empty())
 		{
-			Logger::Warn("Tried to UnRegister Event for a code that has no events");
+			m_logger.Warn("Tried to UnRegister Event for a code that has no events");
 			return false;
 		}
 
@@ -54,7 +56,7 @@ namespace C3D
 			return true;
 		}
 
-		Logger::Warn("Tried to UnRegister Event that did not exist");
+		m_logger.Warn("Tried to UnRegister Event that did not exist");
 		return false;
 	}
 

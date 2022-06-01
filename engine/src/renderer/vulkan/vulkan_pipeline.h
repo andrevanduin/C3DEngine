@@ -7,9 +7,11 @@ namespace C3D
 	class VulkanPipeline
 	{
 	public:
-		bool Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 attributeCount, VkVertexInputAttributeDescription* attributes,
+		VulkanPipeline();
+
+		bool Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 stride, u32 attributeCount, VkVertexInputAttributeDescription* attributes,
 			u32 descriptorSetLayoutCount, VkDescriptorSetLayout* descriptorSetLayouts, u32 stageCount, VkPipelineShaderStageCreateInfo* stages,
-			VkViewport viewport, VkRect2D scissor, bool isWireFrame);
+			VkViewport viewport, VkRect2D scissor, bool isWireFrame, bool depthTestEnabled);
 
 		void Destroy(const VulkanContext* context);
 

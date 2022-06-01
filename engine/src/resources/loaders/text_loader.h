@@ -4,10 +4,10 @@
 
 namespace C3D
 {
-	class ImageLoader final : public ResourceLoader
+	class TextLoader final : public ResourceLoader
 	{
 	public:
-		ImageLoader();
+		TextLoader();
 
 		bool Load(const string& name, Resource* outResource) override;
 	};

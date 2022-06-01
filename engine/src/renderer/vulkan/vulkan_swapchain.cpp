@@ -21,7 +21,7 @@ namespace C3D
 			}
 		}
 
-		Logger::Warn("Could not find Preferred SwapChain ImageFormat. Falling back to first format in the list");
+		Logger::Warn("[VULKAN_SWAP_CHAIN] - Could not find Preferred SwapChain ImageFormat. Falling back to first format in the list");
 		return context->device.swapChainSupport.formats[0];
 	}
 
@@ -56,7 +56,7 @@ namespace C3D
 
 	void VulkanSwapChain::Destroy(const VulkanContext* context)
 	{
-		Logger::PrefixInfo("VULKAN_SWAP_CHAIN_MANAGER", "Destroying SwapChain");
+		Logger::Info("[VULKAN_SWAP_CHAIN] - Destroying SwapChain");
 		DestroyInternal(context);
 	}
 
@@ -70,7 +70,7 @@ namespace C3D
 		}
 		if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
 		{
-			Logger::Fatal("Failed to acquire SwapChain image");
+			Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to acquire SwapChain image");
 			return false;
 		}
 		return true;
@@ -96,7 +96,7 @@ namespace C3D
 		}
 		else if (result != VK_SUCCESS)
 		{
-			Logger::Fatal("Failed to present SwapChain image");
+			Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to present SwapChain image");
 		}
 
 		context->currentFrame = (context->currentFrame + 1) % maxFramesInFlight;
@@ -104,8 +104,6 @@ namespace C3D
 
 	void VulkanSwapChain::CreateInternal(VulkanContext* context, const u32 width, const u32 height)
 	{
-		Logger::PushPrefix("VULKAN_SWAP_CHAIN_MANAGER");
-
 		VkExtent2D extent = { width, height };
 		imageFormat = GetSurfaceFormat(context);
 		m_presentMode = GetPresentMode(context);
@@ -196,15 +194,14 @@ namespace C3D
 		if (!context->device.DetectDepthFormat())
 		{
 			context->device.depthFormat = VK_FORMAT_UNDEFINED;
-			Logger::Fatal("Failed to find a supported Depth Format");
+			Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to find a supported Depth Format");
 		}
 
 		depthAttachment.Create(context, VK_IMAGE_TYPE_2D, extent.width, extent.height, context->device.depthFormat,
 			VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			true, VK_IMAGE_ASPECT_DEPTH_BIT);
 
-		Logger::Info("SwapChain successfully created");
-		Logger::PopPrefix();
+		Logger::Info("[VULKAN_SWAP_CHAIN] - Successfully created");
 	}
 
 	void VulkanSwapChain::DestroyInternal(const VulkanContext* context)

@@ -19,12 +19,6 @@ namespace C3D
 {
 	class VulkanImage;
 
-	struct VulkanFence
-	{
-		VkFence handle;
-		bool isSignaled;
-	};
-
 	struct VulkanShaderStage
 	{
 		VkShaderModuleCreateInfo createInfo;
@@ -38,6 +32,27 @@ namespace C3D
 		VkSampler sampler;
 	};
 
+	struct VulkanDescriptorState
+	{
+		// Per frame
+		u32 generations[3];
+		u32 textureIds[3];
+	};
+
+	struct VulkanGeometryData
+	{
+		u32 id;
+		u32 generation;
+
+		u32 vertexCount;
+		u32 vertexElementSize;
+		u32 vertexBufferOffset;
+
+		u32 indexCount;
+		u32 indexElementSize;
+		u32 indexBufferOffset;
+	};
+
 	struct VulkanContext
 	{
 		f32 frameDeltaTime;
@@ -48,14 +63,20 @@ namespace C3D
 
 		VulkanDevice device;
 		VulkanSwapChain swapChain;
+
 		VulkanRenderPass mainRenderPass;
+		VulkanRenderPass uiRenderPass;
 
 		std::vector<VulkanCommandBuffer> graphicsCommandBuffers;
 
 		std::vector<VkSemaphore> imageAvailableSemaphores;
 		std::vector<VkSemaphore> queueCompleteSemaphores;
-		std::vector<VulkanFence> inFlightFences;
-		std::vector<VulkanFence*> imagesInFlight;
+
+		u32 inFlightFenceCount;
+		VkFence inFlightFences[2];
+
+		// Holds pointers to fences which exist and are owned elsewhere, one per frame
+		VkFence* imagesInFlight[3];
 
 		u32 imageIndex;
 		u32 currentFrame;
@@ -65,6 +86,8 @@ namespace C3D
 
 		u64 frameBufferSizeGeneration;
 		u64 frameBufferSizeLastGeneration;
+
+		VkFramebuffer worldFrameBuffers[3];
 
 		bool recreatingSwapChain;
 

@@ -28,9 +28,11 @@ namespace C3D
 
 		bool Read(u64 dataSize, void* outData, u64* outBytesRead);
 
-		bool ReadAllBytes(char** outBytes, u64* outBytesRead);
+		bool ReadAll(char* outBytes, u64* outBytesRead);
 
 		bool Write(u64 dataSize, const void* data, u64* outBytesWritten);
+
+		bool Size(u64* outSize);
 
 		bool isValid = false;
 	private:

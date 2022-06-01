@@ -14,7 +14,7 @@ namespace C3D
 
 		void Destroy(const VulkanContext* context);
 
-		bool Resize(VulkanContext* context, u64 newSize, VkQueue queue, VkCommandPool pool);
+		bool Resize(const VulkanContext* context, u64 newSize, VkQueue queue, VkCommandPool pool);
 
 		void Bind(const VulkanContext* context, u64 offset) const;
 

@@ -7,22 +7,17 @@
 
 #include "services/services.h"
 
-// TEMP: resource system
-#include "platform/filesystem.h"
-// TEMP end
-
 namespace C3D
 {
 	MaterialSystem::MaterialSystem()
-		: m_initialized(false), m_config(), m_defaultMaterial(), m_registeredMaterials(nullptr)
-	{
-	}
+		: m_logger("MATERIAL_SYSTEM"), m_initialized(false), m_config(), m_defaultMaterial(), m_registeredMaterials(nullptr)
+	{}
 
 	bool MaterialSystem::Init(const MaterialSystemConfig& config)
 	{
 		if (config.maxMaterialCount == 0)
 		{
-			Logger::PrefixError("TEXTURE_SYSTEM", "config.maxTextureCount must be > 0");
+			m_logger.Error("config.maxTextureCount must be > 0");
 			return false;
 		}
 
@@ -43,7 +38,7 @@ namespace C3D
 
 		if (!CreateDefaultMaterial())
 		{
-			Logger::PrefixError("MATERIAL_SYSTEM", "Failed to create default material");
+			m_logger.Error("Failed to create default material");
 			return false;
 		}
 
@@ -53,7 +48,7 @@ namespace C3D
 
 	void MaterialSystem::Shutdown()
 	{
-		Logger::PrefixInfo("TEXTURE_SYSTEM", "Destroying all loaded materials");
+		m_logger.Info("Destroying all loaded materials");
 		for (u32 i = 0; i < m_config.maxMaterialCount; i++)
 		{
 			if (m_registeredMaterials[i].id != INVALID_ID)
@@ -62,23 +57,32 @@ namespace C3D
 			}
 		}
 
-		Logger::PrefixInfo("TEXTURE_SYSTEM", "Destroying default material");
+		m_logger.Info("Destroying default material");
 		DestroyMaterial(&m_defaultMaterial);
 	}
 
 	Material* MaterialSystem::Acquire(const string& name)
 	{
-		MaterialConfig config;
-		// TODO: Try different extensions
-		const auto fullPath = "assets/materials/" + name + ".cmt";
-
-		if (!LoadConfigurationFile(fullPath, &config))
+		Resource materialResource{};
+		if (!Resources.Load(name, ResourceType::Material, &materialResource))
 		{
-			Logger::PrefixError("MATERIAL_SYSTEM", "Failed to load material file: {}. Nullptr will be returned", fullPath);
+			m_logger.Error("Failed to load material resource. Returning nullptr");
 			return nullptr;
 		}
-		// Now we can acquire from the loaded config
-		return AcquireFromConfig(config);
+
+		Material* m = nullptr;
+		if (materialResource.data)
+		{
+			m = AcquireFromConfig(*materialResource.GetData<MaterialConfig*>());
+		}
+
+		Resources.Unload(&materialResource);
+
+		if (!m)
+		{
+			m_logger.Error("Failed to load material resource. Returning nullptr");
+		}
+		return m;
 	}
 
 	Material* MaterialSystem::AcquireFromConfig(const MaterialConfig& config)
@@ -115,14 +119,14 @@ namespace C3D
 
 			if (!mat || ref.handle == INVALID_ID)
 			{
-				Logger::PrefixFatal("MATERIAL_SYSTEM", "No more free space for materials. Adjust the configuration to allow more");
+				m_logger.Fatal("No more free space for materials. Adjust the configuration to allow more");
 				return nullptr;
 			}
 
 			// Create a new Material
 			if (!LoadMaterial(config, mat))
 			{
-				Logger::PrefixError("MATERIAL_SYSTEM", "Failed to load material {}", config.name);
+				m_logger.Error("Failed to load material {}", config.name);
 				return nullptr;
 			}
 
@@ -130,11 +134,11 @@ namespace C3D
 			else mat->generation++;
 
 			mat->id = ref.handle;
-			Logger::PrefixTrace("MATERIAL_SYSTEM", "Material {} did not exist yet. Created and the refCount is now {}", config.name, ref.referenceCount);
+			m_logger.Trace("Material {} did not exist yet. Created and the refCount is now {}", config.name, ref.referenceCount);
 		}
 		else
 		{
-			Logger::PrefixTrace("MATERIAL_SYSTEM", "Material {} already exists. The refCount is now {}", config.name, ref.referenceCount);
+			m_logger.Trace("Material {} already exists. The refCount is now {}", config.name, ref.referenceCount);
 		}
 
 		return &m_registeredMaterials[ref.handle];
@@ -144,14 +148,14 @@ namespace C3D
 	{
 		if (IEquals(name, DEFAULT_MATERIAL_NAME))
 		{
-			Logger::PrefixWarn("MATERIAL_SYSTEM", "Tried to release {}. This happens automatically on shutdown", DEFAULT_MATERIAL_NAME);
+			m_logger.Warn("Tried to release {}. This happens automatically on shutdown", DEFAULT_MATERIAL_NAME);
 			return;
 		}
 
 		const auto it = m_registeredMaterialTable.find(name);
 		if (it == m_registeredMaterialTable.end())
 		{
-			Logger::PrefixWarn("MATERIAL_SYSTEM", "Tried to release a material that does not exist: {}", name);
+			m_logger.Warn("Tried to release a material that does not exist: {}", name);
 			return;
 		}
 
@@ -169,18 +173,18 @@ namespace C3D
 			// Remove the reference
 			m_registeredMaterialTable.erase(it);
 
-			Logger::PrefixInfo("MATERIAL_SYSTEM", "Released material {}. The texture was unloaded because refCount = 0 and autoRelease = true", name);
+			m_logger.Info("Released material {}. The texture was unloaded because refCount = 0 and autoRelease = true", name);
 			return;
 		}
 
-		Logger::PrefixInfo("MATERIAL_SYSTEM", "Released material {}. The material now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
+		m_logger.Info("Released material {}. The material now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
 	}
 
 	Material* MaterialSystem::GetDefault()
 	{
 		if (!m_initialized)
 		{
-			Logger::PrefixFatal("MATERIAL_SYSTEM", "Tried to get the default material before system is initialized");
+			m_logger.Fatal("Tried to get the default material before system is initialized");
 			return nullptr;
 		}
 		return &m_defaultMaterial;
@@ -199,7 +203,7 @@ namespace C3D
 
 		if (!Renderer.CreateMaterial(&m_defaultMaterial))
 		{
-			Logger::PrefixError("MATERIAL_SYSTEM", "Failed to acquire renderer resources for the the default material");
+			m_logger.Error("Failed to acquire renderer resources for the default material");
 			return false;
 		}
 
@@ -212,6 +216,8 @@ namespace C3D
 
 		// Name
 		StringNCopy(mat->name, config.name, MATERIAL_NAME_MAX_LENGTH);
+		// Type
+		mat->type = config.type;
 		// Diffuse color
 		mat->diffuseColor = config.diffuseColor;
 
@@ -223,7 +229,7 @@ namespace C3D
 
 			if (!mat->diffuseMap.texture)
 			{
-				Logger::PrefixWarn("MATERIAL_SYSTEM", "Unable to load texture '{}' for material '{}', using the default", config.diffuseMapName, mat->name);
+				m_logger.Warn("Unable to load texture '{}' for material '{}', using the default", config.diffuseMapName, mat->name);
 				mat->diffuseMap.texture = Textures.GetDefaultTexture();
 			}
 		}
@@ -238,16 +244,16 @@ namespace C3D
 
 		if (!Renderer.CreateMaterial(mat))
 		{
-			Logger::PrefixError("MATERIAL_SYSTEM", "Failed to acquire renderer resources for material: {}", mat->name);
+			m_logger.Error("Failed to acquire renderer resources for material: {}", mat->name);
 			return false;
 		}
 
 		return true;
 	}
 
-	void MaterialSystem::DestroyMaterial(Material* mat)
+	void MaterialSystem::DestroyMaterial(Material* mat) const
 	{
-		Logger::PrefixTrace("MATERIAL_SYSTEM", "Destroying material '{}'", mat->name);
+		m_logger.Trace("Destroying material '{}'", mat->name);
 
 		// If the diffuseMap has a texture we release it
 		if (mat->diffuseMap.texture)
@@ -263,77 +269,5 @@ namespace C3D
 		mat->id = INVALID_ID;
 		mat->generation = INVALID_ID;
 		mat->internalId = INVALID_ID;
-	}
-
-	bool MaterialSystem::LoadConfigurationFile(const string& path, MaterialConfig* outConfig)
-	{
-		File file;
-		if (!file.Open(path, FileModeRead))
-		{
-			Logger::PrefixError("MATERIAL_SYSTEM", "LoadConfigurationFile() - unable to open material file for reading: '{}'", path);
-			return false;
-		}
-
-		string line;
-		// Prepare for strings of up to 512 characters so we don't needlessly resize
-		line.reserve(512); 
-
-		u32 lineNumber = 0;
-		while (file.ReadLine(line))
-		{
-			Trim(line);
-
-			// Skip blank lines and comments
-			if (line.empty() || line[0] == '#')
-			{
-				lineNumber++;
-				continue;
-			}
-
-			// Find the '=' symbol
-			const auto equalIndex = line.find('=');
-			if (equalIndex == string::npos)
-			{
-				Logger::PrefixWarn("MATERIAL_SYSTEM", "Potential formatting issue found in file '': '=' token not found. Skipping line {}.", path, lineNumber);
-				lineNumber++;
-				continue;
-			}
-
-			// Get the variable name (which is all the characters up to the '=' and trim
-			auto varName = line.substr(0, equalIndex);
-			Trim(varName);
-
-			// Get the value (which is all the characters after the '=' and trim
-			auto value = line.substr(equalIndex + 1);
-			Trim(value);
-
-			if (IEquals(varName, "version"))
-			{
-				// TODO: version
-			}
-			else if (IEquals(varName, "name"))
-			{
-				StringNCopy(outConfig->name, value.data(), MATERIAL_NAME_MAX_LENGTH);
-			}
-			else if (IEquals(varName, "diffuseMapName"))
-			{
-				StringNCopy(outConfig->diffuseMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
-			}
-			else if (IEquals(varName, "diffuseColor"))
-			{
-				if (!StringToVec4(value.data(), &outConfig->diffuseColor))
-				{
-					Logger::PrefixWarn("MATERIAL_SYSTEM", "Error parsing diffuseColor in file ''. Using default of white instead", path);
-					outConfig->diffuseColor = vec4(1);
-				}
-			}
-
-			// TODO: more fields
-
-			lineNumber++;
-		}
-
-		file.Close();
-		return true;
 	}
 }

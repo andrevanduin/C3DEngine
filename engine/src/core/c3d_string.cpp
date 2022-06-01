@@ -14,9 +14,9 @@
 
 namespace C3D
 {
-	u64 StringLength(const string& str)
+	u32 StringLength(const string& str)
 	{
-		return str.size();
+		return static_cast<u32>(str.size());
 	}
 
 	bool Equals(const string& left, const string& right)

@@ -24,12 +24,11 @@ namespace C3D
 
 		bool DrawFrame(const RenderPacket* packet) const;
 
-		[[nodiscard]] bool BeginFrame(f32 deltaTime) const;
-		[[nodiscard]] bool EndFrame(f32 deltaTime) const;
-
 		void CreateTexture(const u8* pixels, struct Texture* texture) const;
 		bool CreateMaterial(struct Material* material) const;
-		bool CreateGeometry(struct Geometry* geometry, u32 vertexCount, const Vertex3D* vertices, u32 indexCount, const u32* indices) const;
+
+		bool CreateGeometry(struct Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices,
+			u32 indexSize, u32 indexCount, const void* indices) const;
 
 		void DestroyTexture(struct Texture* texture) const;
 		void DestroyMaterial(struct Material* material) const;
@@ -39,7 +38,13 @@ namespace C3D
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend() const;
 
+		LoggerInstance m_logger;
+
+		// World
 		mat4 m_projection, m_view;
+		// UI
+		mat4 m_uiProjection, m_uiView;
+
 		f32 m_nearClip, m_farClip;
 
 		RendererBackend* m_backend{ nullptr };

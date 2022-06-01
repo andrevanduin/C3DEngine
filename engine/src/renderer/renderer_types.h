@@ -11,26 +11,13 @@ namespace C3D
 	{
 		Vulkan,
 		OpenGl,
-		DirectX
+		DirectX,
 	};
 
-	// This structure should be 256 bytes for certain Nvidia cards
-	struct GlobalUniformObject
+	enum BuiltinRenderPass : u8
 	{
-		mat4 projection;	// 64 bytes
-		mat4 view;			// 64 bytes
-
-		mat4 mat4Padding0;	// 64 reserved bytes
-		mat4 mat4Padding1;	// 64 reserved bytes
-	};
-
-	// This structure should be 64 bytes
-	struct MaterialUniformObject
-	{
-		vec4 diffuseColor;	// 16 bytes
-		vec4 vec4Padding0;	// 16 bytes, reserved for future use
-		vec4 vec4Padding1;	// 16 bytes, reserved for future use
-		vec4 vec4Padding2;	// 16 bytes, reserved for future use
+		World	= 0x01,
+		Ui		= 0x02,
 	};
 
 	struct GeometryRenderData
@@ -45,6 +32,9 @@ namespace C3D
 
 		u32 geometryCount;
 		GeometryRenderData* geometries;
+
+		u32 uiGeometryCount;
+		GeometryRenderData* uiGeometries;
 	};
 
 	struct RendererBackendState

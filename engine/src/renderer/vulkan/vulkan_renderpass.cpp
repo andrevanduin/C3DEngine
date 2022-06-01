@@ -8,37 +8,47 @@
 namespace C3D
 {
 	VulkanRenderPass::VulkanRenderPass()
-		: handle(nullptr), state(), area(), m_clearColor(), m_depth(0), m_stencil(0)
+		: handle(nullptr), state(), area(), m_clearColor(), m_depth(0), m_stencil(0), m_clearFlags(0),
+		  m_hasPrevPass(false), m_hasNextPass(false)
 	{
 	}
 
-	void VulkanRenderPass::Create(VulkanContext* context, const ivec4& renderArea, const vec4& clearColor, f32 depth, u32 stencil)
+	void VulkanRenderPass::Create(VulkanContext* context, const ivec4& renderArea, const vec4& clearColor, f32 depth, u32 stencil, u8 clearFlags, bool hasPrevPass, bool hasNextPass)
 	{
-		Logger::PushPrefix("VULKAN_RENDER_PASS");
-
 		area = renderArea;
 		m_clearColor = clearColor;
 		m_depth = depth;
 		m_stencil = stencil;
+		m_clearFlags = clearFlags;
+		m_hasNextPass = hasNextPass;
+		m_hasPrevPass = hasPrevPass;
 
 		VkSubpassDescription subPass = {};
 		subPass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-		constexpr u32 attachmentDescriptionCount = 2; // TODO: Make this configurable.
-		VkAttachmentDescription attachmentDescriptions[attachmentDescriptionCount];
+		// TODO: Make this configurable.
+		u32 attachmentDescriptionCount = 0;
+		VkAttachmentDescription attachmentDescriptions[2];
 
-		VkAttachmentDescription colorAttachment;
+		// Color attachment
+		bool doClearColor = m_clearFlags & ClearColor;
+
+		VkAttachmentDescription colorAttachment{};
 		colorAttachment.format = context->swapChain.imageFormat.format; // TODO: Make this configurable.
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		// If the user has requested clear color we clear otherwise we load it
+		colorAttachment.loadOp = doClearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		// If we have a previous pass, the initialLayout should already be set. Otherwise it will be undefined.
+		colorAttachment.initialLayout = m_hasPrevPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+		// If there are more passes we use the optimal layout. Otherwise we want to have a present layout
+		colorAttachment.finalLayout = m_hasNextPass ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		colorAttachment.flags = 0;
 
-		attachmentDescriptions[0] = colorAttachment;
+		attachmentDescriptions[attachmentDescriptionCount] = colorAttachment;
+		attachmentDescriptionCount++;
 
 		VkAttachmentReference colorAttachmentReference;
 		colorAttachmentReference.attachment = 0;
@@ -47,26 +57,36 @@ namespace C3D
 		subPass.colorAttachmentCount = 1;
 		subPass.pColorAttachments = &colorAttachmentReference;
 
-		VkAttachmentDescription depthAttachment;
-		depthAttachment.format = context->device.depthFormat;
-		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		depthAttachment.flags = 0;
+		// Depth attachment, if there is one.
+		if (bool doClearDepth = m_clearFlags & ClearDepth)
+		{
+			VkAttachmentDescription depthAttachment;
+			depthAttachment.format = context->device.depthFormat;
+			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			depthAttachment.loadOp = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			depthAttachment.flags = 0;
 
-		attachmentDescriptions[1] = depthAttachment;
+			attachmentDescriptions[attachmentDescriptionCount] = depthAttachment;
+			attachmentDescriptionCount++;
 
-		VkAttachmentReference depthAttachmentReference;
-		depthAttachmentReference.attachment = 1;
-		depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			VkAttachmentReference depthAttachmentReference;
+			depthAttachmentReference.attachment = 1;
+			depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-		// TODO: other attachment types (input, resolve, preserve)
+			// TODO: other attachment types (input, resolve, preserve)
 
-		subPass.pDepthStencilAttachment = &depthAttachmentReference;
+			subPass.pDepthStencilAttachment = &depthAttachmentReference;
+		}
+		else
+		{
+			Memory::Zero(&attachmentDescriptions[attachmentDescriptionCount], sizeof(VkAttachmentDescription));
+			subPass.pDepthStencilAttachment = nullptr;
+		}
 
 		// Input from a Shader.
 		subPass.inputAttachmentCount = 0;
@@ -100,13 +120,12 @@ namespace C3D
 
 		VK_CHECK(vkCreateRenderPass(context->device.logicalDevice, &createInfo, context->allocator, &handle));
 
-		Logger::Info("RenderPass successfully created");
-		Logger::PopPrefix();
+		Logger::Info("[VULKAN_RENDER_PASS] - RenderPass successfully created");
 	}
 
 	void VulkanRenderPass::Destroy(const VulkanContext* context)
 	{
-		Logger::PrefixInfo("VULKAN_RENDER_PASS", "Destroying RenderPass");
+		Logger::Info("[VULKAN_RENDER_PASS] - Destroying RenderPass");
 
 		if (handle)
 		{
@@ -125,19 +144,29 @@ namespace C3D
 		beginInfo.renderArea.extent.width = area.z;
 		beginInfo.renderArea.extent.height = area.w;
 
+		beginInfo.clearValueCount = 0;
+		beginInfo.pClearValues = nullptr;
+
 		VkClearValue clearValues[2];
 		Memory::Zero(clearValues, sizeof(VkClearValue) * 2);
 
-		clearValues[0].color.float32[0] = m_clearColor.r;
-		clearValues[0].color.float32[1] = m_clearColor.g;
-		clearValues[0].color.float32[2] = m_clearColor.b;
-		clearValues[0].color.float32[3] = m_clearColor.a;
+		if (m_clearFlags & ClearColor)
+		{
+			Memory::Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			beginInfo.clearValueCount++;
+		}
 
-		clearValues[1].depthStencil.depth = m_depth;
-		clearValues[1].depthStencil.stencil = m_stencil;
+		if (m_clearFlags & ClearDepth)
+		{
+			Memory::Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			clearValues[beginInfo.clearValueCount].depthStencil.depth = m_depth;
 
-		beginInfo.clearValueCount = 2;
-		beginInfo.pClearValues = clearValues;
+			const bool doClearStencil = m_clearFlags & ClearStencil;
+			clearValues[beginInfo.clearValueCount].depthStencil.stencil = doClearStencil ? m_stencil : 0;
+			beginInfo.clearValueCount++;
+		}
+
+		beginInfo.pClearValues = beginInfo.clearValueCount > 0 ? clearValues : nullptr;
 
 		vkCmdBeginRenderPass(commandBuffer->handle, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 		commandBuffer->state = VulkanCommandBufferState::InRenderPass;

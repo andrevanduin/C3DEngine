@@ -10,6 +10,7 @@
 namespace C3D
 {
 	LinearAllocator Services::m_allocator;
+	LoggerInstance  Services::m_logger("SERVICES");
 
 	// Systems
 	InputSystem*	Services::m_pInput			= nullptr;
@@ -23,8 +24,6 @@ namespace C3D
 	bool Services::Init(Application* application, const ResourceSystemConfig& resourceSystemConfig, const TextureSystemConfig& textureSystemConfig, 
 		const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig)
 	{
-		Logger::PushPrefix("SERVICES");
-
 		// 64 mb of total space for all our systems
 		constexpr u64 systemsAllocatorTotalSize = static_cast<u64>(64) * 1024 * 1024;
 		m_allocator.Create(systemsAllocatorTotalSize);
@@ -33,59 +32,56 @@ namespace C3D
 		m_pEvents = m_allocator.New<EventSystem>();
 		if (!m_pEvents->Init())
 		{
-			Logger::Fatal("GetEvent System failed to be Initialized");
+			m_logger.Fatal("GetEvent System failed to be Initialized");
 		}
 
 		// Input System
 		m_pInput = m_allocator.New<InputSystem>();
 		if (!m_pInput->Init())
 		{
-			Logger::Fatal("GetInput System failed to be Initialized");
-		}
-
-		// Render System
-		m_pRenderer = m_allocator.New<RenderSystem>();
-		if (!m_pRenderer->Init(application))
-		{
-			Logger::Fatal("Render System failed to be Initialized");
+			m_logger.Fatal("GetInput System failed to be Initialized");
 		}
 
 		// Resource System
 		m_pResourceSystem = m_allocator.New<ResourceSystem>();
 		if (!m_pResourceSystem->Init(resourceSystemConfig))
 		{
-			Logger::Fatal("Resource System failed to be Initialized");
+			m_logger.Fatal("Resource System failed to be Initialized");
+		}
+
+		// Render System
+		m_pRenderer = m_allocator.New<RenderSystem>();
+		if (!m_pRenderer->Init(application))
+		{
+			m_logger.Fatal("Render System failed to be Initialized");
 		}
 
 		// Texture System
 		m_pTextureSystem = m_allocator.New<TextureSystem>();
 		if (!m_pTextureSystem->Init(textureSystemConfig))
 		{
-			Logger::Fatal("Texture System failed to be Initialized");
+			m_logger.Fatal("Texture System failed to be Initialized");
 		}
 
 		// Material System
 		m_pMaterialSystem = m_allocator.New<MaterialSystem>();
 		if (!m_pMaterialSystem->Init(materialSystemConfig))
 		{
-			Logger::Fatal("Material System failed to be Initialized");
+			m_logger.Fatal("Material System failed to be Initialized");
 		}
 
 		// Geometry System
 		m_pGeometrySystem = m_allocator.New<GeometrySystem>();
 		if (!m_pGeometrySystem->Init(geometrySystemConfig))
 		{
-			Logger::Fatal("Geometry System failed to be Initialized");
+			m_logger.Fatal("Geometry System failed to be Initialized");
 		}
-
-		Logger::PopPrefix();
 		return true;
 	}
 
 	void Services::Shutdown()
 	{
-		Logger::PushPrefix("SERVICES");
-		Logger::Info("Shutting down all services");
+		m_logger.Info("Shutting down all services");
 
 		m_pGeometrySystem->Shutdown();
 		m_pMaterialSystem->Shutdown();
@@ -95,10 +91,9 @@ namespace C3D
 		m_pInput->Shutdown();
 		m_pEvents->Shutdown();
 
-		Logger::Info("Finished shutting down services. Destroying Allocator");
+		m_logger.Info("Finished shutting down services. Destroying Allocator");
 		m_allocator.Destroy();
 		m_pInput = nullptr;
-		Logger::Info("Shutdown finished");
-		Logger::PopPrefix();
+		m_logger.Info("Shutdown finished");
 	}
 }

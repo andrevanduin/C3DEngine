@@ -52,6 +52,7 @@ namespace C3D
 		static ResourceSystem*	m_pResourceSystem;
 
 		static LinearAllocator m_allocator;
+		static LoggerInstance m_logger;
 	};
 }
 

@@ -6,21 +6,31 @@
 #include "core/memory.h"
 
 // Default loaders
+#include "resources/loaders/binary_loader.h"
 #include "resources/loaders/image_loader.h"
+#include "resources/loaders/material_loader.h"
+#include "resources/loaders/text_loader.h"
 
 namespace C3D
 {
-	ResourceSystem::ResourceSystem(): m_initialized(false), m_config(), m_registeredLoaders(nullptr)
+	static const char* LOADER_TYPES[] =
 	{
-	}
+		"None",
+		"Text",
+		"Binary",
+		"Image",
+		"Material",
+		"StaticMesh",
+		"Custom",
+	};
+
+	ResourceSystem::ResourceSystem(): m_logger("RESOURCE_SYSTEM"), m_initialized(false), m_config(), m_registeredLoaders(nullptr) {}
 
 	bool ResourceSystem::Init(const ResourceSystemConfig& config)
 	{
-		Logger::PushPrefix("RESOURCE_SYSTEM");
-
 		if (config.maxLoaderCount == 0)
 		{
-			Logger::Fatal("Init() failed because config.maxLoaderCount == 0");
+			m_logger.Fatal("Init() failed because config.maxLoaderCount == 0");
 			return false;
 		}
 
@@ -33,16 +43,29 @@ namespace C3D
 			m_registeredLoaders[i].id = INVALID_ID;
 		}
 
+		m_initialized = true;
+
 		// NOTE: Auto-register known loader types here
-		if (const ImageLoader loader; !RegisterLoader(loader))
+		// NOTE: Different way of allocating this???
+		ResourceLoader* loaders[] =
 		{
-			Logger::Fatal("RegisterLoader() failed for image loader");
-			return false;
+			new TextLoader(), new BinaryLoader(), new ImageLoader(), new MaterialLoader()
+		};
+
+		for (const auto loader : loaders)
+		{
+			if (!RegisterLoader(loader))
+			{
+				m_logger.Fatal("RegisterLoader() failed for {} loader", LOADER_TYPES[static_cast<u8>(loader->type)]);
+				return false;
+			}
+
+			// RegisterLoader copies the loader so we can safely delete
+			// our pointers to cleanup after ourselves
+			delete loader; 
 		}
 
-		Logger::PrefixInfo("RESOURCE_SYSTEM", "Initialized with base path '{}'", m_config.assetBasePath);
-
-		m_initialized = true;
+		m_logger.Info("Initialized with base path '{}'", m_config.assetBasePath);
 		return true;
 	}
 
@@ -51,7 +74,7 @@ namespace C3D
 		Memory::Free(m_registeredLoaders, sizeof(ResourceLoader) * m_config.maxLoaderCount, MemoryType::ResourceLoader);
 	}
 
-	bool ResourceSystem::RegisterLoader(const ResourceLoader& newLoader) const
+	bool ResourceSystem::RegisterLoader(ResourceLoader* newLoader) const
 	{
 		if (!m_initialized) return false;
 
@@ -61,14 +84,14 @@ namespace C3D
 		{
 			if (const ResourceLoader* loader = &m_registeredLoaders[i]; loader->id != INVALID_ID)
 			{
-				if (loader->type == newLoader.type)
+				if (loader->type == newLoader->type)
 				{
-					Logger::PrefixError("RESOURCE_SYSTEM", "RegisterLoader() - A loader of type '{}' already exists so the new one will not be registered", static_cast<u8>(newLoader.type));
+					m_logger.Error("RegisterLoader() - A loader of type '{}' already exists so the new one will not be registered", static_cast<u8>(newLoader->type));
 					return false;
 				}
-				if (loader->customType && StringLength(loader->customType) > 0 && IEquals(loader->customType, newLoader.customType))
+				if (loader->customType && StringLength(loader->customType) > 0 && IEquals(loader->customType, newLoader->customType))
 				{
-					Logger::PrefixError("RESOURCE_SYSTEM", "RegisterLoader() - A loader of custom type '{}' already exists so the new one will not be registered", newLoader.customType);
+					m_logger.Error("RegisterLoader() - A loader of custom type '{}' already exists so the new one will not be registered", newLoader->customType);
 					return false;
 				}
 			}
@@ -78,15 +101,15 @@ namespace C3D
 		{
 			if (m_registeredLoaders[i].id == INVALID_ID)
 			{
-				m_registeredLoaders[i] = newLoader;
+				Memory::Copy(&m_registeredLoaders[i], newLoader, sizeof(ResourceLoader));
 				m_registeredLoaders[i].id = i;
 
-				Logger::PrefixTrace("RESOURCE_SYSTEM", "Loader registered");
+				m_logger.Trace("Loader registered");
 				return true;
 			}
 		}
 
-		Logger::PrefixError("RESOURCE_SYSTEM", "RegisterLoader() - Could not find a free slot for the new resource loader. Increase config.maxLoaderCount");
+		m_logger.Error("RegisterLoader() - Could not find a free slot for the new resource loader. Increase config.maxLoaderCount");
 		return false;
 	}
 
@@ -106,7 +129,7 @@ namespace C3D
 		}
 
 		outResource->loaderId = INVALID_ID;
-		Logger::PrefixError("RESOURCE_SYSTEM", "Load() No loader for type '{}' was found", static_cast<u8>(type));
+		m_logger.Error("Load() No loader for type '{}' was found", static_cast<u8>(type));
 		return false;
 	}
 
@@ -126,7 +149,7 @@ namespace C3D
 		}
 
 		outResource->loaderId = INVALID_ID;
-		Logger::PrefixError("RESOURCE_SYSTEM", "Load() No loader for type '{}' was found", customType);
+		m_logger.Error("Load() No loader for type '{}' was found", customType);
 		return false;
 	}
 
@@ -148,7 +171,7 @@ namespace C3D
 	{
 		if (m_initialized) return m_config.assetBasePath;
 
-		Logger::PrefixError("RESOURCE_SYSTEM", "GetBasePath() called before initialization. Returning empty string");
+		m_logger.Error("GetBasePath() called before initialization. Returning empty string");
 		return "";
 	}
 

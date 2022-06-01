@@ -14,9 +14,9 @@
 
 namespace C3D
 {
-	ImageLoader::ImageLoader() : ResourceLoader(ResourceType::Image, nullptr, "textures")
-	{
-	}
+	ImageLoader::ImageLoader()
+		: ResourceLoader("IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
+	{}
 
 	bool ImageLoader::Load(const string& name, Resource* outResource)
 	{
@@ -41,7 +41,7 @@ namespace C3D
 
 		if (auto failReason = stbi_failure_reason())
 		{
-			Logger::PrefixError("IMAGE_LOADER", "Failed to load file '{}': {}", fullPath, failReason);
+			m_logger.Error("Failed to load file '{}': {}", fullPath, failReason);
 			// Clear the error so the next load does not fail
 			stbi__err(nullptr, 0);
 
@@ -53,7 +53,7 @@ namespace C3D
 
 		if (!data)
 		{
-			Logger::PrefixError("IMAGE_LOADER", "Failed to load file '{}': {}", fullPath);
+			m_logger.Error("Failed to load file '{}': {}", fullPath);
 			return false;
 		}
 
@@ -72,27 +72,5 @@ namespace C3D
 		outResource->name = name.data();
 
 		return true;
-	}
-
-	void ImageLoader::Unload(Resource* resource)
-	{
-		if (!resource)
-		{
-			Logger::PrefixWarn("IMAGE_LOADER", "Unload() called with nullptr for resource");
-			return;
-		}
-
-		if (const u64 pathLength = StringLength(resource->fullPath))
-		{
-			Memory::Free(resource->fullPath, sizeof(char) * pathLength + 1, MemoryType::String);
-		}
-
-		if (resource->data)
-		{
-			Memory::Free(resource->data, resource->dataSize, MemoryType::Texture);
-			resource->data = nullptr;
-			resource->dataSize = 0;
-			resource->loaderId = INVALID_ID;
-		}
 	}
 }

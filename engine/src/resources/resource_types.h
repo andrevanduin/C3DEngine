@@ -3,7 +3,6 @@
 #include "core/defines.h"
 
 #include "material.h"
-#include "geometry.h"
 #include "texture.h"
 
 namespace C3D
@@ -29,6 +28,12 @@ namespace C3D
 
 		u64 dataSize;
 		void* data;
+
+		template<class T>
+		T GetData()
+		{
+			return static_cast<T>(data);
+		}
 	};
 
 	struct ImageResourceData
@@ -41,6 +46,7 @@ namespace C3D
 	struct MaterialConfig
 	{
 		char name[MATERIAL_NAME_MAX_LENGTH];
+		MaterialType type;
 		bool autoRelease;
 		vec4 diffuseColor;
 		char diffuseMapName[TEXTURE_NAME_MAX_LENGTH];

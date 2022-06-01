@@ -7,6 +7,10 @@
 
 namespace C3D
 {
+	LinearAllocator::LinearAllocator()
+		: m_logger("LINEAR_ALLOCATOR"), m_totalSize(0), m_allocated(0), m_memory(nullptr), m_ownsMemory(false)
+	{}
+
 	void LinearAllocator::Create(const u64 totalSize, void* memory)
 	{
 		m_totalSize = totalSize;
@@ -43,7 +47,7 @@ namespace C3D
 			if (m_allocated + size > m_totalSize)
 			{
 				u64 remaining = m_totalSize - m_allocated;
-				Logger::PrefixError("LINEAR_ALLOCATOR", "Tried to allocate {}B, but there are only {}B remaining", size, remaining);
+				m_logger.Error("Tried to allocate{}B, but there are only{}B remaining", size, remaining);
 				return nullptr;
 			}
 
@@ -52,7 +56,7 @@ namespace C3D
 			return block;
 		}
 
-		Logger::PrefixError("LINEAR_ALLOCATOR", "Not initialized");
+		m_logger.Error("Not initialized");
 		return nullptr;
 	}
 

@@ -9,9 +9,11 @@
 
 namespace C3D
 {
+	InputSystem::InputSystem() : m_logger("INPUT"), m_initialized(false), m_state() {}
+
 	bool InputSystem::Init()
 	{
-		Logger::PrefixInfo("INPUT", "Init()");
+		m_logger.Info("Init()");
 
 		m_initialized = true;
 		return true;
@@ -19,7 +21,7 @@ namespace C3D
 
 	void InputSystem::Shutdown()
 	{
-		Logger::PrefixInfo("INPUT", "Shutting Down");
+		m_logger.Info("Shutting Down");
 		m_initialized = false;
 	}
 
@@ -67,7 +69,7 @@ namespace C3D
 
 		if (key >= Keys::MaxKeys)
 		{
-			Logger::PrefixWarn("INPUT", "Key that was {} was larger than expected {}", pressed ? "pressed" : "released", key);
+			m_logger.Warn("Key that was {} was larger than expected {}", pressed ? "pressed" : "released", key);
 			return;
 		}
 

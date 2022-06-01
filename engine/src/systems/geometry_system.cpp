@@ -12,9 +12,9 @@
 namespace C3D
 {
 	GeometrySystem::GeometrySystem()
-		: m_initialized(false), m_config(), m_defaultGeometry(), m_registeredGeometries(nullptr)
-	{
-	}
+		: m_logger("GEOMETRY_SYSTEM"), m_initialized(false), m_config(), m_defaultGeometry(),
+		  m_default2DGeometry(), m_registeredGeometries(nullptr)
+	{}
 
 	bool GeometrySystem::Init(const GeometrySystemConfig& config)
 	{
@@ -30,9 +30,9 @@ namespace C3D
 			m_registeredGeometries[i].geometry.generation = INVALID_ID;
 		}
 
-		if (!CreateDefaultGeometry())
+		if (!CreateDefaultGeometries())
 		{
-			Logger::PrefixError("GEOMETRY_SYSTEM", "Failed to create default geometry");
+			m_logger.Error("Failed to create default geometries");
 			return false;
 		}
 
@@ -54,11 +54,11 @@ namespace C3D
 		}
 
 		// NOTE: possible should return the default geometry instead
-		Logger::PrefixError("GEOMETRY_SYSTEM", "AcquireById() cannot load invalid geometry id. Returning nullptr");
+		m_logger.Error("AcquireById() cannot load invalid geometry id. Returning nullptr");
 		return nullptr;
 	}
 
-	Geometry* GeometrySystem::AcquireFromConfig(const GeometryConfig& config, bool autoRelease)
+	Geometry* GeometrySystem::AcquireFromConfig(const GeometryConfig& config, const bool autoRelease) const
 	{
 		Geometry* g = nullptr;
 		for (u32 i = 0; i < m_config.maxGeometryCount; i++)
@@ -77,20 +77,20 @@ namespace C3D
 
 		if (!g)
 		{
-			Logger::PrefixError("GEOMETRY_SYSTEM", "Unable to obtain free slot for geometry. Adjust config to allow for more space. Returning nullptr");
+			m_logger.Error("Unable to obtain free slot for geometry. Adjust config to allow for more space. Returning nullptr");
 			return nullptr;
 		}
 
 		if (!CreateGeometry(config, g))
 		{
-			Logger::PrefixError("GEOMETRY_SYSTEM", "Failed to create geometry. Returning nullptr");
+			m_logger.Error("Failed to create geometry. Returning nullptr");
 			return nullptr;
 		}
 
 		return g;
 	}
 
-	void GeometrySystem::Release(const Geometry* geometry)
+	void GeometrySystem::Release(const Geometry* geometry) const
 	{
 		if (geometry && geometry->id != INVALID_ID)
 		{
@@ -110,23 +110,34 @@ namespace C3D
 			}
 			else
 			{
-				Logger::PrefixFatal("GEOMETRY_SYSTEM", "Geometry id mismatch. Check registration logic as this should never occur!");
+				m_logger.Fatal("Geometry id mismatch. Check registration logic as this should never occur!");
 			}
 			return;
 		}
 
-		Logger::PrefixWarn("GEOMETRY_SYSTEM", "Release() called with invalid geometry id. Noting was done");
+		m_logger.Warn("Release() called with invalid geometry id. Noting was done");
 	}
 
 	Geometry* GeometrySystem::GetDefault()
 	{
 		if (!m_initialized)
 		{
-			Logger::PrefixFatal("GEOMETRY_SYSTEM", "GetDefault() called before system was initialized");
+			m_logger.Fatal("GetDefault() called before system was initialized");
 			return nullptr;
 		}
 
 		return &m_defaultGeometry;
+	}
+
+	Geometry* GeometrySystem::GetDefault2D()
+	{
+		if (!m_initialized)
+		{
+			m_logger.Fatal("GetDefault2D() called before system was initialized");
+			return nullptr;
+		}
+
+		return &m_default2DGeometry;
 	}
 
 	GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName) const
@@ -139,8 +150,10 @@ namespace C3D
 		if (tileY == 0.f) tileY = 1.0f;
 
 		GeometryConfig config{};
+		config.vertexSize = sizeof(Vertex3D);
 		config.vertexCount = xSegmentCount * ySegmentCount * 4; // 4 vertices per segment
 		config.vertices = Memory::Allocate<Vertex3D>(config.vertexCount, MemoryType::Array);
+		config.indexSize = sizeof(u32);
 		config.indexCount = xSegmentCount * ySegmentCount * 6; // 6 indices per segment
 		config.indices = Memory::Allocate<u32>(config.indexCount, MemoryType::Array);
 
@@ -171,11 +184,10 @@ namespace C3D
 				const f32 maxUvy = ((fy + 1) / fySegmentCount) * tileY;
 
 				const u32 vOffset = (y * xSegmentCount + x) * 4;
-
-				Vertex3D* v0 = &config.vertices[vOffset + 0];
-				Vertex3D* v1 = &config.vertices[vOffset + 1];
-				Vertex3D* v2 = &config.vertices[vOffset + 2];
-				Vertex3D* v3 = &config.vertices[vOffset + 3];
+				Vertex3D* v0 = &static_cast<Vertex3D*>(config.vertices)[vOffset + 0];
+				Vertex3D* v1 = &static_cast<Vertex3D*>(config.vertices)[vOffset + 1];
+				Vertex3D* v2 = &static_cast<Vertex3D*>(config.vertices)[vOffset + 2];
+				Vertex3D* v3 = &static_cast<Vertex3D*>(config.vertices)[vOffset + 3];
 
 				v0->position.x = minX;
 				v0->position.y = minY;
@@ -199,12 +211,12 @@ namespace C3D
 
 				// Generate indices
 				const u32 iOffset = (y * xSegmentCount + x) * 6;
-				config.indices[iOffset + 0] = vOffset + 0;
-				config.indices[iOffset + 1] = vOffset + 1;
-				config.indices[iOffset + 2] = vOffset + 2;
-				config.indices[iOffset + 3] = vOffset + 0;
-				config.indices[iOffset + 4] = vOffset + 3;
-				config.indices[iOffset + 5] = vOffset + 1;
+				static_cast<u32*>(config.indices)[iOffset + 0] = vOffset + 0;
+				static_cast<u32*>(config.indices)[iOffset + 1] = vOffset + 1;
+				static_cast<u32*>(config.indices)[iOffset + 2] = vOffset + 2;
+				static_cast<u32*>(config.indices)[iOffset + 3] = vOffset + 0;
+				static_cast<u32*>(config.indices)[iOffset + 4] = vOffset + 3;
+				static_cast<u32*>(config.indices)[iOffset + 5] = vOffset + 1;
 			}
 		}
 
@@ -232,7 +244,7 @@ namespace C3D
 	bool GeometrySystem::CreateGeometry(const GeometryConfig& config, Geometry* g) const
 	{
 		// Send the geometry off to the renderer to be uploaded to the gpu
-		if (!Renderer.CreateGeometry(g, config.vertexCount, config.vertices, config.indexCount, config.indices))
+		if (!Renderer.CreateGeometry(g, config.vertexSize, config.vertexCount, config.vertices, config.indexSize, config.indexCount, config.indices))
 		{
 			m_registeredGeometries[g->id].referenceCount = 0;
 			m_registeredGeometries[g->id].autoRelease = false;
@@ -273,8 +285,9 @@ namespace C3D
 		}
 	}
 
-	bool GeometrySystem::CreateDefaultGeometry()
+	bool GeometrySystem::CreateDefaultGeometries()
 	{
+		// Create default geometry
 		constexpr u32 vertexCount = 4;
 		Vertex3D vertices[vertexCount];
 		Memory::Zero(vertices, sizeof(Vertex3D) * vertexCount);
@@ -304,14 +317,49 @@ namespace C3D
 		constexpr u32 indexCount = 6;
 		const u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
 
-		if (!Renderer.CreateGeometry(&m_defaultGeometry, vertexCount, vertices, indexCount, indices))
+		if (!Renderer.CreateGeometry(&m_defaultGeometry, sizeof(Vertex3D), vertexCount, vertices, sizeof(u32), indexCount, indices))
 		{
-			Logger::PrefixFatal("GEOMETRY_SYSTEM", "Failed to create default geometry");
+			m_logger.Fatal("Failed to create default geometry");
 			return false;
 		}
 
 		// Acquire the default material
 		m_defaultGeometry.material = Materials.GetDefault();
+
+		// Create default 2d geometry
+		Vertex2D vertices2d[vertexCount];
+		Memory::Zero(vertices2d, sizeof(Vertex2D) * 4);
+
+		vertices2d[0].position.x = -0.5f * f;
+		vertices2d[0].position.y = -0.5f * f;
+		vertices2d[0].texture.x = 0.0f;
+		vertices2d[0].texture.y = 0.0f;
+
+		vertices2d[1].position.x = 0.5f * f;
+		vertices2d[1].position.y = 0.5f * f;
+		vertices2d[1].texture.x = 1.0f;
+		vertices2d[1].texture.y = 1.0f;
+
+		vertices2d[2].position.x = -0.5f * f;
+		vertices2d[2].position.y = 0.5f * f;
+		vertices2d[2].texture.x = 0.0f;
+		vertices2d[2].texture.y = 1.0f;
+
+		vertices2d[3].position.x = 0.5f * f;
+		vertices2d[3].position.y = -0.5f * f;
+		vertices2d[3].texture.x = 1.0f;
+		vertices2d[3].texture.y = 0.0f;
+
+		// Indices (NOTE: counter-clockwise)
+		u32 indices2d[indexCount] = { 2, 1, 0, 3, 0, 1 };
+
+		if (!Renderer.CreateGeometry(&m_defaultGeometry, sizeof(Vertex2D), vertexCount, vertices2d, sizeof(u32), indexCount, indices2d))
+		{
+			m_logger.Fatal("Failed to create default 2d geometry");
+			return false;
+		}
+
+		m_default2DGeometry.material = Materials.GetDefault();
 
 		return true;
 	}

@@ -4,11 +4,7 @@
 #include <core/logger.h>
 #include <core/clock.h>
 
-
-void TestManager::Init()
-{
-	C3D::Logger::PushPrefix("TEST_MANAGER");
-}
+TestManager::TestManager() : m_logger("TEST_MANAGER") {}
 
 void TestManager::Register(u8 (*pFnTest)(), const std::string& description)
 {
@@ -42,20 +38,20 @@ void TestManager::RunTests()
 		else if (result == SKIPPED)
 		{
 			skipped++;
-			C3D::Logger::Warn("[SKIPPED] - {}", test.description);
+			m_logger.Warn("[SKIPPED] - {}", test.description);
 		}
 		else if (result == FAILED) 
 		{
-			C3D::Logger::Error("[FAILED] - {}", test.description);
+			m_logger.Error("[FAILED] - {}", test.description);
 			failed++;
 		}
 
 		totalTime.Update();
 
 		auto status = failed ? "*** FAILED ***" : "SUCCESS";
-		C3D::Logger::Info("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total)", i, m_tests.size(), skipped, status, testTime.GetElapsed(), totalTime.GetElapsed());
+		m_logger.Info("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total)", i, m_tests.size(), skipped, status, testTime.GetElapsed(), totalTime.GetElapsed());
 	}
 
 	totalTime.Stop();
-	C3D::Logger::Info("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec", passed, failed, skipped, totalTime.GetElapsed());
+	m_logger.Info("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec", passed, failed, skipped, totalTime.GetElapsed());
 }

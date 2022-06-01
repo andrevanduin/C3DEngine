@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include "core/defines.h"
+#include "core/logger.h"
 
 #include "resources/material.h"
 #include "resources/resource_types.h"
@@ -41,11 +42,11 @@ namespace C3D
 	private:
 		bool CreateDefaultMaterial();
 
-		static bool LoadMaterial(const MaterialConfig& config, Material* mat);
+		bool LoadMaterial(const MaterialConfig& config, Material* mat);
 
-		static void DestroyMaterial(Material* mat);
+		void DestroyMaterial(Material* mat) const;
 
-		static bool LoadConfigurationFile(const string& path, MaterialConfig* outConfig);
+		LoggerInstance m_logger;
 
 		bool m_initialized;
 

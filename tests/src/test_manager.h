@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "core/logger.h"
+
 #define FAILED 0
 #define PASSED 1
 #define SKIPPED 2
@@ -19,12 +21,14 @@ struct TestEntry
 class TestManager
 {
 public:
-	void Init();
+	TestManager();
 
 	void Register(pFnTest, const std::string& description);
 
 	void RunTests();
 
 private:
+	C3D::LoggerInstance m_logger;
+
 	std::vector<TestEntry> m_tests;
 };

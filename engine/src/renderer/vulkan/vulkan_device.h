@@ -3,6 +3,7 @@
 #include <VkBootstrap.h>
 
 #include "core/defines.h"
+#include "core/logger.h"
 
 namespace C3D
 {
@@ -53,6 +54,8 @@ namespace C3D
 		u32 transferQueueIndex;
 
 	private:
+		LoggerInstance m_logger;
+
 		VkPhysicalDeviceProperties m_properties;
 		VkPhysicalDeviceFeatures m_features;
 		VkPhysicalDeviceMemoryProperties m_memory;

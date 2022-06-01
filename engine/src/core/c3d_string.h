@@ -12,7 +12,7 @@ namespace C3D
 	 *
 	 * @return the length of the string
 	 */
-	u64 StringLength(const string& str);
+	u32 StringLength(const string& str);
 
 	/*
 	 * @brief Compares two strings case-sensitive

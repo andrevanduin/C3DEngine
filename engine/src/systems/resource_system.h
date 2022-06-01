@@ -1,7 +1,10 @@
 
 #pragma once
 #include "core/defines.h"
+#include "core/logger.h"
+
 #include "resources/resource_types.h"
+#include "resources/loaders/resource_loader.h"
 
 namespace C3D
 {
@@ -9,30 +12,6 @@ namespace C3D
 	{
 		u32 maxLoaderCount;
 		const char* assetBasePath; // Relative base path
-	};
-
-	class ResourceLoader
-	{
-	public:
-		ResourceLoader(const ResourceType type, const char* customType, const char* path) : id(INVALID_ID), type(type), customType(customType), typePath(path) {}
-
-		ResourceLoader(const ResourceLoader& other) = delete;
-		ResourceLoader(ResourceLoader&& other) = delete;
-
-		ResourceLoader& operator=(const ResourceLoader& other) = default;
-		ResourceLoader& operator=(ResourceLoader&& other) = delete;
-
-		virtual ~ResourceLoader() = default;
-
-		virtual bool Load(const string& name, Resource* outResource) = 0;
-
-		virtual void Unload(Resource* resource) = 0;
-
-		u32 id;
-		ResourceType type;
-
-		const char* customType;
-		const char* typePath;
 	};
 
 	class ResourceSystem
@@ -44,7 +23,7 @@ namespace C3D
 
 		void Shutdown() const;
 
-		C3D_API bool RegisterLoader(const ResourceLoader& newLoader) const;
+		C3D_API bool RegisterLoader(ResourceLoader* newLoader) const;
 
 		C3D_API bool Load(const string& name, ResourceType type, Resource* outResource) const;
 
@@ -56,6 +35,8 @@ namespace C3D
 
 	private:
 		static bool Load(const string& name, ResourceLoader* loader, Resource* outResource);
+
+		LoggerInstance m_logger;
 
 		bool m_initialized;
 

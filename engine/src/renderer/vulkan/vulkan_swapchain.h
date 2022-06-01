@@ -1,11 +1,8 @@
 
 #pragma once
-#include <vector>
-
 #include <vulkan/vulkan.h>
 
 #include "vulkan_image.h"
-#include "vulkan_framebuffer.h"
 
 namespace C3D
 {
@@ -37,7 +34,7 @@ namespace C3D
 
 		VulkanImage depthAttachment;
 
-		std::vector<VulkanFrameBuffer> frameBuffers;
+		VkFramebuffer frameBuffers[3];
 	private:
 		void CreateInternal(VulkanContext* context, u32 width, u32 height);
 

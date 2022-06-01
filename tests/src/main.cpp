@@ -9,7 +9,6 @@ int main(int argc, char** argv)
 	C3D::Logger::Init();
 
 	TestManager manager;
-	manager.Init();
 
 	// TODO: add tests here
 	LinearAllocator::RegisterTests(&manager);

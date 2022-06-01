@@ -1,6 +1,7 @@
 
 #pragma once
 #include "defines.h"
+#include "logger.h"
 
 #include "resources/geometry.h"
 
@@ -54,8 +55,6 @@ namespace C3D
 
 		[[nodiscard]] const ApplicationState* GetState() const;
 	private:
-		ApplicationState m_state;
-
 		void Shutdown();
 		void HandleSdlEvents();
 
@@ -69,10 +68,15 @@ namespace C3D
 
 		static bool OnKeyEvent(u16 code, void* sender, EventContext context);
 
+		LoggerInstance m_logger;
+
+		ApplicationState m_state;
+
 		SDL_Window* m_window{ nullptr };
 
 		// TEMP
 		Geometry* m_testGeometry;
+		Geometry* m_testUiGeometry;
 		// TEMP END
 
 		friend int ::main(int argc, char** argv);

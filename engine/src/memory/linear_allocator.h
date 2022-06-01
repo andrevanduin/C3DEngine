@@ -1,12 +1,15 @@
 
 #pragma once
 #include "core/defines.h"
+#include "core/logger.h"
 
 namespace C3D
 {
 	class C3D_API LinearAllocator
 	{
 	public:
+		LinearAllocator();
+
 		void Create(u64 totalSize, void* memory = nullptr);
 		
 		void Destroy();
@@ -26,11 +29,14 @@ namespace C3D
 
 		[[nodiscard]] void* GetMemory() const { return m_memory; }
 		[[nodiscard]] bool OwnsMemory() const { return m_ownsMemory; }
-	private:
-		u64 m_totalSize = 0;
-		u64 m_allocated = 0;
 
-		void* m_memory = nullptr;
-		bool m_ownsMemory = false;
+	private:
+		LoggerInstance m_logger;
+
+		u64 m_totalSize;
+		u64 m_allocated;
+
+		void* m_memory;
+		bool m_ownsMemory;
 	};
 }

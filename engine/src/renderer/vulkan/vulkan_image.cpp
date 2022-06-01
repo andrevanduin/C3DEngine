@@ -18,8 +18,6 @@ namespace C3D
 	                         const VkImageTiling tiling, const VkImageUsageFlags usage, const VkMemoryPropertyFlags memoryFlags, const bool createView,
 							 const VkImageAspectFlags viewAspectFlags)
 	{
-		Logger::PushPrefix("IMAGE");
-
 		m_width = width;
 		m_height = height;
 
@@ -45,7 +43,7 @@ namespace C3D
 		const i32 memoryType = context->FindMemoryIndex(memoryRequirements.memoryTypeBits, memoryFlags);
 		if (memoryType == -1)
 		{
-			Logger::Error("Required memory type not found. Image not valid.");
+			Logger::Error("[IMAGE] - Required memory type not found. Image not valid.");
 			return;
 		}
 
@@ -61,8 +59,6 @@ namespace C3D
 			view = nullptr;
 			CreateView(context, format, viewAspectFlags);
 		}
-
-		Logger::PopPrefix();
 	}
 
 	void VulkanImage::CreateView(const VulkanContext* context, const VkFormat format, const VkImageAspectFlags aspectFlags)
@@ -124,7 +120,7 @@ namespace C3D
 		}
 		else
 		{
-			Logger::PrefixFatal("VULKAN_IMAGE", "Unsupported layout transition");
+			Logger::Fatal("[VULKAN_IMAGE] - Unsupported layout transition");
 			return;
 		}
 

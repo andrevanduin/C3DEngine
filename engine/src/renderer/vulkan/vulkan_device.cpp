@@ -9,15 +9,14 @@ namespace C3D
 {
 	VulkanDevice::VulkanDevice()
 		: physicalDevice(nullptr), logicalDevice(nullptr), swapChainSupport(), supportsDeviceLocalHostVisible(false),
-		  graphicsCommandPool(nullptr), graphicsQueue(nullptr), presentQueue(nullptr), transferQueue(nullptr), depthFormat(),
-		  graphicsQueueIndex(0), presentQueueIndex(0), transferQueueIndex(0), m_properties(), m_features(), m_memory()
+			graphicsCommandPool(nullptr), graphicsQueue(nullptr), presentQueue(nullptr), transferQueue(nullptr),
+			depthFormat(), graphicsQueueIndex(0), presentQueueIndex(0), transferQueueIndex(0), m_logger("DEVICE"), m_properties(),
+			m_features(), m_memory()
 	{
 	}
 
 	bool VulkanDevice::Create(vkb::Instance instance, VulkanContext* context)
 	{
-		Logger::PushPrefix("VULKAN_DEVICE_MANAGER");
-
 		// Use VKBootstrap to select a GPU for us
 		vkb::PhysicalDeviceSelector selector{ instance };
 		m_features.pipelineStatisticsQuery = true;
@@ -33,13 +32,13 @@ namespace C3D
 			.select()
 			.value();
 
-		Logger::Info("Suitable Physical Device found");
+		m_logger.Info("Suitable Physical Device found");
 
 		// Create the Vulkan logicalDevice
 		vkb::DeviceBuilder deviceBuilder{ vkbPhysicalDevice };
 		vkb::Device vkbDevice = deviceBuilder.build().value();
 
-		Logger::Info("Logical Device Created");
+		m_logger.Info("Logical Device Created");
 
 		logicalDevice = vkbDevice.device;
 		physicalDevice = vkbPhysicalDevice.physical_device;
@@ -52,17 +51,17 @@ namespace C3D
 		presentQueueIndex = vkbDevice.get_queue_index(vkb::QueueType::present).value();
 		transferQueueIndex = vkbDevice.get_queue_index(vkb::QueueType::transfer).value();
 
-		Logger::Info("Queues obtained");
+		m_logger.Info("Queues obtained");
 
 		QuerySwapChainSupport(context->surface, &swapChainSupport);
-		Logger::Info("SwapChain support information obtained");
+		m_logger.Info("SwapChain support information obtained");
 
 		VkCommandPoolCreateInfo poolCreateInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 		poolCreateInfo.queueFamilyIndex = graphicsQueueIndex;
 		poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 		VK_CHECK(vkCreateCommandPool(logicalDevice, &poolCreateInfo, context->allocator, &graphicsCommandPool));
-		Logger::Info("Graphics command pool created");
+		m_logger.Info("Graphics command pool created");
 
 		vkGetPhysicalDeviceProperties(physicalDevice, &m_properties);
 
@@ -91,29 +90,25 @@ namespace C3D
 			}
 		}
 
-		Logger::Info("GPU            - {}", m_properties.deviceName);
-		Logger::Info("GPU Memory     - {:.2f}GiB", gpuMemory);
-		Logger::Info("Driver Version - {}.{}.{}", VK_VERSION_MAJOR(driverVersion), VK_VERSION_MINOR(driverVersion), VK_VERSION_PATCH(driverVersion));
-		Logger::Info("API Version    - {}.{}.{}", VK_VERSION_MAJOR(apiVersion), VK_VERSION_MINOR(apiVersion), VK_VERSION_PATCH(apiVersion));
-
-		Logger::PopPrefix();
+		m_logger.Info("GPU            - {}", m_properties.deviceName);
+		m_logger.Info("GPU Memory     - {:.2f}GiB", gpuMemory);
+		m_logger.Info("Driver Version - {}.{}.{}", VK_VERSION_MAJOR(driverVersion), VK_VERSION_MINOR(driverVersion), VK_VERSION_PATCH(driverVersion));
+		m_logger.Info("API Version    - {}.{}.{}", VK_VERSION_MAJOR(apiVersion), VK_VERSION_MINOR(apiVersion), VK_VERSION_PATCH(apiVersion));
 		return true;
 	}
 
 	void VulkanDevice::Destroy(const VulkanContext* context)
 	{
-		Logger::PushPrefix("VULKAN_DEVICE_MANAGER");
-		Logger::Info("Destroying Queue indices");
+		m_logger.Info("Destroying Queue indices");
 		graphicsQueueIndex = 0;
 		presentQueueIndex = 0;
 		transferQueueIndex = 0;
 
-		Logger::Info("Destroying Logical Device");
+		m_logger.Info("Destroying Logical Device");
 		vkDestroyDevice(logicalDevice, context->allocator);
 
-		Logger::Info("Destroying Physical Device Handle");
+		m_logger.Info("Destroying Physical Device Handle");
 		physicalDevice = nullptr;
-		Logger::PopPrefix();
 	}
 
 	void VulkanDevice::QuerySwapChainSupport(VkSurfaceKHR surface, VulkanSwapChainSupportInfo* supportInfo) const

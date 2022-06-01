@@ -11,15 +11,14 @@
 namespace C3D
 {
 	TextureSystem::TextureSystem()
-		: m_config(), m_initialized(false), m_defaultTexture(), m_registeredTextures(nullptr)
-	{
-	}
+		: m_logger("TEXTURE_SYSTEM"), m_initialized(false), m_config(), m_defaultTexture(), m_registeredTextures(nullptr)
+	{}
 
 	bool TextureSystem::Init(const TextureSystemConfig& config)
 	{
 		if (config.maxTextureCount == 0)
 		{
-			Logger::PrefixError("TEXTURE_SYSTEM", "config.maxTextureCount must be > 0");
+			m_logger.Error("config.maxTextureCount must be > 0");
 			return false;
 		}
 
@@ -45,7 +44,7 @@ namespace C3D
 
 	void TextureSystem::Shutdown()
 	{
-		Logger::PrefixInfo("TEXTURE_SYSTEM", "Destroying all loaded textures");
+		m_logger.Info("Destroying all loaded textures");
 		for (u32 i = 0; i < m_config.maxTextureCount; i++)
 		{
 			if (const auto tex = &m_registeredTextures[i]; tex->generation != INVALID_ID)
@@ -57,7 +56,7 @@ namespace C3D
 		// Free the memory that was storing all the textures
 		Memory::Free(m_registeredTextures, sizeof(Texture) * m_config.maxTextureCount, MemoryType::Texture);
 
-		Logger::PrefixInfo("TEXTURE_SYSTEM", "Destroying default textures");
+		m_logger.Info("Destroying default textures");
 		DestroyDefaultTextures();
 	}
 
@@ -67,7 +66,7 @@ namespace C3D
 		// retrieved with GetDefaultTexture()
 		if (IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
-			Logger::PrefixWarn("TEXTURE_SYSTEM", "Acquire called for {} texture. Use GetDefaultTexture() for this", DEFAULT_TEXTURE_NAME);
+			m_logger.Warn("Acquire called for {} texture. Use GetDefaultTexture() for this", DEFAULT_TEXTURE_NAME);
 			return &m_defaultTexture;
 		}
 
@@ -98,22 +97,22 @@ namespace C3D
 
 			if (!tex || ref.handle == INVALID_ID)
 			{
-				Logger::PrefixFatal("TEXTURE_SYSTEM", "No more free space for textures. Adjust the configuration to allow more");
+				m_logger.Fatal("No more free space for textures. Adjust the configuration to allow more");
 				return nullptr;
 			}
 
 			if (!LoadTexture(name, tex))
 			{
-				Logger::PrefixError("TEXTURE_SYSTEM", "Failed to load texture {}", name);
+				m_logger.Error("Failed to load texture {}", name);
 				return nullptr;
 			}
 
 			tex->id = ref.handle;
-			Logger::PrefixTrace("TEXTURE_SYSTEM", "Texture {} did not exist yet. Created and the refCount is now {}", name, ref.referenceCount);
+			m_logger.Trace("Texture {} did not exist yet. Created and the refCount is now {}", name, ref.referenceCount);
 		}
 		else
 		{
-			Logger::PrefixTrace("TEXTURE_SYSTEM", "Texture {} already exists. The refCount is now {}", name, ref.referenceCount);
+			m_logger.Trace("Texture {} already exists. The refCount is now {}", name, ref.referenceCount);
 		}
 
 		return &m_registeredTextures[ref.handle];
@@ -123,14 +122,14 @@ namespace C3D
 	{
 		if (IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
-			Logger::PrefixWarn("TEXTURE_SYSTEM", "Tried to release {}. This happens on shutdown automatically", DEFAULT_TEXTURE_NAME);
+			m_logger.Warn("Tried to release {}. This happens on shutdown automatically", DEFAULT_TEXTURE_NAME);
 			return;
 		}
 
 		const auto it = m_registeredTextureTable.find(name);
 		if (it == m_registeredTextureTable.end())
 		{
-			Logger::PrefixWarn("TEXTURE_SYSTEM", "Tried to release a texture that does not exist: {}", name);
+			m_logger.Warn("Tried to release a texture that does not exist: {}", name);
 			return;
 		}
 
@@ -148,18 +147,18 @@ namespace C3D
 			// Remove the reference
 			m_registeredTextureTable.erase(it);
 
-			Logger::PrefixInfo("TEXTURE_SYSTEM", "Released texture {}. The texture was unloaded because refCount = 0 and autoRelease = true", name);
+			m_logger.Info("Released texture {}. The texture was unloaded because refCount = 0 and autoRelease = true", name);
 			return;
 		}
 
-		Logger::PrefixInfo("TEXTURE_SYSTEM", "Released texture {}. The texture now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
+		m_logger.Info("Released texture {}. The texture now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
 	}
 
 	Texture* TextureSystem::GetDefaultTexture()
 	{
 		if (!m_initialized)
 		{
-			Logger::PrefixError("TEXTURE_SYSTEM", "GetDefaultTexture() was called before initialization. Returned nullptr");
+			m_logger.Error("GetDefaultTexture() was called before initialization. Returned nullptr");
 			return nullptr;
 		}
 
@@ -170,7 +169,7 @@ namespace C3D
 	{
 		// NOTE: Create a default texture, a 256x256 blue/white checkerboard pattern
 		// this is done in code to eliminate dependencies
-		Logger::PrefixTrace("TEXTURE_SYSTEM", "Create default texture...");
+		m_logger.Trace("Create default texture...");
 		constexpr u32 textureDimensions = 256;
 		constexpr u32 channels = 4;
 		constexpr u32 pixelCount = textureDimensions * textureDimensions;
@@ -224,16 +223,21 @@ namespace C3D
 		DestroyTexture(&m_defaultTexture);
 	}
 
-	bool TextureSystem::LoadTexture(const string& name, Texture* texture)
+	bool TextureSystem::LoadTexture(const string& name, Texture* texture) const
 	{
 		Resource imgResource{};
-		if (Resources.Load(name, ResourceType::Image, &imgResource))
+		if (!Resources.Load(name, ResourceType::Image, &imgResource))
 		{
-			Logger::PrefixError("TEXTURE_SYSTEM", "Failed to load image resource for texture '{}'", name);
+			m_logger.Error("Failed to load image resource for texture '{}'", name);
 			return false;
 		}
 
 		const auto resourceData = static_cast<ImageResourceData*>(imgResource.data);
+		if (!resourceData)
+		{
+			m_logger.Error("Failed to load image data for texture '{}'", name);
+			return false;
+		}
 
 		Texture temp{};
 		temp.width = resourceData->width;

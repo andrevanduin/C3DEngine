@@ -8,28 +8,24 @@
 
 namespace C3D
 {
-	constexpr auto VULKAN_MATERIAL_SHADER_STAGE_COUNT = 2;
-	constexpr auto VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT = 2;
-	constexpr auto VULKAN_MATERIAL_SHADER_SAMPLER_COUNT = 1;
+	constexpr auto UI_SHADER_STAGE_COUNT = 2;
+	constexpr auto VULKAN_UI_SHADER_DESCRIPTOR_COUNT = 2;
+	constexpr auto VULKAN_UI_SHADER_SAMPLER_COUNT = 1;
 
-	// Max number of material instances
 	// TODO: make configurable
-	constexpr auto VULKAN_MAX_MATERIAL_COUNT = 1024;
+	constexpr auto VULKAN_MAX_UI_COUNT = 1024;
 
-	// Max number of simultaneously uploaded geometries
-	// TODO: make configurable
-	constexpr auto VULKAN_MAX_GEOMETRY_COUNT = 4096;
-
-	struct VulkanMaterialShaderInstanceState
+	struct VulkanUiShaderInstanceState
 	{
-		// Per Frame
+		// Per frame
 		VkDescriptorSet descriptorSets[3];
+
 		// Per Descriptor
-		VulkanDescriptorState descriptorStates[VULKAN_MATERIAL_SHADER_DESCRIPTOR_COUNT];
+		VulkanDescriptorState descriptorStates[VULKAN_UI_SHADER_DESCRIPTOR_COUNT];
 	};
 
 	// This structure should be 256 bytes for certain Nvidia cards
-	struct VulkanMaterialShaderGlobalUbo
+	struct VulkanUiShaderGlobalUbo
 	{
 		mat4 projection;	// 64 bytes
 		mat4 view;			// 64 bytes
@@ -39,7 +35,7 @@ namespace C3D
 	};
 
 	// This structure should be 64 bytes
-	struct VulkanMaterialShaderInstanceUbo
+	struct VulkanUiShaderInstanceUbo
 	{
 		vec4 diffuseColor;	// 16 bytes
 		vec4 vec4Padding0;	// 16 bytes, reserved for future use
@@ -47,10 +43,10 @@ namespace C3D
 		vec4 vec4Padding2;	// 16 bytes, reserved for future use
 	};
 
-	class VulkanMaterialShader
+	class VulkanUiShader
 	{
 	public:
-		VulkanMaterialShader();
+		VulkanUiShader();
 
 		bool Create(const VulkanContext* context);
 
@@ -66,12 +62,12 @@ namespace C3D
 		bool AcquireResources(const VulkanContext* context, Material* material);
 
 		void ReleaseResources(const VulkanContext* context, Material* material);
-		
-		VulkanMaterialShaderGlobalUbo globalUbo;
+
+		VulkanUiShaderGlobalUbo globalUbo;
 	private:
 		LoggerInstance m_logger;
 
-		VulkanShaderStage m_stages[VULKAN_MATERIAL_SHADER_STAGE_COUNT];
+		VulkanShaderStage m_stages[UI_SHADER_STAGE_COUNT];
 
 		VkDescriptorPool		m_globalDescriptorPool;
 		VkDescriptorSetLayout	m_globalDescriptorSetLayout;
@@ -86,11 +82,11 @@ namespace C3D
 		// TODO: Manage a free list of some kind here instead
 		u32 m_objectUniformBufferIndex;
 
-		TextureUse m_samplerUses[VULKAN_MATERIAL_SHADER_SAMPLER_COUNT];
+		TextureUse m_samplerUses[VULKAN_UI_SHADER_SAMPLER_COUNT];
 
 		// TODO: Make dynamic
-		VulkanMaterialShaderInstanceState m_instanceStates[VULKAN_MAX_MATERIAL_COUNT];
+		VulkanUiShaderInstanceState m_instanceStates[VULKAN_MAX_UI_COUNT];
 
 		VulkanPipeline m_pipeline;
-	};	
+	};
 }

@@ -5,6 +5,8 @@
 
 #include <unordered_map>
 
+#include "core/logger.h"
+
 namespace C3D
 {
 	constexpr auto DEFAULT_TEXTURE_NAME = "default";
@@ -38,12 +40,13 @@ namespace C3D
 		bool CreateDefaultTextures();
 		void DestroyDefaultTextures();
 
-		static bool LoadTexture(const string& name, Texture* texture);
+		bool LoadTexture(const string& name, Texture* texture) const;
 		static void DestroyTexture(Texture* texture);
 
-		TextureSystemConfig m_config;
-
+		LoggerInstance m_logger;
 		bool m_initialized;
+
+		TextureSystemConfig m_config;
 
 		Texture m_defaultTexture;
 

@@ -4,3 +4,4 @@ version=0.1
 name=test_material
 diffuseColor=1.0 1.0 1.0 1.0
 diffuseMapName=paving
+type=world

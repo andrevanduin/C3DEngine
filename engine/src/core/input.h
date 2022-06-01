@@ -4,6 +4,7 @@
 #include <SDL2/SDL_mouse.h>
 
 #include "defines.h"
+#include "logger.h"
 
 namespace C3D
 {
@@ -274,28 +275,31 @@ namespace C3D
         MaxButtons
 	};
 
+    struct KeyBoardState
+    {
+        bool keys[static_cast<u8>(Keys::MaxKeys)];
+    };
+
+    struct MouseState
+    {
+        i16 x, y;
+        bool buttons[static_cast<u8>(Buttons::MaxButtons)];
+    };
+
+    struct InputState
+    {
+        KeyBoardState keyboardCurrent;
+        KeyBoardState keyboardPrevious;
+
+        MouseState mouseCurrent;
+        MouseState mousePrevious;
+    };
+
 	class InputSystem
 	{
-		struct KeyBoardState
-		{
-			bool keys[static_cast<u8>(Keys::MaxKeys)];
-		};
-
-		struct MouseState
-		{
-			i16 x, y;
-			bool buttons[static_cast<u8>(Buttons::MaxButtons)];
-		};
-
-		struct InputState
-		{
-			KeyBoardState keyboardCurrent;
-			KeyBoardState keyboardPrevious;
-
-			MouseState mouseCurrent;
-			MouseState mousePrevious;
-		};
 	public:
+        InputSystem();
+
 		bool Init();
 		void Shutdown();
 
@@ -321,7 +325,9 @@ namespace C3D
         C3D_API void GetMousePosition(i16* x, i16* y);
         C3D_API void GetPreviousMousePosition(i16* x, i16* y);
 	private:
-        bool m_initialized = false;
-		InputState m_state{};
+        LoggerInstance m_logger;
+
+        bool m_initialized;
+		InputState m_state;
 	};
 }
