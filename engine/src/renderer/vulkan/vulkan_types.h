@@ -46,11 +46,11 @@ namespace C3D
 
 		u32 vertexCount;
 		u32 vertexElementSize;
-		u32 vertexBufferOffset;
+		u64 vertexBufferOffset;
 
 		u32 indexCount;
 		u32 indexElementSize;
-		u32 indexBufferOffset;
+		u64 indexBufferOffset;
 	};
 
 	struct VulkanContext

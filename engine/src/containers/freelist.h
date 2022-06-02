@@ -16,7 +16,9 @@ namespace C3D
 	public:
 		FreeList();
 
-		void Create(u64 totalSize, void* memory);
+		bool Create(u64 totalSize, void* memory);
+
+		bool Resize(void* newMemory, u64 newSize, void** outOldMemory);
 
 		void Destroy();
 

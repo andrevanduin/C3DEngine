@@ -14,7 +14,6 @@
 
 // TEMP
 #include "c3d_string.h"
-#include "math/c3d_math.h"
 //
 
 namespace C3D
@@ -46,7 +45,7 @@ namespace C3D
 
 		m_logger.Info("Successfully created SDL Window");
 
-		constexpr MemorySystemConfig memorySystemConfig { GIBIBYTES(1) };
+		constexpr MemorySystemConfig memorySystemConfig { MEBIBYTES(512) };
 		constexpr ResourceSystemConfig resourceSystemConfig { 32, "../../../../assets" };
 		constexpr TextureSystemConfig  textureSystemConfig  { 65536 };
 		constexpr MaterialSystemConfig materialSystemConfig { 4096 };
@@ -131,7 +130,7 @@ namespace C3D
 		OnCreate();
 
 		f64 runningTime = 0;
-		u8 frameCount = 0;
+		u16 frameCount = 0;
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
 		m_logger.Info(Memory.GetMemoryUsageString());

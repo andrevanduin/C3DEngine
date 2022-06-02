@@ -72,7 +72,7 @@ constexpr auto ToUnderlying(E e) noexcept
 /** @brief Gets the number of bytes from amount of kibibytes (KiB) (1024) */
 #define KIBIBYTES(amount) amount * 1024
 
-/** @brief Gets the number of bytes from amount of gigabsytes (GB) (1000*1000*1000) */
+/** @brief Gets the number of bytes from amount of gigabytes (GB) (1000*1000*1000) */
 #define GIGABYTES(amount) amount * 1000 * 1000 * 1000
 /** @brief Gets the number of bytes from amount of megabytes (MB) (1000*1000) */
 #define MEGABYTES(amount) amount * 1000 * 1000

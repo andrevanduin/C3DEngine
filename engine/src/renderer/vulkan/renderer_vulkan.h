@@ -54,8 +54,8 @@ namespace C3D
 		bool CreateBuffers();
 
 		// TEMP
-		void UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, const VulkanBuffer* buffer, u64 offset, u64 size, const void* data) const;
-		void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
+		bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer* buffer, u64* outOffset, u64 size, const void* data) const;
+		static void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
 
 		VulkanContext m_context;
 
@@ -63,9 +63,6 @@ namespace C3D
 		VulkanUiShader m_uiShader;
 
 		VulkanBuffer m_objectVertexBuffer, m_objectIndexBuffer;
-
-		u64 m_geometryVertexOffset;
-		u64 m_geometryIndexOffset;
 
 		// TODO: make dynamic
 		VulkanGeometryData m_geometries[VULKAN_MAX_GEOMETRY_COUNT];

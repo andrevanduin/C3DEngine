@@ -11,15 +11,21 @@
 namespace C3D
 {
 	VulkanBuffer::VulkanBuffer()
-		: handle(nullptr), m_totalSize(0), m_usage(), m_memory(nullptr),
-		  m_memoryIndex(0),m_memoryPropertyFlags(0), m_isLocked(false)
-	{}
+		: handle(nullptr), m_totalSize(0), m_freeListBlock(nullptr), m_freeListMemoryRequirement(0), m_usage(),
+		  m_memory(nullptr), m_memoryIndex(0), m_memoryPropertyFlags(0), m_isLocked(false)
+	{
+	}
 
 	bool VulkanBuffer::Create(const VulkanContext* context, const u64 size, const u32 usage, const u32 memoryPropertyFlags, const bool bindOnCreate)
 	{
 		m_totalSize = size;
 		m_usage = static_cast<VkBufferUsageFlagBits>(usage);
 		m_memoryPropertyFlags = memoryPropertyFlags;
+
+		// Create a new freelist
+		m_freeListMemoryRequirement = FreeList::GetMemoryRequirements(size);
+		m_freeListBlock = Memory.Allocate(m_freeListMemoryRequirement, MemoryType::RenderSystem);
+		m_freeList.Create(size, m_freeListBlock);
 
 		VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCreateInfo.size = size;
@@ -35,6 +41,7 @@ namespace C3D
 		if (m_memoryIndex == -1)
 		{
 			Logger::Error("[VULKAN_BUFFER] - Unable to create because the required memory type index was not found");
+			CleanupFreeList();
 			return false;
 		}
 
@@ -47,6 +54,7 @@ namespace C3D
 		if (result != VK_SUCCESS)
 		{
 			Logger::Error("[VULKAN_BUFFER] - Unable to create because the required memory allocation failed. Error: {}", result);
+			CleanupFreeList();
 			return false;
 		}
 
@@ -57,6 +65,10 @@ namespace C3D
 
 	void VulkanBuffer::Destroy(const VulkanContext* context)
 	{
+		if (m_freeListBlock)
+		{
+			CleanupFreeList();
+		}
 		if (m_memory)
 		{
 			vkFreeMemory(context->device.logicalDevice, m_memory, context->allocator);
@@ -73,6 +85,30 @@ namespace C3D
 
 	bool VulkanBuffer::Resize(const VulkanContext* context, const u64 newSize, const VkQueue queue, const VkCommandPool pool)
 	{
+		if (newSize < m_totalSize)
+		{
+			Logger::Error("[VULKAN_BUFFER] - Resize() requires the new size to be greater than the old size");
+			return false;
+		}
+
+		// Resize our freelist
+		const u64 newMemoryRequirement = FreeList::GetMemoryRequirements(newSize);
+		void* newBlock = Memory.Allocate(newMemoryRequirement, MemoryType::RenderSystem);
+		void* oldBlock;
+		if (!m_freeList.Resize(newBlock, newSize, &oldBlock))
+		{
+			Logger::Error("[VULKAN_BUFFER] - Resize() failed to resize internal freelist");
+			Memory.Free(newBlock, newMemoryRequirement, MemoryType::RenderSystem);
+			return false;
+		}
+
+		// Free our old memory, and assign our new properties
+		Memory.Free(oldBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
+		m_freeListMemoryRequirement = newMemoryRequirement;
+		m_freeListBlock = newBlock;
+		m_totalSize = newSize;
+
+		// Create a new buffer
 		VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCreateInfo.size = newSize;
 		bufferCreateInfo.usage = m_usage;
@@ -145,6 +181,26 @@ namespace C3D
 		vkUnmapMemory(context->device.logicalDevice, m_memory);
 	}
 
+	bool VulkanBuffer::Allocate(const u64 size, u64* outOffset)
+	{
+		if (!size && !outOffset)
+		{
+			Logger::Error("[VULKAN_BUFFER] - Allocate() called with size = 0 or outOffset = nullptr");
+			return false;
+		}
+		return m_freeList.AllocateBlock(size, outOffset);
+	}
+
+	bool VulkanBuffer::Free(const u64 size, const u64 offset)
+	{
+		if (!size)
+		{
+			Logger::Error("[VULKAN_BUFFER] - Free() called with size = 0");
+			return false;
+		}
+		return m_freeList.FreeBlock(size, offset);
+	}
+
 	void VulkanBuffer::LoadData(const VulkanContext* context, const u64 offset, const u64 size, const u32 flags, const void* data) const
 	{
 		void* dataPtr;
@@ -170,5 +226,13 @@ namespace C3D
 
 		// Submit the buffer for execution and wait for it to complete.
 		tempCommandBuffer.EndSingleUse(context, pool, queue);
+	}
+
+	void VulkanBuffer::CleanupFreeList()
+	{
+		m_freeList.Destroy();
+		Memory.Free(m_freeListBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
+		m_freeListMemoryRequirement = 0;
+		m_freeListBlock = nullptr;
 	}
 }

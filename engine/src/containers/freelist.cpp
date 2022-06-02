@@ -16,17 +16,17 @@ namespace C3D
 		: m_totalSize(0), m_maxEntries(0), m_head(nullptr), m_nodes(nullptr)
 	{}
 
-	void FreeList::Create(const u64 totalSize, void* memory)
+	bool FreeList::Create(const u64 totalSize, void* memory)
 	{
-		if (constexpr auto minSize = sizeof(FreeList) + FREELIST_SIZE_OF_NODE * 8; totalSize < minSize)
-		{
-			Logger::Warn("[FREELIST] - Using a freelist for very small amounts of memory is very inefficient; Consider using a different structure in this case");
-		}
-
-		
 		// The maximum entries we could possibly have (assuming the smallest allocation would always be at least an 8 byte pointer)
 		// NOTE: This is quite overkill
 		m_maxEntries = totalSize / (FREELIST_SIZE_OF_SMALLEST_ALLOCATION * FREELIST_SIZE_OF_NODE);
+		if (m_maxEntries < 20)
+		{
+			Logger::Warn("[FREELIST] - MaxEntries < 20. MaxEntries set to 20. Keep in mind that FreeLists are inefficient for small blocks of memory.");
+			m_maxEntries = 20;
+		}
+
 		m_totalSize = totalSize;
 
 		m_nodes = static_cast<FreeListNode*>(memory);
@@ -42,6 +42,88 @@ namespace C3D
 			m_nodes[i].offset = INVALID_ID;
 			m_nodes[i].size = INVALID_ID;
 		}
+
+		return true;
+	}
+
+	bool FreeList::Resize(void* newMemory, const u64 newSize, void** outOldMemory)
+	{
+		if (m_totalSize > newSize) return false;
+
+		// NOTE: This is quite overkill
+
+		*outOldMemory = m_nodes;
+		const auto sizeDifference = newSize - m_totalSize;
+		const auto oldSize = m_totalSize;
+		const auto oldHead = m_head;
+
+		m_nodes = static_cast<FreeListNode*>(newMemory);
+
+		m_maxEntries = newSize / (FREELIST_SIZE_OF_SMALLEST_ALLOCATION * FREELIST_SIZE_OF_NODE);
+		m_totalSize = newSize;
+
+		// Invalidate the size and offset for all nodes (except for the head) 
+		for (u64 i = 1; i < m_maxEntries; i++)
+		{
+			m_nodes[i].offset = INVALID_ID;
+			m_nodes[i].size = INVALID_ID;
+		}
+		// Store our new head
+		m_head = &m_nodes[0];
+
+		// Copy over the nodes
+		FreeListNode* newListNode = m_head;
+		const FreeListNode* oldNode = oldHead;
+		if (!oldHead)
+		{
+			// There is no head meaning the entire list was allocated
+			// We set the head to be the at the start of new memory
+			// and size equal to the difference in size between the new and the old block
+			m_head->offset = oldSize;
+			m_head->size = sizeDifference;
+			m_head->next = nullptr;
+		}
+		else
+		{
+			// Iterate over all nodes
+			while (oldNode)
+			{
+				// Get a new node, copy the offset/size, and set next to it
+				FreeListNode* newNode = GetNode();
+				newNode->offset = oldNode->offset;
+				newNode->size = oldNode->size;
+				newNode->next = nullptr;
+				newListNode->next = newNode;
+
+				if (oldNode->next)
+				{
+					// There is another node, move on
+					oldNode = oldNode->next;
+				}
+				else
+				{
+					// We reached the end of the list
+					if (oldNode->offset + oldNode->size == oldSize)
+					{
+						// The last node in the old list extends to the end of the list so we simply add the size difference to it
+						newNode->size += sizeDifference;
+					}
+					else
+					{
+						// The last node
+						FreeListNode* newNodeEnd = GetNode();
+						newNodeEnd->offset = oldSize;
+						newNodeEnd->size = sizeDifference;
+						newNodeEnd->next = nullptr;
+						newNode->next = newNodeEnd;
+					}
+
+					break;
+				}
+			}
+		}
+
+		return true;
 	}
 
 	void FreeList::Destroy()
@@ -210,7 +292,8 @@ namespace C3D
 
 	u64 FreeList::GetMemoryRequirements(const u64 totalSize)
 	{
-		const auto elementCount = totalSize / (FREELIST_SIZE_OF_SMALLEST_ALLOCATION * FREELIST_SIZE_OF_NODE);
+		auto elementCount = totalSize / (FREELIST_SIZE_OF_SMALLEST_ALLOCATION * FREELIST_SIZE_OF_NODE);
+		if (elementCount < 20) elementCount = 20;
 		return elementCount * FREELIST_SIZE_OF_NODE;
 	}
 

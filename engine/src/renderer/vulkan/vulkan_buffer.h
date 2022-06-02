@@ -2,6 +2,7 @@
 #pragma once
 #include "core/defines.h"
 #include "vulkan_types.h"
+#include "containers/freelist.h"
 
 namespace C3D
 {
@@ -21,13 +22,22 @@ namespace C3D
 		void* LockMemory(const VulkanContext* context, u64 offset, u64 size, u32 flags) const;
 		void  UnlockMemory(const VulkanContext* context) const;
 
+		bool Allocate(u64 size, u64* outOffset);
+		bool Free(u64 size, u64 offset);
+
 		void LoadData(const VulkanContext* context, u64 offset, u64 size, u32 flags, const void* data) const;
 
 		void CopyTo(const VulkanContext* context, VkCommandPool pool, VkFence fence, VkQueue queue, u64 sourceOffset, VkBuffer dest, u64 destOffset, u64 size) const;
 
 		VkBuffer handle;
 	private:
+		void CleanupFreeList();
+
 		u64 m_totalSize;
+
+		void* m_freeListBlock;
+		u64 m_freeListMemoryRequirement;
+		FreeList m_freeList;
 
 		VkBufferUsageFlagBits m_usage;
 

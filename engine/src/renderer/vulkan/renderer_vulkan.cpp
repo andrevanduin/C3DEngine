@@ -22,7 +22,7 @@
 namespace C3D
 {
 	RendererVulkan::RendererVulkan()
-		: RendererBackend("VULKAN_RENDERER"), m_context(), m_geometryVertexOffset(0), m_geometryIndexOffset(0), m_geometries{}
+		: RendererBackend("VULKAN_RENDERER"), m_context(), m_geometries{}
 	{}
 
 	bool RendererVulkan::Init(Application* application)
@@ -604,26 +604,28 @@ namespace C3D
 		VkQueue queue = m_context.device.graphicsQueue;
 
 		// Vertex data
-		internalData->vertexBufferOffset = static_cast<u32>(m_geometryVertexOffset);
 		internalData->vertexCount = vertexCount;
 		internalData->vertexElementSize = sizeof(Vertex3D);
 
 		u32 totalSize = vertexCount * vertexSize;
-		UploadDataRange(pool, nullptr, queue, &m_objectVertexBuffer, internalData->vertexBufferOffset, totalSize, vertices);
-		// TODO: should maintain a free list instead of this
-		m_geometryVertexOffset += totalSize;
+		if (!UploadDataRange(pool, nullptr, queue, &m_objectVertexBuffer, &internalData->vertexBufferOffset, totalSize, vertices))
+		{
+			m_logger.Error("CreateGeometry() failed to upload to the vertex buffer");
+			return false;
+		}
 
 		// Index data, if applicable
 		if (indexCount && indices)
 		{
-			internalData->indexBufferOffset = static_cast<u32>(m_geometryIndexOffset);
 			internalData->indexCount = indexCount;
 			internalData->indexElementSize = sizeof(u32);
 
 			totalSize = indexCount * indexSize;
-			UploadDataRange(pool, nullptr, queue, &m_objectIndexBuffer, internalData->indexBufferOffset, totalSize, indices);
-			// TODO: should maintain a free list instead of this
-			m_geometryIndexOffset += totalSize;
+			if (!UploadDataRange(pool, nullptr, queue, &m_objectIndexBuffer, &internalData->indexBufferOffset, totalSize, indices))
+			{
+				m_logger.Error("CreateGeometry() failed to upload to the index buffer");
+				return false;
+			}
 		}
 
 		if (internalData->generation == INVALID_ID) internalData->generation = 0;
@@ -843,7 +845,6 @@ namespace C3D
 			m_logger.Error("Error creating vertex buffer");
 			return false;
 		}
-		m_geometryVertexOffset = 0;
 
 		// Geometry index buffer
 		constexpr u64 indexBufferSize = sizeof(u32) * 1024 * 1024;
@@ -852,26 +853,32 @@ namespace C3D
 			m_logger.Error("Error creating index buffer");
 			return false;
 		}
-		m_geometryIndexOffset = 0;
 
 		return true;
 	}
 
-	void RendererVulkan::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, const VulkanBuffer* buffer, const u64 offset, const u64 size, const void* data) const
+	bool RendererVulkan::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer* buffer, u64* outOffset, const u64 size, const void* data) const
 	{
+		if (!buffer || !buffer->Allocate(size, outOffset))
+		{
+			m_logger.Error("UploadDataRange() failed to allocate from the provided buffer");
+			return false;
+		}
+
 		constexpr VkBufferUsageFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 		VulkanBuffer staging;
 		staging.Create(&m_context, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, flags, true);
 
 		staging.LoadData(&m_context, 0, size, 0, data);
-		staging.CopyTo(&m_context, pool, fence, queue, 0, buffer->handle, offset, size);
+		staging.CopyTo(&m_context, pool, fence, queue, 0, buffer->handle, *outOffset, size);
 
 		staging.Destroy(&m_context);
+
+		return true;
 	}
 
-	void RendererVulkan::FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size)
+	void RendererVulkan::FreeDataRange(VulkanBuffer* buffer, const u64 offset, const u64 size)
 	{
-		// TODO: Free this in the buffer
-		// TODO: update free list with this range being free
+		if (buffer) buffer->Free(size, offset);
 	}
 }
