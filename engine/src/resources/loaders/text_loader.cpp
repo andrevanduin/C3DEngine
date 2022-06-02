@@ -3,7 +3,6 @@
 
 #include "core/c3d_string.h"
 #include "core/logger.h"
-#include "core/memory.h"
 
 #include "platform/filesystem.h"
 #include "services/services.h"
@@ -43,7 +42,7 @@ namespace C3D
 		}
 
 		// TODO: should be using an allocator here
-		char* resourceData = Memory::Allocate<char>(fileSize, MemoryType::Array);
+		char* resourceData = Memory.Allocate<char>(fileSize, MemoryType::Array);
 		u64 readSize = 0;
 		if (!file.ReadAll(resourceData, &readSize))
 		{

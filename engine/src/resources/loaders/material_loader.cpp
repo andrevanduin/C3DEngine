@@ -3,7 +3,7 @@
 
 #include "core/c3d_string.h"
 #include "core/logger.h"
-#include "core/memory.h"
+
 #include "platform/filesystem.h"
 #include "services/services.h"
 
@@ -34,7 +34,7 @@ namespace C3D
 		outResource->fullPath = StringDuplicate(fullPath);
 
 		// TODO: should be using an allocator here
-		auto* resourceData = Memory::Allocate<MaterialConfig>(MemoryType::MaterialInstance);
+		auto* resourceData = Memory.Allocate<MaterialConfig>(MemoryType::MaterialInstance);
 		resourceData->autoRelease = true;
 		resourceData->diffuseColor = vec4(1); // Default white
 		resourceData->diffuseMapName[0] = 0;

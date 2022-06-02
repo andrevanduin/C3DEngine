@@ -6,6 +6,7 @@
 
 #include "core/logger.h"
 #include "core/memory.h"
+#include "services/services.h"
 
 namespace C3D
 {
@@ -148,7 +149,7 @@ namespace C3D
 	{
 		void* dataPtr;
 		VK_CHECK(vkMapMemory(context->device.logicalDevice, m_memory, offset, size, flags, &dataPtr));
-		Memory::Copy(dataPtr, data, size);
+		Memory.Copy(dataPtr, data, size);
 		vkUnmapMemory(context->device.logicalDevice, m_memory);
 	}
 

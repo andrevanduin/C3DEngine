@@ -5,8 +5,9 @@
 #include "vulkan_image.h"
 #include "vulkan_types.h"
 
-#include "core/memory.h"
 #include "core/logger.h"
+
+#include "services/services.h"
 
 namespace C3D
 {
@@ -39,7 +40,8 @@ namespace C3D
 	}
 
 	VulkanSwapChain::VulkanSwapChain()
-		: handle(nullptr), imageFormat(), imageCount(0), maxFramesInFlight(0), views(nullptr), m_presentMode(), m_images(nullptr)
+		: handle(nullptr), imageFormat(), imageCount(0), maxFramesInFlight(0), views(nullptr), frameBuffers{},
+		  m_presentMode(), m_images(nullptr)
 	{
 	}
 
@@ -93,6 +95,7 @@ namespace C3D
 			// Our SwapChain is out of date, suboptimal or a FrameBuffer resize has occurred.
 			// We trigger a SwapChain recreation.
 			Recreate(context, context->frameBufferWidth, context->frameBufferHeight);
+			Logger::Debug("[VULKAN_SWAP_CHAIN] - Recreated because SwapChain returned out of date or suboptimal");
 		}
 		else if (result != VK_SUCCESS)
 		{
@@ -168,11 +171,11 @@ namespace C3D
 		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, nullptr));
 		if (!m_images)
 		{
-			m_images = Memory::Allocate<VkImage>(imageCount, MemoryType::Renderer);
+			m_images = Memory.Allocate<VkImage>(imageCount, MemoryType::RenderSystem);
 		}
 		if (!views)
 		{
-			views = Memory::Allocate<VkImageView>(imageCount, MemoryType::Renderer);
+			views = Memory.Allocate<VkImageView>(imageCount, MemoryType::RenderSystem);
 		}
 		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, m_images));
 

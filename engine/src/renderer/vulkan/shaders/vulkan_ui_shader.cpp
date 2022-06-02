@@ -70,7 +70,7 @@ namespace C3D
 		};
 
 		VkDescriptorSetLayoutBinding bindings[VULKAN_UI_SHADER_DESCRIPTOR_COUNT];
-		Memory::Zero(&bindings, sizeof(VkDescriptorSetLayoutBinding) * VULKAN_UI_SHADER_DESCRIPTOR_COUNT);
+		Memory.Zero(&bindings, sizeof(VkDescriptorSetLayoutBinding) * VULKAN_UI_SHADER_DESCRIPTOR_COUNT);
 
 		for (u32 i = 0; i < VULKAN_UI_SHADER_DESCRIPTOR_COUNT; i++)
 		{
@@ -152,7 +152,7 @@ namespace C3D
 
 		// Stages
 		VkPipelineShaderStageCreateInfo stageCreateInfos[UI_SHADER_STAGE_COUNT];
-		Memory::Zero(stageCreateInfos, sizeof(stageCreateInfos));
+		Memory.Zero(stageCreateInfos, sizeof(stageCreateInfos));
 		for (u32 i = 0; i < UI_SHADER_STAGE_COUNT; i++)
 		{
 			stageCreateInfos[i].sType = m_stages[i].shaderStageCreateInfo.sType;
@@ -294,7 +294,7 @@ namespace C3D
 
 		// TODO: if needs update
 		VkWriteDescriptorSet descriptorWrites[VULKAN_UI_SHADER_DESCRIPTOR_COUNT];
-		Memory::Zero(descriptorWrites, sizeof(VkWriteDescriptorSet) * VULKAN_UI_SHADER_DESCRIPTOR_COUNT);
+		Memory.Zero(descriptorWrites, sizeof(VkWriteDescriptorSet) * VULKAN_UI_SHADER_DESCRIPTOR_COUNT);
 
 		u32 descriptorCount = 0;
 		u32 descriptorIndex = 0;

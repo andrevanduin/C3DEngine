@@ -3,7 +3,6 @@
 
 #include "core/c3d_string.h"
 #include "core/logger.h"
-#include "core/memory.h"
 
 #include "resources/resource_types.h"
 #include "services/services.h"
@@ -25,7 +24,7 @@ namespace C3D
 			return false;
 		}
 
-		Memory::Zero(&shaderStages[stageIndex].createInfo, sizeof(VkShaderModuleCreateInfo));
+		Memory.Zero(&shaderStages[stageIndex].createInfo, sizeof(VkShaderModuleCreateInfo));
 		shaderStages[stageIndex].createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		// Use the resource's size and data directly
 		shaderStages[stageIndex].createInfo.codeSize = binaryResource.dataSize;
@@ -35,7 +34,7 @@ namespace C3D
 
 		Resources.Unload(&binaryResource);
 
-		Memory::Zero(&shaderStages[stageIndex].shaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
+		Memory.Zero(&shaderStages[stageIndex].shaderStageCreateInfo, sizeof(VkPipelineShaderStageCreateInfo));
 		shaderStages[stageIndex].shaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStages[stageIndex].shaderStageCreateInfo.stage = shaderStageFlag;
 		shaderStages[stageIndex].shaderStageCreateInfo.module = shaderStages[stageIndex].module;

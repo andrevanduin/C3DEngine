@@ -34,13 +34,17 @@ namespace C3D
 		mat4 mat4Padding1;	// 64 reserved bytes
 	};
 
-	// This structure should be 64 bytes
+	// This structure should be 256 bytes
 	struct VulkanUiShaderInstanceUbo
 	{
 		vec4 diffuseColor;	// 16 bytes
-		vec4 vec4Padding0;	// 16 bytes, reserved for future use
-		vec4 vec4Padding1;	// 16 bytes, reserved for future use
-		vec4 vec4Padding2;	// 16 bytes, reserved for future use
+		vec4 vec4Reserved0;	// 16 bytes, reserved for future use
+		vec4 vec4Reserved1;	// 16 bytes, reserved for future use
+		vec4 vec4Reserved2;	// 16 bytes, reserved for future use
+
+		mat4 mat4Padding0;	// 64 bytes for padding
+		mat4 mat4Padding1;	// 64 bytes for padding
+		mat4 mat4Padding2;	// 64 bytes for padding
 	};
 
 	class VulkanUiShader

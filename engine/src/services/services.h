@@ -14,6 +14,7 @@
 #include "systems/geometry_system.h"
 #include "systems/resource_system.h"
 
+#define Memory		C3D::Services::GetMemory()
 #define Input		C3D::Services::GetInput()
 #define Event		C3D::Services::GetEvent()
 #define Renderer	C3D::Services::GetRenderer()
@@ -29,23 +30,25 @@ namespace C3D
 	class C3D_API Services
 	{
 	public:
-		static bool Init(Application* application, const ResourceSystemConfig& resourceSystemConfig, const TextureSystemConfig& textureSystemConfig,
-			const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig);
+		static bool Init(Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig, 
+			const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig);
 
 		static void Shutdown();
 
-		static InputSystem&		GetInput()			{ return *m_pInput;				}
-		static EventSystem&		GetEvent()			{ return *m_pEvents;			}
-		static RenderSystem&	GetRenderer()		{ return *m_pRenderer;			}
+		static MemorySystem&	GetMemory()			{ return *m_pMemorySystem;		}
+		static InputSystem&		GetInput()			{ return *m_pInputSystem;		}
+		static EventSystem&		GetEvent()			{ return *m_pEventSystem;		}
+		static RenderSystem&	GetRenderer()		{ return *m_pRenderSystem;		}
 		static TextureSystem&	GetTextureSystem()	{ return *m_pTextureSystem;		}
 		static MaterialSystem&	GetMaterialSystem()	{ return *m_pMaterialSystem;	}
 		static GeometrySystem&	GetGeometrySystem()	{ return *m_pGeometrySystem;	}
 		static ResourceSystem&	GetResourceSystem() { return *m_pResourceSystem;	}
 
 	private:
-		static EventSystem*		m_pEvents;
-		static InputSystem*		m_pInput;
-		static RenderSystem*	m_pRenderer;
+		static MemorySystem*	m_pMemorySystem;
+		static EventSystem*		m_pEventSystem;
+		static InputSystem*		m_pInputSystem;
+		static RenderSystem*	m_pRenderSystem;
 		static TextureSystem*	m_pTextureSystem;
 		static MaterialSystem*	m_pMaterialSystem;
 		static GeometrySystem*	m_pGeometrySystem;

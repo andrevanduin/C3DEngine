@@ -2,8 +2,6 @@
 #include "texture_system.h"
 
 #include "core/logger.h"
-#include "core/memory.h"
-
 #include "core/c3d_string.h"
 
 #include "services/services.h"
@@ -25,7 +23,7 @@ namespace C3D
 		m_config = config;
 
 		// Allocate enough memory for the max number of textures that we will be using
-		m_registeredTextures = Memory::Allocate<Texture>(config.maxTextureCount, MemoryType::Texture);
+		m_registeredTextures = Memory.Allocate<Texture>(config.maxTextureCount, MemoryType::Texture);
 		// Set the id of all the textures to invalid
 		for (u32 i = 0; i < m_config.maxTextureCount; i++)
 		{
@@ -54,7 +52,7 @@ namespace C3D
 		}
 
 		// Free the memory that was storing all the textures
-		Memory::Free(m_registeredTextures, sizeof(Texture) * m_config.maxTextureCount, MemoryType::Texture);
+		Memory.Free(m_registeredTextures, sizeof(Texture) * m_config.maxTextureCount, MemoryType::Texture);
 
 		m_logger.Info("Destroying default textures");
 		DestroyDefaultTextures();
@@ -175,7 +173,7 @@ namespace C3D
 		constexpr u32 pixelCount = textureDimensions * textureDimensions;
 
 		const auto pixels = new u8[pixelCount * channels];
-		Memory::Set(pixels, 255, sizeof(u8) * pixelCount * channels);
+		Memory.Set(pixels, 255, sizeof(u8) * pixelCount * channels);
 
 		for (u64 row = 0; row < textureDimensions; row++)
 		{
@@ -292,8 +290,8 @@ namespace C3D
 		Renderer.DestroyTexture(texture);
 
 		// Zero out the memory for the texture
-		Memory::Zero(texture->name, sizeof(char) * TEXTURE_NAME_MAX_LENGTH);
-		Memory::Zero(texture, sizeof(Texture));
+		Memory.Zero(texture->name, sizeof(char) * TEXTURE_NAME_MAX_LENGTH);
+		Memory.Zero(texture, sizeof(Texture));
 
 		// Invalidate the id and generation
 		texture->id = INVALID_ID;

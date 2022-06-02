@@ -178,7 +178,7 @@ namespace C3D
 		const VkResult result = vkWaitForFences(m_context.device.logicalDevice, 1, &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
 		if (!VulkanUtils::IsSuccess(result))
 		{
-			m_logger.Error("vkWaitForFences() failed: '{}'", VulkanUtils::ResultString(result));
+			m_logger.Fatal("vkWaitForFences() failed: '{}'", VulkanUtils::ResultString(result));
 			return false;
 		}
 
@@ -187,6 +187,7 @@ namespace C3D
 		if (!m_context.swapChain.AcquireNextImageIndex(&m_context, UINT64_MAX, 
 			m_context.imageAvailableSemaphores[m_context.currentFrame], nullptr, &m_context.imageIndex))
 		{
+			m_logger.Error("Failed to acquire next image index.");
 			return false;
 		}
 
@@ -459,8 +460,7 @@ namespace C3D
 	void RendererVulkan::CreateTexture(const u8* pixels, Texture* texture)
 	{
 		// Internal data creation
-		// TODO: use an allocator for this
-		texture->internalData = Memory::Allocate<VulkanTextureData>(1, MemoryType::Texture);
+		texture->internalData = Memory.Allocate(sizeof(VulkanTextureData), MemoryType::Texture);
 
 		const auto data = static_cast<VulkanTextureData*>(texture->internalData);
 
@@ -652,15 +652,15 @@ namespace C3D
 		if (data)
 		{
 			data->image.Destroy(&m_context);
-			Memory::Zero(&data->image, sizeof(VulkanImage));
+			Memory.Zero(&data->image, sizeof(VulkanImage));
 
 			vkDestroySampler(m_context.device.logicalDevice, data->sampler, m_context.allocator);
 			data->sampler = nullptr;
 
-			Memory::Free(texture->internalData, sizeof(VulkanTextureData), MemoryType::Texture);
+			Memory.Free(texture->internalData, sizeof(VulkanTextureData), MemoryType::Texture);
 		}
 		
-		Memory::Zero(texture, sizeof(Texture));
+		Memory.Zero(texture, sizeof(Texture));
 	}
 
 	void RendererVulkan::DestroyMaterial(Material* material)
@@ -711,7 +711,7 @@ namespace C3D
 			}
 
 			// Clean up data
-			Memory::Zero(internalData, sizeof(VulkanGeometryData));
+			Memory.Zero(internalData, sizeof(VulkanGeometryData));
 			internalData->id = INVALID_ID;
 			internalData->generation = INVALID_ID;
 		}

@@ -42,7 +42,7 @@ namespace C3D
 	private:
 		bool CreateDefaultMaterial();
 
-		bool LoadMaterial(const MaterialConfig& config, Material* mat);
+		bool LoadMaterial(const MaterialConfig& config, Material* mat) const;
 
 		void DestroyMaterial(Material* mat) const;
 

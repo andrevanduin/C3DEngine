@@ -83,5 +83,5 @@ namespace C3D
 	};
 
 	Application* CreateApplication();
-	void DestroyApplication(Application* app);
+	void DestroyApplication(const Application* app);
 }

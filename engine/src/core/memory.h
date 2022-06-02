@@ -2,13 +2,19 @@
 #pragma once
 #include "defines.h"
 
+#include "services/service.h"
+
+#include "memory/dynamic_allocator.h"
+
 namespace C3D
 {
 	enum class MemoryType : u8
 	{
 		Unknown,
-		Array,
+		DynamicAllocator,
 		LinearAllocator,
+		FreeList,
+		Array,
 		DynamicArray,
 		Dictionary,
 		RingQueue,
@@ -20,7 +26,7 @@ namespace C3D
 		Texture,
 		MaterialInstance,
 		Geometry,
-		Renderer,
+		RenderSystem,
 		Game,
 		Transform,
 		Entity,
@@ -36,24 +42,31 @@ namespace C3D
 		u64 taggedAllocations[static_cast<u8>(MemoryType::MaxType)];
 	};
 
-	class C3D_API Memory
+	struct MemorySystemConfig
+	{
+		u64 totalAllocSize;
+	};
+
+	class C3D_API MemorySystem : public Service
 	{
 	public:
-		static void Init();
-		static void Shutdown();
+		MemorySystem();
 
-		static void* Allocate(u64 size, MemoryType type);
+		bool Init(const MemorySystemConfig& config);
+		void Shutdown();
+
+		void* Allocate(u64 size, MemoryType type);
 
 		template<class T>
-		static T* Allocate(MemoryType type);
+		T* Allocate(MemoryType type);
 
 		template<class T>
-		static T* Allocate(u64 count, MemoryType type);
+		T* Allocate(u64 count, MemoryType type);
 
 		template<class T, class... Args>
-		static T* New(MemoryType type, Args&&... args);
+		T* New(MemoryType type, Args&&... args);
 
-		static void  Free(void* block, u64 size, MemoryType type);
+		void Free(void* block, u64 size, MemoryType type);
 
 		static void* Zero(void* block, u64 size);
 
@@ -61,26 +74,31 @@ namespace C3D
 
 		static void* Set(void* dest, i32 value, u64 size);
 
-		static string GetMemoryUsageString();
-		static u64 GetAllocCount();
+		string GetMemoryUsageString();
+		[[nodiscard]] u64 GetAllocCount() const;
 	private:
-		static MemoryStats m_stats;
+		void* m_memory;
+
+		MemorySystemConfig m_config;
+
+		MemoryStats m_stats;
+		DynamicAllocator m_allocator;
 	};
 
 	template <class T, class... Args>
-	T* Memory::New(const MemoryType type, Args&&... args)
+	T* MemorySystem::New(const MemoryType type, Args&&... args)
 	{ 
 		return new(Allocate(sizeof T, type)) T(std::forward<Args>(args)...);
 	}
 
 	template <class T>
-	T* Memory::Allocate(const MemoryType type)
+	T* MemorySystem::Allocate(const MemoryType type)
 	{
 		return static_cast<T*>(Allocate(sizeof(T), type));
 	}
 
 	template <class T>
-	T* Memory::Allocate(const u64 count, const MemoryType type)
+	T* MemorySystem::Allocate(const u64 count, const MemoryType type)
 	{
 		return static_cast<T*>(Allocate(sizeof(T) * count, type));
 	}

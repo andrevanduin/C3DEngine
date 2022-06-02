@@ -57,11 +57,9 @@ namespace C3D
 			return false;
 		}
 
-		// TODO: Should be using an allocator here
 		outResource->fullPath = StringDuplicate(fullPath);
 
-		// TODO: Should be using an allocator here
-		auto* resourceData = Memory::Allocate<ImageResourceData>(MemoryType::Texture);
+		auto* resourceData = Memory.Allocate<ImageResourceData>(MemoryType::Texture);
 		resourceData->pixels = data;
 		resourceData->width = width;
 		resourceData->height = height;

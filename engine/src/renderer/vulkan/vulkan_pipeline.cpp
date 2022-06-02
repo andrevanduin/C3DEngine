@@ -6,6 +6,7 @@
 #include "core/logger.h"
 
 #include "renderer/vertex.h"
+#include "services/services.h"
 
 namespace C3D
 {
@@ -55,7 +56,7 @@ namespace C3D
 		}
 
 		VkPipelineColorBlendAttachmentState colorBlendAttachmentState;
-		Memory::Zero(&colorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
+		Memory.Zero(&colorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
 
 		colorBlendAttachmentState.blendEnable = VK_TRUE;
 		colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;

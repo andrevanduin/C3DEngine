@@ -3,7 +3,8 @@
 
 #include "core/c3d_string.h"
 #include "core/logger.h"
-#include "core/memory.h"
+
+#include "services/services.h"
 
 namespace C3D
 {
@@ -21,12 +22,12 @@ namespace C3D
 
 		if (const u32 pathLength = StringLength(resource->fullPath))
 		{
-			Memory::Free(resource->fullPath, sizeof(char) * pathLength + 1, MemoryType::String);
+			Memory.Free(resource->fullPath, sizeof(char) * pathLength + 1, MemoryType::String);
 		}
 
 		if (resource->data)
 		{
-			Memory::Free(resource->data, resource->dataSize, m_memoryType);
+			Memory.Free(resource->data, resource->dataSize, m_memoryType);
 			resource->data = nullptr;
 			resource->dataSize = 0;
 			resource->loaderId = INVALID_ID;

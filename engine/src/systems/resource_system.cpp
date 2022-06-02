@@ -3,13 +3,14 @@
 
 #include "core/c3d_string.h"
 #include "core/logger.h"
-#include "core/memory.h"
 
 // Default loaders
 #include "resources/loaders/binary_loader.h"
 #include "resources/loaders/image_loader.h"
 #include "resources/loaders/material_loader.h"
 #include "resources/loaders/text_loader.h"
+
+#include "services/services.h"
 
 namespace C3D
 {
@@ -36,7 +37,7 @@ namespace C3D
 
 		m_config = config;
 
-		m_registeredLoaders = Memory::Allocate<ResourceLoader>(m_config.maxLoaderCount, MemoryType::ResourceLoader);
+		m_registeredLoaders = Memory.Allocate<ResourceLoader>(m_config.maxLoaderCount, MemoryType::ResourceLoader);
 		const u32 count = m_config.maxLoaderCount;
 		for (u32 i = 0; i < count; i++)
 		{
@@ -71,7 +72,7 @@ namespace C3D
 
 	void ResourceSystem::Shutdown() const
 	{
-		Memory::Free(m_registeredLoaders, sizeof(ResourceLoader) * m_config.maxLoaderCount, MemoryType::ResourceLoader);
+		Memory.Free(m_registeredLoaders, sizeof(ResourceLoader) * m_config.maxLoaderCount, MemoryType::ResourceLoader);
 	}
 
 	bool ResourceSystem::RegisterLoader(ResourceLoader* newLoader) const
@@ -101,7 +102,7 @@ namespace C3D
 		{
 			if (m_registeredLoaders[i].id == INVALID_ID)
 			{
-				Memory::Copy(&m_registeredLoaders[i], newLoader, sizeof(ResourceLoader));
+				Memory.Copy(&m_registeredLoaders[i], newLoader, sizeof(ResourceLoader));
 				m_registeredLoaders[i].id = i;
 
 				m_logger.Trace("Loader registered");

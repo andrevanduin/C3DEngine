@@ -1,16 +1,13 @@
 
 #pragma once
 #include "core/application.h"
-#include "core/memory.h"
 
 int main(int argc, char** argv)
 {
-	C3D::Memory::Init();
-
+	// Create our application (game) by calling the user supplied method
 	const auto app = C3D::CreateApplication();
 	app->Run();
-
-	C3D::DestroyApplication(app);
-	C3D::Memory::Shutdown();
+	// Cleanup the allocation that the user did
+	delete app;
 	return 0;
 }

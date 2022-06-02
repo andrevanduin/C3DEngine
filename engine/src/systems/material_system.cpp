@@ -3,7 +3,6 @@
 
 #include "core/logger.h"
 #include "core/c3d_string.h"
-#include "core/memory.h"
 
 #include "services/services.h"
 
@@ -24,7 +23,7 @@ namespace C3D
 		m_config = config;
 
 		// Allocate enough memory for the max number of textures that we will be using
-		m_registeredMaterials = Memory::Allocate<Material>(config.maxMaterialCount, MemoryType::MaterialInstance);
+		m_registeredMaterials = Memory.Allocate<Material>(config.maxMaterialCount, MemoryType::MaterialInstance);
 		// Set the id of all the textures to invalid
 		for (u32 i = 0; i < m_config.maxMaterialCount; i++)
 		{
@@ -192,7 +191,7 @@ namespace C3D
 
 	bool MaterialSystem::CreateDefaultMaterial()
 	{
-		Memory::Zero(&m_defaultMaterial, sizeof(Material));
+		Memory.Zero(&m_defaultMaterial, sizeof(Material));
 
 		m_defaultMaterial.id = INVALID_ID;
 		m_defaultMaterial.generation = INVALID_ID;
@@ -210,9 +209,9 @@ namespace C3D
 		return true;
 	}
 
-	bool MaterialSystem::LoadMaterial(const MaterialConfig& config, Material* mat)
+	bool MaterialSystem::LoadMaterial(const MaterialConfig& config, Material* mat) const
 	{
-		Memory::Zero(mat, sizeof(Material));
+		Memory.Zero(mat, sizeof(Material));
 
 		// Name
 		StringNCopy(mat->name, config.name, MATERIAL_NAME_MAX_LENGTH);
@@ -265,7 +264,7 @@ namespace C3D
 		Renderer.DestroyMaterial(mat);
 
 		// Zero out memory and invalidate ids
-		Memory::Zero(mat, sizeof(Material));
+		Memory.Zero(mat, sizeof(Material));
 		mat->id = INVALID_ID;
 		mat->generation = INVALID_ID;
 		mat->internalId = INVALID_ID;

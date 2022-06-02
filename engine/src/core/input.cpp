@@ -29,8 +29,8 @@ namespace C3D
 	{
 		if (!m_initialized) return;
 
-		Memory::Copy(&m_state.keyboardPrevious, &m_state.keyboardCurrent, sizeof KeyBoardState);
-		Memory::Copy(&m_state.mousePrevious, &m_state.mouseCurrent, sizeof MouseState);
+		Memory.Copy(&m_state.keyboardPrevious, &m_state.keyboardCurrent, sizeof KeyBoardState);
+		Memory.Copy(&m_state.mousePrevious, &m_state.mouseCurrent, sizeof MouseState);
 	}
 
 	void InputSystem::ProcessKey(const SDL_Keycode sdlKey, const bool pressed)

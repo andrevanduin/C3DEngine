@@ -4,6 +4,7 @@
 
 #include "core/memory.h"
 #include "core/logger.h"
+#include "services/services.h"
 
 namespace C3D
 {
@@ -85,8 +86,7 @@ namespace C3D
 			const auto heap = m_memory.memoryHeaps[i];
 			if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
 			{
-				gpuMemory = static_cast<f32>(heap.size) / 1024.0f / 1024.0f / 1024.0f;
-				break;
+				gpuMemory += static_cast<f32>(heap.size) / 1024.0f / 1024.0f / 1024.0f;
 			}
 		}
 
@@ -121,7 +121,7 @@ namespace C3D
 			{
 				if (!supportInfo->formats)
 				{
-					supportInfo->formats = Memory::Allocate<VkSurfaceFormatKHR>(supportInfo->formatCount, MemoryType::Renderer);
+					supportInfo->formats = Memory.Allocate<VkSurfaceFormatKHR>(supportInfo->formatCount, MemoryType::RenderSystem);
 				}
 
 				VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &supportInfo->formatCount, supportInfo->formats))
@@ -133,7 +133,7 @@ namespace C3D
 			{
 				if (!supportInfo->presentModes)
 				{
-					supportInfo->presentModes = Memory::Allocate<VkPresentModeKHR>(supportInfo->presentModeCount, MemoryType::Renderer);
+					supportInfo->presentModes = Memory.Allocate<VkPresentModeKHR>(supportInfo->presentModeCount, MemoryType::RenderSystem);
 				}
 
 				VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &supportInfo->presentModeCount, supportInfo->presentModes))

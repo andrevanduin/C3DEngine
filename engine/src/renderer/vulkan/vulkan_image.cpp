@@ -6,6 +6,7 @@
 
 #include "core/memory.h"
 #include "core/logger.h"
+#include "services/services.h"
 
 namespace C3D
 {
@@ -130,7 +131,7 @@ namespace C3D
 	void VulkanImage::CopyFromBuffer(const VulkanContext* context, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
 	{
 		VkBufferImageCopy region;
-		Memory::Zero(&region, sizeof(VkBufferImageCopy));
+		Memory.Zero(&region, sizeof(VkBufferImageCopy));
 		region.bufferOffset = 0;
 		region.bufferRowLength = 0;
 		region.bufferImageHeight = 0;

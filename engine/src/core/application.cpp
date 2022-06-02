@@ -46,12 +46,13 @@ namespace C3D
 
 		m_logger.Info("Successfully created SDL Window");
 
+		constexpr MemorySystemConfig memorySystemConfig { GIBIBYTES(1) };
 		constexpr ResourceSystemConfig resourceSystemConfig { 32, "../../../../assets" };
 		constexpr TextureSystemConfig  textureSystemConfig  { 65536 };
 		constexpr MaterialSystemConfig materialSystemConfig { 4096 };
 		constexpr GeometrySystemConfig geometrySystemConfig { 4096 };
 
-		Services::Init(this, resourceSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig);
+		Services::Init(this, memorySystemConfig, resourceSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
@@ -67,8 +68,8 @@ namespace C3D
 		m_testGeometry = Geometric.AcquireFromConfig(gConfig, true);
 
 		// Cleanup the allocations that we just did
-		Memory::Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.vertexCount, MemoryType::Array);
-		Memory::Free(gConfig.indices, sizeof(u32) * gConfig.indexCount, MemoryType::Array);
+		Memory.Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.vertexCount, MemoryType::Array);
+		Memory.Free(gConfig.indices, sizeof(u32) * gConfig.indexCount, MemoryType::Array);
 
 		// Load up our test ui geometry
 		GeometryConfig uiConfig;
@@ -133,7 +134,7 @@ namespace C3D
 		u8 frameCount = 0;
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
-		m_logger.Info(Memory::GetMemoryUsageString());
+		m_logger.Info(Memory.GetMemoryUsageString());
 
 		while (m_state.running)
 		{

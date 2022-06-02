@@ -2,8 +2,8 @@
 #include "vulkan_renderpass.h"
 #include "vulkan_types.h"
 
-#include "core/memory.h"
 #include "core/logger.h"
+#include "services/services.h"
 
 namespace C3D
 {
@@ -84,7 +84,7 @@ namespace C3D
 		}
 		else
 		{
-			Memory::Zero(&attachmentDescriptions[attachmentDescriptionCount], sizeof(VkAttachmentDescription));
+			Memory.Zero(&attachmentDescriptions[attachmentDescriptionCount], sizeof(VkAttachmentDescription));
 			subPass.pDepthStencilAttachment = nullptr;
 		}
 
@@ -148,17 +148,17 @@ namespace C3D
 		beginInfo.pClearValues = nullptr;
 
 		VkClearValue clearValues[2];
-		Memory::Zero(clearValues, sizeof(VkClearValue) * 2);
+		Memory.Zero(clearValues, sizeof(VkClearValue) * 2);
 
 		if (m_clearFlags & ClearColor)
 		{
-			Memory::Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			Memory.Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
 			beginInfo.clearValueCount++;
 		}
 
 		if (m_clearFlags & ClearDepth)
 		{
-			Memory::Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			Memory.Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
 			clearValues[beginInfo.clearValueCount].depthStencil.depth = m_depth;
 
 			const bool doClearStencil = m_clearFlags & ClearStencil;

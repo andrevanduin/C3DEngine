@@ -25,7 +25,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 {
 	static u64 allocCount = 0;
 	const u64 prevAllocCount = allocCount;
-	allocCount = C3D::Memory::GetAllocCount();
+	allocCount = Memory.GetAllocCount();
 
 
 	if (Input.IsKeyUp(C3D::KeyM) && Input.WasKeyDown('m'))

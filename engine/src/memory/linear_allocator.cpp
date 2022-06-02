@@ -22,7 +22,7 @@ namespace C3D
 		else
 		{
 			// We need to allocate the memory ourselves
-			m_memory = Memory::Allocate(totalSize, MemoryType::LinearAllocator);
+			m_memory = Memory.Allocate(totalSize, MemoryType::LinearAllocator);
 		}
 	}
 
@@ -32,7 +32,7 @@ namespace C3D
 		if (m_ownsMemory && m_memory)
 		{
 			// We own the memory so let's free it
-			Memory::Free(m_memory, m_totalSize, MemoryType::LinearAllocator);
+			Memory.Free(m_memory, m_totalSize, MemoryType::LinearAllocator);
 		}
 
 		m_memory = nullptr;
@@ -65,7 +65,7 @@ namespace C3D
 		if (m_memory)
 		{
 			m_allocated = 0;
-			Memory::Zero(m_memory, m_totalSize);
+			Memory.Zero(m_memory, m_totalSize);
 		}
 	}
 }

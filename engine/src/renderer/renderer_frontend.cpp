@@ -8,6 +8,7 @@
 #include "math/c3d_math.h"
 
 #include "renderer/vulkan/renderer_vulkan.h"
+#include "services/services.h"
 
 namespace C3D
 {
@@ -168,7 +169,7 @@ namespace C3D
 	{
 		if (type == RendererBackendType::Vulkan)
 		{
-			m_backend = Memory::New<RendererVulkan>(MemoryType::Renderer);
+			m_backend = Memory.New<RendererVulkan>(MemoryType::RenderSystem);
 			return true;
 		}
 
@@ -180,7 +181,7 @@ namespace C3D
 	{
 		if (m_backend->type == RendererBackendType::Vulkan)
 		{
-			Memory::Free(m_backend, sizeof(RendererVulkan), MemoryType::Renderer);
+			Memory.Free(m_backend, sizeof(RendererVulkan), MemoryType::RenderSystem);
 		}
 	}
 }
