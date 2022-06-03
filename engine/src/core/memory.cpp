@@ -29,10 +29,11 @@ namespace C3D
 		"Entity           ",
 		"EntityNode       ",
 		"Scene            ",
+		"Shader           ",
 	};
 
 	MemorySystem::MemorySystem()
-		: Service("MEMORY"), m_memory(nullptr), m_config(), m_stats()
+		: System("MEMORY"), m_memory(nullptr), m_stats()
 	{}
 
 	bool MemorySystem::Init(const MemorySystemConfig& config)

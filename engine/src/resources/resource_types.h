@@ -16,6 +16,7 @@ namespace C3D
 		Image,
 		Material,
 		StaticMesh,
+		Shader,
 		Custom
 	};
 

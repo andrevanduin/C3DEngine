@@ -41,4 +41,9 @@ namespace C3D
 	{
 		u64 frameNumber;
 	};
+
+	enum class ShaderStage
+	{
+		Vertex, Geometry, Fragment, Compute
+	};
 }

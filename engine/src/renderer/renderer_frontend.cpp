@@ -4,6 +4,7 @@
 #include "core/logger.h"
 #include "core/memory.h"
 #include "core/application.h"
+#include "core/c3d_string.h"
 
 #include "math/c3d_math.h"
 
@@ -139,11 +140,6 @@ namespace C3D
 		return m_backend->CreateTexture(pixels, texture);
 	}
 
-	bool RenderSystem::CreateMaterial(Material* material) const
-	{
-		return m_backend->CreateMaterial(material);
-	}
-
 	bool RenderSystem::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u32 vertexCount, const void* vertices,
 		const u32 indexSize, const u32 indexCount, const void* indices) const
 	{
@@ -155,14 +151,81 @@ namespace C3D
 		return m_backend->DestroyTexture(texture);
 	}
 
-	void RenderSystem::DestroyMaterial(Material* material) const
-	{
-		return m_backend->DestroyMaterial(material);
-	}
-
 	void RenderSystem::DestroyGeometry(Geometry* geometry) const
 	{
 		return m_backend->DestroyGeometry(geometry);
+	}
+
+	bool RenderSystem::GetRenderPassId(const char* name, u8* outRenderPassId) const
+	{
+		// HACK: Need dynamic RenderPasses instead of hardcoding them.
+		if (IEquals("RenderPass.Builtin.World", name)) {
+			*outRenderPassId = BuiltinRenderPass::World;
+			return true;
+		}
+		if (IEquals("RenderPass.Builtin.UI", name)) {
+			*outRenderPassId = BuiltinRenderPass::Ui;
+			return true;
+		}
+
+		m_logger.Error("GetRenderPassId() - No RenderPass with name '{}' exists", name);
+		*outRenderPassId = INVALID_ID_U8;
+		return false;
+	}
+
+	bool RenderSystem::CreateShader(Shader* shader, u8 renderPassId, u8 stageCount, char** stageFileNames, ShaderStage* stages)
+	{
+		return m_backend->CreateShader(shader, renderPassId, stageCount, stageFileNames, stages);
+	}
+
+	void RenderSystem::DestroyShader(Shader* shader)
+	{
+		return m_backend->DestroyShader(shader);
+	}
+
+	bool RenderSystem::InitializeShader(Shader* shader)
+	{
+		return m_backend->InitializeShader(shader);
+	}
+
+	bool RenderSystem::UseShader(Shader* shader)
+	{
+		return m_backend->UseShader(shader);
+	}
+
+	bool RenderSystem::ShaderBindGlobals(Shader* shader)
+	{
+		return m_backend->ShaderBindGlobals(shader);
+	}
+
+	bool RenderSystem::ShaderBindInstance(Shader* shader, u32 instanceId)
+	{
+		return m_backend->ShaderBindInstance(shader, instanceId);
+	}
+
+	bool RenderSystem::ShaderApplyGlobals(Shader* shader)
+	{
+		return m_backend->ShaderApplyGlobals(shader);
+	}
+
+	bool RenderSystem::ShaderApplyInstance(Shader* shader)
+	{
+		return m_backend->ShaderApplyInstance(shader);
+	}
+
+	bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId)
+	{
+		return m_backend->AcquireShaderInstanceResources(shader, outInstanceId);
+	}
+
+	bool RenderSystem::ReleaseShaderInstanceResources(Shader* shader, u32 instanceId)
+	{
+		return m_backend->ReleaseShaderInstanceResources(shader, instanceId);
+	}
+
+	bool RenderSystem::SetUniform(Shader* shader, ShaderUniform* uniform, const void* value)
+	{
+		return m_backend->SetUniform(shader, uniform, value);
 	}
 
 	bool RenderSystem::CreateBackend(const RendererBackendType type)

@@ -200,6 +200,8 @@ namespace C3D
 		m_defaultMaterial.diffuseMap.use = TextureUse::Diffuse;
 		m_defaultMaterial.diffuseMap.texture = Textures.GetDefaultTexture();
 
+		Shader* shader = Shaders.Get(BUILTIN_SHADER_NAME_MATERIAL);
+
 		if (!Renderer.CreateMaterial(&m_defaultMaterial))
 		{
 			m_logger.Error("Failed to acquire renderer resources for the default material");

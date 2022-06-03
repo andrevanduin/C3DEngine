@@ -21,9 +21,11 @@ namespace C3D
 	TextureSystem*	Services::m_pTextureSystem	= nullptr;
 	MaterialSystem* Services::m_pMaterialSystem = nullptr;
 	GeometrySystem* Services::m_pGeometrySystem = nullptr;
+	ShaderSystem*	Services::m_pShaderSystem	= nullptr;
 
-	bool Services::Init(Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig, 
-		const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig)
+	bool Services::Init(Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig,
+		const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, 
+		const GeometrySystemConfig& geometrySystemConfig)
 	{
 		m_pMemorySystem = new MemorySystem();
 		if (!m_pMemorySystem->Init(memorySystemConfig))
@@ -56,6 +58,13 @@ namespace C3D
 			m_logger.Fatal("ResourceSystem failed to be Initialized");
 		}
 
+		// Shader System
+		m_pShaderSystem = m_allocator.New<ShaderSystem>();
+		if (!m_pShaderSystem->Init(shaderSystemConfig))
+		{
+			m_logger.Fatal("ShaderSystem failed to be Initialized");
+		}
+
 		// Render System
 		m_pRenderSystem = m_allocator.New<RenderSystem>();
 		if (!m_pRenderSystem->Init(application))
@@ -83,6 +92,7 @@ namespace C3D
 		{
 			m_logger.Fatal("GeometrySystem failed to be Initialized");
 		}
+
 		return true;
 	}
 

@@ -13,6 +13,7 @@
 #include "systems/material_system.h"
 #include "systems/geometry_system.h"
 #include "systems/resource_system.h"
+#include "systems/shader_system.h"
 
 #define Memory		C3D::Services::GetMemory()
 #define Input		C3D::Services::GetInput()
@@ -22,6 +23,7 @@
 #define Materials	C3D::Services::GetMaterialSystem()
 #define Geometric	C3D::Services::GetGeometrySystem()
 #define Resources	C3D::Services::GetResourceSystem()
+#define Shaders		C3D::Services::GetShaderSystem()
 
 namespace C3D
 {
@@ -30,8 +32,9 @@ namespace C3D
 	class C3D_API Services
 	{
 	public:
-		static bool Init(Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig, 
-			const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig);
+		static bool Init(Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig,
+			const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig,
+			const GeometrySystemConfig& geometrySystemConfig);
 
 		static void Shutdown();
 
@@ -43,6 +46,7 @@ namespace C3D
 		static MaterialSystem&	GetMaterialSystem()	{ return *m_pMaterialSystem;	}
 		static GeometrySystem&	GetGeometrySystem()	{ return *m_pGeometrySystem;	}
 		static ResourceSystem&	GetResourceSystem() { return *m_pResourceSystem;	}
+		static ShaderSystem&	GetShaderSystem()	{ return *m_pShaderSystem;		}
 
 	private:
 		static MemorySystem*	m_pMemorySystem;
@@ -53,6 +57,7 @@ namespace C3D
 		static MaterialSystem*	m_pMaterialSystem;
 		static GeometrySystem*	m_pGeometrySystem;
 		static ResourceSystem*	m_pResourceSystem;
+		static ShaderSystem*	m_pShaderSystem;
 
 		static LinearAllocator m_allocator;
 		static LoggerInstance m_logger;

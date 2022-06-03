@@ -53,10 +53,10 @@ namespace C3D
 		u32 presentQueueIndex;
 		u32 transferQueueIndex;
 
+		VkPhysicalDeviceProperties properties;
 	private:
 		LoggerInstance m_logger;
 
-		VkPhysicalDeviceProperties m_properties;
 		VkPhysicalDeviceFeatures m_features;
 		VkPhysicalDeviceMemoryProperties m_memory;
 	};

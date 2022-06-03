@@ -8,6 +8,9 @@
 namespace C3D
 {
 	class Application;
+	struct Texture;
+	struct Shader;
+	struct ShaderUniform;
 
 	class RendererBackend
 	{
@@ -21,9 +24,6 @@ namespace C3D
 
 		virtual bool BeginFrame(f32 deltaTime) = 0;
 
-		virtual void UpdateGlobalWorldState(mat4 projection, mat4 view, vec3 viewPosition, vec4 ambientColor, i32 mode) = 0;
-		virtual void UpdateGlobalUiState(mat4 projection, mat4 view, i32 mode) = 0;
-
 		virtual void DrawGeometry(GeometryRenderData data) = 0;
 
 		virtual bool EndFrame(f32 deltaTime) = 0;
@@ -31,15 +31,29 @@ namespace C3D
 		virtual bool BeginRenderPass(u8 renderPassId) = 0;
 		virtual bool EndRenderPass(u8 renderPassId) = 0;
 
-		virtual void CreateTexture(const u8* pixels, struct Texture* texture) = 0;
-		virtual bool CreateMaterial(struct Material* material) = 0;
+		virtual void CreateTexture(const u8* pixels, Texture* texture) = 0;
+		virtual bool CreateGeometry(Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices, u32 indexSize, u32 indexCount, const void* indices) = 0;
 
-		virtual bool CreateGeometry(Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices, 
-			u32 indexSize, u32 indexCount, const void* indices) = 0;
-
-		virtual void DestroyTexture(struct Texture* texture) = 0;
-		virtual void DestroyMaterial(struct Material* material) = 0;
+		virtual void DestroyTexture(Texture* texture) = 0;
 		virtual void DestroyGeometry(Geometry* geometry) = 0;
+
+		virtual bool CreateShader(Shader* shader, u8 renderPassId, u8 stageCount, char** stageFileNames, ShaderStage* stages) = 0;
+		virtual void DestroyShader(Shader* shader) = 0;
+
+		virtual bool InitializeShader(Shader* shader) = 0;
+
+		virtual bool UseShader(Shader* shader) = 0;
+
+		virtual bool ShaderBindGlobals(Shader* shader) = 0;
+		virtual bool ShaderBindInstance(Shader* shader, u32 instanceId) = 0;
+
+		virtual bool ShaderApplyGlobals(Shader* shader) = 0;
+		virtual bool ShaderApplyInstance(Shader* shader) = 0;
+
+		virtual bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId) = 0;
+		virtual bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) = 0;
+
+		virtual bool SetUniform(Shader* shader, const ShaderUniform* uniform, void* value) = 0;
 
 		RendererBackendType type;
 		RendererBackendState state;

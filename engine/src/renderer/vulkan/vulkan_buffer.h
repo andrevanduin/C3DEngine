@@ -11,7 +11,7 @@ namespace C3D
 	public:
 		VulkanBuffer();
 
-		bool Create(const VulkanContext* context, u64 size, u32 usage, u32 memoryPropertyFlags, bool bindOnCreate);
+		bool Create(const VulkanContext* context, u64 size, u32 usage, u32 memoryPropertyFlags, bool bindOnCreate, bool useFreeList);
 
 		void Destroy(const VulkanContext* context);
 
@@ -46,5 +46,6 @@ namespace C3D
 		u32 m_memoryPropertyFlags;
 
 		bool m_isLocked;
+		bool m_hasFreeList;
 	};
 }

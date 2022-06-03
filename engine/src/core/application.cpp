@@ -45,13 +45,14 @@ namespace C3D
 
 		m_logger.Info("Successfully created SDL Window");
 
-		constexpr MemorySystemConfig memorySystemConfig { MEBIBYTES(512) };
-		constexpr ResourceSystemConfig resourceSystemConfig { 32, "../../../../assets" };
-		constexpr TextureSystemConfig  textureSystemConfig  { 65536 };
-		constexpr MaterialSystemConfig materialSystemConfig { 4096 };
-		constexpr GeometrySystemConfig geometrySystemConfig { 4096 };
+		constexpr MemorySystemConfig	memorySystemConfig		{ MebiBytes(512) };
+		constexpr ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../assets" };
+		constexpr ShaderSystemConfig	shaderSystemConfig		{ 128, 128, 31, 31 };
+		constexpr TextureSystemConfig	textureSystemConfig		{ 65536 };
+		constexpr MaterialSystemConfig	materialSystemConfig	{ 4096 };
+		constexpr GeometrySystemConfig	geometrySystemConfig	{ 4096 };
 
-		Services::Init(this, memorySystemConfig, resourceSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig);
+		Services::Init(this, memorySystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
@@ -168,7 +169,10 @@ namespace C3D
 				packet.uiGeometries = &testUiRender;
 				// TEMP END
 
-				Renderer.DrawFrame(&packet);
+				if (!Renderer.DrawFrame(&packet))
+				{
+					m_logger.Warn("DrawFrame() failed");
+				}
 
 				const f64 frameEndTime = Platform::GetAbsoluteTime();
 				const f64 frameElapsedTime = frameEndTime - frameStartTime;

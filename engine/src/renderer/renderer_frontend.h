@@ -9,6 +9,11 @@ namespace C3D
 {
 	class Application;
 
+	struct Texture;
+	struct Geometry;
+	struct Shader;
+	struct ShaderUniform;
+
 	class RenderSystem
 	{
 	public:
@@ -24,15 +29,32 @@ namespace C3D
 
 		bool DrawFrame(const RenderPacket* packet) const;
 
-		void CreateTexture(const u8* pixels, struct Texture* texture) const;
-		bool CreateMaterial(struct Material* material) const;
+		void CreateTexture(const u8* pixels, Texture* texture) const;
+		void DestroyTexture(Texture* texture) const;
 
-		bool CreateGeometry(struct Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices,
-			u32 indexSize, u32 indexCount, const void* indices) const;
 
-		void DestroyTexture(struct Texture* texture) const;
-		void DestroyMaterial(struct Material* material) const;
-		void DestroyGeometry(struct Geometry* geometry) const;
+		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices, u32 indexSize, u32 indexCount, const void* indices) const;
+		void DestroyGeometry(Geometry* geometry) const;
+
+		bool GetRenderPassId(const char* name, u8* outRenderPassId) const;
+
+		bool CreateShader(Shader* shader, u8 renderPassId, u8 stageCount, char** stageFileNames, ShaderStage* stages);
+		void DestroyShader(Shader* shader);
+
+		bool InitializeShader(Shader* shader);
+
+		bool UseShader(Shader* shader);
+
+		bool ShaderBindGlobals(Shader* shader);
+		bool ShaderBindInstance(Shader* shader, u32 instanceId);
+
+		bool ShaderApplyGlobals(Shader* shader);
+		bool ShaderApplyInstance(Shader* shader);
+
+		bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId);
+		bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId);
+
+		bool SetUniform(Shader* shader, ShaderUniform* uniform, const void* value);
 
 	private:
 		bool CreateBackend(RendererBackendType type);

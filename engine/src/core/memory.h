@@ -2,7 +2,7 @@
 #pragma once
 #include "defines.h"
 
-#include "services/service.h"
+#include "systems/system.h"
 
 #include "memory/dynamic_allocator.h"
 
@@ -32,6 +32,7 @@ namespace C3D
 		Entity,
 		EntityNode,
 		Scene,
+		Shader,
 		MaxType
 	};
 
@@ -47,13 +48,13 @@ namespace C3D
 		u64 totalAllocSize;
 	};
 
-	class C3D_API MemorySystem : public Service
+	class C3D_API MemorySystem : public System<MemorySystemConfig>
 	{
 	public:
 		MemorySystem();
 
-		bool Init(const MemorySystemConfig& config);
-		void Shutdown();
+		bool Init(const MemorySystemConfig& config) override;
+		void Shutdown() override;
 
 		void* Allocate(u64 size, MemoryType type);
 
@@ -78,8 +79,6 @@ namespace C3D
 		[[nodiscard]] u64 GetAllocCount() const;
 	private:
 		void* m_memory;
-
-		MemorySystemConfig m_config;
 
 		MemoryStats m_stats;
 		DynamicAllocator m_allocator;
