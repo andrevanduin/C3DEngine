@@ -8,24 +8,27 @@
 #include "resources/loaders/binary_loader.h"
 #include "resources/loaders/image_loader.h"
 #include "resources/loaders/material_loader.h"
+#include "resources/loaders/shader_loader.h"
 #include "resources/loaders/text_loader.h"
 
 #include "services/services.h"
 
 namespace C3D
 {
-	static const char* LOADER_TYPES[] =
-	{
-		"None",
-		"Text",
-		"Binary",
-		"Image",
-		"Material",
-		"StaticMesh",
-		"Custom",
-	};
+	static const char* LOADER_TYPES[ToUnderlying(ResourceType::MaxValue)];
 
-	ResourceSystem::ResourceSystem(): m_logger("RESOURCE_SYSTEM"), m_initialized(false), m_config(), m_registeredLoaders(nullptr) {}
+	ResourceSystem::ResourceSystem()
+		: m_logger("RESOURCE_SYSTEM"), m_initialized(false), m_config(), m_registeredLoaders(nullptr)
+	{
+		LOADER_TYPES[ToUnderlying(ResourceType::None)] = "None";
+		LOADER_TYPES[ToUnderlying(ResourceType::None)] = "Text";
+		LOADER_TYPES[ToUnderlying(ResourceType::None)] = "Binary";
+		LOADER_TYPES[ToUnderlying(ResourceType::None)] = "Image";
+		LOADER_TYPES[ToUnderlying(ResourceType::None)] = "Material";
+		LOADER_TYPES[ToUnderlying(ResourceType::None)] = "StaticMesh";
+		LOADER_TYPES[ToUnderlying(ResourceType::Shader)] = "Shader";
+		LOADER_TYPES[ToUnderlying(ResourceType::None)] = "Custom";
+	}
 
 	bool ResourceSystem::Init(const ResourceSystemConfig& config)
 	{
@@ -50,14 +53,14 @@ namespace C3D
 		// NOTE: Different way of allocating this???
 		ResourceLoader* loaders[] =
 		{
-			new TextLoader(), new BinaryLoader(), new ImageLoader(), new MaterialLoader()
+			new TextLoader(), new BinaryLoader(), new ImageLoader(), new MaterialLoader(), new ShaderLoader()
 		};
 
 		for (const auto loader : loaders)
 		{
 			if (!RegisterLoader(loader))
 			{
-				m_logger.Fatal("RegisterLoader() failed for {} loader", LOADER_TYPES[static_cast<u8>(loader->type)]);
+				m_logger.Fatal("RegisterLoader() failed for {} loader", LOADER_TYPES[ToUnderlying(loader->type)]);
 				return false;
 			}
 
@@ -87,7 +90,7 @@ namespace C3D
 			{
 				if (loader->type == newLoader->type)
 				{
-					m_logger.Error("RegisterLoader() - A loader of type '{}' already exists so the new one will not be registered", static_cast<u8>(newLoader->type));
+					m_logger.Error("RegisterLoader() - A loader of type '{}' already exists so the new one will not be registered", LOADER_TYPES[ToUnderlying(newLoader->type)]);
 					return false;
 				}
 				if (loader->customType && StringLength(loader->customType) > 0 && IEquals(loader->customType, newLoader->customType))
@@ -130,7 +133,7 @@ namespace C3D
 		}
 
 		outResource->loaderId = INVALID_ID;
-		m_logger.Error("Load() No loader for type '{}' was found", static_cast<u8>(type));
+		m_logger.Error("Load() No loader for type '{}' was found", LOADER_TYPES[ToUnderlying(type)]);
 		return false;
 	}
 

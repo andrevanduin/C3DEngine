@@ -35,7 +35,7 @@ namespace C3D
 		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices, u32 indexSize, u32 indexCount, const void* indices) override;
 		void DestroyGeometry(Geometry* geometry) override;
 
-		bool CreateShader(Shader* shader, u8 renderPassId, u8 stageCount, char** stageFileNames, ShaderStage* stages) override;
+		bool CreateShader(Shader* shader, u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) override;
 		void DestroyShader(Shader* shader) override;
 
 		bool InitializeShader(Shader* shader) override;
@@ -50,7 +50,7 @@ namespace C3D
 		bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId) override;
 		bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) override;
 
-		bool SetUniform(Shader* shader, const ShaderUniform* uniform, void* value) override;
+		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
 		
 	private:
 		void CreateCommandBuffers();

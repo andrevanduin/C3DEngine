@@ -8,7 +8,11 @@
 
 #include <glm/gtx/matrix_decompose.hpp>
 
+#include "core/input.h"
+#include "core/events/event.h"
+#include "core/events/event_context.h"
 #include "math/c3d_math.h"
+#include "renderer/renderer_frontend.h"
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
 	: Application(config), m_view(), m_cameraPosition(), m_cameraEuler(), m_cameraViewDirty(true)
@@ -31,6 +35,11 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	if (Input.IsKeyUp(C3D::KeyM) && Input.WasKeyDown('m'))
 	{
 		C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
+	}
+
+	if (Input.IsKeyUp('p') && Input.WasKeyDown('p'))
+	{
+		C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", m_cameraPosition.x, m_cameraPosition.y, m_cameraPosition.z);
 	}
 
 	// HACK: temp to move camera around
@@ -114,7 +123,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	RecalculateViewMatrix();
 
 	// HACK: This is just for testing
-	Renderer.SetView(m_view);
+	Renderer.SetView(m_view, m_cameraPosition);
 }
 
 void TestEnv::OnRender(f64 deltaTime)

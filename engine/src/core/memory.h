@@ -16,7 +16,7 @@ namespace C3D
 		FreeList,
 		Array,
 		DynamicArray,
-		Dictionary,
+		HashTable,
 		RingQueue,
 		Bst,
 		String,
@@ -36,11 +36,17 @@ namespace C3D
 		MaxType
 	};
 
+	struct MemoryAllocation
+	{
+		u64 size;
+		u32 count;
+	};
+
 	struct MemoryStats
 	{
 		u64 totalAllocated;
 		u64 allocCount;
-		u64 taggedAllocations[static_cast<u8>(MemoryType::MaxType)];
+		MemoryAllocation taggedAllocations[static_cast<u8>(MemoryType::MaxType)];
 	};
 
 	struct MemorySystemConfig
@@ -76,7 +82,9 @@ namespace C3D
 		static void* Set(void* dest, i32 value, u64 size);
 
 		string GetMemoryUsageString();
+
 		[[nodiscard]] u64 GetAllocCount() const;
+		[[nodiscard]] u64 GetMemoryUsage(MemoryType type) const;
 	private:
 		void* m_memory;
 

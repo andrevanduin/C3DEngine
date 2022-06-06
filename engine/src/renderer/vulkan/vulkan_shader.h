@@ -35,7 +35,7 @@ namespace C3D
 	 */
 	constexpr auto VULKAN_SHADER_MAX_UNIFORMS = 128;
 	/* @brief The maximum number of bindings per descriptor set. */
-	constexpr auto VULKAN_SHADER_MAX_BINDINGS = 32;
+	constexpr auto VULKAN_SHADER_MAX_BINDINGS = 2;
 	/* @brief The maximum number of push constant ranges for a shader. */
 	constexpr auto VULKAN_SHADER_MAX_PUSH_CONST_RANGES = 32;
 
@@ -116,7 +116,7 @@ namespace C3D
 		/* @brief Instance texture map pointers, which are used during rendering.
 		 * These are set by calls to SetSampler.
 		 */
-		Texture** instanceTextures;
+		const Texture** instanceTextures;
 	};
 
 	struct VulkanShaderStage

@@ -7,6 +7,8 @@
 #include "platform/filesystem.h"
 #include "services/services.h"
 
+#include "systems/resource_system.h"
+
 namespace C3D
 {
 	TextLoader::TextLoader()

@@ -13,7 +13,7 @@ namespace C3D
 		"FreeList         ",
 		"Array            ",
 		"DynamicArray     ",
-		"Dictionary       ",
+		"HashTable        ",
 		"RingQueue        ",
 		"Bst              ",
 		"String           ",
@@ -52,9 +52,9 @@ namespace C3D
 
 		m_stats.allocCount = 0;
 		m_stats.totalAllocated = 0;
+		Zero(m_stats.taggedAllocations, sizeof(MemoryAllocation) * ToUnderlying(MemoryType::MaxType));
 
-		m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)] = memoryRequirement;
-		m_stats.taggedAllocations[static_cast<u8>(MemoryType::FreeList)] = FreeList::GetMemoryRequirements(config.totalAllocSize);
+		m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)] = { memoryRequirement, 1 };
 
 		if (!m_allocator.Create(config.totalAllocSize, m_memory))
 		{
@@ -70,6 +70,8 @@ namespace C3D
 		m_allocator.Destroy();
 		// TODO: alignment
 		Platform::Free(m_memory, false);
+
+		m_logger.Info("Memory Usage after free:\n {}", GetMemoryUsageString());
 	}
 
 	void* MemorySystem::Allocate(const u64 size, const MemoryType type)
@@ -79,9 +81,17 @@ namespace C3D
 			m_logger.Warn("Allocate called using MemoryType::UNKNOWN");
 		}
 
+		if (type == MemoryType::String)
+		{
+			assert(size < 1000);
+		}
+
 		m_stats.totalAllocated += size;
 		m_stats.allocCount++;
-		m_stats.taggedAllocations[static_cast<u8>(type)] += size;
+
+		const auto t = static_cast<u8>(type);
+		m_stats.taggedAllocations[t].size += size;
+		m_stats.taggedAllocations[t].count++;
 
 		// TODO: Memory alignment
 		void* block = m_allocator.Allocate(size);
@@ -97,7 +107,10 @@ namespace C3D
 		}
 
 		m_stats.totalAllocated -= size;
-		m_stats.taggedAllocations[static_cast<u8>(type)] -= size;
+
+		const auto t = static_cast<u8>(type);
+		m_stats.taggedAllocations[t].size -= size;
+		m_stats.taggedAllocations[t].count--;
 
 		if (!m_allocator.Free(block, size))
 		{
@@ -127,24 +140,24 @@ namespace C3D
 		constexpr u64 mib = kib * 1024;
 		constexpr u64 gib = mib * 1024;
 
-		char buffer[8000] = "System's Dynamic Memory usage:\n";
+		char buffer[2000] = "System's Dynamic Memory usage:\n";
 		u64 offset = strlen(buffer);
 		u8 i = 0;
-		for (const u64 size : m_stats.taggedAllocations)
+		for (const auto& allocation : m_stats.taggedAllocations)
 		{
-			f64 amount = static_cast<f64>(size);
+			f64 amount = static_cast<f64>(allocation.size);
 			char unit[4] = "XiB";
-			if (size >= gib) 
+			if (allocation.size >= gib)
 			{
 				unit[0] = 'G';
 				amount /= static_cast<f64>(gib);
 			}
-			else if (size >= mib) 
+			else if (allocation.size >= mib)
 			{
 				unit[0] = 'M';
 				amount /= static_cast<f64>(mib);
 			}
-			else if (size >= kib) 
+			else if (allocation.size >= kib)
 			{
 				unit[0] = 'K';
 				amount /= static_cast<f64>(kib);
@@ -155,7 +168,7 @@ namespace C3D
 				unit[1] = 0;
 			}
 
-			offset += snprintf(buffer + offset, 8000, "  %s: %.2f%s\n", MEMORY_TYPE_STRINGS[i], amount, unit);
+			offset += snprintf(buffer + offset, 2000, "  %s: %.2f%s (%d)\n", MEMORY_TYPE_STRINGS[i], amount, unit, allocation.count);
 			i++;
 		}
 		return buffer;
@@ -164,5 +177,10 @@ namespace C3D
 	u64 MemorySystem::GetAllocCount() const
 	{
 		return m_stats.allocCount;
+	}
+
+	u64 MemorySystem::GetMemoryUsage(const MemoryType type) const
+	{
+		return m_stats.taggedAllocations[ToUnderlying(type)].size;
 	}
 }

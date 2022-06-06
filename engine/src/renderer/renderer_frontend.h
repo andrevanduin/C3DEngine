@@ -23,7 +23,7 @@ namespace C3D
 		void Shutdown() const;
 
 		// HACK: we should not expose this outside of the engine
-		C3D_API void SetView(mat4 view);
+		C3D_API void SetView(mat4 view, vec3 viewPosition);
 
 		void OnResize(u16 width, u16 height);
 
@@ -38,23 +38,23 @@ namespace C3D
 
 		bool GetRenderPassId(const char* name, u8* outRenderPassId) const;
 
-		bool CreateShader(Shader* shader, u8 renderPassId, u8 stageCount, char** stageFileNames, ShaderStage* stages);
-		void DestroyShader(Shader* shader);
+		bool CreateShader(Shader* shader, u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const;
+		void DestroyShader(Shader* shader) const;
 
-		bool InitializeShader(Shader* shader);
+		bool InitializeShader(Shader* shader) const;
 
-		bool UseShader(Shader* shader);
+		bool UseShader(Shader* shader) const;
 
-		bool ShaderBindGlobals(Shader* shader);
-		bool ShaderBindInstance(Shader* shader, u32 instanceId);
+		bool ShaderBindGlobals(Shader* shader) const;
+		bool ShaderBindInstance(Shader* shader, u32 instanceId) const;
 
-		bool ShaderApplyGlobals(Shader* shader);
-		bool ShaderApplyInstance(Shader* shader);
+		bool ShaderApplyGlobals(Shader* shader) const;
+		bool ShaderApplyInstance(Shader* shader) const;
 
-		bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId);
-		bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId);
+		bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId) const;
+		bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) const;
 
-		bool SetUniform(Shader* shader, ShaderUniform* uniform, const void* value);
+		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const;
 
 	private:
 		bool CreateBackend(RendererBackendType type);
@@ -64,10 +64,15 @@ namespace C3D
 
 		// World
 		mat4 m_projection, m_view;
+		vec4 m_ambientColor;
+		vec3 m_viewPosition;
+
 		// UI
 		mat4 m_uiProjection, m_uiView;
 
 		f32 m_nearClip, m_farClip;
+
+		u32 m_materialShaderId, m_uiShaderId;
 
 		RendererBackend* m_backend{ nullptr };
 	};

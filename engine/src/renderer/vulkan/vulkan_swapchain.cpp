@@ -6,6 +6,7 @@
 #include "vulkan_types.h"
 
 #include "core/logger.h"
+#include "core/memory.h"
 
 #include "services/services.h"
 

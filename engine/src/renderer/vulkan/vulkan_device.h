@@ -34,6 +34,8 @@ namespace C3D
 
 		bool DetectDepthFormat();
 
+		void WaitIdle() const;
+
 		VkPhysicalDevice physicalDevice;
 		VkDevice logicalDevice;
 

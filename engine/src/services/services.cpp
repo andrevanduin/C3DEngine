@@ -4,8 +4,15 @@
 #include "core/application.h"
 #include "core/input.h"
 #include "core/events/event.h"
-
 #include "core/logger.h"
+
+#include "renderer/renderer_frontend.h"
+
+#include "systems/texture_system.h"
+#include "systems/material_system.h"
+#include "systems/geometry_system.h"
+#include "systems/resource_system.h"
+#include "systems/shader_system.h"
 
 namespace C3D
 {
@@ -96,6 +103,16 @@ namespace C3D
 		return true;
 	}
 
+	bool Services::InitMemory(const MemorySystemConfig& memorySystemConfig)
+	{
+		m_pMemorySystem = new MemorySystem();
+		if (!m_pMemorySystem->Init(memorySystemConfig))
+		{
+			m_logger.Fatal("MemorySystem failed to be Initialized");
+		}
+		return true;
+	}
+
 	void Services::Shutdown()
 	{
 		m_logger.Info("Shutting down all services");
@@ -103,8 +120,9 @@ namespace C3D
 		m_pGeometrySystem->Shutdown();
 		m_pMaterialSystem->Shutdown();
 		m_pTextureSystem->Shutdown();
-		m_pResourceSystem->Shutdown();
+		m_pShaderSystem->Shutdown();
 		m_pRenderSystem->Shutdown();
+		m_pResourceSystem->Shutdown();
 		m_pInputSystem->Shutdown();
 		m_pEventSystem->Shutdown();
 

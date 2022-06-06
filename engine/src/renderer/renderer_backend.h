@@ -37,7 +37,7 @@ namespace C3D
 		virtual void DestroyTexture(Texture* texture) = 0;
 		virtual void DestroyGeometry(Geometry* geometry) = 0;
 
-		virtual bool CreateShader(Shader* shader, u8 renderPassId, u8 stageCount, char** stageFileNames, ShaderStage* stages) = 0;
+		virtual bool CreateShader(Shader* shader, u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) = 0;
 		virtual void DestroyShader(Shader* shader) = 0;
 
 		virtual bool InitializeShader(Shader* shader) = 0;
@@ -53,7 +53,7 @@ namespace C3D
 		virtual bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId) = 0;
 		virtual bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) = 0;
 
-		virtual bool SetUniform(Shader* shader, const ShaderUniform* uniform, void* value) = 0;
+		virtual bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) = 0;
 
 		RendererBackendType type;
 		RendererBackendState state;

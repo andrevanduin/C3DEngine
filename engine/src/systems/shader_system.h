@@ -31,18 +31,18 @@ namespace C3D
 		bool Use(const char* name);
 		bool UseById(u32 shaderId);
 
-		u16 UniformIndex(Shader* shader, const char* name) const;
+		u16 GetUniformIndex(Shader* shader, const char* name) const;
 
-		bool UniformSet(const char* name, const void* value) const;
-		bool UniformSetByIndex(u16 index, const void* value) const;
+		bool SetUniform(const char* name, const void* value) const;
+		bool SetUniformByIndex(u16 index, const void* value) const;
 
-		bool SamplerSet(const char* name, const Texture* t);
-		bool SamplerSetByIndex(u16 index, const Texture* t);
+		bool SetSampler(const char* name, const Texture* t) const;
+		bool SetSamplerByIndex(u16 index, const Texture* t) const;
 
-		bool ApplyGlobal() const;
-		bool ApplyInstance() const;
+		[[nodiscard]] bool ApplyGlobal() const;
+		[[nodiscard]] bool ApplyInstance() const;
 
-		bool BindInstance(u32 instanceId) const;
+		[[nodiscard]] bool BindInstance(u32 instanceId) const;
 
 	private:
 		[[nodiscard]] u32 GetNewShaderId() const;

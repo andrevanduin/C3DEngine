@@ -20,9 +20,9 @@ namespace C3D
 			return;
 		}
 
-		if (const u32 pathLength = StringLength(resource->fullPath))
+		if (const u32 pathLength = StringLength(resource->fullPath) + 1)
 		{
-			Memory.Free(resource->fullPath, sizeof(char) * pathLength + 1, MemoryType::String);
+			Memory.Free(resource->fullPath, pathLength, MemoryType::String);
 		}
 
 		if (resource->data)

@@ -20,8 +20,11 @@
 #include "resources/shader.h"
 
 #include "renderer/vertex.h"
+#include "resources/resource_types.h"
 
 #include "services/services.h"
+#include "systems/resource_system.h"
+#include "systems/texture_system.h"
 
 namespace C3D
 {
@@ -39,6 +42,8 @@ namespace C3D
 		application->GetFrameBufferSize(&m_context.cachedFrameBufferWidth, &m_context.cachedFrameBufferHeight);
 		m_context.frameBufferWidth = (m_context.cachedFrameBufferWidth != 0) ? m_context.cachedFrameBufferWidth : 1280;
 		m_context.frameBufferHeight = (m_context.cachedFrameBufferHeight != 0) ? m_context.cachedFrameBufferHeight : 720;
+		m_context.cachedFrameBufferWidth = 0;
+		m_context.cachedFrameBufferHeight = 0;
 
 		vkb::InstanceBuilder instanceBuilder;
 
@@ -56,7 +61,9 @@ namespace C3D
 		const vkb::Instance vkbInstance = vkbInstanceResult.value();
 
 		m_context.instance = vkbInstance.instance;
+#if defined(_DEBUG)
 		m_debugMessenger = vkbInstance.debug_messenger;
+#endif
 
 		if (!SDL_Vulkan_CreateSurface(application->GetWindow(), m_context.instance, &m_context.surface))
 		{
@@ -107,18 +114,6 @@ namespace C3D
 			m_context.imagesInFlight[i] = nullptr;
 		}
 
-		// Create our builtin shader
-		if (!m_materialShader.Create(&m_context))
-		{
-			m_logger.Error("Loading built-in material shader failed");
-			return false;
-		}
-		if (!m_uiShader.Create(&m_context))
-		{
-			m_logger.Error("Loading built-in ui shader failed");
-			return false;
-		}
-
 		CreateBuffers();
 
 		// Mark all the geometry as invalid
@@ -135,15 +130,12 @@ namespace C3D
 	{
 		m_logger.Info("Shutting Down");
 
-		vkDeviceWaitIdle(m_context.device.logicalDevice);
+		// Wait for our device to be finished with it's current frame
+		m_context.device.WaitIdle();
 
 		// Destroy stuff in opposite order of creation
 		m_objectVertexBuffer.Destroy(&m_context);
 		m_objectIndexBuffer.Destroy(&m_context);
-
-		// Destroy builtin shaders
-		m_uiShader.Destroy(&m_context);
-		m_materialShader.Destroy(&m_context);
 
 		m_logger.Info("Destroying Semaphores and Fences");
 		for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
@@ -177,14 +169,21 @@ namespace C3D
 		m_context.uiRenderPass.Destroy(&m_context);
 		m_context.mainRenderPass.Destroy(&m_context);
 
+		m_logger.Info("Destroying SwapChain");
 		m_context.swapChain.Destroy(&m_context);
 
+		m_logger.Info("Destroying Device");
 		m_context.device.Destroy(&m_context);
 
+		m_logger.Info("Destroying Vulkan Surface");
 		vkDestroySurfaceKHR(m_context.instance, m_context.surface, m_context.allocator);
 
+#ifdef _DEBUG
+		m_logger.Info("Destroying Vulkan debug messenger");
 		vkb::destroy_debug_utils_messenger(m_context.instance, m_debugMessenger);
+#endif
 
+		m_logger.Info("Destroying Instance");
 		vkDestroyInstance(m_context.instance, m_context.allocator);
 	}
 
@@ -194,7 +193,7 @@ namespace C3D
 		m_context.cachedFrameBufferHeight = height;
 		m_context.frameBufferSizeGeneration++;
 
-		m_logger.Info("OnResize() w/h/gen {}/{}/{}", width, height, m_context.frameBufferSizeGeneration);
+		m_logger.Info("OnResize() with Width: {}, Height: {} and Generation: {}", width, height, m_context.frameBufferSizeGeneration);
 	}
 
 	bool RendererVulkan::BeginFrame(const f32 deltaTime)
@@ -274,8 +273,13 @@ namespace C3D
 		vkCmdSetViewport(commandBuffer->handle, 0, 1, &viewport);
 		vkCmdSetScissor(commandBuffer->handle, 0, 1, &scissor);
 
+		// Update the main dimensions
 		m_context.mainRenderPass.area.z = static_cast<i32>(m_context.frameBufferWidth);
 		m_context.mainRenderPass.area.w = static_cast<i32>(m_context.frameBufferHeight);
+
+		// Update the UI dimensions
+		m_context.uiRenderPass.area.z = static_cast<i32>(m_context.frameBufferWidth);
+		m_context.uiRenderPass.area.w = static_cast<i32>(m_context.frameBufferHeight);
 
 		return true;
 	}
@@ -313,7 +317,7 @@ namespace C3D
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = &m_context.imageAvailableSemaphores[m_context.currentFrame];
 
-		VkPipelineStageFlags flags[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		constexpr VkPipelineStageFlags flags[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		submitInfo.pWaitDstStageMask = flags;
 
 		// Submit all the commands that we have queued
@@ -359,19 +363,8 @@ namespace C3D
 				return false;
 		}
 
+		// Begin the RenderPass
 		renderPass->Begin(commandBuffer, frameBuffer);
-
-		// Use the appropriate Shader
-		switch (renderPassId)
-		{
-			case BuiltinRenderPass::World:
-				m_materialShader.Use(&m_context);
-				break;
-			case BuiltinRenderPass::Ui:
-				m_uiShader.Use(&m_context);
-				break;
-		}
-
 		return true;
 	}
 
@@ -394,31 +387,18 @@ namespace C3D
 			return false;
 		}
 
+		// End our RenderPass
 		renderPass->End(commandBuffer);
 		return true;
 	}
 
 	void RendererVulkan::DrawGeometry(const GeometryRenderData data)
 	{
+		// Simply ignore if there is no geometry to draw
 		if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
 
 		const auto bufferData = &m_geometries[data.geometry->internalId];
 		const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-
-		switch (Material* m = data.geometry->material ? data.geometry->material : Materials.GetDefault(); m->type)
-		{
-		case MaterialType::World:
-			m_materialShader.SetModel(&m_context, data.model);
-			m_materialShader.ApplyMaterial(&m_context, m);
-			break;
-		case MaterialType::Ui:
-			m_uiShader.SetModel(&m_context, data.model);
-			m_uiShader.ApplyMaterial(&m_context, m);
-			break;
-		default:
-			m_logger.Error("DrawGeometry() - unknown material type {}", static_cast<u8>(m->type));
-			break;
-		}
 
 		// Bind vertex buffer at offset
 		const VkDeviceSize offsets[1] = { bufferData->vertexBufferOffset };
@@ -426,6 +406,8 @@ namespace C3D
 
 		if (bufferData->indexCount > 0)
 		{
+			// We have indices so we should draw indexed
+
 			// Bind index buffer at offset
 			vkCmdBindIndexBuffer(commandBuffer->handle, m_objectIndexBuffer.handle, bufferData->indexBufferOffset, VK_INDEX_TYPE_UINT32);
 
@@ -434,6 +416,7 @@ namespace C3D
 		}
 		else
 		{
+			// No indices so we do a simple non-indexed draw
 			vkCmdDraw(commandBuffer->handle, bufferData->vertexCount, 1, 0, 0);
 		}
 	}
@@ -601,12 +584,12 @@ namespace C3D
 		if (isReupload)
 		{
 			// Free vertex data
-			FreeDataRange(&m_objectVertexBuffer, oldRange.vertexBufferOffset, oldRange.vertexElementSize * oldRange.vertexCount);
+			FreeDataRange(&m_objectVertexBuffer, oldRange.vertexBufferOffset, static_cast<u64>(oldRange.vertexElementSize) * oldRange.vertexCount);
 
 			// Free index data, if applicable
 			if (oldRange.indexElementSize > 0)
 			{
-				FreeDataRange(&m_objectIndexBuffer, oldRange.indexBufferOffset, oldRange.indexElementSize * oldRange.indexCount);
+				FreeDataRange(&m_objectIndexBuffer, oldRange.indexBufferOffset, static_cast<u64>(oldRange.indexElementSize) * oldRange.indexCount);
 			}
 		}
 
@@ -622,12 +605,12 @@ namespace C3D
 			VulkanGeometryData* internalData = &m_geometries[geometry->internalId];
 
 			// Free vertex data
-			FreeDataRange(&m_objectVertexBuffer, internalData->vertexBufferOffset, internalData->vertexElementSize * internalData->vertexCount);
+			FreeDataRange(&m_objectVertexBuffer, internalData->vertexBufferOffset, static_cast<u64>(internalData->vertexElementSize) * internalData->vertexCount);
 
 			// Free index data, if applicable
 			if (internalData->indexElementSize > 0)
 			{
-				FreeDataRange(&m_objectIndexBuffer, internalData->indexBufferOffset, internalData->indexElementSize * internalData->indexCount);
+				FreeDataRange(&m_objectIndexBuffer, internalData->indexBufferOffset, static_cast<u64>(internalData->indexElementSize) * internalData->indexCount);
 			}
 
 			// Clean up data
@@ -637,7 +620,7 @@ namespace C3D
 		}
 	}
 
-	bool RendererVulkan::CreateShader(Shader* shader, u8 renderPassId, u8 stageCount, char** stageFileNames, ShaderStage* stages)
+	bool RendererVulkan::CreateShader(Shader* shader, const u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages)
 	{
 		// Allocate enough memory for the 
 		shader->apiSpecificData = Memory.Allocate<VulkanShader>(MemoryType::Shader);
@@ -647,7 +630,7 @@ namespace C3D
 
 		// Translate stages
 		VkShaderStageFlags vulkanStages[VULKAN_SHADER_MAX_STAGES];
-		for (u8 i = 0; i < stageCount; i++) {
+		for (u8 i = 0; i < stageFileNames.size(); i++) {
 			switch (stages[i]) {
 			case ShaderStage::Fragment:
 				vulkanStages[i] = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -675,7 +658,7 @@ namespace C3D
 		vulkanShader->config.maxDescriptorSetCount = maxDescriptorAllocateCount;
 
 		vulkanShader->config.stageCount = 0;
-		for (u32 i = 0; i < stageCount; i++)
+		for (u32 i = 0; i < stageFileNames.size(); i++)
 		{
 			// Make sure we have enough room left for this stage
 			if (vulkanShader->config.stageCount + 1 > VULKAN_SHADER_MAX_STAGES)
@@ -695,7 +678,7 @@ namespace C3D
 					stageFlag = VK_SHADER_STAGE_FRAGMENT_BIT;
 					break;
 				default:
-					m_logger.Error("CreateShader() - Unsupported shader stage {}. Stage ignored.", stages[i]);
+					m_logger.Error("CreateShader() - Unsupported shader stage {}. Stage ignored.", ToUnderlying(stages[i]));
 					continue;
 			}
 
@@ -800,8 +783,8 @@ namespace C3D
 	bool RendererVulkan::InitializeShader(Shader* shader)
 	{
 		VkDevice logicalDevice = m_context.device.logicalDevice;
-		VkAllocationCallbacks* vkAllocator = m_context.allocator;
-		auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
+		const VkAllocationCallbacks* vkAllocator = m_context.allocator;
+		const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
 
 		for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
 		{
@@ -831,7 +814,7 @@ namespace C3D
 		}
 
 		// Process attributes
-		const u64 attributeCount = shader->attributes.size();
+		const u64 attributeCount = shader->attributes.Size();
 		u32 offset = 0;
 		for (u32 i = 0; i < attributeCount; i++)
 		{
@@ -846,7 +829,7 @@ namespace C3D
 			offset += shader->attributes[i].size;
 		}
 
-		const u64 uniformCount = shader->uniforms.size();
+		const u64 uniformCount = shader->uniforms.Size();
 		for (u32 i = 0; i < uniformCount; i++)
 		{
 			// For Samplers, the descriptor bindings need to be updated. Other types of uniforms don't need anything to be done here.
@@ -927,10 +910,11 @@ namespace C3D
 		}
 
 		const bool pipelineCreateResult = vulkanShader->pipeline.Create(
-			&m_context, vulkanShader->renderPass, 
-			shader->attributeStride, static_cast<u32>(shader->attributes.size()), vulkanShader->config.attributes, 
+			&m_context, vulkanShader->renderPass,
+			shader->attributeStride, static_cast<u32>(shader->attributes.Size()), vulkanShader->config.attributes,
 			vulkanShader->config.descriptorSetCount, vulkanShader->descriptorSetLayouts,
-			vulkanShader->config.stageCount, stageCreateInfos, viewport, scissor, false, true
+			vulkanShader->config.stageCount, stageCreateInfos, viewport, scissor, false, true, 
+			shader->pushConstantRangeCount, shader->pushConstantRanges
 		);
 
 		if (!pipelineCreateResult)
@@ -1165,8 +1149,8 @@ namespace C3D
 		VulkanShaderInstanceState* instanceState = &internal->instanceStates[*outInstanceId];
 		const u32 instanceTextureCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
 		// Wipe out the memory for the entire array, even if it isn't all used.
-		instanceState->instanceTextures = Memory.Allocate<Texture*>(shader->instanceTextureCount, MemoryType::Array);
-		Texture* defaultTexture = Textures.GetDefaultTexture();
+		instanceState->instanceTextures = Memory.Allocate<const Texture*>(shader->instanceTextureCount, MemoryType::Array);
+		const Texture* defaultTexture = Textures.GetDefault();
 		// Set all the texture pointers to default until assigned
 		for (u32 i = 0; i < instanceTextureCount; i++)
 		{
@@ -1174,7 +1158,7 @@ namespace C3D
 		}
 
 		// Allocate some space in the UBO - by the stride, not the size
-		u64 size = shader->uboStride;
+		const u64 size = shader->uboStride;
 		if (!internal->uniformBuffer.Allocate(size, &instanceState->offset))
 		{
 			m_logger.Error("AcquireShaderInstanceResources() - failed to acquire UBO space.");
@@ -1250,18 +1234,18 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::SetUniform(Shader* shader, const ShaderUniform* uniform, void* value)
+	bool RendererVulkan::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value)
 	{
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
 		if (uniform->type == Uniform_Sampler)
 		{
 			if (uniform->scope == ShaderScope::Global)
 			{
-				shader->globalTextures[uniform->location] = static_cast<Texture*>(value);
+				shader->globalTextures[uniform->location] = static_cast<const Texture*>(value);
 			}
 			else
 			{
-				internal->instanceStates[shader->boundInstanceId].instanceTextures[uniform->location] = static_cast<Texture*>(value);
+				internal->instanceStates[shader->boundInstanceId].instanceTextures[uniform->location] = static_cast<const Texture*>(value);
 			}
 		}
 		else

@@ -3,18 +3,6 @@
 #include "core/defines.h"
 #include "memory/linear_allocator.h"
 
-// Systems
-#include "core/input.h"
-#include "core/events/event.h"
-
-#include "renderer/renderer_frontend.h"
-
-#include "systems/texture_system.h"
-#include "systems/material_system.h"
-#include "systems/geometry_system.h"
-#include "systems/resource_system.h"
-#include "systems/shader_system.h"
-
 #define Memory		C3D::Services::GetMemory()
 #define Input		C3D::Services::GetInput()
 #define Event		C3D::Services::GetEvent()
@@ -29,12 +17,37 @@ namespace C3D
 {
 	class Application;
 
+	class MemorySystem;
+	struct MemorySystemConfig;
+
+	class InputSystem;
+	struct ResourceSystemConfig;
+
+	class EventSystem;
+	struct ShaderSystemConfig;
+
+	class RenderSystem;
+
+	class TextureSystem;
+	struct TextureSystemConfig;
+
+	class MaterialSystem;
+	struct MaterialSystemConfig;
+
+	class GeometrySystem;
+	struct GeometrySystemConfig;
+
+	class ResourceSystem;
+	class ShaderSystem;
+
 	class C3D_API Services
 	{
 	public:
 		static bool Init(Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig,
 			const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig,
 			const GeometrySystemConfig& geometrySystemConfig);
+
+		static bool InitMemory(const MemorySystemConfig& memorySystemConfig);
 
 		static void Shutdown();
 

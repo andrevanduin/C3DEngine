@@ -14,7 +14,7 @@ namespace C3D
 
 	bool VulkanPipeline::Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 stride, u32 attributeCount, VkVertexInputAttributeDescription* attributes,
 		u32 descriptorSetLayoutCount, VkDescriptorSetLayout* descriptorSetLayouts, u32 stageCount, VkPipelineShaderStageCreateInfo* stages,
-		VkViewport viewport, VkRect2D scissor, bool isWireFrame, bool depthTestEnabled)
+		VkViewport viewport, VkRect2D scissor, bool isWireFrame, bool depthTestEnabled, u32 pushConstantRangeCount, Range* pushConstantRanges)
 	{
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 		viewportState.viewportCount = 1;
@@ -88,11 +88,13 @@ namespace C3D
 		dynamicStateCreateInfo.dynamicStateCount = dynamicStateCount;
 		dynamicStateCreateInfo.pDynamicStates = dynamicStates;
 
+		// Vertex Input
 		VkVertexInputBindingDescription bindingDescription;
 		bindingDescription.binding = 0;
 		bindingDescription.stride = stride;
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
+		// Attributes
 		VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
 		vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
 		vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
@@ -108,13 +110,32 @@ namespace C3D
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 
 		// Push constants
-		VkPushConstantRange pushConstant;
-		pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-		pushConstant.offset = sizeof(mat4) * 0;
-		pushConstant.size = sizeof(mat4) * 2;
+		if (pushConstantRangeCount > 0)
+		{
+			// Note: 32 is the max push constant ranges we can ever have because the Vulkan spec only guarantees 128 bytes with 4-byte alignment.
+			if (pushConstantRangeCount > 32)
+			{
+				Logger::Error("[VULKAN_PIPELINE] - Create() Cannot have more than 32 push constant ranges. Passed count: {}", pushConstantRangeCount);
+				return false;
+			}
 
-		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-		pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstant;
+			VkPushConstantRange ranges[32];
+			Memory.Zero(ranges, sizeof(VkPushConstantRange) * 32);
+			for (u32 i = 0; i < pushConstantRangeCount; i++)
+			{
+				ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				ranges[i].offset = static_cast<u32>(pushConstantRanges[i].offset);
+				ranges[i].size = static_cast<u32>(pushConstantRanges[i].size);
+			}
+
+			pipelineLayoutCreateInfo.pushConstantRangeCount = pushConstantRangeCount;
+			pipelineLayoutCreateInfo.pPushConstantRanges = ranges;
+		}
+		else
+		{
+			pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+			pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+		}
 
 		// Descriptor set layouts
 		pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayoutCount;
@@ -123,6 +144,7 @@ namespace C3D
 		// Create our pipeline layout
 		VK_CHECK(vkCreatePipelineLayout(context->device.logicalDevice, &pipelineLayoutCreateInfo, context->allocator, &layout));
 
+		// Pipeline create info
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 		pipelineCreateInfo.stageCount = stageCount;
 		pipelineCreateInfo.pStages = stages;
@@ -144,6 +166,7 @@ namespace C3D
 		pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineCreateInfo.basePipelineIndex = -1;
 
+		// Create our pipeline
 		VkResult result = vkCreateGraphicsPipelines(context->device.logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, context->allocator, &m_handle);
 		if (VulkanUtils::IsSuccess(result))
 		{

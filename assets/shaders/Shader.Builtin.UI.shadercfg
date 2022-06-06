@@ -1,0 +1,20 @@
+# UI Shader config file
+version= 1.0
+name = Shader.Builtin.UI
+renderPass = RenderPass.Builtin.UI
+stages = vertex, fragment
+stageFiles = shaders/Builtin.UIShader.vert.spv, shaders/Builtin.UIShader.frag.spv
+useInstances = true
+useLocals = true
+
+# Attributes: (type, name)
+attribute = vec2, inPosition
+attribute = vec2, inTexCoord
+
+# Uniforms type, scope, name
+uniform = mat4, global, projection
+uniform = mat4, global, view
+
+uniform = vec4, instance, diffuseColor
+uniform = samp, instance, diffuseTexture
+uniform = mat4, local, model

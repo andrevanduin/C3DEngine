@@ -10,6 +10,8 @@ namespace C3D
 	{
 		Unknown = 0x0,
 		Diffuse = 0x1,
+		Specular = 0x2,
+		Normal = 0x3,
 	};
 
 	struct Texture

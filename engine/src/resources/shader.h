@@ -1,8 +1,8 @@
 
 #pragma once
-#include <unordered_map>
+#include "containers/hash_table.h"
+#include "containers/dynamic_array.h"
 
-#include "core/defines.h"
 #include "renderer/renderer_types.h"
 
 namespace C3D
@@ -18,7 +18,7 @@ namespace C3D
 
 	enum ShaderUniformType : u8
 	{
-		Uniform_Float32, Uniform_Float32_2, FUniform_Float32_3, Uniform_Float32_4,
+		Uniform_Float32, Uniform_Float32_2, Uniform_Float32_3, Uniform_Float32_4,
 		Uniform_Int8, Uniform_UInt8,Uniform_Int16, Uniform_UInt16, Uniform_Int32, Uniform_UInt32,
 		Uniform_Matrix4, Uniform_Sampler, Uniform_Custom = 255
 	};
@@ -58,19 +58,15 @@ namespace C3D
 		bool useInstances;
 		bool useLocals;
 
-		u8 attributeCount;
-		ShaderAttributeConfig* attributes;
-
-		u8 uniformCount;
-		ShaderUniformConfig* uniforms;
+		DynamicArray<ShaderAttributeConfig> attributes;
+		DynamicArray<ShaderUniformConfig> uniforms;
 
 		char* renderPassName;
 
-		u8 stageCount;
-		ShaderStage* stages;
+		std::vector<ShaderStage> stages;
 
-		char** stageNames;
-		char** stageFileNames;
+		std::vector<char*> stageNames;
+		std::vector<char*> stageFileNames;
 	};
 
 	enum class ShaderState : u8
@@ -113,17 +109,17 @@ namespace C3D
 		u64 uboStride;
 		u16 attributeStride;
 
-		std::vector<Texture*> globalTextures;
+		std::vector<const Texture*> globalTextures;
 		u64 instanceTextureCount;
 
 		ShaderScope boundScope;
 		u32 boundInstanceId;
 		u32 boundUboOffset;
 
-		std::unordered_map<string, u32> uniformLookup;
+		HashTable<u16> uniformLookup;
 
-		std::vector<ShaderUniform> uniforms;
-		std::vector<ShaderAttribute> attributes;
+		DynamicArray<ShaderUniform> uniforms;
+		DynamicArray<ShaderAttribute> attributes;
 
 		u64 pushConstantSize;
 		u64 pushConstantStride;

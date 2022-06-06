@@ -9,7 +9,7 @@ namespace C3D
 	class ResourceLoader
 	{
 	public:
-		ResourceLoader(const char* name, const MemoryType memoryType, const ResourceType type, const char* customType, const char* path);
+		ResourceLoader(const char* name, MemoryType memoryType, ResourceType type, const char* customType, const char* path);
 
 		ResourceLoader(const ResourceLoader& other) = delete;
 		ResourceLoader(ResourceLoader&& other) = delete;

@@ -3,14 +3,21 @@
 
 #include "core/logger.h"
 #include "core/c3d_string.h"
+#include "core/memory.h"
 
 #include "services/services.h"
+
+#include "renderer/renderer_frontend.h"
+#include "resources/resource_types.h"
+#include "systems/resource_system.h"
 
 namespace C3D
 {
 	TextureSystem::TextureSystem()
-		: m_logger("TEXTURE_SYSTEM"), m_initialized(false), m_config(), m_defaultTexture(), m_registeredTextures(nullptr)
-	{}
+		: m_logger("TEXTURE_SYSTEM"), m_initialized(false), m_config(), m_defaultTexture(), m_defaultSpecularTexture(),
+		  m_defaultNormalTexture(), m_registeredTextures(nullptr)
+	{
+	}
 
 	bool TextureSystem::Init(const TextureSystemConfig& config)
 	{
@@ -61,10 +68,10 @@ namespace C3D
 	Texture* TextureSystem::Acquire(const std::string& name, const bool autoRelease)
 	{
 		// If the default texture is requested we return it. But we warn about it since it should be
-		// retrieved with GetDefaultTexture()
+		// retrieved with GetDefault()
 		if (IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
-			m_logger.Warn("Acquire called for {} texture. Use GetDefaultTexture() for this", DEFAULT_TEXTURE_NAME);
+			m_logger.Warn("Acquire called for {} texture. Use GetDefault() for this", DEFAULT_TEXTURE_NAME);
 			return &m_defaultTexture;
 		}
 
@@ -152,15 +159,34 @@ namespace C3D
 		m_logger.Info("Released texture {}. The texture now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
 	}
 
-	Texture* TextureSystem::GetDefaultTexture()
+	Texture* TextureSystem::GetDefault()
 	{
 		if (!m_initialized)
 		{
-			m_logger.Error("GetDefaultTexture() was called before initialization. Returned nullptr");
+			m_logger.Error("GetDefault() was called before initialization. Returned nullptr");
 			return nullptr;
 		}
-
 		return &m_defaultTexture;
+	}
+
+	Texture* TextureSystem::GetDefaultSpecular()
+	{
+		if (!m_initialized)
+		{
+			m_logger.Error("GetDefaultSpecular() was called before initialization. Returned nullptr");
+			return nullptr;
+		}
+		return &m_defaultSpecularTexture;
+	}
+
+	Texture* TextureSystem::GetDefaultNormal()
+	{
+		if (!m_initialized)
+		{
+			m_logger.Error("GetDefaultNormal() was called before initialization. Returned nullptr");
+			return nullptr;
+		}
+		return &m_defaultNormalTexture;
 	}
 
 	bool TextureSystem::CreateDefaultTextures()
@@ -211,14 +237,67 @@ namespace C3D
 		// Manually set the texture generation to invalid since this is the default texture
 		m_defaultTexture.generation = INVALID_ID;
 
+		// Specular texture.
+		m_logger.Trace("Create default specular texture...");
+		const auto specPixels = new u8[16 * 16 * 4];
+		// Default specular map is black (no specular)
+		Memory.Set(specPixels, 0, sizeof(u8) * 16 * 16 * 4);
+		StringNCopy(m_defaultSpecularTexture.name, DEFAULT_SPECULAR_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
+		m_defaultSpecularTexture.width = 16;
+		m_defaultSpecularTexture.height = 16;
+		m_defaultSpecularTexture.channelCount = 4;
+		m_defaultSpecularTexture.generation = INVALID_ID;
+		m_defaultSpecularTexture.hasTransparency = false;
+
+		Renderer.CreateTexture(specPixels, &m_defaultSpecularTexture);
+		// Manually set the texture generation to invalid since this is the default texture
+		m_defaultSpecularTexture.generation = INVALID_ID;
+
+		// Normal texture.
+		m_logger.Trace("Create default normal texture...");
+		const auto normalPixels = new u8[16 * 16 * 4];
+		Memory.Set(normalPixels, 0, sizeof(u8) * 16 * 16 * 4);
+
+		// Each pixel
+		for (u64 row = 0; row < 16; row++)
+		{
+			for (u64 col = 0; col < 16; col++)
+			{
+				const u64 index = (row * 16) + col;
+				const u64 indexBpp = index * channels;
+
+				// Set blue, z-axis by default and alpha
+				normalPixels[indexBpp + 0] = 128;
+				normalPixels[indexBpp + 1] = 128;
+				normalPixels[indexBpp + 2] = 255;
+				normalPixels[indexBpp + 3] = 255;
+			}
+		}
+
+		StringNCopy(m_defaultNormalTexture.name, DEFAULT_NORMAL_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
+		m_defaultNormalTexture.width = 16;
+		m_defaultNormalTexture.height = 16;
+		m_defaultNormalTexture.channelCount = 4;
+		m_defaultNormalTexture.generation = INVALID_ID;
+		m_defaultNormalTexture.hasTransparency = false;
+
+		Renderer.CreateTexture(normalPixels, &m_defaultNormalTexture);
+		// Manually set the texture generation to invalid since this is the default texture
+		m_defaultNormalTexture.generation = INVALID_ID;
+
 		// Cleanup our pixel array
 		delete[] pixels;
+		delete[] specPixels;
+		delete[] normalPixels;
+
 		return true;
 	}
 
 	void TextureSystem::DestroyDefaultTextures()
 	{
 		DestroyTexture(&m_defaultTexture);
+		DestroyTexture(&m_defaultSpecularTexture);
+		DestroyTexture(&m_defaultNormalTexture);
 	}
 
 	bool TextureSystem::LoadTexture(const string& name, Texture* texture) const

@@ -13,8 +13,16 @@
 #include "services/services.h"
 
 // TEMP
-#include "c3d_string.h"
+#include "math/geometry_utils.h"
+#include "core/c3d_string.h"
 //
+
+#include "renderer/renderer_frontend.h"
+#include "systems/geometry_system.h"
+#include "systems/material_system.h"
+#include "systems/resource_system.h"
+#include "systems/shader_system.h"
+#include "systems/texture_system.h"
 
 namespace C3D
 {
@@ -64,7 +72,9 @@ namespace C3D
 
 		// TEMP
 		// Load up a plane configuration, and load geometry for it
-		const GeometryConfig gConfig = Geometric.GeneratePlaneConfig(10.0f, 5.0f, 16, 16, 4.0f, 4.0f, "test geometry", "test_material");
+		const GeometryConfig gConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test geometry", "test_material");
+		GeometryUtils::GenerateTangents(static_cast<Vertex3D*>(gConfig.vertices), gConfig.indexCount, static_cast<u32*>(gConfig.indices));
+
 		m_testGeometry = Geometric.AcquireFromConfig(gConfig, true);
 
 		// Cleanup the allocations that we just did
@@ -80,24 +90,26 @@ namespace C3D
 		StringNCopy(uiConfig.materialName, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
 		StringNCopy(uiConfig.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
 
-		constexpr f32 f = 512.0f;
+		constexpr f32 w = 128.0f;
+		constexpr f32 h = 32.0f;
+
 		Vertex2D uiVertices[4];
 		uiVertices[0].position.x = 0.0f;
 		uiVertices[0].position.y = 0.0f;
 		uiVertices[0].texture.x = 0.0f;
 		uiVertices[0].texture.y = 0.0f;
 
-		uiVertices[1].position.x = f;
-		uiVertices[1].position.y = f;
+		uiVertices[1].position.x = w;
+		uiVertices[1].position.y = h;
 		uiVertices[1].texture.x = 1.0f;
 		uiVertices[1].texture.y = 1.0f;
 
 		uiVertices[2].position.x = 0.0f;
-		uiVertices[2].position.y = f;
+		uiVertices[2].position.y = h;
 		uiVertices[2].texture.x = 0.0f;
 		uiVertices[2].texture.y = 1.0f;
 
-		uiVertices[3].position.x = f;
+		uiVertices[3].position.x = w;
 		uiVertices[3].position.y = 0.0f;
 		uiVertices[3].texture.x = 1.0f;
 		uiVertices[3].texture.y = 0.0f;
@@ -156,7 +168,11 @@ namespace C3D
 				// TEMP
 				GeometryRenderData testRender{};
 				testRender.geometry = m_testGeometry;
-				testRender.model = mat4(1.0f);
+				//testRender.model = mat4(1.0f);
+				static f32 angle = 0;
+				angle += 0.5f * static_cast<f32>(delta);
+				quat rotation = angleAxis(angle, vec3{ 0, 1, 0 });
+				testRender.model = mat4(rotation);
 
 				packet.geometryCount = 1;
 				packet.geometries = &testRender;
@@ -364,9 +380,14 @@ namespace C3D
 	bool Application::OnDebugEvent(u16 code, void* sender, EventContext context)
 	{
 		const char* names[3] = { "cobblestone", "paving", "paving2" };
+		const char* specNames[3] = { "cobblestone_specular", "paving_specular", "paving2_specular" };
+		const char* normNames[3] = { "cobblestone_normal", "paving_normal", "paving2_normal" };
+
 		static i8 choice = 2;
 
 		const char* oldName = names[choice];
+		const char* oldSpecularName = specNames[choice];
+		const char* oldNormalName = normNames[choice];
 
 		choice++;
 		choice %= 3;
@@ -376,11 +397,32 @@ namespace C3D
 			m_testGeometry->material->diffuseMap.texture = Textures.Acquire(names[choice], true);
 			if (!m_testGeometry->material->diffuseMap.texture)
 			{
-				Logger::Warn("[ON_DEBUG_EVENT] - No texture! Using default");
-				m_testGeometry->material->diffuseMap.texture = Textures.GetDefaultTexture();
+				Logger::Warn("[ON_DEBUG_EVENT] - No diffuse texture! Using default");
+				m_testGeometry->material->diffuseMap.texture = Textures.GetDefault();
 			}
 
+			// Release old diffuse texture
 			Textures.Release(oldName);
+
+			m_testGeometry->material->specularMap.texture = Textures.Acquire(specNames[choice], true);
+			if (!m_testGeometry->material->specularMap.texture)
+			{
+				Logger::Warn("[ON_DEBUG_EVENT] - No specular texture! Using default");
+				m_testGeometry->material->specularMap.texture = Textures.GetDefaultSpecular();
+			}
+
+			// Release old specular texture
+			Textures.Release(oldSpecularName);
+
+			m_testGeometry->material->normalMap.texture = Textures.Acquire(normNames[choice], true);
+			if (!m_testGeometry->material->normalMap.texture)
+			{
+				Logger::Warn("[ON_DEBUG_EVENT] - No normal texture! Using default");
+				m_testGeometry->material->normalMap.texture = Textures.GetDefaultNormal();
+			}
+
+			// Release old normal texture
+			Textures.Release(oldNormalName);
 		}
 
 		return true;
