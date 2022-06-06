@@ -7,6 +7,9 @@
 
 namespace C3D
 {
+	constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
+	constexpr auto BUILTIN_SHADER_NAME_UI = "Shader.Builtin.UI";
+
 	enum class RendererBackendType
 	{
 		Vulkan,
@@ -40,5 +43,10 @@ namespace C3D
 	struct RendererBackendState
 	{
 		u64 frameNumber;
+	};
+
+	enum class ShaderStage
+	{
+		Vertex, Geometry, Fragment, Compute
 	};
 }

@@ -1,5 +1,7 @@
 
 #pragma once
+#include <vector>
+
 #include "defines.h"
 #include "math/math_types.h"
 
@@ -64,6 +66,7 @@ namespace C3D
 	 */
 	void Trim(string& str);
 
+	std::vector<char*> StringSplit(const string& s, char delimiter, bool trimEntry = true, bool excludeEmpty = true);
 	/*
 	 * @brief Empties the provided string by setting the first char to 0.
 	 *

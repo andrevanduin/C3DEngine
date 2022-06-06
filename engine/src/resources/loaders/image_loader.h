@@ -10,5 +10,7 @@ namespace C3D
 		ImageLoader();
 
 		bool Load(const string& name, Resource* outResource) override;
+
+		void Unload(Resource* resource) override;
 	};
 }

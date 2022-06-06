@@ -12,20 +12,24 @@ namespace C3D
 {
 	VulkanBuffer::VulkanBuffer()
 		: handle(nullptr), m_totalSize(0), m_freeListBlock(nullptr), m_freeListMemoryRequirement(0), m_usage(),
-		  m_memory(nullptr), m_memoryIndex(0), m_memoryPropertyFlags(0), m_isLocked(false)
+		  m_memory(nullptr), m_memoryIndex(0), m_memoryPropertyFlags(0), m_isLocked(false), m_hasFreeList(false)
 	{
 	}
 
-	bool VulkanBuffer::Create(const VulkanContext* context, const u64 size, const u32 usage, const u32 memoryPropertyFlags, const bool bindOnCreate)
+	bool VulkanBuffer::Create(const VulkanContext* context, const u64 size, const u32 usage, const u32 memoryPropertyFlags, const bool bindOnCreate, bool useFreeList)
 	{
+		m_hasFreeList = useFreeList;
 		m_totalSize = size;
 		m_usage = static_cast<VkBufferUsageFlagBits>(usage);
 		m_memoryPropertyFlags = memoryPropertyFlags;
 
-		// Create a new freelist
-		m_freeListMemoryRequirement = FreeList::GetMemoryRequirements(size);
-		m_freeListBlock = Memory.Allocate(m_freeListMemoryRequirement, MemoryType::RenderSystem);
-		m_freeList.Create(size, m_freeListBlock);
+		if (m_hasFreeList)
+		{
+			// Create a new freelist
+			m_freeListMemoryRequirement = FreeList::GetMemoryRequirements(size);
+			m_freeListBlock = Memory.Allocate(m_freeListMemoryRequirement, MemoryType::RenderSystem);
+			m_freeList.Create(size, m_freeListBlock);
+		}
 
 		VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCreateInfo.size = size;
@@ -91,21 +95,25 @@ namespace C3D
 			return false;
 		}
 
-		// Resize our freelist
-		const u64 newMemoryRequirement = FreeList::GetMemoryRequirements(newSize);
-		void* newBlock = Memory.Allocate(newMemoryRequirement, MemoryType::RenderSystem);
-		void* oldBlock;
-		if (!m_freeList.Resize(newBlock, newSize, &oldBlock))
+		if (m_hasFreeList)
 		{
-			Logger::Error("[VULKAN_BUFFER] - Resize() failed to resize internal freelist");
-			Memory.Free(newBlock, newMemoryRequirement, MemoryType::RenderSystem);
-			return false;
+			// Resize our freelist
+			const u64 newMemoryRequirement = FreeList::GetMemoryRequirements(newSize);
+			void* newBlock = Memory.Allocate(newMemoryRequirement, MemoryType::RenderSystem);
+			void* oldBlock;
+			if (!m_freeList.Resize(newBlock, newSize, &oldBlock))
+			{
+				Logger::Error("[VULKAN_BUFFER] - Resize() failed to resize internal freelist");
+				Memory.Free(newBlock, newMemoryRequirement, MemoryType::RenderSystem);
+				return false;
+			}
+
+			// Free our old memory, and assign our new properties
+			Memory.Free(oldBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
+			m_freeListMemoryRequirement = newMemoryRequirement;
+			m_freeListBlock = newBlock;
 		}
 
-		// Free our old memory, and assign our new properties
-		Memory.Free(oldBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
-		m_freeListMemoryRequirement = newMemoryRequirement;
-		m_freeListBlock = newBlock;
 		m_totalSize = newSize;
 
 		// Create a new buffer
@@ -188,6 +196,14 @@ namespace C3D
 			Logger::Error("[VULKAN_BUFFER] - Allocate() called with size = 0 or outOffset = nullptr");
 			return false;
 		}
+
+		if (!m_hasFreeList)
+		{
+			Logger::Warn("[VULKAN_BUFFER] - Allocate() called on buffer not using freelists. Offset will not be valid. Call LoadData() instead.");
+			*outOffset = 0;
+			return true;
+		}
+
 		return m_freeList.AllocateBlock(size, outOffset);
 	}
 
@@ -198,6 +214,13 @@ namespace C3D
 			Logger::Error("[VULKAN_BUFFER] - Free() called with size = 0");
 			return false;
 		}
+
+		if (!m_hasFreeList)
+		{
+			Logger::Warn("[VULKAN_BUFFER] - Free() called on buffer not using freelists. Nothing was done.");
+			return true;
+		}
+
 		return m_freeList.FreeBlock(size, offset);
 	}
 
@@ -230,9 +253,12 @@ namespace C3D
 
 	void VulkanBuffer::CleanupFreeList()
 	{
-		m_freeList.Destroy();
-		Memory.Free(m_freeListBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
-		m_freeListMemoryRequirement = 0;
-		m_freeListBlock = nullptr;
+		if (m_hasFreeList)
+		{
+			m_freeList.Destroy();
+			Memory.Free(m_freeListBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
+			m_freeListMemoryRequirement = 0;
+			m_freeListBlock = nullptr;
+		}
 	}
 }

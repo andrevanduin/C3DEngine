@@ -7,8 +7,12 @@
 #include "platform/filesystem.h"
 #include "services/services.h"
 
+#include "systems/resource_system.h"
+
 namespace C3D
 {
+	constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
+
 	MaterialLoader::MaterialLoader()
 		: ResourceLoader("MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
 	{}
@@ -30,11 +34,10 @@ namespace C3D
 			return false;
 		}
 
-		// TODO: Should be using an allocator here
 		outResource->fullPath = StringDuplicate(fullPath);
 
-		// TODO: should be using an allocator here
 		auto* resourceData = Memory.Allocate<MaterialConfig>(MemoryType::MaterialInstance);
+		resourceData->shaderName = StringDuplicate(BUILTIN_SHADER_NAME_MATERIAL);
 		resourceData->autoRelease = true;
 		resourceData->diffuseColor = vec4(1); // Default white
 		resourceData->diffuseMapName[0] = 0;
@@ -86,19 +89,31 @@ namespace C3D
 			{
 				StringNCopy(resourceData->diffuseMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
 			}
+			else if (IEquals(varName, "specularMapName"))
+			{
+				StringNCopy(resourceData->specularMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
+			}
+			else if (IEquals(varName, "normalMapName"))
+			{
+				StringNCopy(resourceData->normalMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
+			}
 			else if (IEquals(varName, "diffuseColor"))
 			{
 				if (!StringToVec4(value.data(), &resourceData->diffuseColor))
 				{
-					m_logger.Warn("Error parsing diffuseColor in file ''. Using default of white instead", fullPath);
+					m_logger.Warn("Error parsing diffuseColor in file '{}'. Using default of white instead", fullPath);
 				}
 			}
-			else if (IEquals(varName, "type"))
+			else if (IEquals(varName, "shader"))
 			{
-				// TODO: other material types
-				if (IEquals(varName, "ui"))
+				resourceData->shaderName = StringDuplicate(value.data());
+			}
+			else if (IEquals(varName, "shininess"))
+			{
+				if (!StringToF32(value.data(), &resourceData->shininess))
 				{
-					resourceData->type = MaterialType::Ui;
+					m_logger.Warn("Error Parsing shininess in file '{}'. Using default of 32.0 instead", fullPath);
+					resourceData->shininess = 32.0f;
 				}
 			}
 

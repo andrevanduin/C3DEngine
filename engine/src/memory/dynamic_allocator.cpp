@@ -35,7 +35,7 @@ namespace C3D
 		// Destroy our freelist (frees it's memory)
 		m_freeList.Destroy();
 		// Free the memory we are holding on to
-		Memory.Free(m_memory, m_totalSize, MemoryType::DynamicAllocator);
+		Memory.Free(m_memory, m_totalSize + FreeList::GetMemoryRequirements(m_totalSize), MemoryType::DynamicAllocator);
 
 		m_totalSize = 0;
 		m_memory = nullptr;

@@ -8,7 +8,8 @@ layout(set = 1, binding = 0) uniform localUniformObject
 } objectUbo;
 
 // Samplers
-layout(set = 1, binding = 1) uniform sampler2D diffuseSampler;
+const int SAMP_DIFFUSE = 0;
+layout(set = 1, binding = 1) uniform sampler2D samplers[1];
 
 layout(location = 1) in struct dto
 {
@@ -17,5 +18,5 @@ layout(location = 1) in struct dto
 
 void main() 
 {
-	outColor = objectUbo.diffuseColor * texture(diffuseSampler, inDto.texCoord);
+	outColor = objectUbo.diffuseColor * texture(samplers[SAMP_DIFFUSE], inDto.texCoord);
 }

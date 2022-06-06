@@ -11,7 +11,7 @@ namespace C3D
 	VulkanDevice::VulkanDevice()
 		: physicalDevice(nullptr), logicalDevice(nullptr), swapChainSupport(), supportsDeviceLocalHostVisible(false),
 			graphicsCommandPool(nullptr), graphicsQueue(nullptr), presentQueue(nullptr), transferQueue(nullptr),
-			depthFormat(), graphicsQueueIndex(0), presentQueueIndex(0), transferQueueIndex(0), m_logger("DEVICE"), m_properties(),
+			depthFormat(), graphicsQueueIndex(0), presentQueueIndex(0), transferQueueIndex(0), m_logger("DEVICE"), properties(),
 			m_features(), m_memory()
 	{
 	}
@@ -64,10 +64,10 @@ namespace C3D
 		VK_CHECK(vkCreateCommandPool(logicalDevice, &poolCreateInfo, context->allocator, &graphicsCommandPool));
 		m_logger.Info("Graphics command pool created");
 
-		vkGetPhysicalDeviceProperties(physicalDevice, &m_properties);
+		vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
-		auto driverVersion = m_properties.driverVersion;
-		auto apiVersion = m_properties.apiVersion;
+		auto driverVersion = properties.driverVersion;
+		auto apiVersion = properties.apiVersion;
 
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &m_memory);
 		for (u32 i = 0; i < m_memory.memoryTypeCount; i++)
@@ -90,7 +90,7 @@ namespace C3D
 			}
 		}
 
-		m_logger.Info("GPU            - {}", m_properties.deviceName);
+		m_logger.Info("GPU            - {}", properties.deviceName);
 		m_logger.Info("GPU Memory     - {:.2f}GiB", gpuMemory);
 		m_logger.Info("Driver Version - {}.{}.{}", VK_VERSION_MAJOR(driverVersion), VK_VERSION_MINOR(driverVersion), VK_VERSION_PATCH(driverVersion));
 		m_logger.Info("API Version    - {}.{}.{}", VK_VERSION_MAJOR(apiVersion), VK_VERSION_MINOR(apiVersion), VK_VERSION_PATCH(apiVersion));
@@ -109,35 +109,45 @@ namespace C3D
 
 		m_logger.Info("Destroying Physical Device Handle");
 		physicalDevice = nullptr;
+
+		if (swapChainSupport.formats && swapChainSupport.formatCount)
+		{
+			Memory.Free(swapChainSupport.formats, sizeof(VkSurfaceFormatKHR) * swapChainSupport.formatCount, MemoryType::RenderSystem);
+		}
+
+		if (swapChainSupport.presentModes && swapChainSupport.presentModeCount)
+		{
+			Memory.Free(swapChainSupport.presentModes, sizeof(VkSurfaceFormatKHR) * swapChainSupport.presentModeCount, MemoryType::RenderSystem);
+		}
 	}
 
 	void VulkanDevice::QuerySwapChainSupport(VkSurfaceKHR surface, VulkanSwapChainSupportInfo* supportInfo) const
 	{
 		VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &supportInfo->capabilities))
 
-			VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &supportInfo->formatCount, nullptr))
+		VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &supportInfo->formatCount, nullptr))
 
-			if (supportInfo->formatCount != 0)
+		if (supportInfo->formatCount != 0)
+		{
+			if (!supportInfo->formats)
 			{
-				if (!supportInfo->formats)
-				{
-					supportInfo->formats = Memory.Allocate<VkSurfaceFormatKHR>(supportInfo->formatCount, MemoryType::RenderSystem);
-				}
-
-				VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &supportInfo->formatCount, supportInfo->formats))
+				supportInfo->formats = Memory.Allocate<VkSurfaceFormatKHR>(supportInfo->formatCount, MemoryType::RenderSystem);
 			}
+
+			VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &supportInfo->formatCount, supportInfo->formats))
+		}
 
 		VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &supportInfo->presentModeCount, nullptr))
 
-			if (supportInfo->presentModeCount != 0)
+		if (supportInfo->presentModeCount != 0)
+		{
+			if (!supportInfo->presentModes)
 			{
-				if (!supportInfo->presentModes)
-				{
-					supportInfo->presentModes = Memory.Allocate<VkPresentModeKHR>(supportInfo->presentModeCount, MemoryType::RenderSystem);
-				}
-
-				VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &supportInfo->presentModeCount, supportInfo->presentModes))
+				supportInfo->presentModes = Memory.Allocate<VkPresentModeKHR>(supportInfo->presentModeCount, MemoryType::RenderSystem);
 			}
+
+			VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &supportInfo->presentModeCount, supportInfo->presentModes))
+		}
 	}
 
 	bool VulkanDevice::DetectDepthFormat()
@@ -168,5 +178,10 @@ namespace C3D
 		}
 
 		return false;
+	}
+
+	void VulkanDevice::WaitIdle() const
+	{
+		vkDeviceWaitIdle(logicalDevice);
 	}
 }

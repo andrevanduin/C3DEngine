@@ -2,7 +2,7 @@
 #pragma once
 #include "defines.h"
 
-#include "services/service.h"
+#include "systems/system.h"
 
 #include "memory/dynamic_allocator.h"
 
@@ -16,7 +16,7 @@ namespace C3D
 		FreeList,
 		Array,
 		DynamicArray,
-		Dictionary,
+		HashTable,
 		RingQueue,
 		Bst,
 		String,
@@ -32,14 +32,21 @@ namespace C3D
 		Entity,
 		EntityNode,
 		Scene,
+		Shader,
 		MaxType
+	};
+
+	struct MemoryAllocation
+	{
+		u64 size;
+		u32 count;
 	};
 
 	struct MemoryStats
 	{
 		u64 totalAllocated;
 		u64 allocCount;
-		u64 taggedAllocations[static_cast<u8>(MemoryType::MaxType)];
+		MemoryAllocation taggedAllocations[static_cast<u8>(MemoryType::MaxType)];
 	};
 
 	struct MemorySystemConfig
@@ -47,13 +54,13 @@ namespace C3D
 		u64 totalAllocSize;
 	};
 
-	class C3D_API MemorySystem : public Service
+	class C3D_API MemorySystem : public System<MemorySystemConfig>
 	{
 	public:
 		MemorySystem();
 
-		bool Init(const MemorySystemConfig& config);
-		void Shutdown();
+		bool Init(const MemorySystemConfig& config) override;
+		void Shutdown() override;
 
 		void* Allocate(u64 size, MemoryType type);
 
@@ -75,11 +82,11 @@ namespace C3D
 		static void* Set(void* dest, i32 value, u64 size);
 
 		string GetMemoryUsageString();
+
 		[[nodiscard]] u64 GetAllocCount() const;
+		[[nodiscard]] u64 GetMemoryUsage(MemoryType type) const;
 	private:
 		void* m_memory;
-
-		MemorySystemConfig m_config;
 
 		MemoryStats m_stats;
 		DynamicAllocator m_allocator;

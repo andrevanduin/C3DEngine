@@ -17,26 +17,14 @@
 
 namespace C3D
 {
-	class VulkanImage;
+	constexpr auto VULKAN_MAX_GEOMETRY_COUNT = 4096;
 
-	struct VulkanShaderStage
-	{
-		VkShaderModuleCreateInfo createInfo;
-		VkShaderModule module;
-		VkPipelineShaderStageCreateInfo shaderStageCreateInfo;
-	};
+	class VulkanImage;
 
 	struct VulkanTextureData
 	{
 		VulkanImage image;
 		VkSampler sampler;
-	};
-
-	struct VulkanDescriptorState
-	{
-		// Per frame
-		u32 generations[3];
-		u32 textureIds[3];
 	};
 
 	struct VulkanGeometryData

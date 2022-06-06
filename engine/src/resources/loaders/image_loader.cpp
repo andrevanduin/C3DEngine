@@ -11,6 +11,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include "systems/resource_system.h"
 
 namespace C3D
 {
@@ -70,5 +71,14 @@ namespace C3D
 		outResource->name = name.data();
 
 		return true;
+	}
+
+	void ImageLoader::Unload(Resource* resource)
+	{
+		// Free the pixel data
+		const auto imageData = static_cast<ImageResourceData*>(resource->data);
+		stbi_image_free(imageData->pixels);
+		// Free the rest of the resource
+		ResourceLoader::Unload(resource);
 	}
 }

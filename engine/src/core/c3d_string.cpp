@@ -5,6 +5,7 @@
 #include <locale>
 #include <cctype>
 #include <cstdarg>
+#include <sstream>
 
 #include "memory.h"
 #include "services/services.h"
@@ -30,7 +31,7 @@ namespace C3D
         return std::equal(left.begin(), left.end(), right.begin(), right.end(), [](char a, char b) { return tolower(a) == tolower(b); });
 	}
 
-	void StringNCopy(char* dest, const char* source, i64 length)
+	void StringNCopy(char* dest, const char* source, const i64 length)
 	{
 		strncpy(dest, source, length);
 	}
@@ -64,6 +65,19 @@ namespace C3D
 	{
 		LTrim(str);
 		RTrim(str);
+	}
+
+	std::vector<char*> StringSplit(const string& s, const char delimiter, const bool trimEntry, const bool excludeEmpty)
+	{
+		std::vector<char*> splits;
+		std::string split;
+		std::istringstream ss(s);
+		while (std::getline(ss, split, delimiter))
+		{
+			if (trimEntry) Trim(split);
+			if (!excludeEmpty || !split.empty()) splits.push_back(StringDuplicate(split.data()));
+		}
+		return splits;
 	}
 
 	char* StringEmpty(char* str)
@@ -140,7 +154,7 @@ namespace C3D
 
 		*f = 0;
 		const auto result = sscanf_s(str, "%f", f);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToF64(const char* str, f64* f)
@@ -149,7 +163,7 @@ namespace C3D
 
 		*f = 0;
 		const auto result = sscanf_s(str, "%lf", f);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToU8(const char* str, u8* u)
@@ -158,7 +172,7 @@ namespace C3D
 
 		*u = 0;
 		const auto result = sscanf_s(str, "%hhu", u);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToU16(const char* str, u16* u)
@@ -167,7 +181,7 @@ namespace C3D
 
 		*u = 0;
 		const auto result = sscanf_s(str, "%hi", u);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToU32(const char* str, u32* u)
@@ -176,7 +190,7 @@ namespace C3D
 
 		*u = 0;
 		const auto result = sscanf_s(str, "%u", u);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToU64(const char* str, u64* u)
@@ -185,7 +199,7 @@ namespace C3D
 
 		*u = 0;
 		const auto result = sscanf_s(str, "%llu", u);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToI8(const char* str, i8* i)
@@ -194,7 +208,7 @@ namespace C3D
 
 		*i = 0;
 		const auto result = sscanf_s(str, "%hhi", i);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToI16(const char* str, i16* i)
@@ -203,7 +217,7 @@ namespace C3D
 
 		*i = 0;
 		const auto result = sscanf_s(str, "%hi", i);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToI32(const char* str, i32* i)
@@ -212,7 +226,7 @@ namespace C3D
 
 		*i = 0;
 		const auto result = sscanf_s(str, "%i", i);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToI64(const char* str, i64* i)
@@ -221,7 +235,7 @@ namespace C3D
 
 		*i = 0;
 		const auto result = sscanf_s(str, "%lli", i);
-		return result != 1;
+		return result != -1;
 	}
 
 	bool StringToBool(const char* str, bool* b)

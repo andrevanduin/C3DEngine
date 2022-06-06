@@ -58,6 +58,8 @@ namespace C3D
 		// NOTE: Vertex and index arrays are dynamically allocated so they should be freed by the user
 		[[nodiscard]] GeometryConfig GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName) const;
 
+		[[nodiscard]] GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const string& name, const string& materialName) const;
+
 	private:
 		bool CreateGeometry(const GeometryConfig& config, Geometry* g) const;
 

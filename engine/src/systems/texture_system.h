@@ -10,6 +10,8 @@
 namespace C3D
 {
 	constexpr auto DEFAULT_TEXTURE_NAME = "default";
+	constexpr auto DEFAULT_SPECULAR_TEXTURE_NAME = "defaultSpecular";
+	constexpr auto DEFAULT_NORMAL_TEXTURE_NAME = "defaultNormal";
 
 	struct TextureSystemConfig
 	{
@@ -34,7 +36,9 @@ namespace C3D
 		Texture* Acquire(const string& name, bool autoRelease);
 		void Release(const string& name);
 
-		Texture* GetDefaultTexture();
+		Texture* GetDefault();
+		Texture* GetDefaultSpecular();
+		Texture* GetDefaultNormal();
 
 	private:
 		bool CreateDefaultTextures();
@@ -49,6 +53,8 @@ namespace C3D
 		TextureSystemConfig m_config;
 
 		Texture m_defaultTexture;
+		Texture m_defaultSpecularTexture;
+		Texture m_defaultNormalTexture;
 
 		Texture* m_registeredTextures;
 		std::unordered_map<string, TextureReference> m_registeredTextureTable;

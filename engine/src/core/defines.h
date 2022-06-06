@@ -29,6 +29,13 @@ static_assert(sizeof(i16) == 2, "Expected i16 to be 2 bytes");
 static_assert(sizeof(i32) == 4, "Expected i32 to be 4 bytes");
 static_assert(sizeof(i64) == 8, "Expected i64 to be 8 bytes");
 
+/* @brief A Range, typically of memory. */
+struct Range
+{
+	u64 offset;
+	u64 size;
+};
+
 template <typename E>
 constexpr auto ToUnderlying(E e) noexcept
 {
@@ -40,6 +47,8 @@ constexpr auto ToUnderlying(E e) noexcept
  * and not actually pointing to a real object.
  */
 #define INVALID_ID UINT32_MAX
+#define INVALID_ID_U16 UINT16_MAX
+#define INVALID_ID_U8 UINT8_MAX
 
 #ifdef C3D_EXPORT
 #ifdef _MSC_VER
@@ -66,15 +75,42 @@ constexpr auto ToUnderlying(E e) noexcept
 #endif
 
  /** @brief Gets the number of bytes from amount of gibibytes (GiB) (1024*1024*1024) */
-#define GIBIBYTES(amount) amount * 1024 * 1024 * 1024
+constexpr u64 GibiBytes(const u64 amount)
+{
+	return amount * 1024 * 1024 * 1024;
+}
 /** @brief Gets the number of bytes from amount of mebibytes (MiB) (1024*1024) */
-#define MEBIBYTES(amount) amount * 1024 * 1024
+constexpr u64 MebiBytes(const u64 amount)
+{
+	return amount * 1024 * 1024;
+}
 /** @brief Gets the number of bytes from amount of kibibytes (KiB) (1024) */
-#define KIBIBYTES(amount) amount * 1024
+constexpr u64 KibiBytes(const u64 amount)
+{
+	return amount * 1024;
+}
+/** @brief Gets the number( of bytes from amount of gigabytes (GB) (1000*1000*1000) */
+constexpr u64 GigaBytes(const u64 amount)
+{
+	return amount * 1000 * 1000 * 1000;
+}
+/** @brief Gets the number( of bytes from amount of megabytes (MB) (1000*1000) */
+constexpr u64 MegaBytes(const u64 amount)
+{
+	return amount * 1000 * 1000;
+}
+/** @brief Gets the number( of bytes from amount of kilobytes (KB) (1000) */
+constexpr u64 KiloBytes(const u64 amount)
+{
+	return amount * 1000;
+}
 
-/** @brief Gets the number of bytes from amount of gigabytes (GB) (1000*1000*1000) */
-#define GIGABYTES(amount) amount * 1000 * 1000 * 1000
-/** @brief Gets the number of bytes from amount of megabytes (MB) (1000*1000) */
-#define MEGABYTES(amount) amount * 1000 * 1000
-/** @brief Gets the number of bytes from amount of kilobytes (KB) (1000) */
-#define KILOBYTES(amount) amount * 1000
+C3D_INLINE u64 GetAligned(const u64 operand, const u64 granularity)
+{
+	return (operand + (granularity - 1)) & ~(granularity - 1);
+}
+
+C3D_INLINE Range GetAlignedRange(const u64 offset, const u64 size, const u64 granularity)
+{
+	return { GetAligned(offset, granularity), GetAligned(size, granularity) };
+}
