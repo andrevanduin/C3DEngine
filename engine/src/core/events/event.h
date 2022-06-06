@@ -26,7 +26,7 @@ namespace C3D
 		void Shutdown();
 
 		C3D_API bool Register(u16 code, IEventCallback* onEvent);
-		C3D_API bool UnRegister(u16 code, const IEventCallback* onEvent);
+		C3D_API bool UnRegister(u16 code, IEventCallback* onEvent);
 
 		C3D_API bool Fire(u16 code, void* sender, EventContext data);
 

@@ -13,6 +13,7 @@ layout(set = 0, binding = 0) uniform globalUniformObject
 	mat4 view;
 	vec4 ambientColor;
 	vec3 viewPosition;
+	int mode;
 } globalUbo;
 
 // Push constants are only guaranteed to be a total of 128 bytes.
@@ -53,6 +54,8 @@ void main()
 	// Convert local normal to "world space"
 	outDto.normal = m3Model * inNormal;
 	outDto.tangent = vec4(normalize(m3Model * inTangent.xyz), inTangent.w);
+
+	outMode = globalUbo.mode;
 
 	gl_Position = globalUbo.projection * globalUbo.view * uPushConstants.model * vec4(inPosition, 1.0);
 }

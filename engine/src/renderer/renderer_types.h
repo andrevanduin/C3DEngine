@@ -23,6 +23,13 @@ namespace C3D
 		Ui		= 0x02,
 	};
 
+	enum RendererViewMode : i32
+	{
+		Default = 0,
+		Lighting = 1,
+		Normals = 2,
+	};
+
 	struct GeometryRenderData
 	{
 		mat4 model;

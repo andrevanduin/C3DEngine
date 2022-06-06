@@ -40,7 +40,7 @@ namespace C3D
 		return true;
 	}
 
-	bool EventSystem::UnRegister(const u16 code, const IEventCallback* onEvent)
+	bool EventSystem::UnRegister(const u16 code, IEventCallback* onEvent)
 	{
 		auto& events = m_registered[code].events;
 		if (events.empty())

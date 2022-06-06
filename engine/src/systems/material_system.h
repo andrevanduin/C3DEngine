@@ -37,6 +37,13 @@ namespace C3D
 		u16 specularTexture;
 		u16 normalTexture;
 		u16 model;
+		u16 renderMode;
+
+		MaterialUniformLocations()
+			: projection(INVALID_ID_U16), view(INVALID_ID_U16), ambientColor(INVALID_ID_U16), shininess(INVALID_ID_U16),
+			  viewPosition(INVALID_ID_U16), diffuseColor(INVALID_ID_U16), diffuseTexture(INVALID_ID_U16), specularTexture(INVALID_ID_U16),
+			  normalTexture(INVALID_ID_U16), model(INVALID_ID_U16), renderMode(INVALID_ID_U16)
+		{}
 	};
 
 	struct UiUniformLocations
@@ -46,6 +53,10 @@ namespace C3D
 		u16 diffuseColor;
 		u16 diffuseTexture;
 		u16 model;
+
+		UiUniformLocations()
+			: projection(INVALID_ID_U16), view(INVALID_ID_U16), diffuseColor(INVALID_ID_U16), diffuseTexture(INVALID_ID_U16), model(INVALID_ID_U16)
+		{}
 	};
 
 	class MaterialSystem : System<MaterialSystemConfig>
@@ -64,7 +75,7 @@ namespace C3D
 
 		Material* GetDefault();
 
-		bool ApplyGlobal(u32 shaderId, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition) const;
+		bool ApplyGlobal(u32 shaderId, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition, u32 renderMode) const;
 		bool ApplyInstance(Material* material) const;
 		bool ApplyLocal(Material* material, const mat4* model) const;
 

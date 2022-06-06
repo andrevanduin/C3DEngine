@@ -42,6 +42,28 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", m_cameraPosition.x, m_cameraPosition.y, m_cameraPosition.z);
 	}
 
+	// Renderer Debug functions
+	if (Input.IsKeyUp('1') && Input.WasKeyDown('1'))
+	{
+		C3D::EventContext context = {};
+		context.data.i32[0] = C3D::RendererViewMode::Default;
+		Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
+	}
+
+	if (Input.IsKeyUp('2') && Input.WasKeyDown('2'))
+	{
+		C3D::EventContext context = {};
+		context.data.i32[0] = C3D::RendererViewMode::Lighting;
+		Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
+	}
+
+	if (Input.IsKeyUp('3') && Input.WasKeyDown('3'))
+	{
+		C3D::EventContext context = {};
+		context.data.i32[0] = C3D::RendererViewMode::Normals;
+		Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
+	}
+
 	// HACK: temp to move camera around
 	if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyLeft))
 	{

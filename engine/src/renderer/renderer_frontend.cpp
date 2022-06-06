@@ -13,6 +13,8 @@
 #include "resources/shader.h"
 
 #include "services/services.h"
+
+#include "core/events/event.h"
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
@@ -22,7 +24,8 @@ namespace C3D
 	// TODO: Obtain ambient color from scene instead of hardcoding it here
 	RenderSystem::RenderSystem()
 		: m_logger("RENDERER"), m_projection(), m_view(), m_ambientColor(0.25, 0.25, 0.25, 1.0f), m_viewPosition(),
-		  m_uiProjection(), m_uiView(), m_nearClip(0.1f), m_farClip(1000.0f), m_materialShaderId(0), m_uiShaderId(0)
+		  m_uiProjection(), m_uiView(), m_nearClip(0.1f), m_farClip(1000.0f), m_materialShaderId(0), m_uiShaderId(0),
+		  m_renderMode(0)
 	{
 	}
 
@@ -36,6 +39,8 @@ namespace C3D
 		}
 
 		m_logger.Info("Created Vulkan Renderer Backend");
+
+		Event.Register(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderSystem::OnEvent));
 
 		if (!m_backend->Init(application))
 		{
@@ -103,9 +108,11 @@ namespace C3D
 		return true;
 	}
 
-	void RenderSystem::Shutdown() const
+	void RenderSystem::Shutdown()
 	{
 		m_logger.Info("Shutting Down");
+
+		Event.UnRegister(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderSystem::OnEvent));
 
 		m_backend->Shutdown();
 		DestroyBackend();
@@ -148,7 +155,7 @@ namespace C3D
 		}
 
 		// Apply globals
-		if (!Materials.ApplyGlobal(m_materialShaderId, &m_projection, &m_view, &m_ambientColor, &m_viewPosition))
+		if (!Materials.ApplyGlobal(m_materialShaderId, &m_projection, &m_view, &m_ambientColor, &m_viewPosition, m_renderMode))
 		{
 			m_logger.Error("DrawFrame() - Failed to apply globals for material shader");
 			return false;
@@ -197,7 +204,7 @@ namespace C3D
 		}
 
 		// Apply globals
-		if (!Materials.ApplyGlobal(m_uiShaderId, &m_uiProjection, &m_uiView, nullptr, nullptr))
+		if (!Materials.ApplyGlobal(m_uiShaderId, &m_uiProjection, &m_uiView, nullptr, nullptr, 0))
 		{
 			m_logger.Error("DrawFrame() - Failed to apply globals for ui shader");
 			return false;
@@ -352,5 +359,27 @@ namespace C3D
 		{
 			Memory.Free(m_backend, sizeof(RendererVulkan), MemoryType::RenderSystem);
 		}
+	}
+
+	bool RenderSystem::OnEvent(const u16 code, void* sender, const EventContext context)
+	{
+		if (code != SetRenderMode) return false;
+
+		switch (const i32 mode = context.data.i32[0])
+		{
+			case RendererViewMode::Default:
+				m_logger.Debug("Renderer mode set to default");
+				m_renderMode = RendererViewMode::Default;
+				break;
+			case RendererViewMode::Lighting:
+				m_logger.Debug("Renderer mode set to lighting");
+				m_renderMode = RendererViewMode::Lighting;
+				break;
+			case RendererViewMode::Normals:
+				m_logger.Debug("Renderer mode set to normals");
+				m_renderMode = RendererViewMode::Normals;
+				break;
+		}
+		return true;
 	}
 }

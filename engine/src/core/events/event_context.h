@@ -38,6 +38,7 @@ namespace C3D
 		Resized = 0x08,
 		Minimized = 0x09,
 		FocusGained = 0x0a,
+		SetRenderMode = 0x0b,
 
 		Debug0 = 0x10,
 		Debug1 = 0x11,

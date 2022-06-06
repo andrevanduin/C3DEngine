@@ -20,10 +20,12 @@ uniform = mat4, global, projection
 uniform = mat4, global, view
 uniform = vec4, global, ambientColor
 uniform = vec3, global, viewPosition
+uniform = u32, global, mode
 
 # Instance
 uniform = vec4, instance, diffuseColor
 uniform = f32, instance, shininess
+
 # Samplers
 uniform = samp, instance, diffuseTexture
 uniform = samp, instance, specularTexture

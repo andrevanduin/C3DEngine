@@ -4,6 +4,7 @@
 
 #include "renderer_types.h"
 #include "renderer_backend.h"
+#include "core/events/event_context.h"
 
 namespace C3D
 {
@@ -20,7 +21,7 @@ namespace C3D
 		RenderSystem();
 
 		bool Init(Application* application);
-		void Shutdown() const;
+		void Shutdown();
 
 		// HACK: we should not expose this outside of the engine
 		C3D_API void SetView(mat4 view, vec3 viewPosition);
@@ -60,6 +61,8 @@ namespace C3D
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend() const;
 
+		bool OnEvent(u16 code, void* sender, EventContext context);
+
 		LoggerInstance m_logger;
 
 		// World
@@ -73,6 +76,8 @@ namespace C3D
 		f32 m_nearClip, m_farClip;
 
 		u32 m_materialShaderId, m_uiShaderId;
+
+		u32 m_renderMode;
 
 		RendererBackend* m_backend{ nullptr };
 	};

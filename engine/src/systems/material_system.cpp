@@ -32,12 +32,7 @@ namespace C3D
 		m_config = config;
 
 		m_materialShaderId = INVALID_ID;
-		m_materialLocations.diffuseColor = INVALID_ID_U16;
-		m_materialLocations.diffuseTexture = INVALID_ID_U16;
-
 		m_uiShaderId = INVALID_ID;
-		m_uiLocations.diffuseColor = INVALID_ID_U16;
-		m_uiLocations.diffuseTexture = INVALID_ID_U16;
 
 		// Allocate enough memory for the max number of materials that we will be using
 		m_registeredMaterials = Memory.Allocate<Material>(config.maxMaterialCount, MemoryType::MaterialInstance);
@@ -166,6 +161,7 @@ namespace C3D
 				m_materialLocations.specularTexture = Shaders.GetUniformIndex(shader, "specularTexture");
 				m_materialLocations.normalTexture = Shaders.GetUniformIndex(shader, "normalTexture");
 				m_materialLocations.model = Shaders.GetUniformIndex(shader, "model");
+				m_materialLocations.renderMode = Shaders.GetUniformIndex(shader, "mode");
 			}
 			else if (m_uiShaderId == INVALID_ID && Equals(config.shaderName, BUILTIN_SHADER_NAME_UI))
 			{
@@ -245,7 +241,7 @@ namespace C3D
 		return false;									\
 	}
 
-	bool MaterialSystem::ApplyGlobal(u32 shaderId, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition) const
+	bool MaterialSystem::ApplyGlobal(u32 shaderId, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition, const u32 renderMode) const
 	{
 		if (shaderId == m_materialShaderId)
 		{
@@ -253,6 +249,7 @@ namespace C3D
 			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.view, view))
 			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.ambientColor, ambientColor))
 			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.viewPosition, viewPosition))
+			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.renderMode, &renderMode))
 		}
 		else if (shaderId == m_uiShaderId)
 		{
