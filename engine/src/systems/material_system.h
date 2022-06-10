@@ -68,21 +68,21 @@ namespace C3D
 
 		void Shutdown() override;
 
-		Material* Acquire(const string& name);
+		Material* Acquire(const char* name);
 		Material* AcquireFromConfig(const MaterialConfig& config);
 
-		void Release(const string& name);
+		void Release(const char* name);
 
 		Material* GetDefault();
 
 		bool ApplyGlobal(u32 shaderId, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition, u32 renderMode) const;
-		bool ApplyInstance(Material* material) const;
+		bool ApplyInstance(Material* material, bool needsUpdate) const;
 		bool ApplyLocal(Material* material, const mat4* model) const;
 
 	private:
 		bool CreateDefaultMaterial();
 
-		bool LoadMaterial(const MaterialConfig& config, Material* mat) const;
+		bool LoadMaterial(MaterialConfig config, Material* mat) const;
 
 		void DestroyMaterial(Material* mat) const;
 

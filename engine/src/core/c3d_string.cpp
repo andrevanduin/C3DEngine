@@ -16,19 +16,38 @@
 
 namespace C3D
 {
-	u32 StringLength(const string& str)
+	u64 StringLength(const char* str)
 	{
-		return static_cast<u32>(str.size());
+		return strlen(str);
 	}
 
-	bool Equals(const string& left, const string& right)
+	bool Equals(const char* a, const char* b, const i32 length)
 	{
-		return left == right;
+		if (length == -1)
+		{
+			return strcmp(a, b) == 0;
+		}
+		return strncmp(a, b, length) == 0;
 	}
 
-	bool IEquals(const string& left, const string& right)
+	bool IEquals(const char* a, const char* b, const i32 length)
 	{
-        return std::equal(left.begin(), left.end(), right.begin(), right.end(), [](char a, char b) { return tolower(a) == tolower(b); });
+		if (length == -1)
+		{
+#if defined(__GNUC__)
+			return strcasecmp(a, b) == 0;
+#elif (defined _MSC_VER)
+			return _strcmpi(a, b) == 0;
+#endif
+		}
+		else
+		{
+#if defined(__GNUC)
+			return strncasecmp(a, b, length) == 0;
+#elif defined _MSC_VER
+			return _strnicmp(a, b, length) == 0;
+#endif
+		}
 	}
 
 	void StringNCopy(char* dest, const char* source, const i64 length)
@@ -67,6 +86,36 @@ namespace C3D
 		RTrim(str);
 	}
 
+	void StringMid(char* dest, const char* source, const i32 start, const i32 length)
+	{
+		if (length == 0) return;
+
+		if (const i64 srcLength = StringLength(source); start >= srcLength)
+		{
+			dest[0] = 0;
+			return;
+		}
+
+		if (length > 0)
+		{
+			for (u64 i = start, j = 0; j < length && source[i]; i++, j++)
+			{
+				dest[j] = source[i];
+			}
+			dest[start + length] = 0;
+		}
+		else
+		{
+			// Negative value means we keep going to the end
+			u64 j = 0;
+			for (u64 i = start; source[i]; i++, j++)
+			{
+				dest[j] = source[i];
+			}
+			dest[start + j] = 0;
+		}
+	}
+
 	std::vector<char*> StringSplit(const string& s, const char delimiter, const bool trimEntry, const bool excludeEmpty)
 	{
 		std::vector<char*> splits;
@@ -98,13 +147,12 @@ namespace C3D
 		return -1;
 	}
 
-	i32 StringFormatV(char* dest, const char* format, void* vaList)
+	i32 StringFormatV(char* dest, const char* format, va_list vaList)
 	{
 		if (dest) {
 			// Big, but can fit on the stack.
 			char buffer[16000];
-			const i32 written = vsnprintf(buffer, 16000, format, static_cast<va_list>(vaList));
-			buffer[written] = 0;
+			const auto written = vsnprintf(buffer, sizeof buffer, format, vaList);
 			Memory.Copy(dest, buffer, written + 1);
 
 			return written;
@@ -119,6 +167,21 @@ namespace C3D
 		Memory.Copy(copy, str, length);
 		copy[length] = 0;
 		return copy;
+	}
+
+	void StringAppend(char* dest, const char* src, const char* append)
+	{
+		sprintf(dest, "%s%s", src, append);
+	}
+
+	void StringAppend(char* dest, const char* src, const i64 append)
+	{
+		sprintf(dest, "%s%lli", src, append);
+	}
+
+	void StringAppend(char* dest, const char* src, const u64 append)
+	{
+		sprintf(dest, "%s%llu", src, append);
 	}
 
 	bool StringToVec4(const char* str, vec4* outVec)

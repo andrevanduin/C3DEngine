@@ -34,7 +34,7 @@ namespace C3D
 		void DestroyTexture(Texture* texture) const;
 
 
-		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices, u32 indexSize, u32 indexCount, const void* indices) const;
+		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) const;
 		void DestroyGeometry(Geometry* geometry) const;
 
 		bool GetRenderPassId(const char* name, u8* outRenderPassId) const;
@@ -50,10 +50,13 @@ namespace C3D
 		bool ShaderBindInstance(Shader* shader, u32 instanceId) const;
 
 		bool ShaderApplyGlobals(Shader* shader) const;
-		bool ShaderApplyInstance(Shader* shader) const;
+		bool ShaderApplyInstance(Shader* shader, bool needsUpdate) const;
 
-		bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId) const;
+		bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) const;
 		bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) const;
+
+		bool AcquireTextureMapResources(TextureMap* map) const;
+		void ReleaseTextureMapResources(TextureMap* map) const;
 
 		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const;
 

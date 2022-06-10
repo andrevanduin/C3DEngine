@@ -26,4 +26,5 @@
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=TEXCOORD/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=TINYGLTF/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=unbatched/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UserDictionary/Words/=vert/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=Vulkan/@EntryIndexedValue">True</s:Boolean></wpf:ResourceDictionary>

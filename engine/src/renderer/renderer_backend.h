@@ -32,7 +32,7 @@ namespace C3D
 		virtual bool EndRenderPass(u8 renderPassId) = 0;
 
 		virtual void CreateTexture(const u8* pixels, Texture* texture) = 0;
-		virtual bool CreateGeometry(Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices, u32 indexSize, u32 indexCount, const void* indices) = 0;
+		virtual bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) = 0;
 
 		virtual void DestroyTexture(Texture* texture) = 0;
 		virtual void DestroyGeometry(Geometry* geometry) = 0;
@@ -48,10 +48,13 @@ namespace C3D
 		virtual bool ShaderBindInstance(Shader* shader, u32 instanceId) = 0;
 
 		virtual bool ShaderApplyGlobals(Shader* shader) = 0;
-		virtual bool ShaderApplyInstance(Shader* shader) = 0;
+		virtual bool ShaderApplyInstance(Shader* shader, bool needsUpdate) = 0;
 
-		virtual bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId) = 0;
+		virtual bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) = 0;
 		virtual bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) = 0;
+
+		virtual bool AcquireTextureMapResources(TextureMap* map) = 0;
+		virtual void ReleaseTextureMapResources(TextureMap* map) = 0;
 
 		virtual bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) = 0;
 

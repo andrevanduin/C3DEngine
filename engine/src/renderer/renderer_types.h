@@ -1,6 +1,7 @@
 
 #pragma once
 #include "core/defines.h"
+#include "containers/dynamic_array.h"
 
 #include "math/math_types.h"
 #include "resources/geometry.h"
@@ -38,13 +39,10 @@ namespace C3D
 
 	struct RenderPacket
 	{
-		f32 deltaTime;
+		f32 deltaTime = 0;
 
-		u32 geometryCount;
-		GeometryRenderData* geometries;
-
-		u32 uiGeometryCount;
-		GeometryRenderData* uiGeometries;
+		DynamicArray<GeometryRenderData> geometries;
+		DynamicArray<GeometryRenderData> uiGeometries;
 	};
 
 	struct RendererBackendState

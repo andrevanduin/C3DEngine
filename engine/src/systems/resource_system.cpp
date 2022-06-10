@@ -8,6 +8,7 @@
 #include "resources/loaders/binary_loader.h"
 #include "resources/loaders/image_loader.h"
 #include "resources/loaders/material_loader.h"
+#include "resources/loaders/mesh_loader.h"
 #include "resources/loaders/shader_loader.h"
 #include "resources/loaders/text_loader.h"
 
@@ -53,7 +54,7 @@ namespace C3D
 		// NOTE: Different way of allocating this???
 		ResourceLoader* loaders[] =
 		{
-			new TextLoader(), new BinaryLoader(), new ImageLoader(), new MaterialLoader(), new ShaderLoader()
+			new TextLoader(), new BinaryLoader(), new ImageLoader(), new MaterialLoader(), new ShaderLoader(), new MeshLoader()
 		};
 
 		for (const auto loader : loaders)
@@ -117,7 +118,7 @@ namespace C3D
 		return false;
 	}
 
-	bool ResourceSystem::Load(const string& name, const ResourceType type, Resource* outResource) const
+	bool ResourceSystem::Load(const char* name, const ResourceType type, Resource* outResource) const
 	{
 		if (m_initialized && type != ResourceType::Custom)
 		{
@@ -137,9 +138,9 @@ namespace C3D
 		return false;
 	}
 
-	bool ResourceSystem::LoadCustom(const string& name, const string& customType, Resource* outResource) const
+	bool ResourceSystem::LoadCustom(const char* name, const char* customType, Resource* outResource) const
 	{
-		if (m_initialized && !customType.empty())
+		if (m_initialized && StringLength(customType) > 0)
 		{
 			// Select a loader
 			const u32 count = m_config.maxLoaderCount;
@@ -179,9 +180,9 @@ namespace C3D
 		return "";
 	}
 
-	bool ResourceSystem::Load(const string& name, ResourceLoader* loader, Resource* outResource)
+	bool ResourceSystem::Load(const char* name, ResourceLoader* loader, Resource* outResource)
 	{
-		if (name.empty() || !outResource) return false;
+		if (StringLength(name) == 0 || !outResource) return false;
 		if (!loader)
 		{
 			outResource->loaderId = INVALID_ID;

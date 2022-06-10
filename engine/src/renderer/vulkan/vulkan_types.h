@@ -23,8 +23,8 @@ namespace C3D
 
 	struct VulkanTextureData
 	{
+		// Internal Vulkan image.
 		VulkanImage image;
-		VkSampler sampler;
 	};
 
 	struct VulkanGeometryData

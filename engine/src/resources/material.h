@@ -35,5 +35,8 @@ namespace C3D
 		TextureMap normalMap;
 		/* @brief The material shininess, determines how bright the specular lighting will be. */
 		float shininess;
+
+		/* @brief Synced to the renderer current frame number when the material has been applied that frame. */
+		u32 renderFrameNumber;
 	};	
 }

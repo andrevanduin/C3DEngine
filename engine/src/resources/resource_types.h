@@ -15,7 +15,7 @@ namespace C3D
 		Binary,
 		Image,
 		Material,
-		StaticMesh,
+		Mesh,
 		Shader,
 		Custom,
 		MaxValue
@@ -25,7 +25,7 @@ namespace C3D
 	{
 		u32 loaderId;
 
-		const char* name;
+		char* name;
 		char* fullPath;
 
 		u64 dataSize;

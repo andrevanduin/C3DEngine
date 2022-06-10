@@ -9,9 +9,13 @@
 #include <iostream>
 #include <string>
 
+#include "core/c3d_string.h"
+
 namespace C3D
 {
 	namespace fs = std::filesystem;
+
+	File::File() : isValid(false), bytesWritten(0), bytesRead(0) {}
 
 	bool File::Exists(const string& path)
 	{
@@ -32,11 +36,17 @@ namespace C3D
 		m_file.open(path, openMode);
 
 		isValid = m_file.is_open();
+		currentPath = path;
+
 		return isValid;
 	}
 
 	bool File::Close()
 	{
+		bytesWritten = 0;
+		bytesRead = 0;
+		currentPath = "";
+
 		if (m_file.is_open())
 		{
 			m_file.close();
@@ -121,5 +131,57 @@ namespace C3D
 		// Go back to the start of the file
 		m_file.seekg(0, std::ios::beg);
 		return true;
+	}
+
+	void FileSystem::DirectoryFromPath(char* dest, const char* path)
+	{
+		const i64 length = static_cast<i64>(strlen(path));
+		for (i64 i = length; i >= 0; i--)
+		{
+			char c = path[i];
+			if (c == '/' || c == '\\')
+			{
+				strncpy(dest, path, i + 1);
+				dest[i + 1] = 0;
+				return;
+			}
+		}
+	}
+
+	void FileSystem::FileNameFromPath(char* dest, const char* path, const bool includeExtension)
+	{
+		const i64 length = static_cast<i64>(strlen(path));
+		if (includeExtension)
+		{
+			for (i64 i = length; i >= 0; i--)
+			{
+				const char c = path[i];
+				if (c == '/' || c == '\\')
+				{
+					strcpy(dest, path + i + 1);
+					return;
+				}
+			}
+		}
+		else
+		{
+			u64 start = 0;
+			u64 end = 0;
+			for (i64 i = length; i >= 0; i--)
+			{
+				char c = path[i];
+				if (end == 0 && c == '.')
+				{
+					end = i;
+				}
+				if (start == 0 && (c == '/' || c == '\\'))
+				{
+					start = i + 1;
+					break;
+				}
+			}
+
+			StringMid(dest, path, start, end - start);
+		}
 	}
 }

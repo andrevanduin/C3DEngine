@@ -116,7 +116,7 @@ namespace C3D
 		/* @brief Instance texture map pointers, which are used during rendering.
 		 * These are set by calls to SetSampler.
 		 */
-		const Texture** instanceTextures;
+		TextureMap** instanceTextureMaps;
 	};
 
 	struct VulkanShaderStage

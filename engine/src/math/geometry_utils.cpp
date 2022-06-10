@@ -1,6 +1,13 @@
 
 #include "geometry_utils.h"
 
+#include "core/memory.h"
+#include "services/services.h"
+#include "math/c3d_math.h"
+
+#include <glm/gtc/epsilon.hpp>
+#include <glm/gtx/hash.hpp>
+
 namespace C3D::GeometryUtils
 {
 	void GenerateNormals(Vertex3D* vertices, const u32 indexCount, const u32* indices)
@@ -23,7 +30,7 @@ namespace C3D::GeometryUtils
 		}
 	}
 
-	void GenerateTangents(Vertex3D* vertices, const u32 indexCount, const u32* indices)
+	void GenerateTangents(Vertex3D* vertices, const u64 indexCount, const u32* indices)
 	{
 		for (u32 i = 0; i < indexCount; i += 3)
 		{
@@ -62,5 +69,119 @@ namespace C3D::GeometryUtils
 			vertices[i1].tangent = t4;
 			vertices[i2].tangent = t4;
 		}
+	}
+
+	bool Vertex3DEqual(const Vertex3D& vert0, const Vertex3D& vert1)
+	{
+		return EpsilonEqual(vert0.position, vert1.position, FLOAT_EPSILON) &&
+			EpsilonEqual(vert0.normal, vert1.normal, FLOAT_EPSILON) &&
+			EpsilonEqual(vert0.texture, vert1.texture, FLOAT_EPSILON) &&
+			EpsilonEqual(vert0.color, vert1.color, FLOAT_EPSILON) &&
+			EpsilonEqual(vert0.tangent, vert1.tangent, FLOAT_EPSILON);
+	}
+
+	/*
+	bool Vertex3DEqual(const Vertex3D& vert0, const Vertex3D& vert1)
+	{
+		return	all(epsilonEqual(vert0.position, vert1.position, FLOAT_EPSILON)) &&
+			all(epsilonEqual(vert0.normal, vert1.normal, FLOAT_EPSILON)) &&
+			all(epsilonEqual(vert0.texture, vert1.texture, FLOAT_EPSILON)) &&
+			all(epsilonEqual(vert0.color, vert1.color, FLOAT_EPSILON)) &&
+			all(epsilonEqual(vert0.tangent, vert1.tangent, FLOAT_EPSILON));
+	}*/
+
+	void ReassignIndex(const DynamicArray<u32>& indices, const u32 from, const u32 to)
+	{
+		for (auto& index : indices)
+		{
+			if (index == from)
+			{
+				index = to;
+			}
+			else if (index > from)
+			{
+				// All indices higher than 'from' need to be decremented by 1
+				index--;
+			}
+		}
+	}
+
+	/*
+	void DeduplicateVertices(GeometryConfig<Vertex3D, u32>& config)
+	{
+		std::unordered_map<Vertex3D, u32> uniqueVertices;
+		const auto oldVertexCount = config.vertices.Size();
+
+		uniqueVertices.reserve(oldVertexCount);
+		auto* newVertices = Memory.Allocate<Vertex3D>(oldVertexCount, MemoryType::Array);
+		auto* newIndices = Memory.Allocate<u32>(oldVertexCount, MemoryType::Array);
+
+		for (u32 i = 0; i < config.vertices.Size(); i++)
+		{
+			auto& vertex = config.vertices[i];
+			const auto index = config.indices[i];
+
+			if (uniqueVertices.find(vertex) == uniqueVertices.end())
+			{
+				newVertices[uniqueVertices.size()] = vertex;
+				uniqueVertices[vertex] = index;
+				newIndices[i] = index;
+			}
+			else
+			{
+				newIndices[i] = uniqueVertices[vertex];
+			}
+		}
+
+		config.vertices.Copy(newVertices, uniqueVertices.size());
+		config.indices.Copy(newIndices, config.indices.Size());
+
+		Memory.Free(newVertices, oldVertexCount * sizeof(Vertex3D), MemoryType::Array);
+		Memory.Free(newIndices, oldVertexCount * sizeof(u32), MemoryType::Array);
+
+		u64 removedCount = oldVertexCount - uniqueVertices.size();
+		Logger::Debug("GeometryUtils::DeduplicateVertices() - removed {} vertices, Originally: {} | Now: {}", removedCount, oldVertexCount, uniqueVertices.size());
+	}*/
+
+	void DeduplicateVertices(GeometryConfig<Vertex3D, u32>& config)
+	{
+		// Store the unique vertex count
+		u64 uniqueVertexCount = 0;
+		// Store the current vertex count
+		const u64 oldVertexCount = config.vertices.Size();
+		// Allocate enough memory for the worst case where every vertex is unique
+		auto* uniqueVertices = Memory.Allocate<Vertex3D>(oldVertexCount, MemoryType::Array);
+
+		u32 foundCount = 0;
+		for (u32 v = 0; v < oldVertexCount; v++)
+		{
+			bool found = false;
+			for (u32 u = 0; u < uniqueVertexCount; u++)
+			{
+				if (Vertex3DEqual(config.vertices[v], uniqueVertices[u]))
+				{
+					// We have found a match so we simply use the indices and we do not copy over the vertex
+					ReassignIndex(config.indices, v - foundCount, u);
+					found = true;
+					foundCount++;
+					break;
+				}
+			}
+
+			// We have not found a match so we copy the vertex over
+			if (!found)
+			{
+				uniqueVertices[uniqueVertexCount] = config.vertices[v];
+				uniqueVertexCount++;
+			}
+		}
+
+		// Copy over the unique vertices (resizing the dynamic array to fit the smaller amount)
+		config.vertices.Copy(uniqueVertices, uniqueVertexCount);
+		// Destroy our temporary array
+		Memory.Free(uniqueVertices, sizeof(Vertex3D) * oldVertexCount, MemoryType::Array);
+
+		u64 removedCount = oldVertexCount - uniqueVertexCount;
+		Logger::Debug("GeometryUtils::DeduplicateVertices() - removed {} vertices, Originally: {} | Now: {}", removedCount, oldVertexCount, uniqueVertexCount);
 	}
 }

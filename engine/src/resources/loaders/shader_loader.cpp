@@ -13,9 +13,9 @@ namespace C3D
 		: ResourceLoader("SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
 	{}
 
-	bool ShaderLoader::Load(const string& name, Resource* outResource)
+	bool ShaderLoader::Load(const char* name, Resource* outResource)
 	{
-		if (name.empty() || !outResource)
+		if (StringLength(name) == 0 || !outResource)
 		{
 			m_logger.Error("Load() - Provided name was empty or no outResource pointer provided");
 			return false;
@@ -24,7 +24,7 @@ namespace C3D
 
 		char fullPath[512];
 		const auto formatStr = "%s/%s/%s.%s";
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name.data(), "shadercfg");
+		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, "shadercfg");
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead))
@@ -41,8 +41,8 @@ namespace C3D
 		resourceData->renderPassName = nullptr;
 		resourceData->name = nullptr;
 
-		resourceData->attributes.Create(4);
-		resourceData->uniforms.Create(8);
+		resourceData->attributes.Reserve(4);
+		resourceData->uniforms.Reserve(8);
 
 		string line;
 		u32 lineNumber = 1;
@@ -76,39 +76,39 @@ namespace C3D
 			auto value = line.substr(equalIndex + 1);
 			Trim(value);
 
-			if (IEquals(varName, "version"))
+			if (IEquals(varName.data(), "version"))
 			{
 				// TODO: version
 			}
-			else if (IEquals(varName, "name"))
+			else if (IEquals(varName.data(), "name"))
 			{
 				resourceData->name = StringDuplicate(value.data());
 			}
-			else if (IEquals(varName, "renderPass"))
+			else if (IEquals(varName.data(), "renderPass"))
 			{
 				resourceData->renderPassName = StringDuplicate(value.data());
 			}
-			else if (IEquals(varName, "stages"))
+			else if (IEquals(varName.data(), "stages"))
 			{
 				ParseStages(resourceData, value);
 			}
-			else if (IEquals(varName, "stageFiles"))
+			else if (IEquals(varName.data(), "stageFiles"))
 			{
 				ParseStageFiles(resourceData, value);
 			}
-			else if (IEquals(varName, "useInstances"))
+			else if (IEquals(varName.data(), "useInstances"))
 			{
 				StringToBool(value.data(), &resourceData->useInstances);
 ;			}
-			else if (IEquals(varName, "useLocals"))
+			else if (IEquals(varName.data(), "useLocals"))
 			{
 				StringToBool(value.data(), &resourceData->useLocals);
 			}
-			else if (IEquals(varName, "attribute"))
+			else if (IEquals(varName.data(), "attribute"))
 			{
 				ParseAttribute(resourceData, value);
 			}
-			else if (IEquals(varName, "uniform"))
+			else if (IEquals(varName.data(), "uniform"))
 			{
 				ParseUniform(resourceData, value);
 			}

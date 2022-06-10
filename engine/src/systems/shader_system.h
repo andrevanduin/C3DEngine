@@ -40,7 +40,7 @@ namespace C3D
 		bool SetSamplerByIndex(u16 index, const Texture* t) const;
 
 		[[nodiscard]] bool ApplyGlobal() const;
-		[[nodiscard]] bool ApplyInstance() const;
+		[[nodiscard]] bool ApplyInstance(bool needsUpdate) const;
 
 		[[nodiscard]] bool BindInstance(u32 instanceId) const;
 

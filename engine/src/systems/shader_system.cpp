@@ -68,11 +68,12 @@ namespace C3D
 		shader->attributeStride = 0;
 
 		// Setup our dynamic arrays
-		shader->attributes.Create(4);
-		shader->uniforms.Create(8);
+		shader->globalTextureMaps.Reserve(m_config.maxGlobalTextures + 1);
+		shader->attributes.Reserve(4);
+		shader->uniforms.Reserve(8);
 
 		// Setup HashTable for uniform lookups
-		shader->uniformLookup.Create(1024); // NOTE: Waaaay more than we will ever need but it prevents collisions
+		shader->uniformLookup.Create(1024); // NOTE: Way more than we will ever need but it prevents collisions in our hashtable
 		shader->uniformLookup.Fill(INVALID_ID_U16);
 
 		// A running total of the size of the global uniform buffer object
@@ -81,7 +82,7 @@ namespace C3D
 		shader->uboSize = 0;
 
 		// Note: this is hard-coded because the vulkan spec only guarantees a minimum 128bytes stride
-		// The drive might allocate more but this is not guaranteed on all video cards
+		// The drivers might allocate more but this is not guaranteed on all video cards
 		shader->pushConstantStride = 128; 
 		shader->pushConstantSize = 0;
 
@@ -198,7 +199,7 @@ namespace C3D
 		}
 
 		const u32 uniformIndex = shader->uniformLookup.Get(name);
-		if (uniformIndex == INVALID_ID)
+		if (uniformIndex == INVALID_ID_U16)
 		{
 			m_logger.Error("GetUniformIndex() - Shader '{}' does not a have a registered uniform named '{}'", shader->name, name);
 			return INVALID_ID_U16;
@@ -257,9 +258,9 @@ namespace C3D
 		return Renderer.ShaderApplyGlobals(&m_shaders[m_currentShaderId]);
 	}
 
-	bool ShaderSystem::ApplyInstance() const
+	bool ShaderSystem::ApplyInstance(const bool needsUpdate) const
 	{
-		return Renderer.ShaderApplyInstance(&m_shaders[m_currentShaderId]);
+		return Renderer.ShaderApplyInstance(&m_shaders[m_currentShaderId], needsUpdate);
 	}
 
 	bool ShaderSystem::BindInstance(const u32 instanceId) const
@@ -348,14 +349,30 @@ namespace C3D
 		if (config->scope == ShaderScope::Global)
 		{
 			// If Global, push into the global list
-			const u8 globalTextureCount = static_cast<u8>(shader->globalTextures.size());
+			const u8 globalTextureCount = static_cast<u8>(shader->globalTextureMaps.Size());
 			if (globalTextureCount + 1 > m_config.maxGlobalTextures)
 			{
 				m_logger.Error("AddSampler() - Global texture count {} exceeds the max of {}.", globalTextureCount, m_config.maxGlobalTextures);
 				return false;
 			}
 			location = globalTextureCount;
-			shader->globalTextures.push_back(Textures.GetDefault());
+
+			// NOTE: Creating a default texture map to be used here. Can always be updated later.
+			TextureMap defaultMap(TextureUse::Unknown, TextureFilter::ModeLinear, TextureFilter::ModeLinear, TextureRepeat::Repeat);
+
+			if (!Renderer.AcquireTextureMapResources(&defaultMap))
+			{
+				m_logger.Error("AddSampler() - Failed to acquire global texture map resources.");
+				return false;
+			}
+
+			// Allocate a pointer assign the texture and push into global texture maps.
+			// NOTE: This allocation is only done for global texture maps.
+			auto* map = Memory.Allocate<TextureMap>(MemoryType::RenderSystem);
+			*map = defaultMap;
+			map->texture = Textures.GetDefault();
+
+			shader->globalTextureMaps.PushBack(map);
 		}
 		else
 		{
@@ -457,6 +474,13 @@ namespace C3D
 
 		// Set it to be unusable
 		shader->state = ShaderState::NotCreated;
+
+		// Free the global texture maps
+		for (const auto textureMap : shader->globalTextureMaps)
+		{
+			Memory.Free(textureMap, sizeof(TextureMap), MemoryType::RenderSystem);
+		}
+		shader->globalTextureMaps.Destroy();
 
 		// Free the name
 		if (shader->name)

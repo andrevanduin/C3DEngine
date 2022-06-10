@@ -17,15 +17,15 @@ namespace C3D
 		: ResourceLoader("MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
 	{}
 
-	bool MaterialLoader::Load(const string& name, Resource* outResource)
+	bool MaterialLoader::Load(const char* name, Resource* outResource)
 	{
-		if (!outResource) return false;
+		if (StringLength(name) == 0 || !outResource) return false;
 
 		char fullPath[512];
 		const auto formatStr = "%s/%s/%s.%s";
 
 		// TODO: try different extensions
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name.data(), "mt");
+		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, "mt");
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead))
@@ -37,12 +37,11 @@ namespace C3D
 		outResource->fullPath = StringDuplicate(fullPath);
 
 		auto* resourceData = Memory.Allocate<MaterialConfig>(MemoryType::MaterialInstance);
-		resourceData->shaderName = StringDuplicate(BUILTIN_SHADER_NAME_MATERIAL);
 		resourceData->autoRelease = true;
 		resourceData->diffuseColor = vec4(1); // Default white
 		resourceData->diffuseMapName[0] = 0;
 
-		StringNCopy(resourceData->name, name.data(), MATERIAL_NAME_MAX_LENGTH);
+		StringNCopy(resourceData->name, name, MATERIAL_NAME_MAX_LENGTH);
 
 		string line;
 		// Prepare for strings of up to 512 characters so we don't needlessly resize
@@ -77,38 +76,38 @@ namespace C3D
 			auto value = line.substr(equalIndex + 1);
 			Trim(value);
 
-			if (IEquals(varName, "version"))
+			if (IEquals(varName.data(), "version"))
 			{
 				// TODO: version
 			}
-			else if (IEquals(varName, "name"))
+			else if (IEquals(varName.data(), "name"))
 			{
 				StringNCopy(resourceData->name, value.data(), MATERIAL_NAME_MAX_LENGTH);
 			}
-			else if (IEquals(varName, "diffuseMapName"))
+			else if (IEquals(varName.data(), "diffuseMapName"))
 			{
 				StringNCopy(resourceData->diffuseMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
 			}
-			else if (IEquals(varName, "specularMapName"))
+			else if (IEquals(varName.data(), "specularMapName"))
 			{
 				StringNCopy(resourceData->specularMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
 			}
-			else if (IEquals(varName, "normalMapName"))
+			else if (IEquals(varName.data(), "normalMapName"))
 			{
 				StringNCopy(resourceData->normalMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
 			}
-			else if (IEquals(varName, "diffuseColor"))
+			else if (IEquals(varName.data(), "diffuseColor"))
 			{
 				if (!StringToVec4(value.data(), &resourceData->diffuseColor))
 				{
 					m_logger.Warn("Error parsing diffuseColor in file '{}'. Using default of white instead", fullPath);
 				}
 			}
-			else if (IEquals(varName, "shader"))
+			else if (IEquals(varName.data(), "shader"))
 			{
 				resourceData->shaderName = StringDuplicate(value.data());
 			}
-			else if (IEquals(varName, "shininess"))
+			else if (IEquals(varName.data(), "shininess"))
 			{
 				if (!StringToF32(value.data(), &resourceData->shininess))
 				{
@@ -126,8 +125,23 @@ namespace C3D
 
 		outResource->data = resourceData;
 		outResource->dataSize = sizeof(MaterialConfig);
-		outResource->name = name.data();
+		outResource->name = StringDuplicate(name);
 
 		return true;
+	}
+
+	void MaterialLoader::Unload(Resource* resource)
+	{
+		if (resource->data)
+		{
+			const auto resourceData = static_cast<MaterialConfig*>(resource->data);
+			if (resourceData->shaderName)
+			{
+				const auto count = StringLength(resourceData->shaderName) + 1;
+				Memory.Free(resourceData->shaderName, count, MemoryType::String);
+			}
+		}
+
+		ResourceLoader::Unload(resource);
 	}
 }

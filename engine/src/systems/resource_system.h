@@ -25,16 +25,16 @@ namespace C3D
 
 		C3D_API bool RegisterLoader(ResourceLoader* newLoader) const;
 
-		C3D_API bool Load(const string& name, ResourceType type, Resource* outResource) const;
+		C3D_API bool Load(const char* name, ResourceType type, Resource* outResource) const;
 
-		C3D_API bool LoadCustom(const string& name, const string& customType, Resource* outResource) const;
+		C3D_API bool LoadCustom(const char* name, const char* customType, Resource* outResource) const;
 
 		C3D_API void Unload(Resource* resource) const;
 
 		C3D_API const char* GetBasePath() const;
 
 	private:
-		static bool Load(const string& name, ResourceLoader* loader, Resource* outResource);
+		static bool Load(const char* name, ResourceLoader* loader, Resource* outResource);
 
 		LoggerInstance m_logger;
 
