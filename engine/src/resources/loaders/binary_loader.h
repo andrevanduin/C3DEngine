@@ -9,6 +9,6 @@ namespace C3D
 	public:
 		BinaryLoader();
 
-		bool Load(const string& name, Resource* outResource) override;
+		bool Load(const char* name, Resource* outResource) override;
 	};
 }

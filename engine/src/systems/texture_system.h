@@ -5,11 +5,13 @@
 
 #include <unordered_map>
 
+#include "containers/hash_table.h"
 #include "core/logger.h"
 
 namespace C3D
 {
 	constexpr auto DEFAULT_TEXTURE_NAME = "default";
+	constexpr auto DEFAULT_DIFFUSE_TEXTURE_NAME = "defaultDiffuse";
 	constexpr auto DEFAULT_SPECULAR_TEXTURE_NAME = "defaultSpecular";
 	constexpr auto DEFAULT_NORMAL_TEXTURE_NAME = "defaultNormal";
 
@@ -20,6 +22,8 @@ namespace C3D
 
 	struct TextureReference
 	{
+		TextureReference() : referenceCount(0), handle(INVALID_ID), autoRelease(false) {}
+
 		u64 referenceCount;
 		u32 handle;
 		bool autoRelease;
@@ -33,10 +37,11 @@ namespace C3D
 		bool Init(const TextureSystemConfig& config);
 		void Shutdown();
 
-		Texture* Acquire(const string& name, bool autoRelease);
-		void Release(const string& name);
+		Texture* Acquire(const char* name, bool autoRelease);
+		void Release(const char* name);
 
 		Texture* GetDefault();
+		Texture* GetDefaultDiffuse();
 		Texture* GetDefaultSpecular();
 		Texture* GetDefaultNormal();
 
@@ -44,7 +49,7 @@ namespace C3D
 		bool CreateDefaultTextures();
 		void DestroyDefaultTextures();
 
-		bool LoadTexture(const string& name, Texture* texture) const;
+		bool LoadTexture(const char* name, Texture* texture) const;
 		static void DestroyTexture(Texture* texture);
 
 		LoggerInstance m_logger;
@@ -53,10 +58,11 @@ namespace C3D
 		TextureSystemConfig m_config;
 
 		Texture m_defaultTexture;
+		Texture m_defaultDiffuseTexture;
 		Texture m_defaultSpecularTexture;
 		Texture m_defaultNormalTexture;
 
 		Texture* m_registeredTextures;
-		std::unordered_map<string, TextureReference> m_registeredTextureTable;
+		HashTable<TextureReference> m_registeredTextureTable;
 	};
 }

@@ -4,14 +4,15 @@
 #include "core/logger.h"
 #include "core/memory.h"
 #include "core/c3d_string.h"
+#include "platform/filesystem.h"
 
 #include "resources/resource_types.h"
 
 #include "services/services.h"
+#include "systems/resource_system.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include "systems/resource_system.h"
 
 namespace C3D
 {
@@ -19,18 +20,37 @@ namespace C3D
 		: ResourceLoader("IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
 	{}
 
-	bool ImageLoader::Load(const string& name, Resource* outResource)
+	bool ImageLoader::Load(const char* name, Resource* outResource)
 	{
-		if (name.empty() || !outResource) return false;
+		if (StringLength(name) == 0 || !outResource) return false;
 
 		constexpr i32 requiredChannelCount = 4;
 		stbi_set_flip_vertically_on_load(true);
 
 		char fullPath[512];
-		const auto formatStr = "%s/%s/%s.%s";
 
-		// TODO: try different extensions
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name.data(), "png");
+		// Try different extensions
+		const char* extensions[IMAGE_LOADER_EXTENSION_COUNT] = { "tga", "png", "jpg", "bmp" };
+		bool found = false;
+
+		for (const auto extension : extensions)
+		{
+			const auto formatStr = "%s/%s/%s.%s";
+			StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, extension);
+			// Check if the requested file exists with the current extension
+			if (File::Exists(fullPath))
+			{
+				// It exists so we break out of the loop
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			m_logger.Error("Load() - Failed to find file '{}' with any supported extension", name);
+			return false;
+		}
 
 		i32 width;
 		i32 height;
@@ -40,6 +60,7 @@ namespace C3D
 		// TODO: extend this to make it configurable
 		u8* data = stbi_load(fullPath, &width, &height, &channelCount, requiredChannelCount);
 
+		/*
 		if (auto failReason = stbi_failure_reason())
 		{
 			m_logger.Error("Failed to load file '{}': {}", fullPath, failReason);
@@ -50,7 +71,7 @@ namespace C3D
 			if (data) stbi_image_free(data);
 
 			return false;
-		}
+		}*/
 
 		if (!data)
 		{
@@ -68,8 +89,6 @@ namespace C3D
 
 		outResource->data = resourceData;
 		outResource->dataSize = sizeof(ImageResourceData);
-		outResource->name = name.data();
-
 		return true;
 	}
 

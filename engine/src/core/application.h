@@ -2,8 +2,10 @@
 #pragma once
 #include "defines.h"
 #include "logger.h"
+#include "containers/dynamic_array.h"
 
 #include "resources/geometry.h"
+#include "resources/mesh.h"
 
 int main(int argc, char** argv);
 
@@ -75,7 +77,9 @@ namespace C3D
 		SDL_Window* m_window{ nullptr };
 
 		// TEMP
-		Geometry* m_testGeometry;
+		Mesh m_meshes[10];
+		u32 m_meshCount;
+
 		Geometry* m_testUiGeometry;
 		// TEMP END
 

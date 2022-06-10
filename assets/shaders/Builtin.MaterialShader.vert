@@ -52,7 +52,7 @@ void main()
 	// Calculate mat3 version of our model
 	mat3 m3Model = mat3(uPushConstants.model);
 	// Convert local normal to "world space"
-	outDto.normal = m3Model * inNormal;
+	outDto.normal = normalize(m3Model * inNormal);
 	outDto.tangent = vec4(normalize(m3Model * inTangent.xyz), inTangent.w);
 
 	outMode = globalUbo.mode;

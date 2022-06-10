@@ -337,7 +337,6 @@ namespace C3D
 		m_context.swapChain.Present(&m_context, m_context.device.graphicsQueue,
 			m_context.device.presentQueue, m_context.queueCompleteSemaphores[m_context.currentFrame], m_context.imageIndex);
 
-		state.frameNumber++;
 		return true;
 	}
 
@@ -458,31 +457,6 @@ namespace C3D
 
 		staging.Destroy(&m_context);
 
-		// TODO: These filters should be configurable
-		VkSamplerCreateInfo samplerCreateInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-		samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-		samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-		samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.anisotropyEnable = VK_TRUE;
-		samplerCreateInfo.maxAnisotropy = 16;
-		samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
-		samplerCreateInfo.compareEnable = VK_FALSE;
-		samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerCreateInfo.mipLodBias = 0.0f;
-		samplerCreateInfo.minLod = 0.0f;
-		samplerCreateInfo.maxLod = 0.0f;
-
-		const VkResult result = vkCreateSampler(m_context.device.logicalDevice, &samplerCreateInfo, m_context.allocator, &data->sampler);
-		if (!VulkanUtils::IsSuccess(result))
-		{
-			m_logger.Error("Error creating texture sampler: {}", VulkanUtils::ResultString(result, true));
-			return;
-		}
-
 		texture->generation++;
 	}
 
@@ -495,18 +469,14 @@ namespace C3D
 		{
 			data->image.Destroy(&m_context);
 			Memory.Zero(&data->image, sizeof(VulkanImage));
-
-			vkDestroySampler(m_context.device.logicalDevice, data->sampler, m_context.allocator);
-			data->sampler = nullptr;
-
 			Memory.Free(texture->internalData, sizeof(VulkanTextureData), MemoryType::Texture);
 		}
 		
 		Memory.Zero(texture, sizeof(Texture));
 	}
 
-	bool RendererVulkan::CreateGeometry(Geometry* geometry, u32 vertexSize, const u32 vertexCount, const void* vertices,
-		u32 indexSize, const u32 indexCount, const void* indices)
+	bool RendererVulkan::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
+	                                    const u32 indexSize, const u64 indexCount, const void* indices)
 	{
 		if (!vertexCount || !vertices)
 		{
@@ -554,10 +524,10 @@ namespace C3D
 		VkQueue queue = m_context.device.graphicsQueue;
 
 		// Vertex data
-		internalData->vertexCount = vertexCount;
+		internalData->vertexCount = static_cast<u32>(vertexCount);
 		internalData->vertexElementSize = sizeof(Vertex3D);
 
-		u32 totalSize = vertexCount * vertexSize;
+		u64 totalSize = vertexCount * vertexSize;
 		if (!UploadDataRange(pool, nullptr, queue, &m_objectVertexBuffer, &internalData->vertexBufferOffset, totalSize, vertices))
 		{
 			m_logger.Error("CreateGeometry() failed to upload to the vertex buffer");
@@ -567,7 +537,7 @@ namespace C3D
 		// Index data, if applicable
 		if (indexCount && indices)
 		{
-			internalData->indexCount = indexCount;
+			internalData->indexCount = static_cast<u32>(indexCount);
 			internalData->indexElementSize = sizeof(u32);
 
 			totalSize = indexCount * indexSize;
@@ -1037,7 +1007,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::ShaderApplyInstance(Shader* shader)
+	bool RendererVulkan::ShaderApplyInstance(Shader* shader, bool needsUpdate)
 	{
 		if (!shader->useInstances)
 		{
@@ -1053,79 +1023,117 @@ namespace C3D
 		VulkanShaderInstanceState* objectState = &internal->instanceStates[shader->boundInstanceId];
 		VkDescriptorSet objectDescriptorSet = objectState->descriptorSetState.descriptorSets[imageIndex];
 
-		// TODO: if needs update
-		VkWriteDescriptorSet descriptorWrites[2]; // Always a max of 2 descriptor sets
-		Memory.Zero(descriptorWrites, sizeof(VkWriteDescriptorSet) * 2);
-		u32 descriptorCount = 0;
-		u32 descriptorIndex = 0;
-
-		// Descriptor 0 - Uniform buffer
-		// Only do this if the descriptor has not yet been updated
-		u8* instanceUboGeneration = &objectState->descriptorSetState.descriptorStates[descriptorIndex].generations[imageIndex];
-		if (*instanceUboGeneration == INVALID_ID_U8)
+		// We only update if it is needed
+		if (needsUpdate)
 		{
-			VkDescriptorBufferInfo bufferInfo;
-			bufferInfo.buffer = internal->uniformBuffer.handle;
-			bufferInfo.offset = objectState->offset;
-			bufferInfo.range = shader->uboStride;
+			VkWriteDescriptorSet descriptorWrites[2]; // Always a max of 2 descriptor sets
+			Memory.Zero(descriptorWrites, sizeof(VkWriteDescriptorSet) * 2);
+			u32 descriptorCount = 0;
+			u32 descriptorIndex = 0;
 
-			VkWriteDescriptorSet uboDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-			uboDescriptor.dstSet = objectDescriptorSet;
-			uboDescriptor.dstBinding = descriptorIndex;
-			uboDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			uboDescriptor.descriptorCount = 1;
-			uboDescriptor.pBufferInfo = &bufferInfo;
-
-			descriptorWrites[descriptorCount] = uboDescriptor;
-			descriptorCount++;
-
-			*instanceUboGeneration = 1; // material->generation; // TODO: some generation from... somewhere
-		}
-		descriptorIndex++;
-
-		// Samplers will always be in the binding. If the binding count is less than 2, there are no samplers
-		if (internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindingCount > 1)
-		{
-			// Iterate samplers.
-			u32 totalSamplerCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
-			u32 updateSamplerCount = 0;
-			VkDescriptorImageInfo imageInfos[VULKAN_SHADER_MAX_GLOBAL_TEXTURES];
-			for (u32 i = 0; i < totalSamplerCount; i++)
+			// Descriptor 0 - Uniform buffer
+			// Only do this if the descriptor has not yet been updated
+			u8* instanceUboGeneration = &objectState->descriptorSetState.descriptorStates[descriptorIndex].generations[imageIndex];
+			if (*instanceUboGeneration == INVALID_ID_U8)
 			{
-				// TODO: only update in the list if actually needing an update
-				const Texture* t = internal->instanceStates[shader->boundInstanceId].instanceTextures[i];
-				const auto internalData = static_cast<VulkanTextureData*>(t->internalData);
-				imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				imageInfos[i].imageView = internalData->image.view;
-				imageInfos[i].sampler = internalData->sampler;
+				VkDescriptorBufferInfo bufferInfo;
+				bufferInfo.buffer = internal->uniformBuffer.handle;
+				bufferInfo.offset = objectState->offset;
+				bufferInfo.range = shader->uboStride;
 
-				// TODO: change up descriptor state to handle this properly.
-				// Sync frame generation if not using a default texture.
+				VkWriteDescriptorSet uboDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+				uboDescriptor.dstSet = objectDescriptorSet;
+				uboDescriptor.dstBinding = descriptorIndex;
+				uboDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				uboDescriptor.descriptorCount = 1;
+				uboDescriptor.pBufferInfo = &bufferInfo;
 
-				updateSamplerCount++;
+				descriptorWrites[descriptorCount] = uboDescriptor;
+				descriptorCount++;
+
+				*instanceUboGeneration = 1; // material->generation; // TODO: some generation from... somewhere
+			}
+			descriptorIndex++;
+
+			// Samplers will always be in the binding. If the binding count is less than 2, there are no samplers
+			if (internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindingCount > 1)
+			{
+				// Iterate samplers.
+				const u32 totalSamplerCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
+				u32 updateSamplerCount = 0;
+				VkDescriptorImageInfo imageInfos[VULKAN_SHADER_MAX_GLOBAL_TEXTURES];
+				for (u32 i = 0; i < totalSamplerCount; i++)
+				{
+					// TODO: only update in the list if actually needing an update
+					const TextureMap* map = internal->instanceStates[shader->boundInstanceId].instanceTextureMaps[i];
+					const Texture* t = map->texture;
+
+					const auto internalData = static_cast<VulkanTextureData*>(t->internalData);
+					imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					imageInfos[i].imageView = internalData->image.view;
+					imageInfos[i].sampler = static_cast<VkSampler>(map->internalData);
+
+					// TODO: change up descriptor state to handle this properly.
+					// Sync frame generation if not using a default texture.
+
+					updateSamplerCount++;
+				}
+
+				VkWriteDescriptorSet samplerDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+				samplerDescriptor.dstSet = objectDescriptorSet;
+				samplerDescriptor.dstBinding = descriptorIndex;
+				samplerDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				samplerDescriptor.descriptorCount = updateSamplerCount;
+				samplerDescriptor.pImageInfo = imageInfos;
+
+				descriptorWrites[descriptorCount] = samplerDescriptor;
+				descriptorCount++;
 			}
 
-			VkWriteDescriptorSet samplerDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-			samplerDescriptor.dstSet = objectDescriptorSet;
-			samplerDescriptor.dstBinding = descriptorIndex;
-			samplerDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			samplerDescriptor.descriptorCount = updateSamplerCount;
-			samplerDescriptor.pImageInfo = imageInfos;
-
-			descriptorWrites[descriptorCount] = samplerDescriptor;
-			descriptorCount++;
+			if (descriptorCount > 0)
+			{
+				vkUpdateDescriptorSets(m_context.device.logicalDevice, descriptorCount, descriptorWrites, 0, nullptr);
+			}
 		}
 
-		if (descriptorCount > 0)
-		{
-			vkUpdateDescriptorSets(m_context.device.logicalDevice, descriptorCount, descriptorWrites, 0, nullptr);
-		}
-
+		// We always bind for every instance however
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internal->pipeline.layout, 1, 1, &objectDescriptorSet, 0, nullptr);
 		return true;
 	}
 
-	bool RendererVulkan::AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId)
+	VkSamplerAddressMode RendererVulkan::ConvertRepeatType(const char* axis, const TextureRepeat repeat) const
+	{
+		switch (repeat)
+		{
+			case TextureRepeat::Repeat:
+				return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			case TextureRepeat::MirroredRepeat:
+				return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+			case TextureRepeat::ClampToEdge:
+				return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			case TextureRepeat::ClampToBorder:
+				return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			default:
+				m_logger.Warn("ConvertRepeatType(axis = {}) - Type '{}' is not supported. Defaulting to repeat.", axis, ToUnderlying(repeat));
+				return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		}
+	}
+
+	VkFilter RendererVulkan::ConvertFilterType(const char* op, const TextureFilter filter) const
+	{
+		switch (filter)
+		{
+			case TextureFilter::ModeNearest:
+				return VK_FILTER_NEAREST;
+			case TextureFilter::ModeLinear:
+				return VK_FILTER_LINEAR;
+			default:
+				m_logger.Warn("ConvertRepeatType(op = {}) - Filter '{}' is not supported. Defaulting to linear.", op, ToUnderlying(filter));
+				return VK_FILTER_LINEAR;
+		}
+	}
+
+	bool RendererVulkan::AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId)
 	{
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
 		// TODO: dynamic
@@ -1149,12 +1157,14 @@ namespace C3D
 		VulkanShaderInstanceState* instanceState = &internal->instanceStates[*outInstanceId];
 		const u32 instanceTextureCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindings[BINDING_INDEX_SAMPLER].descriptorCount;
 		// Wipe out the memory for the entire array, even if it isn't all used.
-		instanceState->instanceTextures = Memory.Allocate<const Texture*>(shader->instanceTextureCount, MemoryType::Array);
-		const Texture* defaultTexture = Textures.GetDefault();
+		instanceState->instanceTextureMaps = Memory.Allocate<TextureMap*>(shader->instanceTextureCount, MemoryType::Array);
+		Texture* defaultTexture = Textures.GetDefault();
 		// Set all the texture pointers to default until assigned
 		for (u32 i = 0; i < instanceTextureCount; i++)
 		{
-			instanceState->instanceTextures[i] = defaultTexture;
+			instanceState->instanceTextureMaps[i] = maps[i];
+			// Set the texture to the default texture if it does not exist
+			if (!instanceState->instanceTextureMaps[i]->texture) instanceState->instanceTextureMaps[i]->texture = defaultTexture;
 		}
 
 		// Allocate some space in the UBO - by the stride, not the size
@@ -1200,7 +1210,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::ReleaseShaderInstanceResources(Shader* shader, u32 instanceId)
+	bool RendererVulkan::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId)
 	{
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
 		VulkanShaderInstanceState* instanceState = &internal->instanceStates[instanceId];
@@ -1221,10 +1231,10 @@ namespace C3D
 		Memory.Zero(instanceState->descriptorSetState.descriptorStates, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
 
 		// Free the memory for the instance texture pointer array
-		if (instanceState->instanceTextures)
+		if (instanceState->instanceTextureMaps)
 		{
-			Memory.Free(instanceState->instanceTextures, sizeof(Texture*) * shader->instanceTextureCount, MemoryType::Array);
-			instanceState->instanceTextures = nullptr;
+			Memory.Free(instanceState->instanceTextureMaps, sizeof(TextureMap*) * shader->instanceTextureCount, MemoryType::Array);
+			instanceState->instanceTextureMaps = nullptr;
 		}
 
 		internal->uniformBuffer.Free(shader->uboStride, instanceState->offset);
@@ -1234,6 +1244,48 @@ namespace C3D
 		return true;
 	}
 
+	bool RendererVulkan::AcquireTextureMapResources(TextureMap* map)
+	{
+		VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+
+		samplerInfo.minFilter = ConvertFilterType("min", map->minifyFilter);
+		samplerInfo.magFilter = ConvertFilterType("mag", map->magnifyFilter);
+
+		samplerInfo.addressModeU = ConvertRepeatType("U", map->repeatU);
+		samplerInfo.addressModeV = ConvertRepeatType("V", map->repeatV);
+		samplerInfo.addressModeW = ConvertRepeatType("W", map->repeatW);
+
+		// TODO: Configurable
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = 16;
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		const VkResult result = vkCreateSampler(m_context.device.logicalDevice, &samplerInfo, m_context.allocator, reinterpret_cast<VkSampler*>(&map->internalData));
+		if (!VulkanUtils::IsSuccess(result))
+		{
+			m_logger.Error("AcquireTextureMapResources() - Error creating texture sampler: '{}'", VulkanUtils::ResultString(result));
+			return false;
+		}
+
+		return true;
+	}
+
+	void RendererVulkan::ReleaseTextureMapResources(TextureMap* map)
+	{
+		if (map)
+		{
+			vkDestroySampler(m_context.device.logicalDevice, static_cast<VkSampler>(map->internalData), m_context.allocator);
+			map->internalData = nullptr;
+		}
+	}
+
 	bool RendererVulkan::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value)
 	{
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
@@ -1241,11 +1293,11 @@ namespace C3D
 		{
 			if (uniform->scope == ShaderScope::Global)
 			{
-				shader->globalTextures[uniform->location] = static_cast<const Texture*>(value);
+				shader->globalTextureMaps[uniform->location] = (TextureMap*)value;
 			}
 			else
 			{
-				internal->instanceStates[shader->boundInstanceId].instanceTextures[uniform->location] = static_cast<const Texture*>(value);
+				internal->instanceStates[shader->boundInstanceId].instanceTextureMaps[uniform->location] = (TextureMap*)value;
 			}
 		}
 		else

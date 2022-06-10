@@ -81,11 +81,6 @@ namespace C3D
 			m_logger.Warn("Allocate called using MemoryType::UNKNOWN");
 		}
 
-		if (type == MemoryType::String)
-		{
-			assert(size < 1000);
-		}
-
 		m_stats.totalAllocated += size;
 		m_stats.allocCount++;
 

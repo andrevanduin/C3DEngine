@@ -55,6 +55,31 @@ namespace C3D
 
 	C3D_API f32 RandomF();
 	C3D_API f32 RandomInRangeF(f32 min, f32 max);
+
+	C3D_API C3D_INLINE bool EpsilonEqual(const vec2& a, const vec2& b, const f32 tolerance)
+	{
+		if (Abs(a.x - b.x) > tolerance) return false;
+		if (Abs(a.y - b.y) > tolerance) return false;
+
+		return true;
+	}
+	C3D_API C3D_INLINE bool EpsilonEqual(const vec3& a, const vec3& b, const f32 tolerance)
+	{
+		if (Abs(a.x - b.x) > tolerance) return false;
+		if (Abs(a.y - b.y) > tolerance) return false;
+		if (Abs(a.z - b.z) > tolerance) return false;
+
+		return true;
+	}
+	C3D_API C3D_INLINE bool EpsilonEqual(const vec4& a, const vec4& b, const f32 tolerance)
+	{
+		if (Abs(a.x - b.x) > tolerance) return false;
+		if (Abs(a.y - b.y) > tolerance) return false;
+		if (Abs(a.z - b.z) > tolerance) return false;
+		if (Abs(a.w - b.w) > tolerance) return false;
+
+		return true;
+	}
 }
 
 

@@ -19,7 +19,7 @@ namespace C3D
 
 		virtual ~ResourceLoader() = default;
 
-		virtual bool Load(const string& name, Resource* outResource) = 0;
+		virtual bool Load(const char* name, Resource* outResource) = 0;
 
 		virtual void Unload(Resource* resource);
 

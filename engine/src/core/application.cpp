@@ -15,6 +15,7 @@
 // TEMP
 #include "math/geometry_utils.h"
 #include "core/c3d_string.h"
+#include "renderer/transform.h"
 //
 
 #include "renderer/renderer_frontend.h"
@@ -27,7 +28,7 @@
 namespace C3D
 {
 	Application::Application(const ApplicationConfig& config)
-		: m_logger("APPLICATION"), m_testGeometry(nullptr)
+		: m_logger("APPLICATION"), m_meshCount(0)
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice")
 
@@ -53,7 +54,7 @@ namespace C3D
 
 		m_logger.Info("Successfully created SDL Window");
 
-		constexpr MemorySystemConfig	memorySystemConfig		{ MebiBytes(512) };
+		constexpr MemorySystemConfig	memorySystemConfig		{ MebiBytes(1024) };
 		constexpr ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../assets" };
 		constexpr ShaderSystemConfig	shaderSystemConfig		{ 128, 128, 31, 31 };
 		constexpr TextureSystemConfig	textureSystemConfig		{ 65536 };
@@ -71,54 +72,134 @@ namespace C3D
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
 
 		// TEMP
-		// Load up a plane configuration, and load geometry for it
-		const GeometryConfig gConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test geometry", "test_material");
-		GeometryUtils::GenerateTangents(static_cast<Vertex3D*>(gConfig.vertices), gConfig.indexCount, static_cast<u32*>(gConfig.indices));
+		Mesh* cubeMesh = &m_meshes[m_meshCount];
+		cubeMesh->geometryCount = 1;
+		cubeMesh->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 
-		m_testGeometry = Geometric.AcquireFromConfig(gConfig, true);
+		// Load up a cube configuration, and load geometry for it
+		GeometryConfig gConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
+
+		cubeMesh->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
+		cubeMesh->transform = Transform();
+		m_meshCount++;
 
 		// Cleanup the allocations that we just did
-		Memory.Free(gConfig.vertices, sizeof(Vertex3D) * gConfig.vertexCount, MemoryType::Array);
-		Memory.Free(gConfig.indices, sizeof(u32) * gConfig.indexCount, MemoryType::Array);
+		Geometric.DisposeConfig(&gConfig);
+
+		// A second cube
+		Mesh* cubeMesh2 = &m_meshes[m_meshCount];
+		cubeMesh2->geometryCount = 1;
+		cubeMesh2->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
+
+		// Load up a cube configuration, and load geometry for it
+		gConfig = Geometric.GenerateCubeConfig(5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube_2", "test_material");
+
+		cubeMesh2->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
+		cubeMesh2->transform = Transform(vec3(20.0f, 0.0f, 1.0f));
+		cubeMesh2->transform.SetParent(&cubeMesh->transform);
+		m_meshCount++;
+
+		// Cleanup the other allocations that we just did
+		Geometric.DisposeConfig(&gConfig);
+
+		// A third cube
+		Mesh* cubeMesh3 = &m_meshes[m_meshCount];
+		cubeMesh3->geometryCount = 1;
+		cubeMesh3->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
+
+		gConfig = Geometric.GenerateCubeConfig(2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube_3", "test_material");
+
+		cubeMesh3->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
+		cubeMesh3->transform = Transform(vec3(5.0f, 0.0f, 1.0f));
+		cubeMesh3->transform.SetParent(&cubeMesh2->transform);
+		m_meshCount++;
+
+		// Cleanup the other allocations that we just did
+		Geometric.DisposeConfig(&gConfig);
+
+		// Load up a test car mesh from file
+		Mesh* carMesh = &m_meshes[m_meshCount];
+		Resource carMeshResource{};
+		if (!Resources.Load("falcon", ResourceType::Mesh, &carMeshResource))
+		{
+			m_logger.Fatal("Failed to load car mesh");
+			return;
+		}
+
+		auto configs = static_cast<GeometryConfig<Vertex3D, u32>*>(carMeshResource.data);
+		carMesh->geometryCount = static_cast<u16>(carMeshResource.dataSize);
+		carMesh->geometries = Memory.Allocate<Geometry*>(carMesh->geometryCount, MemoryType::Array);
+		for (u32 i = 0; i < carMesh->geometryCount; i++)
+		{
+			carMesh->geometries[i] = Geometric.AcquireFromConfig(configs[i], true);
+		}
+		carMesh->transform = Transform(vec3(15.0f, 0.0f, 1.0f));
+		Resources.Unload(&carMeshResource);
+		m_meshCount++;
+
+		// Load up a sponza mesh from file
+		Mesh* sponza = &m_meshes[m_meshCount];
+		Resource sponzaResource{};
+		if (!Resources.Load("sponza", ResourceType::Mesh, &sponzaResource))
+		{
+			m_logger.Fatal("Failed to load sponza mesh");
+			return;
+		}
+
+		auto sponzaConfig = static_cast<GeometryConfig<Vertex3D, u32>*>(sponzaResource.data);
+		sponza->geometryCount = static_cast<u16>(sponzaResource.dataSize);
+		sponza->geometries = Memory.Allocate<Geometry*>(sponza->geometryCount, MemoryType::Array);
+		for (u32 i = 0; i < sponza->geometryCount; i++)
+		{
+			sponza->geometries[i] = Geometric.AcquireFromConfig(sponzaConfig[i], true);
+		}
+		sponza->transform = Transform(vec3(15.0f, 0.0f, 1.0f));
+		// Scale down the model significantly
+		sponza->transform.Scale(vec3(0.05f, 0.05f, 0.05f));
+
+		Resources.Unload(&sponzaResource);
+		m_meshCount++;
 
 		// Load up our test ui geometry
-		GeometryConfig uiConfig;
-		uiConfig.vertexSize = sizeof(Vertex2D);
-		uiConfig.vertexCount = 4;
-		uiConfig.indexSize = sizeof(u32);
-		uiConfig.indexCount = 6;
+		GeometryConfig<Vertex2D, u32> uiConfig{};
+		uiConfig.vertices = DynamicArray<Vertex2D>();
+		uiConfig.vertices.Resize(4);
+
+		uiConfig.indices = DynamicArray<u32>(6);
+
 		StringNCopy(uiConfig.materialName, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
 		StringNCopy(uiConfig.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
 
 		constexpr f32 w = 128.0f;
 		constexpr f32 h = 32.0f;
 
-		Vertex2D uiVertices[4];
-		uiVertices[0].position.x = 0.0f;
-		uiVertices[0].position.y = 0.0f;
-		uiVertices[0].texture.x = 0.0f;
-		uiVertices[0].texture.y = 0.0f;
+		uiConfig.vertices[0].position.x = 0.0f;
+		uiConfig.vertices[0].position.y = 0.0f;
+		uiConfig.vertices[0].texture.x = 0.0f;
+		uiConfig.vertices[0].texture.y = 0.0f;
 
-		uiVertices[1].position.x = w;
-		uiVertices[1].position.y = h;
-		uiVertices[1].texture.x = 1.0f;
-		uiVertices[1].texture.y = 1.0f;
+		uiConfig.vertices[1].position.x = w;
+		uiConfig.vertices[1].position.y = h;
+		uiConfig.vertices[1].texture.x = 1.0f;
+		uiConfig.vertices[1].texture.y = 1.0f;
 
-		uiVertices[2].position.x = 0.0f;
-		uiVertices[2].position.y = h;
-		uiVertices[2].texture.x = 0.0f;
-		uiVertices[2].texture.y = 1.0f;
+		uiConfig.vertices[2].position.x = 0.0f;
+		uiConfig.vertices[2].position.y = h;
+		uiConfig.vertices[2].texture.x = 0.0f;
+		uiConfig.vertices[2].texture.y = 1.0f;
 
-		uiVertices[3].position.x = w;
-		uiVertices[3].position.y = 0.0f;
-		uiVertices[3].texture.x = 1.0f;
-		uiVertices[3].texture.y = 0.0f;
-
-		uiConfig.vertices = uiVertices;
+		uiConfig.vertices[3].position.x = w;
+		uiConfig.vertices[3].position.y = 0.0f;
+		uiConfig.vertices[3].texture.x = 1.0f;
+		uiConfig.vertices[3].texture.y = 0.0f;
 
 		// Counter-clockwise
-		u32 uiIndices[6] = { 2, 1, 0, 3, 0, 1 };
-		uiConfig.indices = uiIndices;
+		uiConfig.indices.PushBack(2);
+		uiConfig.indices.PushBack(1);
+		uiConfig.indices.PushBack(0);
+		uiConfig.indices.PushBack(3);
+		uiConfig.indices.PushBack(0);
+		uiConfig.indices.PushBack(1);
 
 		m_testUiGeometry = Geometric.AcquireFromConfig(uiConfig, true);
 		// TEMP END
@@ -166,29 +247,53 @@ namespace C3D
 				RenderPacket packet = { static_cast<f32>(delta) };
 
 				// TEMP
-				GeometryRenderData testRender{};
-				testRender.geometry = m_testGeometry;
-				//testRender.model = mat4(1.0f);
-				static f32 angle = 0;
-				angle += 0.5f * static_cast<f32>(delta);
-				quat rotation = angleAxis(angle, vec3{ 0, 1, 0 });
-				testRender.model = mat4(rotation);
+				if (m_meshCount > 0)
+				{
+					packet.geometries.Reserve(); // TODO: refactor because this sucks :(
 
-				packet.geometryCount = 1;
-				packet.geometries = &testRender;
+					// Rotate 
+					quat rotation = angleAxis(0.5f * static_cast<f32>(delta), vec3(0.0f, 1.0f, 0.0f));
+					m_meshes[0].transform.Rotate(rotation);
+
+					if (m_meshCount > 1)
+					{
+						m_meshes[1].transform.Rotate(rotation);
+					}
+					if (m_meshCount > 2)
+					{
+						m_meshes[2].transform.Rotate(rotation);
+					}
+
+					for (u32 i = 0; i < m_meshCount; i++)
+					{
+						auto& mesh = m_meshes[i];
+						for (u32 j = 0; j < mesh.geometryCount; j++)
+						{
+							GeometryRenderData data{};
+							data.geometry = mesh.geometries[j];
+							data.model = mesh.transform.GetWorld();
+							packet.geometries.PushBack(data);
+						}
+
+					}
+				}
 
 				GeometryRenderData testUiRender{};
 				testUiRender.geometry = m_testUiGeometry;
-				testUiRender.model = mat4(1.0f);
+				testUiRender.model = translate(vec3(0, 0, 0));
 
-				packet.uiGeometryCount = 1;
-				packet.uiGeometries = &testUiRender;
+				packet.uiGeometries.Reserve(1);
+				packet.uiGeometries.PushBack(testUiRender);
 				// TEMP END
 
 				if (!Renderer.DrawFrame(&packet))
 				{
 					m_logger.Warn("DrawFrame() failed");
 				}
+
+				// Cleanup our dynamic arrays :)
+				packet.geometries.Destroy();
+				packet.uiGeometries.Destroy();
 
 				const f64 frameEndTime = Platform::GetAbsoluteTime();
 				const f64 frameElapsedTime = frameEndTime - frameStartTime;
@@ -380,49 +485,25 @@ namespace C3D
 	bool Application::OnDebugEvent(u16 code, void* sender, EventContext context)
 	{
 		const char* names[3] = { "cobblestone", "paving", "paving2" };
-		const char* specNames[3] = { "cobblestone_specular", "paving_specular", "paving2_specular" };
-		const char* normNames[3] = { "cobblestone_normal", "paving_normal", "paving2_normal" };
-
 		static i8 choice = 2;
 
 		const char* oldName = names[choice];
-		const char* oldSpecularName = specNames[choice];
-		const char* oldNormalName = normNames[choice];
 
 		choice++;
 		choice %= 3;
 
-		if (m_testGeometry)
+		Geometry* g = m_meshes[0].geometries[0];
+		if (g)
 		{
-			m_testGeometry->material->diffuseMap.texture = Textures.Acquire(names[choice], true);
-			if (!m_testGeometry->material->diffuseMap.texture)
+			// Acquire new material
+			g->material = Materials.Acquire(names[choice]);
+			if (!g->material)
 			{
-				Logger::Warn("[ON_DEBUG_EVENT] - No diffuse texture! Using default");
-				m_testGeometry->material->diffuseMap.texture = Textures.GetDefault();
+				m_logger.Warn("[ON_DEBUG_EVENT] - No material found. Using default.");
+				g->material = Materials.GetDefault();
 			}
 
-			// Release old diffuse texture
-			Textures.Release(oldName);
-
-			m_testGeometry->material->specularMap.texture = Textures.Acquire(specNames[choice], true);
-			if (!m_testGeometry->material->specularMap.texture)
-			{
-				Logger::Warn("[ON_DEBUG_EVENT] - No specular texture! Using default");
-				m_testGeometry->material->specularMap.texture = Textures.GetDefaultSpecular();
-			}
-
-			// Release old specular texture
-			Textures.Release(oldSpecularName);
-
-			m_testGeometry->material->normalMap.texture = Textures.Acquire(normNames[choice], true);
-			if (!m_testGeometry->material->normalMap.texture)
-			{
-				Logger::Warn("[ON_DEBUG_EVENT] - No normal texture! Using default");
-				m_testGeometry->material->normalMap.texture = Textures.GetDefaultNormal();
-			}
-
-			// Release old normal texture
-			Textures.Release(oldNormalName);
+			Materials.Release(oldName);
 		}
 
 		return true;

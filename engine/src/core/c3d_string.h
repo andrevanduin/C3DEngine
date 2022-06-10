@@ -14,27 +14,31 @@ namespace C3D
 	 *
 	 * @return the length of the string
 	 */
-	u32 StringLength(const string& str);
+	u64 StringLength(const char* str);
 
 	/*
 	 * @brief Compares two strings case-sensitive
 	 *
 	 * @param left The string you want to compare
 	 * @param right The string you want to compare to
+	 * @param length The maximum number of characters we should compare.
+	 *	Default is -1 which checks the entire string
 	 *
 	 * @return a bool indicating if the strings match case-sensitively
 	 */
-	bool Equals(const string& left, const string& right);
+	bool Equals(const char* a, const char* b, i32 length = -1);
 
 	/*
 	 * @brief Compares two strings case-insensitive
 	 *
 	 * @param left The string you want to compare
 	 * @param right The string you want to compare to
+	 * @param length The maximum number of characters we should compare.
+	 *	Default is -1 which checks the entire string
 	 *
 	 * @return a bool indicating if the string match case-insensitively
 	 */
-	bool IEquals(const string& left, const string& right);
+	bool IEquals(const char* a, const char* b, i32 length = -1);
 
 	/*
 	 * @brief Copies the string in source to dest up to a given length. Does no perform any allocation.
@@ -66,6 +70,8 @@ namespace C3D
 	 */
 	void Trim(string& str);
 
+	void StringMid(char* dest, const char* source, i32 start, i32 length);
+
 	std::vector<char*> StringSplit(const string& s, char delimiter, bool trimEntry = true, bool excludeEmpty = true);
 	/*
 	 * @brief Empties the provided string by setting the first char to 0.
@@ -78,9 +84,14 @@ namespace C3D
 
 	C3D_API i32 StringFormat(char* dest, const char* format, ...);
 
-	C3D_API i32 StringFormatV(char* dest, const char* format, void* vaList);
+	C3D_API i32 StringFormatV(char* dest, const char* format, va_list vaList);
 
 	C3D_API char* StringDuplicate(const char* str);
+
+	void StringAppend(char* dest, const char* src, const char* append);
+
+	void StringAppend(char* dest, const char* src, i64 append);
+	void StringAppend(char* dest, const char* src, u64 append);
 
 	/*
 	 * @brief Attempts to parse a vec4 from a string

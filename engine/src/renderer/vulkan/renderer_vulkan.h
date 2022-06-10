@@ -32,7 +32,7 @@ namespace C3D
 		void CreateTexture(const u8* pixels, Texture* texture) override;
 		void DestroyTexture(Texture* texture) override;
 
-		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u32 vertexCount, const void* vertices, u32 indexSize, u32 indexCount, const void* indices) override;
+		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) override;
 		void DestroyGeometry(Geometry* geometry) override;
 
 		bool CreateShader(Shader* shader, u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) override;
@@ -45,10 +45,13 @@ namespace C3D
 		bool ShaderBindInstance(Shader* shader, u32 instanceId) override;
 
 		bool ShaderApplyGlobals(Shader* shader) override;
-		bool ShaderApplyInstance(Shader* shader) override;
+		bool ShaderApplyInstance(Shader* shader, bool needsUpdate) override;
 
-		bool AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId) override;
+		bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) override;
 		bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) override;
+
+		bool AcquireTextureMapResources(TextureMap* map) override;
+		void ReleaseTextureMapResources(TextureMap* map) override;
 
 		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
 		
@@ -64,6 +67,9 @@ namespace C3D
 		// TEMP
 		bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer* buffer, u64* outOffset, u64 size, const void* data) const;
 		static void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
+
+		VkSamplerAddressMode ConvertRepeatType(const char* axis, TextureRepeat repeat) const;
+		VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;
 
 		VulkanContext m_context;
 		VulkanBuffer m_objectVertexBuffer, m_objectIndexBuffer;

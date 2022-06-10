@@ -17,8 +17,7 @@
 namespace C3D
 {
 	MaterialSystem::MaterialSystem()
-		: System("MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_registeredMaterials(nullptr),
-		  m_materialLocations(), m_materialShaderId(0), m_uiLocations(), m_uiShaderId(0)
+		: System("MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_registeredMaterials(nullptr), m_materialShaderId(0), m_uiShaderId(0)
 	{}
 
 	bool MaterialSystem::Init(const MaterialSystemConfig& config)
@@ -42,6 +41,7 @@ namespace C3D
 			m_registeredMaterials[i].id = INVALID_ID;
 			m_registeredMaterials[i].generation = INVALID_ID;
 			m_registeredMaterials[i].internalId = INVALID_ID;
+			m_registeredMaterials[i].renderFrameNumber = INVALID_ID;
 		}
 
 		// Ensure that we have enough space for all our textures
@@ -76,7 +76,7 @@ namespace C3D
 		m_registeredMaterials = nullptr;
 	}
 
-	Material* MaterialSystem::Acquire(const string& name)
+	Material* MaterialSystem::Acquire(const char* name)
 	{
 		Resource materialResource{};
 		if (!Resources.Load(name, ResourceType::Material, &materialResource))
@@ -188,7 +188,7 @@ namespace C3D
 		return &m_registeredMaterials[ref.handle];
 	}
 
-	void MaterialSystem::Release(const string& name)
+	void MaterialSystem::Release(const char* name)
 	{
 		if (IEquals(name, DEFAULT_MATERIAL_NAME))
 		{
@@ -266,29 +266,32 @@ namespace C3D
 		return true;
 	}
 
-	bool MaterialSystem::ApplyInstance(Material* material) const
+	bool MaterialSystem::ApplyInstance(Material* material, const bool needsUpdate) const
 	{
 		MATERIAL_APPLY_OR_FAIL(Shaders.BindInstance(material->internalId))
-		if (material->shaderId == m_materialShaderId)
+		if (needsUpdate)
 		{
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseColor, &material->diffuseColor))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.shininess, &material->shininess))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseTexture, material->diffuseMap.texture))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.specularTexture, material->specularMap.texture))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.normalTexture, material->normalMap.texture))
-		}
-		else if (material->shaderId == m_uiShaderId)
-		{
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseColor, &material->diffuseColor))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseTexture, material->diffuseMap.texture))
-		}
-		else
-		{
-			m_logger.Error("ApplyInstance() - Unrecognized shader id '{}' on material: '{}'.", material->shaderId, material->name);
-			return false;
+			if (material->shaderId == m_materialShaderId)
+			{
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseColor, &material->diffuseColor))
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.shininess, &material->shininess))
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseTexture, &material->diffuseMap))
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.specularTexture, &material->specularMap))
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.normalTexture, &material->normalMap))
+			}
+			else if (material->shaderId == m_uiShaderId)
+			{
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseColor, &material->diffuseColor))
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseTexture, &material->diffuseMap))
+			}
+			else
+			{
+				m_logger.Error("ApplyInstance() - Unrecognized shader id '{}' on material: '{}'.", material->shaderId, material->name);
+				return false;
+			}
 		}
 
-		MATERIAL_APPLY_OR_FAIL(Shaders.ApplyInstance())
+		MATERIAL_APPLY_OR_FAIL(Shaders.ApplyInstance(needsUpdate))
 		return true;
 	}
 
@@ -317,7 +320,7 @@ namespace C3D
 		m_defaultMaterial.diffuseColor = vec4(1);
 
 		m_defaultMaterial.diffuseMap.use = TextureUse::Diffuse;
-		m_defaultMaterial.diffuseMap.texture = Textures.GetDefault();
+		m_defaultMaterial.diffuseMap.texture = Textures.GetDefaultDiffuse();
 
 		m_defaultMaterial.specularMap.use = TextureUse::Specular;
 		m_defaultMaterial.specularMap.texture = Textures.GetDefaultSpecular();
@@ -325,8 +328,10 @@ namespace C3D
 		m_defaultMaterial.normalMap.use = TextureUse::Normal;
 		m_defaultMaterial.normalMap.texture = Textures.GetDefaultNormal();
 
+		TextureMap* maps[3] = { &m_defaultMaterial.diffuseMap, &m_defaultMaterial.specularMap, &m_defaultMaterial.normalMap };
+
 		Shader* shader = Shaders.Get(BUILTIN_SHADER_NAME_MATERIAL);
-		if (!Renderer.AcquireShaderInstanceResources(shader, &m_defaultMaterial.internalId))
+		if (!Renderer.AcquireShaderInstanceResources(shader, maps, &m_defaultMaterial.internalId))
 		{
 			m_logger.Error("Failed to acquire renderer resources for the default material");
 			return false;
@@ -337,7 +342,7 @@ namespace C3D
 		return true;
 	}
 
-	bool MaterialSystem::LoadMaterial(const MaterialConfig& config, Material* mat) const
+	bool MaterialSystem::LoadMaterial(MaterialConfig config, Material* mat) const
 	{
 		Memory.Zero(mat, sizeof(Material));
 
@@ -351,28 +356,39 @@ namespace C3D
 		mat->shininess = config.shininess;
 
 		// Diffuse map
+		// TODO: make this configurable
+		mat->diffuseMap = TextureMap(TextureUse::Diffuse, TextureFilter::ModeLinear, TextureRepeat::Repeat);
+		if (!Renderer.AcquireTextureMapResources(&mat->diffuseMap))
+		{
+			m_logger.Error("LoadMaterial() - Unable to acquire resources for diffuse texture map");
+			return false;
+		}
+
 		if (StringLength(config.diffuseMapName) > 0)
 		{
-			mat->diffuseMap.use = TextureUse::Diffuse;
 			mat->diffuseMap.texture = Textures.Acquire(config.diffuseMapName, true);
-
 			if (!mat->diffuseMap.texture)
 			{
 				m_logger.Warn("Unable to load diffuse texture '{}' for material '{}', using the default", config.diffuseMapName, mat->name);
-				mat->diffuseMap.texture = Textures.GetDefault();
+				mat->diffuseMap.texture = Textures.GetDefaultDiffuse();
 			}
 		}
 		else
 		{
-			// NOTE: this does nothing since we already zeroed the memory. It's only for clarity
-			mat->diffuseMap.use = TextureUse::Diffuse;
-			mat->diffuseMap.texture = Textures.GetDefault();
+			mat->diffuseMap.texture = Textures.GetDefaultDiffuse();
 		}
 
 		// Specular  map
+		// TODO: make this configurable
+		mat->specularMap = TextureMap(TextureUse::Specular, TextureFilter::ModeLinear, TextureRepeat::Repeat);
+		if (!Renderer.AcquireTextureMapResources(&mat->specularMap))
+		{
+			m_logger.Error("LoadMaterial() - Unable to acquire resources for diffuse texture map");
+			return false;
+		}
+
 		if (StringLength(config.specularMapName) > 0)
 		{
-			mat->specularMap.use = TextureUse::Specular;
 			mat->specularMap.texture = Textures.Acquire(config.specularMapName, true);
 
 			if (!mat->specularMap.texture)
@@ -383,15 +399,20 @@ namespace C3D
 		}
 		else
 		{
-			// NOTE: this does nothing since we already zeroed the memory. It's only for clarity
-			mat->specularMap.use = TextureUse::Specular;
 			mat->specularMap.texture = Textures.GetDefaultSpecular();
 		}
 
 		// Normal  map
+		// TODO: make this configurable
+		mat->normalMap = TextureMap(TextureUse::Normal, TextureFilter::ModeLinear, TextureRepeat::Repeat);
+		if (!Renderer.AcquireTextureMapResources(&mat->normalMap))
+		{
+			m_logger.Error("LoadMaterial() - Unable to acquire resources for diffuse texture map");
+			return false;
+		}
+
 		if (StringLength(config.normalMapName) > 0)
 		{
-			mat->normalMap.use = TextureUse::Normal;
 			mat->normalMap.texture = Textures.Acquire(config.normalMapName, true);
 
 			if (!mat->normalMap.texture)
@@ -402,12 +423,19 @@ namespace C3D
 		}
 		else
 		{
-			mat->normalMap.use = TextureUse::Normal;
 			mat->normalMap.texture = Textures.GetDefaultNormal();
 		}
 
 		Shader* shader = Shaders.Get(config.shaderName);
-		if (!Renderer.AcquireShaderInstanceResources(shader, &mat->internalId))
+		if (!shader)
+		{
+			m_logger.Error("LoadMaterial() - Failed to load material since it's shader was not found: '{}'", config.shaderName);
+			return false;
+		}
+
+		// Gather a list of pointers to our texture maps
+		TextureMap* maps[3] = { &mat->diffuseMap, &mat->specularMap, &mat->normalMap };
+		if (!Renderer.AcquireShaderInstanceResources(shader, maps, &mat->internalId))
 		{
 			m_logger.Error("Failed to acquire renderer resources for material: {}", mat->name);
 			return false;
@@ -438,6 +466,11 @@ namespace C3D
 			Textures.Release(mat->normalMap.texture->name);
 		}
 
+		// Release texture map resources
+		Renderer.ReleaseTextureMapResources(&mat->diffuseMap);
+		Renderer.ReleaseTextureMapResources(&mat->specularMap);
+		Renderer.ReleaseTextureMapResources(&mat->normalMap);
+
 		// Release renderer resources
 		if (mat->shaderId != INVALID_ID && mat->internalId != INVALID_ID)
 		{
@@ -451,5 +484,6 @@ namespace C3D
 		mat->id = INVALID_ID;
 		mat->generation = INVALID_ID;
 		mat->internalId = INVALID_ID;
+		mat->renderFrameNumber = INVALID_ID;
 	}
 }

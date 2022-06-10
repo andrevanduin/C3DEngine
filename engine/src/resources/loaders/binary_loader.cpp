@@ -15,15 +15,15 @@ namespace C3D
 		: ResourceLoader("BINARY_LOADER", MemoryType::Array, ResourceType::Binary, nullptr, "")
 	{}
 
-	bool BinaryLoader::Load(const string& name, Resource* outResource)
+	bool BinaryLoader::Load(const char* name, Resource* outResource)
 	{
-		if (name.empty() || !outResource) return false;
+		if (StringLength(name) == 0 || !outResource) return false;
 
 		char fullPath[512];
 		const auto formatStr = "%s/%s/%s";
 
 		// TODO: try different extensions
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name.data());
+		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name);
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead | FileModeBinary))
@@ -57,7 +57,7 @@ namespace C3D
 
 		outResource->data = resourceData;
 		outResource->dataSize = readSize;
-		outResource->name = name.data();
+		outResource->name = StringDuplicate(name);
 
 		return true;
 	}

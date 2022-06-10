@@ -11,7 +11,7 @@ namespace C3D
 	public:
 		ShaderLoader();
 
-		bool Load(const string& name, Resource* outResource) override;
+		bool Load(const char* name, Resource* outResource) override;
 
 		void Unload(Resource* resource) override;
 

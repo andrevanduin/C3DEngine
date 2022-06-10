@@ -138,6 +138,8 @@ namespace C3D
 
 	bool RenderSystem::DrawFrame(const RenderPacket* packet) const
 	{
+		m_backend->state.frameNumber++;
+
 		if (!m_backend->BeginFrame(packet->deltaTime)) return true;
 
 		// Begin World RenderPass
@@ -162,24 +164,26 @@ namespace C3D
 		}
 
 		// Draw all our World Geometry
-		const u32 count = packet->geometryCount;
-		for (u32 i = 0; i < count; i++)
+		for (const auto& geometryData : packet->geometries)
 		{
-			Material* mat = packet->geometries[i].geometry->material;
+			Material* mat = geometryData.geometry->material;
 			if (!mat) mat = Materials.GetDefault();
 
-			// Apply our material
-			if (!Materials.ApplyInstance(mat))
+			// Apply our material if it hasn't already been updated this frame.
+			// This prevents us from applying the same material multiple times
+			bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
+			if (!Materials.ApplyInstance(mat, needsUpdate))
 			{
 				m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);
 				continue;
 			}
+			mat->renderFrameNumber = static_cast<u32>(m_backend->state.frameNumber);
 
 			// Apply locals
-			Materials.ApplyLocal(mat, &packet->geometries[i].model);
+			Materials.ApplyLocal(mat, &geometryData.model);
 
 			// Finally draw it
-			m_backend->DrawGeometry(packet->geometries[i]);
+			m_backend->DrawGeometry(geometryData);
 		}
 
 		// End World RenderPass
@@ -211,24 +215,25 @@ namespace C3D
 		}
 
 		// Draw all our UI Geometry
-		const u32 uiCount = packet->uiGeometryCount;
-		for (u32 i = 0; i < uiCount; i++)
+		for (const auto& geometryData : packet->uiGeometries)
 		{
-			Material* mat = packet->uiGeometries[i].geometry->material;
+			Material* mat = geometryData.geometry->material;
 			if (!mat) mat = Materials.GetDefault();
 
+			bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
 			// Apply our material
-			if (!Materials.ApplyInstance(mat))
+			if (!Materials.ApplyInstance(mat, needsUpdate))
 			{
 				m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);
 				continue;
 			}
+			mat->renderFrameNumber = static_cast<u32>(m_backend->state.frameNumber);
 
 			// Apply locals
-			Materials.ApplyLocal(mat, &packet->uiGeometries[i].model);
+			Materials.ApplyLocal(mat, &geometryData.model);
 
 			// Finally draw it
-			m_backend->DrawGeometry(packet->uiGeometries[i]);
+			m_backend->DrawGeometry(geometryData);
 		}
 
 		// End UI RenderPass
@@ -253,8 +258,8 @@ namespace C3D
 		return m_backend->CreateTexture(pixels, texture);
 	}
 
-	bool RenderSystem::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u32 vertexCount, const void* vertices,
-		const u32 indexSize, const u32 indexCount, const void* indices) const
+	bool RenderSystem::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
+		const u32 indexSize, const u64 indexCount, const void* indices) const
 	{
 		return m_backend->CreateGeometry(geometry, vertexSize, vertexCount, vertices, indexSize, indexCount, indices);
 	}
@@ -321,19 +326,29 @@ namespace C3D
 		return m_backend->ShaderApplyGlobals(shader);
 	}
 
-	bool RenderSystem::ShaderApplyInstance(Shader* shader) const
+	bool RenderSystem::ShaderApplyInstance(Shader* shader, const bool needsUpdate) const
 	{
-		return m_backend->ShaderApplyInstance(shader);
+		return m_backend->ShaderApplyInstance(shader, needsUpdate);
 	}
 
-	bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, u32* outInstanceId) const
+	bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) const
 	{
-		return m_backend->AcquireShaderInstanceResources(shader, outInstanceId);
+		return m_backend->AcquireShaderInstanceResources(shader, maps, outInstanceId);
 	}
 
 	bool RenderSystem::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId) const
 	{
 		return m_backend->ReleaseShaderInstanceResources(shader, instanceId);
+	}
+
+	bool RenderSystem::AcquireTextureMapResources(TextureMap* map) const
+	{
+		return m_backend->AcquireTextureMapResources(map);
+	}
+
+	void RenderSystem::ReleaseTextureMapResources(TextureMap* map) const
+	{
+		return m_backend->ReleaseTextureMapResources(map);
 	}
 
 	bool RenderSystem::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const

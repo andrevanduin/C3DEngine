@@ -105,7 +105,7 @@ namespace C3D
 	{
 		if (!name)
 		{
-			Logger::Error("[HASHTABLE] - Get() - requires valid name and outValue pointer.");
+			Logger::Error("[HASHTABLE] - Get() - requires valid name.");
 			return m_elements[0];
 		}
 		return m_elements[Hash(name)];

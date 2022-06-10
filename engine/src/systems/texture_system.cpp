@@ -14,8 +14,7 @@
 namespace C3D
 {
 	TextureSystem::TextureSystem()
-		: m_logger("TEXTURE_SYSTEM"), m_initialized(false), m_config(), m_defaultTexture(), m_defaultSpecularTexture(),
-		  m_defaultNormalTexture(), m_registeredTextures(nullptr)
+		: m_logger("TEXTURE_SYSTEM"), m_initialized(false), m_config(), m_registeredTextures(nullptr)
 	{
 	}
 
@@ -39,7 +38,10 @@ namespace C3D
 		}
 
 		// Ensure that we have enough space for all our textures
-		m_registeredTextureTable.reserve(config.maxTextureCount);
+		m_registeredTextureTable.Create(config.maxTextureCount);
+		// Fill our hashtable with invalid references
+		const TextureReference invalidRef;
+		m_registeredTextureTable.Fill(invalidRef);
 
 		CreateDefaultTextures();
 
@@ -60,12 +62,14 @@ namespace C3D
 
 		// Free the memory that was storing all the textures
 		Memory.Free(m_registeredTextures, sizeof(Texture) * m_config.maxTextureCount, MemoryType::Texture);
+		// Destroy our hashtable
+		m_registeredTextureTable.Destroy();
 
 		m_logger.Info("Destroying default textures");
 		DestroyDefaultTextures();
 	}
 
-	Texture* TextureSystem::Acquire(const std::string& name, const bool autoRelease)
+	Texture* TextureSystem::Acquire(const char* name, const bool autoRelease)
 	{
 		// If the default texture is requested we return it. But we warn about it since it should be
 		// retrieved with GetDefault()
@@ -75,14 +79,11 @@ namespace C3D
 			return &m_defaultTexture;
 		}
 
-		const auto& it = m_registeredTextureTable.find(name);
-		// No Texture found for this name
-		if (it == m_registeredTextureTable.end())
+		TextureReference ref = m_registeredTextureTable.Get(name);
+		if (ref.referenceCount == 0)
 		{
-			m_registeredTextureTable.emplace(name, TextureReference{ 0, INVALID_ID, autoRelease });
+			ref.autoRelease = autoRelease;
 		}
-
-		auto& ref = m_registeredTextureTable[name];
 		ref.referenceCount++;
 
 		if (ref.handle == INVALID_ID)
@@ -100,6 +101,7 @@ namespace C3D
 				}
 			}
 
+			// Make sure we actually found an empty slot
 			if (!tex || ref.handle == INVALID_ID)
 			{
 				m_logger.Fatal("No more free space for textures. Adjust the configuration to allow more");
@@ -120,10 +122,13 @@ namespace C3D
 			m_logger.Trace("Texture {} already exists. The refCount is now {}", name, ref.referenceCount);
 		}
 
+		// Set the newly updated reference
+		m_registeredTextureTable.Set(name, &ref);
+		// and return our texture
 		return &m_registeredTextures[ref.handle];
 	}
 
-	void TextureSystem::Release(const string& name)
+	void TextureSystem::Release(const char* name)
 	{
 		if (IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
@@ -131,14 +136,18 @@ namespace C3D
 			return;
 		}
 
-		const auto it = m_registeredTextureTable.find(name);
-		if (it == m_registeredTextureTable.end())
+		TextureReference ref = m_registeredTextureTable.Get(name);
+		if (ref.referenceCount == 0)
 		{
 			m_logger.Warn("Tried to release a texture that does not exist: {}", name);
 			return;
 		}
 
-		auto& ref = it->second;
+		// Take a copy of the name since we will lose it after the texture is released
+		char copiedName[TEXTURE_NAME_MAX_LENGTH];
+		StringNCopy(copiedName, name, TEXTURE_NAME_MAX_LENGTH);
+
+		// Decrease our reference count to keep track of how many instances are still holding references
 		ref.referenceCount--;
 
 		if (ref.referenceCount == 0 && ref.autoRelease)
@@ -149,14 +158,19 @@ namespace C3D
 			// Destroy the texture
 			DestroyTexture(tex);
 
-			// Remove the reference
-			m_registeredTextureTable.erase(it);
+			// Reset the reference
+			ref.handle = INVALID_ID;
+			ref.autoRelease = false;
 
-			m_logger.Info("Released texture {}. The texture was unloaded because refCount = 0 and autoRelease = true", name);
-			return;
+			m_logger.Info("Released texture {}. The texture was unloaded because refCount = 0 and autoRelease = true", copiedName);
+		}
+		else
+		{
+			m_logger.Info("Released texture {}. The texture now has a refCount = {} (autoRelease = {})", copiedName, ref.referenceCount, ref.autoRelease);
 		}
 
-		m_logger.Info("Released texture {}. The texture now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
+		// Update our reference in the hashtable
+		m_registeredTextureTable.Set(copiedName, &ref);
 	}
 
 	Texture* TextureSystem::GetDefault()
@@ -167,6 +181,16 @@ namespace C3D
 			return nullptr;
 		}
 		return &m_defaultTexture;
+	}
+
+	Texture* TextureSystem::GetDefaultDiffuse()
+	{
+		if (!m_initialized)
+		{
+			m_logger.Error("GetDefaultDiffuse() was called before initialization. Returned nullptr");
+			return nullptr;
+		}
+		return &m_defaultDiffuseTexture;
 	}
 
 	Texture* TextureSystem::GetDefaultSpecular()
@@ -226,29 +250,28 @@ namespace C3D
 			}
 		}
 
-		StringNCopy(m_defaultTexture.name, DEFAULT_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
-		m_defaultTexture.width = textureDimensions;
-		m_defaultTexture.height = textureDimensions;
-		m_defaultTexture.channelCount = channels;
-		m_defaultTexture.generation = INVALID_ID;
-		m_defaultTexture.hasTransparency = false;
-
+		m_defaultTexture = Texture(DEFAULT_TEXTURE_NAME, textureDimensions, textureDimensions, channels, false, false);
 		Renderer.CreateTexture(pixels, &m_defaultTexture);
 		// Manually set the texture generation to invalid since this is the default texture
 		m_defaultTexture.generation = INVALID_ID;
 
+		// Diffuse texture
+		m_logger.Trace("Create default diffuse texture...");
+		const auto diffusePixels = new u8[16 * 16 * 4];
+		// Default diffuse texture is all white
+		Memory.Set(diffusePixels, 255, sizeof(u8) * 16 * 16 * 4); // Default diffuse map is all white
+
+		m_defaultDiffuseTexture = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, false, false);
+		Renderer.CreateTexture(diffusePixels, &m_defaultDiffuseTexture);
+		// Manually set the texture generation to invalid since this is the default texture
+		m_defaultDiffuseTexture.generation = INVALID_ID;
+
 		// Specular texture.
 		m_logger.Trace("Create default specular texture...");
 		const auto specPixels = new u8[16 * 16 * 4];
-		// Default specular map is black (no specular)
-		Memory.Set(specPixels, 0, sizeof(u8) * 16 * 16 * 4);
-		StringNCopy(m_defaultSpecularTexture.name, DEFAULT_SPECULAR_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
-		m_defaultSpecularTexture.width = 16;
-		m_defaultSpecularTexture.height = 16;
-		m_defaultSpecularTexture.channelCount = 4;
-		m_defaultSpecularTexture.generation = INVALID_ID;
-		m_defaultSpecularTexture.hasTransparency = false;
+		Memory.Set(specPixels, 0, sizeof(u8) * 16 * 16 * 4); // Default specular map is black (no specular)
 
+		m_defaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, false, false);
 		Renderer.CreateTexture(specPixels, &m_defaultSpecularTexture);
 		// Manually set the texture generation to invalid since this is the default texture
 		m_defaultSpecularTexture.generation = INVALID_ID;
@@ -274,19 +297,14 @@ namespace C3D
 			}
 		}
 
-		StringNCopy(m_defaultNormalTexture.name, DEFAULT_NORMAL_TEXTURE_NAME, TEXTURE_NAME_MAX_LENGTH);
-		m_defaultNormalTexture.width = 16;
-		m_defaultNormalTexture.height = 16;
-		m_defaultNormalTexture.channelCount = 4;
-		m_defaultNormalTexture.generation = INVALID_ID;
-		m_defaultNormalTexture.hasTransparency = false;
-
+		m_defaultNormalTexture = Texture(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, false, false);
 		Renderer.CreateTexture(normalPixels, &m_defaultNormalTexture);
 		// Manually set the texture generation to invalid since this is the default texture
 		m_defaultNormalTexture.generation = INVALID_ID;
 
-		// Cleanup our pixel array
+		// Cleanup our pixel arrays
 		delete[] pixels;
+		delete[] diffusePixels;
 		delete[] specPixels;
 		delete[] normalPixels;
 
@@ -296,11 +314,12 @@ namespace C3D
 	void TextureSystem::DestroyDefaultTextures()
 	{
 		DestroyTexture(&m_defaultTexture);
+		DestroyTexture(&m_defaultDiffuseTexture);
 		DestroyTexture(&m_defaultSpecularTexture);
 		DestroyTexture(&m_defaultNormalTexture);
 	}
 
-	bool TextureSystem::LoadTexture(const string& name, Texture* texture) const
+	bool TextureSystem::LoadTexture(const char* name, Texture* texture) const
 	{
 		Resource imgResource{};
 		if (!Resources.Load(name, ResourceType::Image, &imgResource))
@@ -316,7 +335,7 @@ namespace C3D
 			return false;
 		}
 
-		Texture temp{};
+		Texture temp;
 		temp.width = resourceData->width;
 		temp.height = resourceData->height;
 		temp.channelCount = resourceData->channelCount;
@@ -335,9 +354,10 @@ namespace C3D
 			}
 		}
 
-		StringNCopy(temp.name, name.c_str(), TEXTURE_NAME_MAX_LENGTH);
+		StringNCopy(temp.name, name, TEXTURE_NAME_MAX_LENGTH);
 		temp.generation = INVALID_ID;
 		temp.hasTransparency = hasTransparency;
+		temp.isWritable = false;
 
 		Renderer.CreateTexture(resourceData->pixels, &temp);
 

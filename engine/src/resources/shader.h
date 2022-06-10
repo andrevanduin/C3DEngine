@@ -109,7 +109,7 @@ namespace C3D
 		u64 uboStride;
 		u16 attributeStride;
 
-		std::vector<const Texture*> globalTextures;
+		DynamicArray<TextureMap*> globalTextureMaps;
 		u64 instanceTextureCount;
 
 		ShaderScope boundScope;
