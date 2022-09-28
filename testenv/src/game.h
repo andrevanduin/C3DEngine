@@ -2,7 +2,10 @@
 #pragma once
 #include <core/application.h>
 
-#include "math/math_types.h"
+namespace C3D
+{
+	class Camera;
+}
 
 class TestEnv : public C3D::Application
 {
@@ -15,15 +18,5 @@ public:
 	void OnRender(f64 deltaTime) override;
 
 private:
-	void RecalculateViewMatrix();
-
-	void CameraPitch(f32 amount);
-	void CameraYaw(f32 amount);
-
-	mat4 m_view;
-
-	vec3 m_cameraPosition;
-	vec3 m_cameraEuler;
-
-	bool m_cameraViewDirty;
+	C3D::Camera* m_camera;
 };

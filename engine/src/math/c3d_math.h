@@ -33,14 +33,24 @@ namespace C3D
 		return (value != 0) && ((value & (value - 1)) == 1);
 	}
 
-	C3D_INLINE f32 DegToRad(const f32 degrees)
+	C3D_INLINE constexpr f32 DegToRad(const f32 degrees)
 	{
 		return degrees * DEG_2_RAD_MULTIPLIER;
 	}
 
-	C3D_INLINE f32 RadToDeg(const f32 radians)
+	C3D_INLINE constexpr f64 DegToRad(const f64 degrees)
+	{
+		return degrees * static_cast<f64>(DEG_2_RAD_MULTIPLIER);
+	}
+
+	C3D_INLINE constexpr f32 RadToDeg(const f32 radians)
 	{
 		return radians * RAD_2_DEG_MULTIPLIER;
+	}
+
+	C3D_INLINE constexpr f64 RadToDeg(const f64 radians)
+	{
+		return radians * static_cast<f64>(RAD_2_DEG_MULTIPLIER);
 	}
 
 	C3D_API f32 Sin(f32 x);
