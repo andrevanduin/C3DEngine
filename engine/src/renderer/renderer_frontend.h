@@ -15,6 +15,8 @@ namespace C3D
 	struct Shader;
 	struct ShaderUniform;
 
+	class Camera;
+
 	class RenderSystem
 	{
 	public:
@@ -23,12 +25,9 @@ namespace C3D
 		bool Init(Application* application);
 		void Shutdown();
 
-		// HACK: we should not expose this outside of the engine
-		C3D_API void SetView(mat4 view, vec3 viewPosition);
-
 		void OnResize(u16 width, u16 height);
 
-		bool DrawFrame(const RenderPacket* packet) const;
+		bool DrawFrame(const RenderPacket* packet);
 
 		void CreateTexture(const u8* pixels, Texture* texture) const;
 		void DestroyTexture(Texture* texture) const;
@@ -68,10 +67,11 @@ namespace C3D
 
 		LoggerInstance m_logger;
 
+		Camera* m_activeWorldCamera;
+
 		// World
-		mat4 m_projection, m_view;
+		mat4 m_projection;
 		vec4 m_ambientColor;
-		vec3 m_viewPosition;
 
 		// UI
 		mat4 m_uiProjection, m_uiView;

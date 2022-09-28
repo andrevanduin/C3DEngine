@@ -18,12 +18,13 @@
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
+#include "systems/camera_system.h"
 
 namespace C3D
 {
 	// TODO: Obtain ambient color from scene instead of hardcoding it here
 	RenderSystem::RenderSystem()
-		: m_logger("RENDERER"), m_projection(), m_view(), m_ambientColor(0.25, 0.25, 0.25, 1.0f), m_viewPosition(),
+		: m_logger("RENDERER"), m_activeWorldCamera(nullptr), m_projection(), m_ambientColor(0.25, 0.25, 0.25, 1.0f),
 		  m_uiProjection(), m_uiView(), m_nearClip(0.1f), m_farClip(1000.0f), m_materialShaderId(0), m_uiShaderId(0),
 		  m_renderMode(0)
 	{
@@ -96,10 +97,6 @@ namespace C3D
 
 		m_projection = glm::perspectiveRH_NO(DegToRad(45.0f), aspectRatio, m_nearClip, m_farClip);
 
-		// TODO: Make camera starting position configurable
-		m_view = translate(mat4(1.0f), vec3(0, 0, -30.0f));
-		m_view = inverse(m_view);
-
 		// UI projection and view
 		m_uiProjection = glm::orthoRH_NO(0.0f, 1280.0f, 720.0f, 0.0f, -100.0f, 100.0f);
 		m_uiView = inverse(mat4(1.0f));
@@ -118,12 +115,6 @@ namespace C3D
 		DestroyBackend();
 	}
 
-	void RenderSystem::SetView(const mat4 view, const vec3 viewPosition)
-	{
-		m_view = view;
-		m_viewPosition = viewPosition;
-	}
-
 	void RenderSystem::OnResize(const u16 width, const u16 height)
 	{
 		const auto fWidth = static_cast<float>(width);
@@ -136,9 +127,18 @@ namespace C3D
 		m_backend->OnResize(width, height);
 	}
 
-	bool RenderSystem::DrawFrame(const RenderPacket* packet) const
+	bool RenderSystem::DrawFrame(const RenderPacket* packet)
 	{
 		m_backend->state.frameNumber++;
+
+		if (!m_activeWorldCamera)
+		{
+			// Get the default camera
+			m_activeWorldCamera = Cam.GetDefault();
+		}
+
+		const auto view = m_activeWorldCamera->GetViewMatrix();
+		const auto position = m_activeWorldCamera->GetPosition();
 
 		if (!m_backend->BeginFrame(packet->deltaTime)) return true;
 
@@ -157,7 +157,7 @@ namespace C3D
 		}
 
 		// Apply globals
-		if (!Materials.ApplyGlobal(m_materialShaderId, &m_projection, &m_view, &m_ambientColor, &m_viewPosition, m_renderMode))
+		if (!Materials.ApplyGlobal(m_materialShaderId, &m_projection, &view, &m_ambientColor, &position, m_renderMode))
 		{
 			m_logger.Error("DrawFrame() - Failed to apply globals for material shader");
 			return false;
@@ -171,7 +171,7 @@ namespace C3D
 
 			// Apply our material if it hasn't already been updated this frame.
 			// This prevents us from applying the same material multiple times
-			bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
+			const bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
 			if (!Materials.ApplyInstance(mat, needsUpdate))
 			{
 				m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);

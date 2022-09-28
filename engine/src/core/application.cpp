@@ -24,6 +24,7 @@
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
 #include "systems/texture_system.h"
+#include "systems/camera_system.h"
 
 namespace C3D
 {
@@ -60,8 +61,9 @@ namespace C3D
 		constexpr TextureSystemConfig	textureSystemConfig		{ 65536 };
 		constexpr MaterialSystemConfig	materialSystemConfig	{ 4096 };
 		constexpr GeometrySystemConfig	geometrySystemConfig	{ 4096 };
+		constexpr CameraSystemConfig	cameraSystemConfig		{ 61 };
 
-		Services::Init(this, memorySystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig);
+		Services::Init(this, memorySystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig, cameraSystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));

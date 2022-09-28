@@ -13,6 +13,7 @@
 #include "systems/geometry_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
+#include "systems/camera_system.h"
 
 namespace C3D
 {
@@ -29,10 +30,11 @@ namespace C3D
 	MaterialSystem* Services::m_pMaterialSystem = nullptr;
 	GeometrySystem* Services::m_pGeometrySystem = nullptr;
 	ShaderSystem*	Services::m_pShaderSystem	= nullptr;
+	CameraSystem*	Services::m_pCameraSystem = nullptr;
 
 	bool Services::Init(Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig,
 		const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, 
-		const GeometrySystemConfig& geometrySystemConfig)
+		const GeometrySystemConfig& geometrySystemConfig, const CameraSystemConfig& cameraSystemConfig)
 	{
 		m_pMemorySystem = new MemorySystem();
 		if (!m_pMemorySystem->Init(memorySystemConfig))
@@ -98,6 +100,13 @@ namespace C3D
 		if (!m_pGeometrySystem->Init(geometrySystemConfig))
 		{
 			m_logger.Fatal("GeometrySystem failed to be Initialized");
+		}
+
+		// Camera System
+		m_pCameraSystem = m_allocator.New<CameraSystem>();
+		if (!m_pCameraSystem->Init(cameraSystemConfig))
+		{
+			m_logger.Fatal("CameraSystem failed to be Initialized");
 		}
 
 		return true;

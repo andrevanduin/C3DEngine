@@ -2,7 +2,6 @@
 #pragma once
 #include "defines.h"
 #include "logger.h"
-#include "containers/dynamic_array.h"
 
 #include "resources/geometry.h"
 #include "resources/mesh.h"
