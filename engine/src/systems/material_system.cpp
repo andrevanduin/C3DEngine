@@ -8,6 +8,7 @@
 #include "renderer/renderer_types.h"
 #include "renderer/renderer_frontend.h"
 #include "resources/shader.h"
+#include "resources/loaders/material_loader.h"
 
 #include "services/services.h"
 #include "systems/shader_system.h"
@@ -78,19 +79,14 @@ namespace C3D
 
 	Material* MaterialSystem::Acquire(const char* name)
 	{
-		Resource materialResource{};
+		MaterialResource materialResource{};
 		if (!Resources.Load(name, ResourceType::Material, &materialResource))
 		{
 			m_logger.Error("Failed to load material resource. Returning nullptr");
 			return nullptr;
 		}
 
-		Material* m = nullptr;
-		if (materialResource.data)
-		{
-			m = AcquireFromConfig(*materialResource.GetData<MaterialConfig*>());
-		}
-
+		Material* m = AcquireFromConfig(materialResource.config);
 		Resources.Unload(&materialResource);
 
 		if (!m)

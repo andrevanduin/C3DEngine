@@ -11,11 +11,11 @@
 
 namespace C3D
 {
-	BinaryLoader::BinaryLoader()
-		: ResourceLoader("BINARY_LOADER", MemoryType::Array, ResourceType::Binary, nullptr, "")
+	ResourceLoader<BinaryResource>::ResourceLoader()
+		: IResourceLoader("BINARY_LOADER", MemoryType::Array, ResourceType::Binary, nullptr, "")
 	{}
 
-	bool BinaryLoader::Load(const char* name, Resource* outResource)
+	bool ResourceLoader<BinaryResource>::Load(const char* name, BinaryResource* outResource) const
 	{
 		if (StringLength(name) == 0 || !outResource) return false;
 
@@ -44,9 +44,10 @@ namespace C3D
 		}
 
 		// TODO: should be using an allocator here
-		char* resourceData = Memory.Allocate<char>(fileSize, MemoryType::Array);
-		u64 readSize = 0;
-		if (!file.ReadAll(resourceData, &readSize))
+		outResource->data = Memory.Allocate<char>(fileSize, MemoryType::Array);
+		outResource->name = StringDuplicate(name);
+
+		if (!file.ReadAll(outResource->data, &outResource->size))
 		{
 			m_logger.Error("Unable to read binary file: '{}'", fullPath);
 			file.Close();
@@ -54,11 +55,11 @@ namespace C3D
 		}
 
 		file.Close();
-
-		outResource->data = resourceData;
-		outResource->dataSize = readSize;
-		outResource->name = StringDuplicate(name);
-
 		return true;
+	}
+
+	void ResourceLoader<BinaryResource>::Unload(const BinaryResource* resource)
+	{
+		Memory.Free(resource->data, resource->size, MemoryType::Array);
 	}
 }

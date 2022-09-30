@@ -4,11 +4,19 @@
 
 namespace C3D
 {
-	class BinaryLoader final : public ResourceLoader
+	struct BinaryResource final : Resource
+	{
+		char* data;
+		u64 size;
+	};
+
+	template <>
+	class ResourceLoader<BinaryResource> final : public IResourceLoader
 	{
 	public:
-		BinaryLoader();
+		ResourceLoader();
 
-		bool Load(const char* name, Resource* outResource) override;
+		bool Load(const char* name, BinaryResource* outResource) const;
+		static void Unload(const BinaryResource* resource);
 	};
 }

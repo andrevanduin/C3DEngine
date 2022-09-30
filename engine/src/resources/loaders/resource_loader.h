@@ -6,22 +6,18 @@
 
 namespace C3D
 {
-	class ResourceLoader
+	class IResourceLoader
 	{
 	public:
-		ResourceLoader(const char* name, MemoryType memoryType, ResourceType type, const char* customType, const char* path);
+		IResourceLoader(const char* name, MemoryType memoryType, ResourceType type, const char* customType, const char* path);
 
-		ResourceLoader(const ResourceLoader& other) = delete;
-		ResourceLoader(ResourceLoader&& other) = delete;
+		IResourceLoader(const IResourceLoader& other) = delete;
+		IResourceLoader(IResourceLoader&& other) = delete;
 
-		ResourceLoader& operator=(const ResourceLoader& other) = default;
-		ResourceLoader& operator=(ResourceLoader&& other) = delete;
+		IResourceLoader& operator=(const IResourceLoader& other) = default;
+		IResourceLoader& operator=(IResourceLoader&& other) = delete;
 
-		virtual ~ResourceLoader() = default;
-
-		virtual bool Load(const char* name, Resource* outResource) = 0;
-
-		virtual void Unload(Resource* resource);
+		virtual ~IResourceLoader() = default;
 
 		u32 id;
 		ResourceType type;
@@ -31,5 +27,12 @@ namespace C3D
 	protected:
 		LoggerInstance m_logger;
 		MemoryType m_memoryType;
+	};
+
+	template<typename T>
+	class ResourceLoader final : public IResourceLoader
+	{
+	public:
+		ResourceLoader() : IResourceLoader("NONE", MemoryType::Unknown, ResourceType::None, nullptr, nullptr) {}
 	};
 }

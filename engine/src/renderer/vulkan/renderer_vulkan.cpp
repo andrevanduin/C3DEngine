@@ -21,6 +21,7 @@
 
 #include "renderer/vertex.h"
 #include "resources/resource_types.h"
+#include "resources/loaders/binary_loader.h"
 
 #include "services/services.h"
 #include "systems/resource_system.h"
@@ -1461,21 +1462,21 @@ namespace C3D
 	bool RendererVulkan::CreateModule(VulkanShaderStageConfig config, VulkanShaderStage* shaderStage) const
 	{
 		// Read the resource
-		Resource binaryResource{};
-		if (!Resources.Load(config.fileName, ResourceType::Binary, &binaryResource))
+		BinaryResource res{};
+		if (!Resources.Load(config.fileName, ResourceType::Binary, &res))
 		{
 			m_logger.Error("CreateModule() - Unable to read shader module: '{}'", config.fileName);
 			return false;
 		}
 
 		shaderStage->createInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-		shaderStage->createInfo.codeSize = binaryResource.dataSize;
-		shaderStage->createInfo.pCode = binaryResource.GetData<u32*>();
+		shaderStage->createInfo.codeSize = res.size;
+		shaderStage->createInfo.pCode = reinterpret_cast<u32*>(res.data);
 
 		VK_CHECK(vkCreateShaderModule(m_context.device.logicalDevice, &shaderStage->createInfo, m_context.allocator, &shaderStage->handle));
 
 		// Release our resource
-		Resources.Unload(&binaryResource);
+		Resources.Unload(&res);
 
 		//Shader stage info
 		shaderStage->shaderStageCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };

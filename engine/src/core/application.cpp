@@ -19,6 +19,7 @@
 //
 
 #include "renderer/renderer_frontend.h"
+#include "resources/loaders/mesh_loader.h"
 #include "systems/geometry_system.h"
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
@@ -121,19 +122,19 @@ namespace C3D
 
 		// Load up a test car mesh from file
 		Mesh* carMesh = &m_meshes[m_meshCount];
-		Resource carMeshResource{};
+		MeshResource carMeshResource{};
 		if (!Resources.Load("falcon", ResourceType::Mesh, &carMeshResource))
 		{
 			m_logger.Fatal("Failed to load car mesh");
 			return;
 		}
 
-		auto configs = static_cast<GeometryConfig<Vertex3D, u32>*>(carMeshResource.data);
-		carMesh->geometryCount = static_cast<u16>(carMeshResource.dataSize);
+
+		carMesh->geometryCount = static_cast<u16>(carMeshResource.geometryConfigs.Size());
 		carMesh->geometries = Memory.Allocate<Geometry*>(carMesh->geometryCount, MemoryType::Array);
 		for (u32 i = 0; i < carMesh->geometryCount; i++)
 		{
-			carMesh->geometries[i] = Geometric.AcquireFromConfig(configs[i], true);
+			carMesh->geometries[i] = Geometric.AcquireFromConfig(carMeshResource.geometryConfigs[i], true);
 		}
 		carMesh->transform = Transform(vec3(15.0f, 0.0f, 1.0f));
 		Resources.Unload(&carMeshResource);
@@ -141,19 +142,18 @@ namespace C3D
 
 		// Load up a sponza mesh from file
 		Mesh* sponza = &m_meshes[m_meshCount];
-		Resource sponzaResource{};
+		MeshResource sponzaResource{};
 		if (!Resources.Load("sponza", ResourceType::Mesh, &sponzaResource))
 		{
 			m_logger.Fatal("Failed to load sponza mesh");
 			return;
 		}
 
-		auto sponzaConfig = static_cast<GeometryConfig<Vertex3D, u32>*>(sponzaResource.data);
-		sponza->geometryCount = static_cast<u16>(sponzaResource.dataSize);
+		sponza->geometryCount = static_cast<u16>(sponzaResource.geometryConfigs.Size());
 		sponza->geometries = Memory.Allocate<Geometry*>(sponza->geometryCount, MemoryType::Array);
 		for (u32 i = 0; i < sponza->geometryCount; i++)
 		{
-			sponza->geometries[i] = Geometric.AcquireFromConfig(sponzaConfig[i], true);
+			sponza->geometries[i] = Geometric.AcquireFromConfig(sponzaResource.geometryConfigs[i], true);
 		}
 		sponza->transform = Transform(vec3(15.0f, 0.0f, 1.0f));
 		// Scale down the model significantly

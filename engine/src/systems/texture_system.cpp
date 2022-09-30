@@ -9,6 +9,7 @@
 
 #include "renderer/renderer_frontend.h"
 #include "resources/resource_types.h"
+#include "resources/loaders/image_loader.h"
 #include "systems/resource_system.h"
 
 namespace C3D
@@ -321,24 +322,23 @@ namespace C3D
 
 	bool TextureSystem::LoadTexture(const char* name, Texture* texture) const
 	{
-		Resource imgResource{};
+		ImageResource imgResource{};
 		if (!Resources.Load(name, ResourceType::Image, &imgResource))
 		{
 			m_logger.Error("Failed to load image resource for texture '{}'", name);
 			return false;
 		}
 
-		const auto resourceData = static_cast<ImageResourceData*>(imgResource.data);
-		if (!resourceData)
+		if (!imgResource.data.pixels)
 		{
 			m_logger.Error("Failed to load image data for texture '{}'", name);
 			return false;
 		}
 
 		Texture temp;
-		temp.width = resourceData->width;
-		temp.height = resourceData->height;
-		temp.channelCount = resourceData->channelCount;
+		temp.width = imgResource.data.width;
+		temp.height = imgResource.data.height;
+		temp.channelCount = imgResource.data.channelCount;
 
 		const u32 currentGeneration = texture->generation;
 		texture->generation = INVALID_ID;
@@ -347,7 +347,7 @@ namespace C3D
 		bool hasTransparency = false;
 		for (u64 i = 0; i < totalSize; i += temp.channelCount)
 		{
-			if (const u8 a = resourceData->pixels[i + 3]; a < 255)
+			if (const u8 a = imgResource.data.pixels[i + 3]; a < 255)
 			{
 				hasTransparency = true;
 				break;
@@ -359,7 +359,7 @@ namespace C3D
 		temp.hasTransparency = hasTransparency;
 		temp.isWritable = false;
 
-		Renderer.CreateTexture(resourceData->pixels, &temp);
+		Renderer.CreateTexture(imgResource.data.pixels, &temp);
 
 		// Take a copy of the old texture
 		Texture old = *texture;

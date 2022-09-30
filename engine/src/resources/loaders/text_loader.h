@@ -4,11 +4,29 @@
 
 namespace C3D
 {
-	class TextLoader final : public ResourceLoader
+	struct TextResource final : Resource
+	{
+		~TextResource()
+		{
+			if (text)
+			{
+				Memory.Free(text, size, MemoryType::Array);
+				text = nullptr;
+				size = 0;
+			}
+		}
+
+		char* text;
+		u64 size;
+	};
+
+	template <>
+	class ResourceLoader<TextResource> final : public IResourceLoader
 	{
 	public:
-		TextLoader();
+		ResourceLoader();
 
-		bool Load(const char* name, Resource* outResource) override;
+		bool Load(const char* name, TextResource* outResource) const;
+		static void Unload(const TextResource* resource);
 	};
 }

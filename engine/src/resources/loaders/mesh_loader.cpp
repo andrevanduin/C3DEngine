@@ -10,11 +10,11 @@
 
 namespace C3D
 {
-	MeshLoader::MeshLoader()
-		: ResourceLoader("MESH_LOADER", MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
+	ResourceLoader<MeshResource>::ResourceLoader()
+		: IResourceLoader("MESH_LOADER", MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
 	{}
 
-	bool MeshLoader::Load(const char* name, Resource* outResource)
+	bool ResourceLoader<MeshResource>::Load(const char* name, MeshResource* outResource) const
 	{
 		if (StringLength(name) == 0 || !outResource) {
 			m_logger.Error("Load() - Name was empty or outResource was nullptr");
@@ -64,9 +64,8 @@ namespace C3D
 		outResource->fullPath = StringDuplicate(fullPath);
 		// Duplicate the name of the resource
 		outResource->name = StringDuplicate(name);
-
 		// The resource data is just a dynamic array of configs
-		DynamicArray<GeometryConfig<Vertex3D, u32>> resourceData(8);
+		outResource->geometryConfigs.Reserve(8);
 
 		bool result = false;
 		switch (type)
@@ -75,10 +74,10 @@ namespace C3D
 				// Generate CSM filename
 				char csmFileName[512];
 				StringFormat(csmFileName, "%s/%s/%s.csm", Resources.GetBasePath(), typePath, name);
-				result = ImportObjFile(file, csmFileName, resourceData);
+				result = ImportObjFile(file, csmFileName, outResource->geometryConfigs);
 				break;
 			case MeshFileType::Csm:
-				result = LoadCsmFile(file, resourceData);
+				result = LoadCsmFile(file, outResource->geometryConfigs);
 				break;
 			case MeshFileType::NotFound:
 				m_logger.Error("Load() - Unsupported mesh type for file '{}'", name);
@@ -90,45 +89,18 @@ namespace C3D
 		if (!result)
 		{
 			m_logger.Error("Load() - Failed to process mesh file: '{}'", fullPath);
-			resourceData.Destroy(); // Free the memory of our dynamic array
-			outResource->data = nullptr;
-			outResource->dataSize = 0;
 			return false;
 		}
 
-		// Take the internal element pointer as our data
-		outResource->data = resourceData.GetData();
-		// Our dataSize will contain the number of geometries so we can keep track of it
-		outResource->dataSize = resourceData.Size();
-		
 		return true;
 	}
 
-	void MeshLoader::Unload(Resource* resource)
+	void ResourceLoader<MeshResource>::Unload(MeshResource* resource)
 	{
-		// Free our path
-		if (resource->fullPath)
-		{
-			const auto count = StringLength(resource->fullPath) + 1;
-			Memory.Free(resource->fullPath, count, MemoryType::String);
-		}
-
-		const u64 count = resource->dataSize;
-		for (u32 i = 0; i <count; i++)
-		{
-			GeometryConfig<Vertex3D, u32>* config = &static_cast<GeometryConfig<Vertex3D, u32>*>(resource->data)[i];
-			Geometric.DisposeConfig(config);
-		}
-
-		// This is what would have been done by our resourceData DynamicArray Destroy() method
-		// but since we just took it's element pointer and returned that we no longer have access to this method
-		// therefore we simply do this free ourselves.
-		Memory.Free(resource->data, sizeof(GeometryConfig<Vertex3D, u32>) * count, MemoryType::DynamicArray);
-		resource->data = nullptr;
-		resource->dataSize = 0;
+		resource->geometryConfigs.Destroy();
 	}
 
-	bool MeshLoader::ImportObjFile(File& file, const char* outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries)
+	bool ResourceLoader<MeshResource>::ImportObjFile(File& file, const char* outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const
 	{
 		// Allocate dynamic arrays with lots of space reserved for our data
 		DynamicArray<vec3> positions(16384);
@@ -270,7 +242,7 @@ namespace C3D
 		return WriteCsmFile(outCsmFileName, name, outGeometries);
 	}
 
-	void MeshLoader::ObjParseVertexLine(const string& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords) const
+	void ResourceLoader<MeshResource>::ObjParseVertexLine(const string& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords) const
 	{
 		switch (line[1])
 		{
@@ -304,7 +276,7 @@ namespace C3D
 		}
 	}
 
-	void MeshLoader::ObjParseFaceLine(const string& line, const u64 normalCount, const u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups)
+	void ResourceLoader<MeshResource>::ObjParseFaceLine(const string& line, const u64 normalCount, const u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups)
 	{
 		MeshFaceData face{};
 		char t[2];
@@ -327,7 +299,7 @@ namespace C3D
 		groups[groupIndex].faces.PushBack(face);
 	}
 
-	void MeshLoader::ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords, DynamicArray<MeshFaceData>& faces, GeometryConfig<Vertex3D, u32>* outData) const
+	void ResourceLoader<MeshResource>::ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords, DynamicArray<MeshFaceData>& faces, GeometryConfig<Vertex3D, u32>* outData) const
 	{
 		auto indices = DynamicArray<u32>(32768);
 		auto vertices = DynamicArray<Vertex3D>(32768);
@@ -435,7 +407,7 @@ namespace C3D
 		outData->indices = indices;
 	}
 
-	bool MeshLoader::ImportObjMaterialLibraryFile(const char* mtlFilePath)
+	bool ResourceLoader<MeshResource>::ImportObjMaterialLibraryFile(const char* mtlFilePath) const
 	{
 		m_logger.Debug("Importing .mtl file: '{}'", mtlFilePath);
 
@@ -511,7 +483,7 @@ namespace C3D
 		return true;
 	}
 
-	void MeshLoader::ObjMaterialParseColorLine(const string& line, MaterialConfig& config) const
+	void ResourceLoader<MeshResource>::ObjMaterialParseColorLine(const string& line, MaterialConfig& config) const
 	{
 		switch (line[1])
 		{
@@ -538,7 +510,7 @@ namespace C3D
 		}
 	}
 
-	void MeshLoader::ObjMaterialParseMapLine(const string& line, MaterialConfig& config) const
+	void ResourceLoader<MeshResource>::ObjMaterialParseMapLine(const string& line, MaterialConfig& config) const
 	{
 		char substr[10];
 		char textureFileName[512];
@@ -560,7 +532,7 @@ namespace C3D
 		}
 	}
 
-	void MeshLoader::ObjMaterialParseNewMtlLine(const string& line, MaterialConfig& config, bool& hitName, const char* mtlFilePath) const
+	void ResourceLoader<MeshResource>::ObjMaterialParseNewMtlLine(const string& line, MaterialConfig& config, bool& hitName, const char* mtlFilePath) const
 	{
 		char substr[10];
 		char materialName[512];
@@ -592,7 +564,7 @@ namespace C3D
 		}
 	}
 
-	bool MeshLoader::WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const
+	bool ResourceLoader<MeshResource>::WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const
 	{
 		// NOTE: The .obj file is in the models directory we have to move up 1 directory and go into the materials directory
 		const auto formatStr = "%s../materials/%s.%s";
