@@ -4,13 +4,18 @@
 
 namespace C3D
 {
-	class MaterialLoader final : public ResourceLoader
+	struct MaterialResource final : Resource
+	{
+		MaterialConfig config;
+	};
+
+	template <>
+	class ResourceLoader<MaterialResource> final : public IResourceLoader
 	{
 	public:
-		MaterialLoader();
+		ResourceLoader();
 
-		bool Load(const char* name, Resource* outResource) override;
-
-		void Unload(Resource* resource) override;
+		bool Load(const char* name, MaterialResource* outResource) const;
+		static void Unload(const MaterialResource* resource);
 	};
 }

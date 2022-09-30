@@ -13,11 +13,11 @@ namespace C3D
 {
 	constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
 
-	MaterialLoader::MaterialLoader()
-		: ResourceLoader("MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
+	ResourceLoader<MaterialResource>::ResourceLoader()
+		: IResourceLoader("MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
 	{}
 
-	bool MaterialLoader::Load(const char* name, Resource* outResource)
+	bool ResourceLoader<MaterialResource>::Load(const char* name, MaterialResource* outResource) const
 	{
 		if (StringLength(name) == 0 || !outResource) return false;
 
@@ -35,13 +35,11 @@ namespace C3D
 		}
 
 		outResource->fullPath = StringDuplicate(fullPath);
+		outResource->config.autoRelease = true;
+		outResource->config.diffuseColor = vec4(1); // Default white
+		outResource->config.diffuseMapName[0] = 0;
 
-		auto* resourceData = Memory.Allocate<MaterialConfig>(MemoryType::MaterialInstance);
-		resourceData->autoRelease = true;
-		resourceData->diffuseColor = vec4(1); // Default white
-		resourceData->diffuseMapName[0] = 0;
-
-		StringNCopy(resourceData->name, name, MATERIAL_NAME_MAX_LENGTH);
+		StringNCopy(outResource->config.name, name, MATERIAL_NAME_MAX_LENGTH);
 
 		string line;
 		// Prepare for strings of up to 512 characters so we don't needlessly resize
@@ -82,37 +80,37 @@ namespace C3D
 			}
 			else if (IEquals(varName.data(), "name"))
 			{
-				StringNCopy(resourceData->name, value.data(), MATERIAL_NAME_MAX_LENGTH);
+				StringNCopy(outResource->config.name, value.data(), MATERIAL_NAME_MAX_LENGTH);
 			}
 			else if (IEquals(varName.data(), "diffuseMapName"))
 			{
-				StringNCopy(resourceData->diffuseMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
+				StringNCopy(outResource->config.diffuseMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
 			}
 			else if (IEquals(varName.data(), "specularMapName"))
 			{
-				StringNCopy(resourceData->specularMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
+				StringNCopy(outResource->config.specularMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
 			}
 			else if (IEquals(varName.data(), "normalMapName"))
 			{
-				StringNCopy(resourceData->normalMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
+				StringNCopy(outResource->config.normalMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
 			}
 			else if (IEquals(varName.data(), "diffuseColor"))
 			{
-				if (!StringToVec4(value.data(), &resourceData->diffuseColor))
+				if (!StringToVec4(value.data(), &outResource->config.diffuseColor))
 				{
 					m_logger.Warn("Error parsing diffuseColor in file '{}'. Using default of white instead", fullPath);
 				}
 			}
 			else if (IEquals(varName.data(), "shader"))
 			{
-				resourceData->shaderName = StringDuplicate(value.data());
+				outResource->config.shaderName = StringDuplicate(value.data());
 			}
 			else if (IEquals(varName.data(), "shininess"))
 			{
-				if (!StringToF32(value.data(), &resourceData->shininess))
+				if (!StringToF32(value.data(), &outResource->config.shininess))
 				{
 					m_logger.Warn("Error Parsing shininess in file '{}'. Using default of 32.0 instead", fullPath);
-					resourceData->shininess = 32.0f;
+					outResource->config.shininess = 32.0f;
 				}
 			}
 
@@ -123,25 +121,16 @@ namespace C3D
 
 		file.Close();
 
-		outResource->data = resourceData;
-		outResource->dataSize = sizeof(MaterialConfig);
 		outResource->name = StringDuplicate(name);
-
 		return true;
 	}
 
-	void MaterialLoader::Unload(Resource* resource)
+	void ResourceLoader<MaterialResource>::Unload(const MaterialResource* resource)
 	{
-		if (resource->data)
+		if (resource->config.shaderName)
 		{
-			const auto resourceData = static_cast<MaterialConfig*>(resource->data);
-			if (resourceData->shaderName)
-			{
-				const auto count = StringLength(resourceData->shaderName) + 1;
-				Memory.Free(resourceData->shaderName, count, MemoryType::String);
-			}
+			const auto count = StringLength(resource->config.shaderName) + 1;
+			Memory.Free(resource->config.shaderName, count, MemoryType::String);
 		}
-
-		ResourceLoader::Unload(resource);
 	}
 }

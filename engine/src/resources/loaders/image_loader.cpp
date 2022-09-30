@@ -16,11 +16,11 @@
 
 namespace C3D
 {
-	ImageLoader::ImageLoader()
-		: ResourceLoader("IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
+	ResourceLoader<ImageResource>::ResourceLoader()
+		: IResourceLoader("IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
 	{}
 
-	bool ImageLoader::Load(const char* name, Resource* outResource)
+	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource* outResource) const
 	{
 		if (StringLength(name) == 0 || !outResource) return false;
 
@@ -80,24 +80,17 @@ namespace C3D
 		}
 
 		outResource->fullPath = StringDuplicate(fullPath);
+		outResource->data.pixels = data;
+		outResource->data.width = width;
+		outResource->data.height = height;
+		outResource->data.channelCount = requiredChannelCount;
 
-		auto* resourceData = Memory.Allocate<ImageResourceData>(MemoryType::Texture);
-		resourceData->pixels = data;
-		resourceData->width = width;
-		resourceData->height = height;
-		resourceData->channelCount = requiredChannelCount;
-
-		outResource->data = resourceData;
-		outResource->dataSize = sizeof(ImageResourceData);
 		return true;
 	}
 
-	void ImageLoader::Unload(Resource* resource)
+	void ResourceLoader<ImageResource>::Unload(const ImageResource* resource)
 	{
-		// Free the pixel data
-		const auto imageData = static_cast<ImageResourceData*>(resource->data);
-		stbi_image_free(imageData->pixels);
-		// Free the rest of the resource
-		ResourceLoader::Unload(resource);
+		// Free the pixel data loaded in by STBI
+		stbi_image_free(resource->data.pixels);
 	}
 }

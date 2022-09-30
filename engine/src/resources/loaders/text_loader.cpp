@@ -11,11 +11,11 @@
 
 namespace C3D
 {
-	TextLoader::TextLoader()
-		: ResourceLoader("TEXT_LOADER", MemoryType::String, ResourceType::Text, nullptr, "")
+	ResourceLoader<TextResource>::ResourceLoader()
+		: IResourceLoader("TEXT_LOADER", MemoryType::String, ResourceType::Text, nullptr, "")
 	{}
 
-	bool TextLoader::Load(const char* name, Resource* outResource)
+	bool ResourceLoader<TextResource>::Load(const char* name, TextResource* outResource) const
 	{
 		if (StringLength(name) == 0 || !outResource) return false;
 
@@ -44,9 +44,10 @@ namespace C3D
 		}
 
 		// TODO: should be using an allocator here
-		char* resourceData = Memory.Allocate<char>(fileSize, MemoryType::Array);
-		u64 readSize = 0;
-		if (!file.ReadAll(resourceData, &readSize))
+		outResource->text = Memory.Allocate<char>(fileSize, MemoryType::Array);
+		outResource->name = StringDuplicate(name);
+
+		if (!file.ReadAll(outResource->text, &outResource->size))
 		{
 			m_logger.Error("Unable to read text file: '{}'", fullPath);
 			file.Close();
@@ -54,11 +55,11 @@ namespace C3D
 		}
 
 		file.Close();
-
-		outResource->data = resourceData;
-		outResource->dataSize = readSize;
-		outResource->name = StringDuplicate(name);
-
 		return true;
+	}
+
+	void ResourceLoader<TextResource>::Unload(const TextResource* resource)
+	{
+		Memory.Free(resource->text, resource->size, MemoryType::Array);
 	}
 }

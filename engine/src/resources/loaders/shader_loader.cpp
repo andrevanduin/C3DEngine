@@ -9,18 +9,17 @@
 
 namespace C3D
 {
-	ShaderLoader::ShaderLoader()
-		: ResourceLoader("SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
+	ResourceLoader<ShaderResource>::ResourceLoader()
+		: IResourceLoader("SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
 	{}
 
-	bool ShaderLoader::Load(const char* name, Resource* outResource)
+	bool ResourceLoader<ShaderResource>::Load(const char* name, ShaderResource* outResource) const
 	{
 		if (StringLength(name) == 0 || !outResource)
 		{
 			m_logger.Error("Load() - Provided name was empty or no outResource pointer provided");
 			return false;
 		}
-
 
 		char fullPath[512];
 		const auto formatStr = "%s/%s/%s.%s";
@@ -34,15 +33,14 @@ namespace C3D
 		}
 
 		outResource->fullPath = StringDuplicate(fullPath);
+		outResource->config.useInstances = false;
+		outResource->config.useLocals = false;
 
-		const auto resourceData = Memory.Allocate<ShaderConfig>(MemoryType::Shader);
-		resourceData->useInstances = false;
-		resourceData->useLocals = false;
-		resourceData->renderPassName = nullptr;
-		resourceData->name = nullptr;
+		outResource->config.renderPassName = nullptr;
+		outResource->config.name = nullptr;
 
-		resourceData->attributes.Reserve(4);
-		resourceData->uniforms.Reserve(8);
+		outResource->config.attributes.Reserve(4);
+		outResource->config.uniforms.Reserve(8);
 
 		string line;
 		u32 lineNumber = 1;
@@ -82,49 +80,45 @@ namespace C3D
 			}
 			else if (IEquals(varName.data(), "name"))
 			{
-				resourceData->name = StringDuplicate(value.data());
+				outResource->config.name = StringDuplicate(value.data());
 			}
 			else if (IEquals(varName.data(), "renderPass"))
 			{
-				resourceData->renderPassName = StringDuplicate(value.data());
+				outResource->config.renderPassName = StringDuplicate(value.data());
 			}
 			else if (IEquals(varName.data(), "stages"))
 			{
-				ParseStages(resourceData, value);
+				ParseStages(&outResource->config, value);
 			}
 			else if (IEquals(varName.data(), "stageFiles"))
 			{
-				ParseStageFiles(resourceData, value);
+				ParseStageFiles(&outResource->config, value);
 			}
 			else if (IEquals(varName.data(), "useInstances"))
 			{
-				StringToBool(value.data(), &resourceData->useInstances);
+				StringToBool(value.data(), &outResource->config.useInstances);
 ;			}
 			else if (IEquals(varName.data(), "useLocals"))
 			{
-				StringToBool(value.data(), &resourceData->useLocals);
+				StringToBool(value.data(), &outResource->config.useLocals);
 			}
 			else if (IEquals(varName.data(), "attribute"))
 			{
-				ParseAttribute(resourceData, value);
+				ParseAttribute(&outResource->config, value);
 			}
 			else if (IEquals(varName.data(), "uniform"))
 			{
-				ParseUniform(resourceData, value);
+				ParseUniform(&outResource->config, value);
 			}
 
 			lineNumber++;
 		}
 
 		file.Close();
-
-		outResource->data = resourceData;
-		outResource->dataSize = sizeof(ShaderConfig);
-
 		return true;
 	}
 
-	void ShaderLoader::Unload(Resource* resource)
+	void ResourceLoader<ShaderResource>::Unload(ShaderResource* resource) const
 	{
 		if (!resource)
 		{
@@ -132,7 +126,7 @@ namespace C3D
 			return;
 		}
 
-		const auto data = resource->GetData<ShaderConfig*>();
+		const auto data = &resource->config;
 
 		for (const auto stageFileName : data->stageFileNames)
 		{
@@ -167,11 +161,9 @@ namespace C3D
 
 		Memory.Free(data->renderPassName, StringLength(data->renderPassName) + 1, MemoryType::String);
 		Memory.Free(data->name, StringLength(data->name) + 1, MemoryType::String);
-
-		ResourceLoader::Unload(resource);
 	}
 
-	void ShaderLoader::ParseStages(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseStages(ShaderConfig* data, const string& value) const
 	{
 		data->stageNames = StringSplit(value, ',');
 		if (!data->stageFileNames.empty() && data->stageNames.size() != data->stageFileNames.size())
@@ -206,7 +198,7 @@ namespace C3D
 		}
 	}
 
-	void ShaderLoader::ParseStageFiles(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseStageFiles(ShaderConfig* data, const string& value) const
 	{
 		data->stageFileNames = StringSplit(value, ',');
 		if (!data->stageNames.empty() && data->stageNames.size() != data->stageFileNames.size())
@@ -217,7 +209,7 @@ namespace C3D
 		}
 	}
 
-	void ShaderLoader::ParseAttribute(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseAttribute(ShaderConfig* data, const string& value) const
 	{
 		const auto fields = StringSplit(value, ',');
 		if (fields.size() != 2)
@@ -286,7 +278,7 @@ namespace C3D
 		data->attributes.PushBack(attribute);
 	}
 
-	void ShaderLoader::ParseUniform(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseUniform(ShaderConfig* data, const string& value) const
 	{
 		const auto fields = StringSplit(value, ',');
 		if (fields.size() != 3)

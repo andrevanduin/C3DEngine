@@ -5,6 +5,9 @@
 #include "material.h"
 #include "texture.h"
 
+#include "services/services.h"
+#include "core/memory.h"
+
 namespace C3D
 {
 	// Pre-defined resource types
@@ -23,20 +26,27 @@ namespace C3D
 
 	struct Resource
 	{
+		~Resource()
+		{
+			if (name)
+			{
+				const auto size = StringLength(name) + 1;
+				Memory.Free(name, size, MemoryType::String);
+				name = nullptr;
+			}
+			if (fullPath)
+			{
+				const auto size = StringLength(fullPath) + 1;
+				Memory.Free(fullPath, size, MemoryType::String);
+				fullPath = nullptr;
+			}
+		}
+
 		u32 loaderId;
 
 		char* name;
 		char* fullPath;
-
-		u64 dataSize;
-		void* data;
-
-		template<class T>
-		T GetData()
-		{
-			return static_cast<T>(data);
-		}
-	};
+	}; 
 
 	struct ImageResourceData
 	{

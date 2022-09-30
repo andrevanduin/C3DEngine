@@ -15,6 +15,7 @@
 #include "services/services.h"
 
 #include "core/events/event.h"
+#include "resources/loaders/shader_loader.h"
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
@@ -50,7 +51,7 @@ namespace C3D
 		}
 
 		// Shaders
-		Resource configResource{};
+		ShaderResource configResource{};
 		// Get shader resources for material shader
 		if (!Resources.Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, &configResource))
 		{
@@ -58,10 +59,8 @@ namespace C3D
 			return false;
 		}
 
-		// Get the material shader config
-		auto config = configResource.GetData<ShaderConfig*>();
 		// Create our material shader
-		if (!Shaders.Create(config))
+		if (!Shaders.Create(&configResource.config))
 		{
 			m_logger.Error("Init() - Failed to create builtin material shader");
 			return false;
@@ -79,10 +78,8 @@ namespace C3D
 			return false;
 		}
 
-		// Get the ui shader config
-		config = configResource.GetData<ShaderConfig*>();
 		// Create our ui shader
-		if (!Shaders.Create(config))
+		if (!Shaders.Create(&configResource.config))
 		{
 			m_logger.Error("Init() - Failed to create builtin material shader");
 			return false;

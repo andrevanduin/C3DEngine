@@ -46,38 +46,43 @@ namespace C3D
 		DynamicArray<MeshFaceData> faces;
 	};
 
-	class MeshLoader final : public ResourceLoader
+	struct MeshResource : Resource
+	{
+		DynamicArray<GeometryConfig<Vertex3D, u32>> geometryConfigs;
+	};
+
+	template <>
+	class ResourceLoader<MeshResource> final : public IResourceLoader
 	{
 	public:
-		MeshLoader();
+		ResourceLoader();
 
-		bool Load(const char* name, Resource* outResource) override;
-
-		void Unload(Resource* resource) override;
+		bool Load(const char* name, MeshResource* outResource) const;
+		static void Unload(MeshResource* resource);
 
 	private:
-		bool ImportObjFile(File& file, const char* outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries);
+		bool ImportObjFile(File& file, const char* outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const;
 		void ObjParseVertexLine(const string& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords) const;
 		static void ObjParseFaceLine(const string& line, u64 normalCount, u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups);
 
 		void ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords, DynamicArray<MeshFaceData>& faces, GeometryConfig<Vertex3D, u32>* outData) const;
 
-		bool ImportObjMaterialLibraryFile(const char* mtlFilePath);
+		bool ImportObjMaterialLibraryFile(const char* mtlFilePath) const;
 		void ObjMaterialParseColorLine(const string& line, MaterialConfig& config) const;
 		void ObjMaterialParseMapLine(const string& line, MaterialConfig& config) const;
 		void ObjMaterialParseNewMtlLine(const string& line, MaterialConfig& config, bool& hitName, const char* mtlFilePath) const;
 
 		template<typename VertexType, typename IndexType>
-		bool LoadCsmFile(File& file, DynamicArray<GeometryConfig<VertexType, IndexType>>& outGeometries);
+		bool LoadCsmFile(File& file, DynamicArray<GeometryConfig<VertexType, IndexType>>& outGeometries) const;
 
 		template<typename VertexType, typename IndexType>
-		bool WriteCsmFile(const char* path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries);
+		bool WriteCsmFile(const char* path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries) const;
 
 		bool WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const;
 	};
 
 	template <typename VertexType, typename IndexType>
-	bool MeshLoader::LoadCsmFile(File& file, DynamicArray<GeometryConfig<VertexType, IndexType>>& outGeometries)
+	bool ResourceLoader<MeshResource>::LoadCsmFile(File& file, DynamicArray<GeometryConfig<VertexType, IndexType>>& outGeometries) const
 	{
 		// Version
 		u16 version = 0;
@@ -146,7 +151,7 @@ namespace C3D
 	}
 
 	template <typename VertexType, typename IndexType>
-	bool MeshLoader::WriteCsmFile(const char* path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries)
+	bool ResourceLoader<MeshResource>::WriteCsmFile(const char* path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries) const
 	{
 		if (File::Exists(path))
 		{
