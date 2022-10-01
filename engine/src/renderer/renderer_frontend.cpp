@@ -4,7 +4,6 @@
 #include "core/logger.h"
 #include "core/memory.h"
 #include "core/application.h"
-#include "core/c3d_string.h"
 
 #include "math/c3d_math.h"
 
@@ -16,21 +15,17 @@
 
 #include "core/events/event.h"
 #include "resources/loaders/shader_loader.h"
-#include "systems/material_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
-#include "systems/camera_system.h"
+#include "systems/render_view_system.h"
 
 namespace C3D
 {
 	// TODO: Obtain ambient color from scene instead of hardcoding it here
 	RenderSystem::RenderSystem()
-		: m_logger("RENDERER"), m_activeWorldCamera(nullptr), m_projection(), m_ambientColor(0.25, 0.25, 0.25, 1.0f),
-		  m_uiProjection(), m_uiView(inverse(mat4(1))), m_nearClip(0.1f), m_farClip(1000.0f), m_materialShaderId(0), m_uiShaderId(0),
-		  m_renderMode(0), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
+		: m_logger("RENDERER"), m_materialShaderId(0), m_uiShaderId(0), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
 		  m_worldRenderPass(nullptr), m_uiRenderPass(nullptr), m_resizing(false), m_framesSinceResize(0)
-	{
-	}
+	{}
 
 	bool RenderSystem::Init(const Application* application)
 	{
@@ -42,8 +37,6 @@ namespace C3D
 		}
 
 		m_logger.Info("Created Vulkan Renderer Backend");
-
-		Event.Register(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderSystem::OnEvent));
 
 		RendererBackendConfig backendConfig{};
 		backendConfig.applicationName = "TestEnv";
@@ -131,23 +124,13 @@ namespace C3D
 		Resources.Unload(&configResource);
 		m_uiShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_UI);
 
-		const auto appState = application->GetState();
-		const auto aspectRatio = static_cast<float>(appState->width) / static_cast<float>(appState->height);
-
-		m_projection = glm::perspectiveRH_NO(DegToRad(45.0f), aspectRatio, m_nearClip, m_farClip);
-
-		// UI projection and view
-		m_uiProjection = glm::orthoRH_NO(0.0f, 1280.0f, 720.0f, 0.0f, -100.0f, 100.0f);
-
 		m_logger.Info("Initialized Vulkan Renderer Backend");
 		return true;
 	}
 
-	void RenderSystem::Shutdown()
+	void RenderSystem::Shutdown() const
 	{
 		m_logger.Info("Shutting Down");
-
-		Event.UnRegister(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderSystem::OnEvent));
 
 		for (u8 i = 0; i < m_windowRenderTargetCount; i++)
 		{
@@ -177,12 +160,7 @@ namespace C3D
 
 			if (m_framesSinceResize >= 30)
 			{
-				const auto fWidth = static_cast<f32>(m_frameBufferWidth);
-				const auto fHeight = static_cast<f32>(m_frameBufferHeight);
-				const auto aspectRatio = fWidth / fHeight;
-
-				m_projection = glm::perspectiveRH_NO(DegToRad(45.0f), aspectRatio, m_nearClip, m_farClip);
-				m_uiProjection = glm::orthoRH_NO(0.0f, fWidth, fHeight, 0.0f, -100.0f, 100.0f);
+				Views.OnWindowResize(m_frameBufferWidth, m_frameBufferHeight);
 				m_backend->OnResize(m_frameBufferWidth, m_frameBufferHeight);
 
 				m_framesSinceResize = 0;
@@ -195,125 +173,18 @@ namespace C3D
 			}
 		}
 
-		// TODO: Views
-		m_worldRenderPass->renderArea.z = m_frameBufferWidth;
-		m_worldRenderPass->renderArea.w = m_frameBufferHeight;
-
-		m_uiRenderPass->renderArea.z = m_frameBufferWidth;
-		m_uiRenderPass->renderArea.w = m_frameBufferHeight;
-
-		if (!m_activeWorldCamera)
-		{
-			// Get the default camera
-			m_activeWorldCamera = Cam.GetDefault();
-		}
-
-		const auto view = m_activeWorldCamera->GetViewMatrix();
-		const auto position = m_activeWorldCamera->GetPosition();
-
 		if (m_backend->BeginFrame(packet->deltaTime))
 		{
 			const u8 attachmentIndex = m_backend->GetWindowAttachmentIndex();
 
-			// Begin World RenderPass
-			if (!m_backend->BeginRenderPass(m_worldRenderPass, &m_worldRenderPass->targets[attachmentIndex]))
+			// Render each view
+			for (auto& viewPacket : packet->views)
 			{
-				m_logger.Error("DrawFrame() - BeginRenderPass(m_worldRenderPass) failed.");
-				return false;
-			}
-
-			// Use our material shader for this
-			if (!Shaders.UseById(m_materialShaderId))
-			{
-				m_logger.Error("DrawFrame() - Failed to use material shader");
-				return false;
-			}
-
-			// Apply globals
-			if (!Materials.ApplyGlobal(m_materialShaderId, &m_projection, &view, &m_ambientColor, &position, m_renderMode))
-			{
-				m_logger.Error("DrawFrame() - Failed to apply globals for material shader");
-				return false;
-			}
-
-			// Draw all our World Geometry
-			for (const auto& geometryData : packet->geometries)
-			{
-				Material* mat = geometryData.geometry->material;
-				if (!mat) mat = Materials.GetDefault();
-
-				// Apply our material if it hasn't already been updated this frame.
-				// This prevents us from applying the same material multiple times
-				const bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
-				if (!Materials.ApplyInstance(mat, needsUpdate))
+				if (!Views.OnRender(viewPacket.view, &viewPacket, m_backend->state.frameNumber, attachmentIndex))
 				{
-					m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);
-					continue;
+					m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.", viewPacket.view->name);
+					return false;
 				}
-				mat->renderFrameNumber = static_cast<u32>(m_backend->state.frameNumber);
-
-				// Apply locals
-				Materials.ApplyLocal(mat, &geometryData.model);
-
-				// Finally draw it
-				m_backend->DrawGeometry(geometryData);
-			}
-
-			// End World RenderPass
-			if (!m_backend->EndRenderPass(m_worldRenderPass))
-			{
-				m_logger.Error("DrawFrame() - EndRenderPass(m_worldRenderPass) failed");
-				return false;
-			}
-
-			// Begin UI RenderPass
-			if (!m_backend->BeginRenderPass(m_uiRenderPass, &m_uiRenderPass->targets[attachmentIndex]))
-			{
-				m_logger.Error("DrawFrame() - BeginRenderPass(BuiltinRenderPass::Ui) failed");
-				return false;
-			}
-
-			// Use our ui shader for this
-			if (!Shaders.UseById(m_uiShaderId))
-			{
-				m_logger.Error("DrawFrame() - Failed to use ui shader");
-				return false;
-			}
-
-			// Apply globals
-			if (!Materials.ApplyGlobal(m_uiShaderId, &m_uiProjection, &m_uiView, nullptr, nullptr, 0))
-			{
-				m_logger.Error("DrawFrame() - Failed to apply globals for ui shader");
-				return false;
-			}
-
-			// Draw all our UI Geometry
-			for (const auto& geometryData : packet->uiGeometries)
-			{
-				Material* mat = geometryData.geometry->material;
-				if (!mat) mat = Materials.GetDefault();
-
-				const bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
-				// Apply our material
-				if (!Materials.ApplyInstance(mat, needsUpdate))
-				{
-					m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);
-					continue;
-				}
-				mat->renderFrameNumber = static_cast<u32>(m_backend->state.frameNumber);
-
-				// Apply locals
-				Materials.ApplyLocal(mat, &geometryData.model);
-
-				// Finally draw it
-				m_backend->DrawGeometry(geometryData);
-			}
-
-			// End UI RenderPass
-			if (!m_backend->EndRenderPass(m_uiRenderPass))
-			{
-				m_logger.Error("DrawFrame() - EndRenderPass(m_uiRenderPass) failed");
-				return false;
 			}
 
 			// End frame
@@ -363,9 +234,24 @@ namespace C3D
 		return m_backend->DestroyGeometry(geometry);
 	}
 
+	void RenderSystem::DrawGeometry(const GeometryRenderData& data) const
+	{
+		return m_backend->DrawGeometry(data);
+	}
+
 	RenderPass* RenderSystem::GetRenderPass(const char* name) const
 	{
 		return m_backend->GetRenderPass(name);
+	}
+
+	bool RenderSystem::BeginRenderPass(RenderPass* pass, RenderTarget* target) const
+	{
+		return m_backend->BeginRenderPass(pass, target);
+	}
+
+	bool RenderSystem::EndRenderPass(RenderPass* pass) const
+	{
+		return m_backend->EndRenderPass(pass);
 	}
 
 	bool RenderSystem::CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const
@@ -482,27 +368,5 @@ namespace C3D
 		{
 			Memory.Free(m_backend, sizeof(RendererVulkan), MemoryType::RenderSystem);
 		}
-	}
-
-	bool RenderSystem::OnEvent(const u16 code, void* sender, const EventContext context)
-	{
-		if (code != SetRenderMode) return false;
-
-		switch (const i32 mode = context.data.i32[0])
-		{
-			case RendererViewMode::Default:
-				m_logger.Debug("Renderer mode set to default");
-				m_renderMode = RendererViewMode::Default;
-				break;
-			case RendererViewMode::Lighting:
-				m_logger.Debug("Renderer mode set to lighting");
-				m_renderMode = RendererViewMode::Lighting;
-				break;
-			case RendererViewMode::Normals:
-				m_logger.Debug("Renderer mode set to normals");
-				m_renderMode = RendererViewMode::Normals;
-				break;
-		}
-		return true;
 	}
 }

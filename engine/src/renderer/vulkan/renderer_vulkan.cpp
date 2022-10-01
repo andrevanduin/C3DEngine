@@ -217,6 +217,7 @@ namespace C3D
 				pass.Destroy();
 			}
 		}
+		m_context.renderPassTable.Destroy();
 
 		m_logger.Info("Destroying SwapChain");
 		m_context.swapChain.Destroy(&m_context);
@@ -475,7 +476,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::DrawGeometry(const GeometryRenderData data)
+	void RendererVulkan::DrawGeometry(const GeometryRenderData& data)
 	{
 		// Simply ignore if there is no geometry to draw
 		if (!data.geometry || data.geometry->internalId == INVALID_ID) return;

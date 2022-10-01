@@ -23,7 +23,7 @@ namespace C3D
 		RenderSystem();
 
 		bool Init(const Application* application);
-		void Shutdown();
+		void Shutdown() const;
 
 		void OnResize(u16 width, u16 height);
 
@@ -39,8 +39,11 @@ namespace C3D
 
 		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) const;
 		void DestroyGeometry(Geometry* geometry) const;
+		void DrawGeometry(const GeometryRenderData& data) const;
 
 		RenderPass* GetRenderPass(const char* name) const;
+		bool BeginRenderPass(RenderPass* pass, RenderTarget* target) const;
+		bool EndRenderPass(RenderPass* pass) const;
 
 		bool CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const;
 		void DestroyShader(Shader* shader) const;
@@ -72,24 +75,9 @@ namespace C3D
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend() const;
 
-		bool OnEvent(u16 code, void* sender, EventContext context);
-
 		LoggerInstance m_logger;
 
-		Camera* m_activeWorldCamera;
-
-		// World
-		mat4 m_projection;
-		vec4 m_ambientColor;
-
-		// UI
-		mat4 m_uiProjection, m_uiView;
-
-		f32 m_nearClip, m_farClip;
-
 		u32 m_materialShaderId, m_uiShaderId;
-
-		u32 m_renderMode;
 
 		u8 m_windowRenderTargetCount;
 		u32 m_frameBufferWidth, m_frameBufferHeight;

@@ -5,9 +5,9 @@
 #include "core/defines.h"
 #include "containers/dynamic_array.h"
 
-#include "math/math_types.h"
 #include "resources/geometry.h"
 #include "renderpass.h"
+#include "render_view.h"
 
 namespace C3D
 {
@@ -28,18 +28,10 @@ namespace C3D
 		Normals = 2,
 	};
 
-	struct GeometryRenderData
-	{
-		mat4 model;
-		Geometry* geometry;
-	};
-
 	struct RenderPacket
 	{
 		f32 deltaTime = 0;
-
-		DynamicArray<GeometryRenderData> geometries;
-		DynamicArray<GeometryRenderData> uiGeometries;
+		DynamicArray<RenderViewPacket> views;
 	};
 
 	struct RenderTarget

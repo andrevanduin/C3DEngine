@@ -24,7 +24,7 @@ namespace C3D
 
 		virtual bool BeginFrame(f32 deltaTime) = 0;
 
-		virtual void DrawGeometry(GeometryRenderData data) = 0;
+		virtual void DrawGeometry(const GeometryRenderData& data) = 0;
 
 		virtual bool EndFrame(f32 deltaTime) = 0;
 

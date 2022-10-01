@@ -12,6 +12,7 @@
 #include "core/input.h"
 #include "core/events/event.h"
 #include "core/events/event_context.h"
+#include "renderer/renderer_types.h"
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
 	: Application(config), m_camera(nullptr)
@@ -41,7 +42,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		const auto pos = m_camera->GetPosition();
 		C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
 	}
-	/*
+
 	// Renderer Debug functions
 	if (Input.IsKeyUp('1') && Input.WasKeyDown('1'))
 	{
@@ -62,7 +63,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		C3D::EventContext context = {};
 		context.data.i32[0] = C3D::RendererViewMode::Normals;
 		Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
-	}*/
+	}
 
 	if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyLeft))
 	{
