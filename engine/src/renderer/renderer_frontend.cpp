@@ -26,12 +26,13 @@ namespace C3D
 	// TODO: Obtain ambient color from scene instead of hardcoding it here
 	RenderSystem::RenderSystem()
 		: m_logger("RENDERER"), m_activeWorldCamera(nullptr), m_projection(), m_ambientColor(0.25, 0.25, 0.25, 1.0f),
-		  m_uiProjection(), m_uiView(), m_nearClip(0.1f), m_farClip(1000.0f), m_materialShaderId(0), m_uiShaderId(0),
-		  m_renderMode(0)
+		  m_uiProjection(), m_uiView(inverse(mat4(1))), m_nearClip(0.1f), m_farClip(1000.0f), m_materialShaderId(0), m_uiShaderId(0),
+		  m_renderMode(0), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
+		  m_worldRenderPass(nullptr), m_uiRenderPass(nullptr), m_resizing(false), m_framesSinceResize(0)
 	{
 	}
 
-	bool RenderSystem::Init(Application* application)
+	bool RenderSystem::Init(const Application* application)
 	{
 		// TODO: Make this configurable once we have multiple rendering backend options
 		if (!CreateBackend(RendererBackendType::Vulkan))
@@ -44,11 +45,52 @@ namespace C3D
 
 		Event.Register(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderSystem::OnEvent));
 
-		if (!m_backend->Init(application))
+		RendererBackendConfig backendConfig{};
+		backendConfig.applicationName = "TestEnv";
+		backendConfig.frontend = this;
+		backendConfig.renderPassCount = 2;
+		backendConfig.window = application->GetWindow();
+
+		constexpr auto worldRenderPassName = "RenderPass.Builtin.World";
+		constexpr auto uiRenderPassName = "RenderPass.Builtin.UI";
+
+		RenderPassConfig passConfigs[2];
+		passConfigs[0].name = worldRenderPassName;
+		passConfigs[0].previousName = nullptr;
+		passConfigs[0].nextName = uiRenderPassName;
+		passConfigs[0].renderArea = { 0, 0, 1280, 720 };
+		passConfigs[0].clearColor = { 0.0f, 0.0f, 0.2f, 1.0f };
+		passConfigs[0].clearFlags = ClearColor | ClearDepth | ClearStencil;
+
+		passConfigs[1].name = uiRenderPassName;
+		passConfigs[1].previousName = worldRenderPassName;
+		passConfigs[1].nextName = nullptr;
+		passConfigs[1].renderArea = { 0, 0, 1280, 720 };
+		passConfigs[1].clearColor = { 0.0f, 0.0f, 0.2f, 1.0f };
+		passConfigs[1].clearFlags = ClearNone;
+
+		backendConfig.passConfigs = passConfigs;
+
+		if (!m_backend->Init(backendConfig, &m_windowRenderTargetCount))
 		{
 			m_logger.Error("Init() - Failed to Initialize Renderer Backend.");
 			return false;
 		}
+
+		// TODO: We will know how to get these when we define views.
+		m_worldRenderPass = m_backend->GetRenderPass(worldRenderPassName);
+		m_worldRenderPass->renderTargetCount = m_windowRenderTargetCount;
+		m_worldRenderPass->targets = Memory.Allocate<RenderTarget>(m_windowRenderTargetCount, MemoryType::Array);
+
+		m_uiRenderPass = m_backend->GetRenderPass(uiRenderPassName);
+		m_uiRenderPass->renderTargetCount = m_windowRenderTargetCount;
+		m_uiRenderPass->targets = Memory.Allocate<RenderTarget>(m_windowRenderTargetCount, MemoryType::Array);
+
+		RegenerateRenderTargets();
+
+		// Update the dimensions for our RenderPasses
+		m_worldRenderPass->renderArea = { 0, 0, m_frameBufferWidth, m_frameBufferHeight };
+		m_uiRenderPass->renderArea = { 0, 0, m_frameBufferWidth, m_frameBufferHeight };
 
 		// Shaders
 		ShaderResource configResource{};
@@ -96,7 +138,6 @@ namespace C3D
 
 		// UI projection and view
 		m_uiProjection = glm::orthoRH_NO(0.0f, 1280.0f, 720.0f, 0.0f, -100.0f, 100.0f);
-		m_uiView = inverse(mat4(1.0f));
 
 		m_logger.Info("Initialized Vulkan Renderer Backend");
 		return true;
@@ -108,25 +149,58 @@ namespace C3D
 
 		Event.UnRegister(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderSystem::OnEvent));
 
+		for (u8 i = 0; i < m_windowRenderTargetCount; i++)
+		{
+			m_backend->DestroyRenderTarget(&m_worldRenderPass->targets[i], true);
+			m_backend->DestroyRenderTarget(&m_uiRenderPass->targets[i], true);
+		}
+
 		m_backend->Shutdown();
 		DestroyBackend();
 	}
 
 	void RenderSystem::OnResize(const u16 width, const u16 height)
 	{
-		const auto fWidth = static_cast<float>(width);
-		const auto fHeight = static_cast<float>(height);
-		const auto aspectRatio = fWidth / fHeight;
-
-		m_projection = glm::perspectiveRH_NO(DegToRad(45.0f), aspectRatio, m_nearClip, m_farClip);
-		m_uiProjection = glm::orthoRH_NO(0.0f, fWidth, fHeight, 0.0f, -100.0f, 100.0f);
-
-		m_backend->OnResize(width, height);
+		m_resizing = true;
+		m_frameBufferWidth = width;
+		m_frameBufferHeight = height;
+		m_framesSinceResize = 0;
 	}
 
 	bool RenderSystem::DrawFrame(const RenderPacket* packet)
 	{
 		m_backend->state.frameNumber++;
+
+		if (m_resizing)
+		{
+			m_framesSinceResize++;
+
+			if (m_framesSinceResize >= 30)
+			{
+				const auto fWidth = static_cast<f32>(m_frameBufferWidth);
+				const auto fHeight = static_cast<f32>(m_frameBufferHeight);
+				const auto aspectRatio = fWidth / fHeight;
+
+				m_projection = glm::perspectiveRH_NO(DegToRad(45.0f), aspectRatio, m_nearClip, m_farClip);
+				m_uiProjection = glm::orthoRH_NO(0.0f, fWidth, fHeight, 0.0f, -100.0f, 100.0f);
+				m_backend->OnResize(m_frameBufferWidth, m_frameBufferHeight);
+
+				m_framesSinceResize = 0;
+				m_resizing = false;
+			}
+			else
+			{
+				// Skip rendering this frame
+				return true;
+			}
+		}
+
+		// TODO: Views
+		m_worldRenderPass->renderArea.z = m_frameBufferWidth;
+		m_worldRenderPass->renderArea.w = m_frameBufferHeight;
+
+		m_uiRenderPass->renderArea.z = m_frameBufferWidth;
+		m_uiRenderPass->renderArea.w = m_frameBufferHeight;
 
 		if (!m_activeWorldCamera)
 		{
@@ -137,114 +211,117 @@ namespace C3D
 		const auto view = m_activeWorldCamera->GetViewMatrix();
 		const auto position = m_activeWorldCamera->GetPosition();
 
-		if (!m_backend->BeginFrame(packet->deltaTime)) return true;
-
-		// Begin World RenderPass
-		if (!m_backend->BeginRenderPass(BuiltinRenderPass::World))
+		if (m_backend->BeginFrame(packet->deltaTime))
 		{
-			m_logger.Error("DrawFrame() - BeginRenderPass(BuiltinRenderPass::World) failed");
-			return false;
-		}
+			const u8 attachmentIndex = m_backend->GetWindowAttachmentIndex();
 
-		// Use our material shader for this
-		if (!Shaders.UseById(m_materialShaderId))
-		{
-			m_logger.Error("DrawFrame() - Failed to use material shader");
-			return false;
-		}
-
-		// Apply globals
-		if (!Materials.ApplyGlobal(m_materialShaderId, &m_projection, &view, &m_ambientColor, &position, m_renderMode))
-		{
-			m_logger.Error("DrawFrame() - Failed to apply globals for material shader");
-			return false;
-		}
-
-		// Draw all our World Geometry
-		for (const auto& geometryData : packet->geometries)
-		{
-			Material* mat = geometryData.geometry->material;
-			if (!mat) mat = Materials.GetDefault();
-
-			// Apply our material if it hasn't already been updated this frame.
-			// This prevents us from applying the same material multiple times
-			const bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
-			if (!Materials.ApplyInstance(mat, needsUpdate))
+			// Begin World RenderPass
+			if (!m_backend->BeginRenderPass(m_worldRenderPass, &m_worldRenderPass->targets[attachmentIndex]))
 			{
-				m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);
-				continue;
+				m_logger.Error("DrawFrame() - BeginRenderPass(m_worldRenderPass) failed.");
+				return false;
 			}
-			mat->renderFrameNumber = static_cast<u32>(m_backend->state.frameNumber);
 
-			// Apply locals
-			Materials.ApplyLocal(mat, &geometryData.model);
-
-			// Finally draw it
-			m_backend->DrawGeometry(geometryData);
-		}
-
-		// End World RenderPass
-		if (!m_backend->EndRenderPass(BuiltinRenderPass::World))
-		{
-			m_logger.Error("DrawFrame() - EndRenderPass(BuiltinRenderPass::World) failed");
-			return false;
-		}
-
-		// Begin UI RenderPass
-		if (!m_backend->BeginRenderPass(BuiltinRenderPass::Ui))
-		{
-			m_logger.Error("DrawFrame() - BeginRenderPass(BuiltinRenderPass::Ui) failed");
-			return false;
-		}
-
-		// Use our ui shader for this
-		if (!Shaders.UseById(m_uiShaderId))
-		{
-			m_logger.Error("DrawFrame() - Failed to use ui shader");
-			return false;
-		}
-
-		// Apply globals
-		if (!Materials.ApplyGlobal(m_uiShaderId, &m_uiProjection, &m_uiView, nullptr, nullptr, 0))
-		{
-			m_logger.Error("DrawFrame() - Failed to apply globals for ui shader");
-			return false;
-		}
-
-		// Draw all our UI Geometry
-		for (const auto& geometryData : packet->uiGeometries)
-		{
-			Material* mat = geometryData.geometry->material;
-			if (!mat) mat = Materials.GetDefault();
-
-			bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
-			// Apply our material
-			if (!Materials.ApplyInstance(mat, needsUpdate))
+			// Use our material shader for this
+			if (!Shaders.UseById(m_materialShaderId))
 			{
-				m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);
-				continue;
+				m_logger.Error("DrawFrame() - Failed to use material shader");
+				return false;
 			}
-			mat->renderFrameNumber = static_cast<u32>(m_backend->state.frameNumber);
 
-			// Apply locals
-			Materials.ApplyLocal(mat, &geometryData.model);
+			// Apply globals
+			if (!Materials.ApplyGlobal(m_materialShaderId, &m_projection, &view, &m_ambientColor, &position, m_renderMode))
+			{
+				m_logger.Error("DrawFrame() - Failed to apply globals for material shader");
+				return false;
+			}
 
-			// Finally draw it
-			m_backend->DrawGeometry(geometryData);
-		}
+			// Draw all our World Geometry
+			for (const auto& geometryData : packet->geometries)
+			{
+				Material* mat = geometryData.geometry->material;
+				if (!mat) mat = Materials.GetDefault();
 
-		// End UI RenderPass
-		if (!m_backend->EndRenderPass(BuiltinRenderPass::Ui))
-		{
-			m_logger.Error("DrawFrame() - EndRenderPass(BuiltinRenderPass::Ui) failed");
-			return false;
-		}
+				// Apply our material if it hasn't already been updated this frame.
+				// This prevents us from applying the same material multiple times
+				const bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
+				if (!Materials.ApplyInstance(mat, needsUpdate))
+				{
+					m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);
+					continue;
+				}
+				mat->renderFrameNumber = static_cast<u32>(m_backend->state.frameNumber);
 
-		// End frame
-		if (!m_backend->EndFrame(packet->deltaTime))
-		{
-			m_logger.Error("DrawFrame() - EndFrame() failed");
-			return false;
+				// Apply locals
+				Materials.ApplyLocal(mat, &geometryData.model);
+
+				// Finally draw it
+				m_backend->DrawGeometry(geometryData);
+			}
+
+			// End World RenderPass
+			if (!m_backend->EndRenderPass(m_worldRenderPass))
+			{
+				m_logger.Error("DrawFrame() - EndRenderPass(m_worldRenderPass) failed");
+				return false;
+			}
+
+			// Begin UI RenderPass
+			if (!m_backend->BeginRenderPass(m_uiRenderPass, &m_uiRenderPass->targets[attachmentIndex]))
+			{
+				m_logger.Error("DrawFrame() - BeginRenderPass(BuiltinRenderPass::Ui) failed");
+				return false;
+			}
+
+			// Use our ui shader for this
+			if (!Shaders.UseById(m_uiShaderId))
+			{
+				m_logger.Error("DrawFrame() - Failed to use ui shader");
+				return false;
+			}
+
+			// Apply globals
+			if (!Materials.ApplyGlobal(m_uiShaderId, &m_uiProjection, &m_uiView, nullptr, nullptr, 0))
+			{
+				m_logger.Error("DrawFrame() - Failed to apply globals for ui shader");
+				return false;
+			}
+
+			// Draw all our UI Geometry
+			for (const auto& geometryData : packet->uiGeometries)
+			{
+				Material* mat = geometryData.geometry->material;
+				if (!mat) mat = Materials.GetDefault();
+
+				const bool needsUpdate = mat->renderFrameNumber != m_backend->state.frameNumber;
+				// Apply our material
+				if (!Materials.ApplyInstance(mat, needsUpdate))
+				{
+					m_logger.Warn("DrawFrame() - Failed to apply material '{}'. Skipping draw", mat->name);
+					continue;
+				}
+				mat->renderFrameNumber = static_cast<u32>(m_backend->state.frameNumber);
+
+				// Apply locals
+				Materials.ApplyLocal(mat, &geometryData.model);
+
+				// Finally draw it
+				m_backend->DrawGeometry(geometryData);
+			}
+
+			// End UI RenderPass
+			if (!m_backend->EndRenderPass(m_uiRenderPass))
+			{
+				m_logger.Error("DrawFrame() - EndRenderPass(m_uiRenderPass) failed");
+				return false;
+			}
+
+			// End frame
+			if (!m_backend->EndFrame(packet->deltaTime))
+			{
+				m_logger.Error("DrawFrame() - EndFrame() failed");
+				return false;
+			}
 		}
 
 		return true;
@@ -255,8 +332,23 @@ namespace C3D
 		return m_backend->CreateTexture(pixels, texture);
 	}
 
+	void RenderSystem::CreateWritableTexture(Texture* texture) const
+	{
+		return m_backend->CreateWritableTexture(texture);
+	}
+
+	void RenderSystem::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight) const
+	{
+		return m_backend->ResizeTexture(texture, newWidth, newHeight);
+	}
+
+	void RenderSystem::WriteDataToTexture(Texture* texture, const u32 offset, const u32 size, const u8* pixels) const
+	{
+		return m_backend->WriteDataToTexture(texture, offset, size, pixels);
+	}
+
 	bool RenderSystem::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
-		const u32 indexSize, const u64 indexCount, const void* indices) const
+	                                  const u32 indexSize, const u64 indexCount, const void* indices) const
 	{
 		return m_backend->CreateGeometry(geometry, vertexSize, vertexCount, vertices, indexSize, indexCount, indices);
 	}
@@ -271,26 +363,14 @@ namespace C3D
 		return m_backend->DestroyGeometry(geometry);
 	}
 
-	bool RenderSystem::GetRenderPassId(const char* name, u8* outRenderPassId) const
+	RenderPass* RenderSystem::GetRenderPass(const char* name) const
 	{
-		// HACK: Need dynamic RenderPasses instead of hardcoding them.
-		if (IEquals("RenderPass.Builtin.World", name)) {
-			*outRenderPassId = BuiltinRenderPass::World;
-			return true;
-		}
-		if (IEquals("RenderPass.Builtin.UI", name)) {
-			*outRenderPassId = BuiltinRenderPass::Ui;
-			return true;
-		}
-
-		m_logger.Error("GetRenderPassId() - No RenderPass with name '{}' exists", name);
-		*outRenderPassId = INVALID_ID_U8;
-		return false;
+		return m_backend->GetRenderPass(name);
 	}
 
-	bool RenderSystem::CreateShader(Shader* shader, const u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const
+	bool RenderSystem::CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const
 	{
-		return m_backend->CreateShader(shader, renderPassId, stageFileNames, stages);
+		return m_backend->CreateShader(shader, pass, stageFileNames, stages);
 	}
 
 	void RenderSystem::DestroyShader(Shader* shader) const
@@ -351,6 +431,37 @@ namespace C3D
 	bool RenderSystem::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const
 	{
 		return m_backend->SetUniform(shader, uniform, value);
+	}
+
+	void RenderSystem::CreateRenderTarget(const u8 attachmentCount, Texture** attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget) const
+	{
+		return m_backend->CreateRenderTarget(attachmentCount, attachments, pass, width, height, outTarget);
+	}
+
+	void RenderSystem::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory) const
+	{
+		return m_backend->DestroyRenderTarget(target, freeInternalMemory);
+	}
+
+	void RenderSystem::RegenerateRenderTargets() const
+	{
+		// Create render targets of each. TODO: Should be configurable
+		for (u8 i = 0; i < m_windowRenderTargetCount; i++)
+		{
+			m_backend->DestroyRenderTarget(&m_worldRenderPass->targets[i], false);
+			m_backend->DestroyRenderTarget(&m_uiRenderPass->targets[i], false);
+
+			Texture* windowTargetTexture = m_backend->GetWindowAttachment(i);
+			Texture* depthTargetTexture = m_backend->GetDepthAttachment();
+
+			// World render targets
+			Texture* attachments[2] = { windowTargetTexture, depthTargetTexture };
+			m_backend->CreateRenderTarget(2, attachments, m_worldRenderPass, m_frameBufferWidth, m_frameBufferHeight, &m_worldRenderPass->targets[i]);
+
+			// UI render targets
+			Texture* uiAttachments[1] = { windowTargetTexture };
+			m_backend->CreateRenderTarget(1, uiAttachments, m_uiRenderPass, m_frameBufferWidth, m_frameBufferHeight, &m_uiRenderPass->targets[i]);
+		}
 	}
 
 	bool RenderSystem::CreateBackend(const RendererBackendType type)

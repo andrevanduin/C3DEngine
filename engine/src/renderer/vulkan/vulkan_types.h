@@ -6,6 +6,7 @@
 #include "vulkan_renderpass.h"
 #include "vulkan_swapchain.h"
 #include "vulkan_device.h"
+#include "containers/hash_table.h"
 
 #include "core/defines.h"
 #include "core/asserts.h"
@@ -52,8 +53,8 @@ namespace C3D
 		VulkanDevice device;
 		VulkanSwapChain swapChain;
 
-		VulkanRenderPass mainRenderPass;
-		VulkanRenderPass uiRenderPass;
+		HashTable<u32> renderPassTable;
+		VulkanRenderPass registeredRenderPasses[VULKAN_MAX_REGISTERED_RENDER_PASSES];
 
 		std::vector<VulkanCommandBuffer> graphicsCommandBuffers;
 
@@ -63,19 +64,19 @@ namespace C3D
 		u32 inFlightFenceCount;
 		VkFence inFlightFences[2];
 
-		// Holds pointers to fences which exist and are owned elsewhere, one per frame
+		/* @brief Holds pointers to fences which exist and are owned elsewhere, one per frame */
 		VkFence* imagesInFlight[3];
 
 		u32 imageIndex;
 		u32 currentFrame;
 
 		u32 frameBufferWidth, frameBufferHeight;
-		u32 cachedFrameBufferWidth, cachedFrameBufferHeight;
 
 		u64 frameBufferSizeGeneration;
 		u64 frameBufferSizeLastGeneration;
 
-		VkFramebuffer worldFrameBuffers[3];
+		/* @brief Render targets used for world rendering. One per frame. */
+		RenderTarget worldRenderTargets[3];
 
 		bool recreatingSwapChain;
 
@@ -93,5 +94,7 @@ namespace C3D
 			}
 			return -1;
 		}
+
+		const RenderSystem* frontend;
 	};
 }

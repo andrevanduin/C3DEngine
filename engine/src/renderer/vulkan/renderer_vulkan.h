@@ -16,7 +16,7 @@ namespace C3D
 		RendererVulkan();
 		virtual ~RendererVulkan() = default;
 
-		bool Init(Application* application) override;
+		bool Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount) override;
 		void Shutdown() override;
 
 		void OnResize(u16 width, u16 height) override;
@@ -24,18 +24,24 @@ namespace C3D
 		bool BeginFrame(f32 deltaTime) override;
 		bool EndFrame(f32 deltaTime) override;
 
-		bool BeginRenderPass(u8 renderPassId) override;
-		bool EndRenderPass(u8 renderPassId) override;
+		bool BeginRenderPass(RenderPass* pass, RenderTarget* target) override;
+		bool EndRenderPass(RenderPass* pass) override;
+		RenderPass* GetRenderPass(const char* name) override;
 
 		void DrawGeometry(GeometryRenderData data) override;
 
 		void CreateTexture(const u8* pixels, Texture* texture) override;
+		void CreateWritableTexture(Texture* texture) override;
+
+		void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels) override;
+		void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) override;
+
 		void DestroyTexture(Texture* texture) override;
 
 		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) override;
 		void DestroyGeometry(Geometry* geometry) override;
 
-		bool CreateShader(Shader* shader, u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) override;
+		bool CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) override;
 		void DestroyShader(Shader* shader) override;
 
 		bool InitializeShader(Shader* shader) override;
@@ -54,11 +60,18 @@ namespace C3D
 		void ReleaseTextureMapResources(TextureMap* map) override;
 
 		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
-		
+
+		void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) override;
+		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) override;
+
+		Texture* GetWindowAttachment(u8 index) override;
+		Texture* GetDepthAttachment() override;
+
+		u8 GetWindowAttachmentIndex() override;
+
 	private:
 		void CreateCommandBuffers();
-		void RegenerateFrameBuffers();
-		
+
 		bool RecreateSwapChain();
 		bool CreateBuffers();
 
@@ -77,6 +90,8 @@ namespace C3D
 		// TODO: make dynamic
 		VulkanGeometryData m_geometries[VULKAN_MAX_GEOMETRY_COUNT];
 
+#if defined(_DEBUG)
 		VkDebugUtilsMessengerEXT m_debugMessenger{ nullptr };
+#endif
 	};
 }

@@ -29,7 +29,7 @@ namespace C3D
 		bool autoRelease;
 	};
 
-	class TextureSystem
+	class TextureSystem final : public System<TextureSystemConfig>
 	{
 	public:
 		TextureSystem();
@@ -38,24 +38,31 @@ namespace C3D
 		void Shutdown();
 
 		Texture* Acquire(const char* name, bool autoRelease);
+		Texture* AcquireWritable(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency);
+
 		void Release(const char* name);
+
+		Texture* WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency, bool isWritable, bool registerTexture, void* internalData);
+
+		static bool SetInternal(Texture* t, void* internalData);
+
+		bool Resize(Texture* t, u32 width, u32 height, bool regenerateInternalData);
 
 		Texture* GetDefault();
 		Texture* GetDefaultDiffuse();
 		Texture* GetDefaultSpecular();
 		Texture* GetDefaultNormal();
 
-	private:
 		bool CreateDefaultTextures();
+	private:
 		void DestroyDefaultTextures();
 
 		bool LoadTexture(const char* name, Texture* texture) const;
 		static void DestroyTexture(Texture* texture);
 
-		LoggerInstance m_logger;
-		bool m_initialized;
+		bool ProcessTextureReference(const char* name, i8 referenceDiff, bool autoRelease, bool skipLoad, u32* outTextureId);
 
-		TextureSystemConfig m_config;
+		bool m_initialized;
 
 		Texture m_defaultTexture;
 		Texture m_defaultDiffuseTexture;

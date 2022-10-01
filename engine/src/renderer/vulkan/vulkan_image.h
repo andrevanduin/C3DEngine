@@ -15,7 +15,7 @@ namespace C3D
 	public:
 		VulkanImage();
 
-		void Create(const VulkanContext* context, VkImageType imageType, u32 width, u32 height, VkFormat format,
+		void Create(const VulkanContext* context, VkImageType imageType, u32 _width, u32 _height, VkFormat format,
 			VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags, bool createView,
 			VkImageAspectFlags viewAspectFlags);
 
@@ -31,8 +31,8 @@ namespace C3D
 		VkImage handle;
 		VkImageView view;
 
+		u32 width, height;
 	private:
 		VkDeviceMemory m_memory;
-		u32 m_width, m_height;
 	};
 }

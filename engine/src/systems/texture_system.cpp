@@ -15,9 +15,8 @@
 namespace C3D
 {
 	TextureSystem::TextureSystem()
-		: m_logger("TEXTURE_SYSTEM"), m_initialized(false), m_config(), m_registeredTextures(nullptr)
-	{
-	}
+		: System("TEXTURE_SYSTEM"), m_initialized(false), m_registeredTextures(nullptr)
+	{}
 
 	bool TextureSystem::Init(const TextureSystemConfig& config)
 	{
@@ -48,7 +47,8 @@ namespace C3D
 
 		m_initialized = true;
 		return true;
-;	}
+		;
+	}
 
 	void TextureSystem::Shutdown()
 	{
@@ -76,57 +76,38 @@ namespace C3D
 		// retrieved with GetDefault()
 		if (IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
-			m_logger.Warn("Acquire called for {} texture. Use GetDefault() for this", DEFAULT_TEXTURE_NAME);
+			m_logger.Warn("Acquire() - Called for {} texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
 			return &m_defaultTexture;
 		}
 
-		TextureReference ref = m_registeredTextureTable.Get(name);
-		if (ref.referenceCount == 0)
+		u32 id = INVALID_ID;
+		if (!ProcessTextureReference(name, 1, autoRelease, false, &id))
 		{
-			ref.autoRelease = autoRelease;
-		}
-		ref.referenceCount++;
-
-		if (ref.handle == INVALID_ID)
-		{
-			// No texture exists here yet
-			const u32 count = m_config.maxTextureCount;
-			Texture* tex = nullptr;
-			for (u32 i = 0; i < count; i++)
-			{
-				if (m_registeredTextures[i].id == INVALID_ID)
-				{
-					ref.handle = i;
-					tex = &m_registeredTextures[i];
-					break;
-				}
-			}
-
-			// Make sure we actually found an empty slot
-			if (!tex || ref.handle == INVALID_ID)
-			{
-				m_logger.Fatal("No more free space for textures. Adjust the configuration to allow more");
-				return nullptr;
-			}
-
-			if (!LoadTexture(name, tex))
-			{
-				m_logger.Error("Failed to load texture {}", name);
-				return nullptr;
-			}
-
-			tex->id = ref.handle;
-			m_logger.Trace("Texture {} did not exist yet. Created and the refCount is now {}", name, ref.referenceCount);
-		}
-		else
-		{
-			m_logger.Trace("Texture {} already exists. The refCount is now {}", name, ref.referenceCount);
+			m_logger.Error("Acquire() - Failed to obtain a new texture id.");
+			return nullptr;
 		}
 
-		// Set the newly updated reference
-		m_registeredTextureTable.Set(name, &ref);
-		// and return our texture
-		return &m_registeredTextures[ref.handle];
+		return &m_registeredTextures[id];
+	}
+
+	Texture* TextureSystem::AcquireWritable(const char* name, const u32 width, const u32 height, const u8 channelCount, const bool hasTransparency)
+	{
+		u32 id = INVALID_ID;
+		/* Wrapped textures are never auto-released because it means that their
+		resources are created and managed somewhere within the renderer internals. */
+		if (!ProcessTextureReference(name, 1, false, true, &id))
+		{
+			m_logger.Error("AcquireWritable() - Failed to obtain a new texture id.");
+			return nullptr;
+		}
+
+		Texture* t = &m_registeredTextures[id];
+		TextureFlagBits flags = hasTransparency ? HasTransparency : 0;
+		flags |= IsWritable;
+
+		t->Set(id, name, width, height, channelCount, flags);
+		Renderer.CreateWritableTexture(t);
+		return t;
 	}
 
 	void TextureSystem::Release(const char* name)
@@ -172,6 +153,71 @@ namespace C3D
 
 		// Update our reference in the hashtable
 		m_registeredTextureTable.Set(copiedName, &ref);
+	}
+
+	Texture* TextureSystem::WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency, bool isWritable, const bool registerTexture, void* internalData)
+	{
+		u32 id = INVALID_ID;
+		Texture* t = nullptr;
+		if (registerTexture)
+		{
+			// NOTE: Wrapped textures are never auto-released because it means that their
+			// resources are created and managed somewhere within the renderer internals.
+			if (!ProcessTextureReference(name, 1, false, true, &id))
+			{
+				m_logger.Error("WrapInternal() - Failed to obtain a new texture id.");
+				return nullptr;
+			}
+			t = &m_registeredTextures[id];
+		}
+		else
+		{
+			t = Memory.Allocate<Texture>(MemoryType::Texture);
+			//m_logger.Trace("WrapInternal() - Created texture '{}', but not registering, resulting in an allocation. It is up to the caller to free this memory.", name);
+		}
+
+		auto flags = hasTransparency ? HasTransparency : 0;
+		flags |= isWritable ? IsWritable : 0;
+		flags |= IsWrapped;
+
+		t->Set(id, name, width, height, channelCount, flags, internalData);
+		return t;
+	}
+
+	bool TextureSystem::SetInternal(Texture* t, void* internalData)
+	{
+		if (t)
+		{
+			t->internalData = internalData;
+			t->generation++;
+			return true;
+		}
+		return false;
+	}
+
+	bool TextureSystem::Resize(Texture* t, u32 width, u32 height, const bool regenerateInternalData)
+	{
+		if (t)
+		{
+			if (!t->IsWritable())
+			{
+				m_logger.Warn("Resize() - Should not be called on textures that are not writable.");
+				return false;
+			}
+
+			t->width = width;
+			t->height = height;
+
+			if (!t->IsWrapped() && regenerateInternalData)
+			{
+				Renderer.ResizeTexture(t, width, height);
+				return false;
+			}
+
+			t->generation++;
+			return true;
+		}
+		return false;
 	}
 
 	Texture* TextureSystem::GetDefault()
@@ -251,7 +297,7 @@ namespace C3D
 			}
 		}
 
-		m_defaultTexture = Texture(DEFAULT_TEXTURE_NAME, textureDimensions, textureDimensions, channels, false, false);
+		m_defaultTexture = Texture(DEFAULT_TEXTURE_NAME, textureDimensions, textureDimensions, channels);
 		Renderer.CreateTexture(pixels, &m_defaultTexture);
 		// Manually set the texture generation to invalid since this is the default texture
 		m_defaultTexture.generation = INVALID_ID;
@@ -262,7 +308,7 @@ namespace C3D
 		// Default diffuse texture is all white
 		Memory.Set(diffusePixels, 255, sizeof(u8) * 16 * 16 * 4); // Default diffuse map is all white
 
-		m_defaultDiffuseTexture = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4, false, false);
+		m_defaultDiffuseTexture = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, 16, 16, 4);
 		Renderer.CreateTexture(diffusePixels, &m_defaultDiffuseTexture);
 		// Manually set the texture generation to invalid since this is the default texture
 		m_defaultDiffuseTexture.generation = INVALID_ID;
@@ -272,7 +318,7 @@ namespace C3D
 		const auto specPixels = new u8[16 * 16 * 4];
 		Memory.Set(specPixels, 0, sizeof(u8) * 16 * 16 * 4); // Default specular map is black (no specular)
 
-		m_defaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4, false, false);
+		m_defaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, 16, 16, 4);
 		Renderer.CreateTexture(specPixels, &m_defaultSpecularTexture);
 		// Manually set the texture generation to invalid since this is the default texture
 		m_defaultSpecularTexture.generation = INVALID_ID;
@@ -298,7 +344,7 @@ namespace C3D
 			}
 		}
 
-		m_defaultNormalTexture = Texture(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4, false, false);
+		m_defaultNormalTexture = Texture(DEFAULT_NORMAL_TEXTURE_NAME, 16, 16, 4);
 		Renderer.CreateTexture(normalPixels, &m_defaultNormalTexture);
 		// Manually set the texture generation to invalid since this is the default texture
 		m_defaultNormalTexture.generation = INVALID_ID;
@@ -322,23 +368,23 @@ namespace C3D
 
 	bool TextureSystem::LoadTexture(const char* name, Texture* texture) const
 	{
-		ImageResource imgResource{};
-		if (!Resources.Load(name, ResourceType::Image, &imgResource))
+		ImageResource res{};
+		if (!Resources.Load(name, ResourceType::Image, &res))
 		{
 			m_logger.Error("Failed to load image resource for texture '{}'", name);
 			return false;
 		}
 
-		if (!imgResource.data.pixels)
+		if (!res.data.pixels)
 		{
 			m_logger.Error("Failed to load image data for texture '{}'", name);
 			return false;
 		}
 
 		Texture temp;
-		temp.width = imgResource.data.width;
-		temp.height = imgResource.data.height;
-		temp.channelCount = imgResource.data.channelCount;
+		temp.width = res.data.width;
+		temp.height = res.data.height;
+		temp.channelCount = res.data.channelCount;
 
 		const u32 currentGeneration = texture->generation;
 		texture->generation = INVALID_ID;
@@ -347,7 +393,7 @@ namespace C3D
 		bool hasTransparency = false;
 		for (u64 i = 0; i < totalSize; i += temp.channelCount)
 		{
-			if (const u8 a = imgResource.data.pixels[i + 3]; a < 255)
+			if (const u8 a = res.data.pixels[i + 3]; a < 255)
 			{
 				hasTransparency = true;
 				break;
@@ -356,10 +402,9 @@ namespace C3D
 
 		StringNCopy(temp.name, name, TEXTURE_NAME_MAX_LENGTH);
 		temp.generation = INVALID_ID;
-		temp.hasTransparency = hasTransparency;
-		temp.isWritable = false;
+		temp.flags |= (hasTransparency ? TextureFlag::HasTransparency : 0);
 
-		Renderer.CreateTexture(imgResource.data.pixels, &temp);
+		Renderer.CreateTexture(res.data.pixels, &temp);
 
 		// Take a copy of the old texture
 		Texture old = *texture;
@@ -379,7 +424,7 @@ namespace C3D
 			texture->generation = currentGeneration + 1;
 		}
 
-		Resources.Unload(&imgResource);
+		Resources.Unload(&res);
 		return true;
 	}
 
@@ -395,5 +440,97 @@ namespace C3D
 		// Invalidate the id and generation
 		texture->id = INVALID_ID;
 		texture->generation = INVALID_ID;
+	}
+
+	bool TextureSystem::ProcessTextureReference(const char* name, const i8 referenceDiff, const bool autoRelease, bool skipLoad, u32* outTextureId)
+	{
+		*outTextureId = INVALID_ID;
+		TextureReference ref = m_registeredTextureTable.Get(name);
+		if (ref.referenceCount == 0 && referenceDiff > 0)
+		{
+			// Set autoRelease to the provided value if this is the first time the texture is loaded
+			ref.autoRelease = autoRelease;
+		}
+
+		// Increment / Decrement our reference count
+		ref.referenceCount += referenceDiff;
+
+		char nameCopy[TEXTURE_NAME_MAX_LENGTH];
+		StringNCopy(nameCopy, name, TEXTURE_NAME_MAX_LENGTH);
+
+		// If decrementing, this means we want to release
+		if (referenceDiff < 0)
+		{
+			// If reference count is 0 and we want to auto release, we destroy the texture
+			if (ref.referenceCount == 0 && ref.autoRelease)
+			{
+				Texture* texture = &m_registeredTextures[ref.handle];
+				DestroyTexture(texture);
+
+				// Reset the reference
+				ref.handle = INVALID_ID;
+				ref.autoRelease = false;
+				m_logger.Trace("ProcessTextureReference() - Released texture '{}'. Texture unloaded because refCount = 0 and autoRelease = true", nameCopy);
+			}
+			else
+			{
+				// Otherwise we simply do nothing
+				m_logger.Trace("ProcessTextureReference() - Released texture '{}'. Texture now has refCount = {} (autoRelease = {})", nameCopy, ref.referenceCount, ref.autoRelease);
+			}
+		}
+		else
+		{
+			// Incrementing. Check if the handle is new or not.
+			if (ref.handle == INVALID_ID)
+			{
+				// No texture exists here yet. Find a free index first.
+				const u32 count = m_config.maxTextureCount;
+				for (u32 i = 0; i < count; i++)
+				{
+					if (m_registeredTextures[i].id == INVALID_ID)
+					{
+						// We found a free slot. Use it's index as a handle
+						ref.handle = i;
+						*outTextureId = i;
+						break;
+					}
+				}
+
+				// Check if we found a free slot
+				if (*outTextureId == INVALID_ID)
+				{
+					m_logger.Fatal("ProcessTextureReference() - TextureSystem was unable to find free texture slot. Adjust configuration to allow for more.");
+					return false;
+				}
+
+				Texture* texture = &m_registeredTextures[ref.handle];
+				// Create a new texture
+				if (skipLoad)
+				{
+					m_logger.Trace("ProcessTextureReference() - Loading skipped for texture '{}' as requested.", nameCopy);
+				}
+				else
+				{
+					if (!LoadTexture(name, texture))
+					{
+						*outTextureId = INVALID_ID;
+						m_logger.Error("ProcessTextureReference() - Failed to load texture '{}'", name);
+						return false;
+					}
+
+					texture->id = ref.handle;
+					m_logger.Trace("ProcessTextureReference() - Texture '{}' did not exist yet. Created and refCount is now {}", name, ref.referenceCount);
+				}
+			}
+			else
+			{
+				*outTextureId = ref.handle;
+				m_logger.Trace("ProcessTextureReference() - Texture '{}' already exists. RefCount is now {}", name, ref.referenceCount);
+			}
+		}
+
+		// Whatever happens if we get to this point we should update our hashtable
+		m_registeredTextureTable.Set(nameCopy, &ref);
+		return true;
 	}
 }

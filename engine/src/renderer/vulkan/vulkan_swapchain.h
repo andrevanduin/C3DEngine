@@ -3,6 +3,8 @@
 #include <vulkan/vulkan.h>
 
 #include "vulkan_image.h"
+#include "renderer/renderer_types.h"
+#include "resources/texture.h"
 
 namespace C3D
 {
@@ -17,7 +19,7 @@ namespace C3D
 
 		void Recreate(VulkanContext* context, u32 width, u32 height);
 
-		void Destroy(const VulkanContext* context);
+		void Destroy(const VulkanContext* context) const;
 
 		bool AcquireNextImageIndex(VulkanContext* context, u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex);
 
@@ -30,19 +32,17 @@ namespace C3D
 
 		u8 maxFramesInFlight;
 
-		VkImageView* views;
+		Texture** renderTextures;
 
-		VulkanImage depthAttachment;
-
-		VkFramebuffer frameBuffers[3];
+		/* @brief The depth texture. */
+		Texture* depthTexture;
+		/* @brief Render targets used for on-screen rendering, one per frame. */
+		RenderTarget renderTargets[3];
 	private:
 		void CreateInternal(VulkanContext* context, u32 width, u32 height);
 
-		void DestroyInternal(const VulkanContext* context);
+		void DestroyInternal(const VulkanContext* context) const;
 		
 		VkPresentModeKHR m_presentMode;
-
-		VkImage* m_images;
-		
 	};
 }

@@ -22,7 +22,7 @@ namespace C3D
 	public:
 		RenderSystem();
 
-		bool Init(Application* application);
+		bool Init(const Application* application);
 		void Shutdown();
 
 		void OnResize(u16 width, u16 height);
@@ -30,15 +30,19 @@ namespace C3D
 		bool DrawFrame(const RenderPacket* packet);
 
 		void CreateTexture(const u8* pixels, Texture* texture) const;
-		void DestroyTexture(Texture* texture) const;
+		void CreateWritableTexture(Texture* texture) const;
 
+		void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) const;
+		void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels) const;
+
+		void DestroyTexture(Texture* texture) const;
 
 		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) const;
 		void DestroyGeometry(Geometry* geometry) const;
 
-		bool GetRenderPassId(const char* name, u8* outRenderPassId) const;
+		RenderPass* GetRenderPass(const char* name) const;
 
-		bool CreateShader(Shader* shader, u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const;
+		bool CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const;
 		void DestroyShader(Shader* shader) const;
 
 		bool InitializeShader(Shader* shader) const;
@@ -58,6 +62,11 @@ namespace C3D
 		void ReleaseTextureMapResources(TextureMap* map) const;
 
 		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const;
+
+		void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) const;
+		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) const;
+
+		void RegenerateRenderTargets() const;
 
 	private:
 		bool CreateBackend(RendererBackendType type);
@@ -81,6 +90,15 @@ namespace C3D
 		u32 m_materialShaderId, m_uiShaderId;
 
 		u32 m_renderMode;
+
+		u8 m_windowRenderTargetCount;
+		u32 m_frameBufferWidth, m_frameBufferHeight;
+
+		RenderPass* m_worldRenderPass;
+		RenderPass* m_uiRenderPass;
+
+		bool m_resizing;
+		u8 m_framesSinceResize;
 
 		RendererBackend* m_backend{ nullptr };
 	};

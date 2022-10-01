@@ -50,6 +50,7 @@ namespace C3D
 		VkQueue transferQueue;
 
 		VkFormat depthFormat;
+		u8 depthChannelCount;
 
 		u32 graphicsQueueIndex;
 		u32 presentQueueIndex;

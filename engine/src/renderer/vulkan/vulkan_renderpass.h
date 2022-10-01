@@ -4,6 +4,7 @@
 #include "math/math_types.h"
 
 #include "vulkan_command_buffer.h"
+#include "renderer/renderpass.h"
 
 namespace C3D
 {
@@ -14,38 +15,30 @@ namespace C3D
 		Ready, Recording, InRenderPass, RecordingEnded, Submitted, NotAllocated
 	};
 
-	enum RenderPassClearFlags : u8
-	{
-		ClearNone = 0x0,
-		ClearColor = 0x1,
-		ClearDepth = 0x2,
-		ClearStencil = 0x4
-	};
+	constexpr auto VULKAN_MAX_REGISTERED_RENDER_PASSES = 64;
 
-	class VulkanRenderPass
+	class VulkanRenderPass : public RenderPass
 	{
 	public:
 		VulkanRenderPass();
 
-		void Create(VulkanContext* context, const ivec4& renderArea, const vec4& clearColor, f32 depth, u32 stencil, u8 clearFlags, bool hasPrevPass, bool hasNextPass);
+		VulkanRenderPass(VulkanContext* context, u16 _id, const RenderPassConfig& config);
 
-		void Destroy(const VulkanContext* context);
+		void Create(f32 depth, u32 stencil) override;
 
-		void Begin(VulkanCommandBuffer* commandBuffer, VkFramebuffer frameBuffer) const;
+		void Destroy() override;
 
-		void End(VulkanCommandBuffer* commandBuffer) const;
+		void Begin(VulkanCommandBuffer* commandBuffer, const RenderTarget* target) const;
+
+		static void End(VulkanCommandBuffer* commandBuffer);
 
 		VkRenderPass handle;
 		VulkanRenderPassState state;
 
-		ivec4 area;
 	private:
-		vec4 m_clearColor;
-
 		f32 m_depth;
 		u32 m_stencil;
 
-		u8 m_clearFlags;
-		bool m_hasPrevPass, m_hasNextPass;
+		VulkanContext* m_context;
 	};
 }

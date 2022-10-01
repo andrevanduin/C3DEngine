@@ -152,27 +152,31 @@ namespace C3D
 
 	bool VulkanDevice::DetectDepthFormat()
 	{
-		VkFormat candidates[3] =
+		constexpr u64 candidateCount = 3;
+		constexpr VkFormat candidates[candidateCount] =
 		{
 			VK_FORMAT_D32_SFLOAT,
 			VK_FORMAT_D32_SFLOAT_S8_UINT,
 			VK_FORMAT_D24_UNORM_S8_UINT
 		};
+		constexpr u8 sizes[candidateCount] = { 4, 4, 3 };
 
 		constexpr u32 flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		for (const auto& candidate : candidates)
+		for (u64 i = 0; i < candidateCount; i++)
 		{
-			VkFormatProperties properties;
-			vkGetPhysicalDeviceFormatProperties(physicalDevice, candidate, &properties);
+			VkFormatProperties props;
+			vkGetPhysicalDeviceFormatProperties(physicalDevice, candidates[i], &props);
 
-			if ((properties.linearTilingFeatures & flags) == flags)
+			if ((props.linearTilingFeatures & flags) == flags)
 			{
-				depthFormat = candidate;
+				depthFormat = candidates[i];
+				depthChannelCount = sizes[i];
 				return true;
 			}
-			if ((properties.optimalTilingFeatures & flags) == flags)
+			if ((props.optimalTilingFeatures & flags) == flags)
 			{
-				depthFormat = candidate;
+				depthFormat = candidates[i];
+				depthChannelCount = sizes[i];
 				return true;
 			}
 		}

@@ -15,6 +15,7 @@
 #include "core/application.h"
 #include "core/c3d_string.h"
 #include "core/memory.h"
+#include "renderer/renderer_frontend.h"
 
 #include "resources/texture.h"
 #include "resources/shader.h"
@@ -33,23 +34,23 @@ namespace C3D
 		: RendererBackend("VULKAN_RENDERER"), m_context(), m_geometries{}
 	{}
 
-	bool RendererVulkan::Init(Application* application)
+	bool RendererVulkan::Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount)
 	{
 		type = RendererBackendType::Vulkan;
 
 		// TODO: Possibly add a custom allocator
 		m_context.allocator = nullptr;
-
-		application->GetFrameBufferSize(&m_context.cachedFrameBufferWidth, &m_context.cachedFrameBufferHeight);
-		m_context.frameBufferWidth = (m_context.cachedFrameBufferWidth != 0) ? m_context.cachedFrameBufferWidth : 1280;
-		m_context.frameBufferHeight = (m_context.cachedFrameBufferHeight != 0) ? m_context.cachedFrameBufferHeight : 720;
-		m_context.cachedFrameBufferWidth = 0;
-		m_context.cachedFrameBufferHeight = 0;
+		m_context.frontend = config.frontend;
+		m_context.frameBufferWidth = 1280;
+		m_context.frameBufferHeight = 720;
 
 		vkb::InstanceBuilder instanceBuilder;
 
 		auto vkbInstanceResult = instanceBuilder
-			.set_app_name("C3DEngine")
+			.set_app_name(config.applicationName)
+			.set_engine_name("C3DEngine")
+			.set_app_version(config.applicationVersion)
+			.set_engine_version(VK_MAKE_VERSION(0, 2, 0))
 		#if defined(_DEBUG)
 			.request_validation_layers(true)
 			.set_debug_callback(Logger::VkDebugLog)
@@ -66,31 +67,73 @@ namespace C3D
 		m_debugMessenger = vkbInstance.debug_messenger;
 #endif
 
-		if (!SDL_Vulkan_CreateSurface(application->GetWindow(), m_context.instance, &m_context.surface))
+		if (!SDL_Vulkan_CreateSurface(config.window, m_context.instance, &m_context.surface))
 		{
-			m_logger.Error("Failed to create Vulkan Surface");
+			m_logger.Error("Init() - Failed to create Vulkan Surface.");
 			return false;
 		}
 
 		m_logger.Info("SDL Surface Initialized");
 		if (!m_context.device.Create(vkbInstance, &m_context))
 		{
-			m_logger.Error("Failed to create Vulkan Device");
+			m_logger.Error("Init() - Failed to create Vulkan Device.");
 			return false;
 		}
 
 		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
 
-		const auto area = ivec4(0, 0, static_cast<f32>(m_context.frameBufferWidth), static_cast<f32>(m_context.frameBufferHeight));
-		constexpr auto clearColor = vec4(0.0f, 0.0f, 0.2f, 1.0f);
+		// Save the number of images we have as a the number of render targets required
+		*outWindowRenderTargetCount = m_context.swapChain.imageCount;
 
-		// World RenderPass
-		m_context.mainRenderPass.Create(&m_context, area, clearColor, 1.0f, 0, ClearColor | ClearDepth | ClearStencil, false, true);
-		// UI RenderPass
-		m_context.uiRenderPass.Create(&m_context, area, vec4(0), 1.0f, 0, ClearNone, true, false);
+		// Invalidate all render passes
+		for (auto& pass : m_context.registeredRenderPasses)
+		{
+			pass.id = INVALID_ID_U16;
+		}
+		// Fill the hashtable with invalid values
+		m_context.renderPassTable.Create(VULKAN_MAX_REGISTERED_RENDER_PASSES);
+		m_context.renderPassTable.Fill(INVALID_ID);
 
-		// Regenerate SwapChain and World FrameBuffers
-		RegenerateFrameBuffers();
+		// RenderPasses TODO: Move to a function
+		for (u32 i = 0; i < config.renderPassCount; i++)
+		{
+			const auto passConfig = config.passConfigs[i];
+
+			// Ensure there are no collisions with the name
+			u32 id = m_context.renderPassTable.Get(passConfig.name);
+			if (id != INVALID_ID)
+			{
+				m_logger.Error("Init() - Collision with RenderPass named '{}'. Initialization failed.", passConfig.name);
+				return false;
+			}
+
+			// Get a new id for the renderPass
+			for (u32 j = 0; j < VULKAN_MAX_REGISTERED_RENDER_PASSES; j++)
+			{
+				if (m_context.registeredRenderPasses[j].id == INVALID_ID_U16)
+				{
+					m_context.registeredRenderPasses[j].id = j;
+					id = j;
+					break;
+				}
+			}
+
+			// Verify that we found a valid id
+			if (id == INVALID_ID)
+			{
+				m_logger.Error("Init() - No space was found for a new RenderPass: '{}'. Increase VULKAN_MAX_REGISTERED_RENDER_PASSES.", passConfig.name);
+				return false;
+			}
+
+			// Setup pass
+			m_context.registeredRenderPasses[id] = VulkanRenderPass(&m_context, static_cast<u16>(id), passConfig);
+			m_context.registeredRenderPasses[id].Create(1.0f, 0);
+
+			// Save the id as an entry in our hash table
+			m_context.renderPassTable.Set(passConfig.name, &id);
+
+			m_logger.Info("Successfully created RenderPass '{}'", passConfig.name);
+		}
 
 		CreateCommandBuffers();
 		m_logger.Info("Command Buffers Initialized");
@@ -129,7 +172,7 @@ namespace C3D
 
 	void RendererVulkan::Shutdown()
 	{
-		m_logger.Info("Shutting Down");
+		m_logger.Info("Shutdown()");
 
 		// Wait for our device to be finished with it's current frame
 		m_context.device.WaitIdle();
@@ -159,16 +202,21 @@ namespace C3D
 		vkDestroyCommandPool(m_context.device.logicalDevice, m_context.device.graphicsCommandPool, m_context.allocator);
 		m_context.graphicsCommandBuffers.clear();
 
-		m_logger.Info("Destroying FrameBuffers");
+		m_logger.Info("Destroying RenderTargets");
 		for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
 		{
-			vkDestroyFramebuffer(m_context.device.logicalDevice, m_context.worldFrameBuffers[i], m_context.allocator);
-			vkDestroyFramebuffer(m_context.device.logicalDevice, m_context.swapChain.frameBuffers[i], m_context.allocator);
+			DestroyRenderTarget(&m_context.worldRenderTargets[i], true);
+			DestroyRenderTarget(&m_context.swapChain.renderTargets[i], true);
 		}
 
 		m_logger.Info("Destroying RenderPasses");
-		m_context.uiRenderPass.Destroy(&m_context);
-		m_context.mainRenderPass.Destroy(&m_context);
+		for (auto& pass : m_context.registeredRenderPasses)
+		{
+			if (pass.id != INVALID_ID_U16)
+			{
+				pass.Destroy();
+			}
+		}
 
 		m_logger.Info("Destroying SwapChain");
 		m_context.swapChain.Destroy(&m_context);
@@ -190,11 +238,11 @@ namespace C3D
 
 	void RendererVulkan::OnResize(const u16 width, const u16 height)
 	{
-		m_context.cachedFrameBufferWidth = width;
-		m_context.cachedFrameBufferHeight = height;
+		m_context.frameBufferWidth = width;
+		m_context.frameBufferHeight = height;
 		m_context.frameBufferSizeGeneration++;
 
-		m_logger.Info("OnResize() with Width: {}, Height: {} and Generation: {}", width, height, m_context.frameBufferSizeGeneration);
+		m_logger.Info("OnResize() - Width: {}, Height: {} and Generation: {}.", width, height, m_context.frameBufferSizeGeneration);
 	}
 
 	bool RendererVulkan::BeginFrame(const f32 deltaTime)
@@ -274,14 +322,6 @@ namespace C3D
 		vkCmdSetViewport(commandBuffer->handle, 0, 1, &viewport);
 		vkCmdSetScissor(commandBuffer->handle, 0, 1, &scissor);
 
-		// Update the main dimensions
-		m_context.mainRenderPass.area.z = static_cast<i32>(m_context.frameBufferWidth);
-		m_context.mainRenderPass.area.w = static_cast<i32>(m_context.frameBufferHeight);
-
-		// Update the UI dimensions
-		m_context.uiRenderPass.area.z = static_cast<i32>(m_context.frameBufferWidth);
-		m_context.uiRenderPass.area.w = static_cast<i32>(m_context.frameBufferHeight);
-
 		return true;
 	}
 
@@ -341,54 +381,97 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::BeginRenderPass(u8 renderPassId)
+	RenderPass* RendererVulkan::GetRenderPass(const char* name)
 	{
-		const VulkanRenderPass* renderPass;
-		VkFramebuffer frameBuffer;
-		VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-
-		// Choose a RenderPass based on id
-		switch (renderPassId)
+		if (!name || name[0] == '\0')
 		{
-			case BuiltinRenderPass::World:
-				renderPass = &m_context.mainRenderPass;
-				frameBuffer = m_context.worldFrameBuffers[m_context.imageIndex];
-				break;
-			case BuiltinRenderPass::Ui:
-				renderPass = &m_context.uiRenderPass;
-				frameBuffer = m_context.swapChain.frameBuffers[m_context.imageIndex];
-				break;
-			default:
-				m_logger.Error("BeginRenderPass() called with unrecognized RenderPass id {}", renderPassId);
-				return false;
+			m_logger.Error("GetRenderPass() - Requires a name. Nullptr will be returned");
+			return nullptr;
+		}
+		const u32 id = m_context.renderPassTable.Get(name);
+		if (id == INVALID_ID)
+		{
+			m_logger.Warn("GetRenderPass() - There is not registered RenderPass with name: '{}'", name);
+			return nullptr;
+		}
+		return &m_context.registeredRenderPasses[id];
+	}
+
+	void RendererVulkan::CreateRenderTarget(const u8 attachmentCount, Texture** attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget)
+	{
+		VkImageView attachmentViews[32];
+		for (u32 i = 0; i < attachmentCount; i++)
+		{
+			attachmentViews[i] = static_cast<VulkanImage*>(attachments[i]->internalData)->view;
 		}
 
-		// Begin the RenderPass
-		renderPass->Begin(commandBuffer, frameBuffer);
+		// Take a copy of the attachments and count
+		outTarget->attachmentCount = attachmentCount;
+		if (!outTarget->attachments)
+		{
+			outTarget->attachments = Memory.Allocate<Texture*>(attachmentCount, MemoryType::Array);
+		}
+		Memory.Copy(outTarget->attachments, attachments, sizeof(Texture*) * attachmentCount);
+
+		// Setup our frameBuffer creation
+		VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+		frameBufferCreateInfo.renderPass = dynamic_cast<VulkanRenderPass*>(pass)->handle;
+		frameBufferCreateInfo.attachmentCount = attachmentCount;
+		frameBufferCreateInfo.pAttachments = attachmentViews;
+		frameBufferCreateInfo.width = width;
+		frameBufferCreateInfo.height = height;
+		frameBufferCreateInfo.layers = 1;
+
+		VK_CHECK(vkCreateFramebuffer(m_context.device.logicalDevice, &frameBufferCreateInfo, m_context.allocator, reinterpret_cast<VkFramebuffer*>(&outTarget->internalFrameBuffer)));
+	}
+
+	void RendererVulkan::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory)
+	{
+		if (target && target->internalFrameBuffer)
+		{
+			vkDestroyFramebuffer(m_context.device.logicalDevice, static_cast<VkFramebuffer>(target->internalFrameBuffer), m_context.allocator);
+			target->internalFrameBuffer = nullptr;
+			if (freeInternalMemory)
+			{
+				Memory.Free(target->attachments, sizeof(Texture*) * target->attachmentCount, MemoryType::Array);
+				target->attachmentCount = 0;
+				target->attachments = nullptr;
+			}
+		}
+	}
+
+	Texture* RendererVulkan::GetWindowAttachment(const u8 index)
+	{
+		if (index >= m_context.swapChain.imageCount)
+		{
+			m_logger.Fatal("GetWindowAttachment() - Attempting to get attachment index that is out of range: '{}'. Attachment count is: '{}'", index, m_context.swapChain.imageCount);
+			return nullptr;
+		}
+		return m_context.swapChain.renderTextures[index];
+	}
+
+	Texture* RendererVulkan::GetDepthAttachment()
+	{
+		return m_context.swapChain.depthTexture;
+	}
+
+	u8 RendererVulkan::GetWindowAttachmentIndex()
+	{
+		return static_cast<u8>(m_context.imageIndex);
+	}
+
+	bool RendererVulkan::BeginRenderPass(RenderPass* pass, RenderTarget* target)
+	{
+		VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
+		const auto vulkanPass = dynamic_cast<VulkanRenderPass*>(pass);
+		vulkanPass->Begin(commandBuffer, target);
 		return true;
 	}
 
-	bool RendererVulkan::EndRenderPass(u8 renderPassId)
+	bool RendererVulkan::EndRenderPass(RenderPass* pass)
 	{
-		const VulkanRenderPass* renderPass;
 		VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-
-		// Choose a RenderPass based on id
-		switch (renderPassId)
-		{
-		case BuiltinRenderPass::World:
-			renderPass = &m_context.mainRenderPass;
-			break;
-		case BuiltinRenderPass::Ui:
-			renderPass = &m_context.uiRenderPass;
-			break;
-		default:
-			m_logger.Error("EndRenderPass() called with unrecognized RenderPass id {}", renderPassId);
-			return false;
-		}
-
-		// End our RenderPass
-		renderPass->End(commandBuffer);
+		VulkanRenderPass::End(commandBuffer);
 		return true;
 	}
 
@@ -424,41 +507,103 @@ namespace C3D
 	void RendererVulkan::CreateTexture(const u8* pixels, Texture* texture)
 	{
 		// Internal data creation
-		texture->internalData = Memory.Allocate(sizeof(VulkanTextureData), MemoryType::Texture);
+		texture->internalData = Memory.Allocate(sizeof(VulkanImage), MemoryType::Texture);
 
-		const auto data = static_cast<VulkanTextureData*>(texture->internalData);
-
+		const auto image = static_cast<VulkanImage*>(texture->internalData);
 		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height * texture->channelCount;
 		constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM; // NOTE: Assumes 8 bits per channel
 
-		constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		constexpr VkMemoryPropertyFlags memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		image->Create(&m_context, VK_IMAGE_TYPE_2D, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
 
+		// Load the data
+		WriteDataToTexture(texture, 0, imageSize, pixels);
+		texture->generation++;
+	}
+
+	VkFormat ChannelCountToFormat(const u8 channelCount, const VkFormat defaultFormat)
+	{
+		switch (channelCount)
+		{
+			case 1:
+				return VK_FORMAT_R8_UNORM;
+			case 2:
+				return VK_FORMAT_R8G8_UNORM;
+			case 3:
+				return VK_FORMAT_R8G8B8_UNORM;
+			case 4:
+				return VK_FORMAT_R8G8B8A8_UNORM;
+			default:
+				return defaultFormat;
+		}
+	}
+
+	void RendererVulkan::CreateWritableTexture(Texture* texture)
+	{
+		texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
+		const auto image = static_cast<VulkanImage*>(texture->internalData);
+
+		const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+		// TODO: Lot's of assumptions here
+		image->Create(&m_context, VK_IMAGE_TYPE_2D, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL, 
+			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		texture->generation++;
+	}
+
+	void RendererVulkan::WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels)
+	{
+		const auto image = static_cast<VulkanImage*>(texture->internalData);
+		const VkDeviceSize imageSize = texture->width * texture->height * texture->channelCount;
+		const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+
+		// Create a staging buffer and load data into it.
+		constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		constexpr VkMemoryPropertyFlags memoryPropFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 		VulkanBuffer staging;
-		staging.Create(&m_context, imageSize, usage, memoryPropertyFlags, true, false);
+		staging.Create(&m_context, imageSize, usage, memoryPropFlags, true, false);
 
 		staging.LoadData(&m_context, 0, imageSize, 0, pixels);
 
-		// NOTE: Lots of assumptions here, different texture types will require different options here!
-		data->image.Create(&m_context, VK_IMAGE_TYPE_2D, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
-
 		VulkanCommandBuffer tempBuffer;
 		VkCommandPool pool = m_context.device.graphicsCommandPool;
+		VkQueue queue = m_context.device.graphicsQueue;
 
 		tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
 
-		data->image.TransitionLayout(&m_context, &tempBuffer, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		data->image.CopyFromBuffer(&m_context, staging.handle, &tempBuffer);
+		// Transition the layout from whatever it is currently to optimal for receiving data.
+		image->TransitionLayout(&m_context, &tempBuffer, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		data->image.TransitionLayout(&m_context, &tempBuffer, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		// Copy the data from the buffer.
+		image->CopyFromBuffer(&m_context, staging.handle, &tempBuffer);
 
-		tempBuffer.EndSingleUse(&m_context, pool, m_context.device.graphicsQueue);
+		// Transition from optimal for receiving data to shader-read-only optimal layout.
+		image->TransitionLayout(&m_context, &tempBuffer, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		tempBuffer.EndSingleUse(&m_context, pool, queue);
 
 		staging.Destroy(&m_context);
-
 		texture->generation++;
+	}
+
+	void RendererVulkan::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight)
+	{
+		if (texture && texture->internalData)
+		{
+			const auto image = static_cast<VulkanImage*>(texture->internalData);
+			image->Destroy(&m_context);
+
+			const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+
+			// TODO: Lot's of assumptions here
+			image->Create(&m_context, VK_IMAGE_TYPE_2D, newWidth, newHeight, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
+
+			texture->generation++;
+		}
 	}
 
 	void RendererVulkan::DestroyTexture(Texture* texture)
@@ -591,13 +736,10 @@ namespace C3D
 		}
 	}
 
-	bool RendererVulkan::CreateShader(Shader* shader, const u8 renderPassId, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages)
+	bool RendererVulkan::CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages)
 	{
 		// Allocate enough memory for the 
 		shader->apiSpecificData = Memory.Allocate<VulkanShader>(MemoryType::Shader);
-
-		// TODO: dynamic RenderPasses
-		VulkanRenderPass* renderPass = renderPassId == 1 ? &m_context.mainRenderPass : &m_context.uiRenderPass;
 
 		// Translate stages
 		VkShaderStageFlags vulkanStages[VULKAN_SHADER_MAX_STAGES];
@@ -625,7 +767,7 @@ namespace C3D
 
 		// Get a pointer to our Vulkan specific shader stuff
 		const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
-		vulkanShader->renderPass = renderPass;
+		vulkanShader->renderPass = dynamic_cast<VulkanRenderPass*>(pass);
 		vulkanShader->config.maxDescriptorSetCount = maxDescriptorAllocateCount;
 
 		vulkanShader->config.stageCount = 0;
@@ -1339,35 +1481,6 @@ namespace C3D
 		}
 	}
 
-	void RendererVulkan::RegenerateFrameBuffers()
-	{
-		const u32 imageCount = m_context.swapChain.imageCount;
-		for (u32 i = 0; i < imageCount; i++)
-		{
-			const VkImageView worldAttachments[2] = { m_context.swapChain.views[i], m_context.swapChain.depthAttachment.view };
-			VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-			frameBufferCreateInfo.renderPass = m_context.mainRenderPass.handle;
-			frameBufferCreateInfo.attachmentCount = 2;
-			frameBufferCreateInfo.pAttachments = worldAttachments;
-			frameBufferCreateInfo.width = m_context.frameBufferWidth;
-			frameBufferCreateInfo.height = m_context.frameBufferHeight;
-			frameBufferCreateInfo.layers = 1;
-
-			VK_CHECK(vkCreateFramebuffer(m_context.device.logicalDevice, &frameBufferCreateInfo, m_context.allocator, &m_context.worldFrameBuffers[i]));
-
-			const VkImageView uiAttachments[1] = { m_context.swapChain.views[i] };
-			VkFramebufferCreateInfo swapChainFrameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-			swapChainFrameBufferCreateInfo.renderPass = m_context.uiRenderPass.handle;
-			swapChainFrameBufferCreateInfo.attachmentCount = 1;
-			swapChainFrameBufferCreateInfo.pAttachments = uiAttachments;
-			swapChainFrameBufferCreateInfo.width = m_context.frameBufferWidth;
-			swapChainFrameBufferCreateInfo.height = m_context.frameBufferHeight;
-			swapChainFrameBufferCreateInfo.layers = 1;
-
-			VK_CHECK(vkCreateFramebuffer(m_context.device.logicalDevice, &swapChainFrameBufferCreateInfo, m_context.allocator, &m_context.swapChain.frameBuffers[i]))
-		}
-	}
-
 	bool RendererVulkan::RecreateSwapChain()
 	{
 		if (m_context.recreatingSwapChain)
@@ -1397,15 +1510,7 @@ namespace C3D
 		m_context.device.QuerySwapChainSupport(m_context.surface, &m_context.device.swapChainSupport);
 		m_context.device.DetectDepthFormat();
 
-		m_context.swapChain.Recreate(&m_context, m_context.cachedFrameBufferWidth, m_context.cachedFrameBufferHeight);
-
-		// Sync the FrameBuffer size with the cached sizes
-		m_context.frameBufferWidth = m_context.cachedFrameBufferWidth;
-		m_context.frameBufferHeight = m_context.cachedFrameBufferHeight;
-		m_context.mainRenderPass.area.z = m_context.frameBufferWidth;
-		m_context.mainRenderPass.area.w = m_context.frameBufferHeight;
-		m_context.cachedFrameBufferWidth = 0;
-		m_context.cachedFrameBufferHeight = 0;
+		m_context.swapChain.Recreate(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
 
 		// Update the size generation so that they are in sync again
 		m_context.frameBufferSizeLastGeneration = m_context.frameBufferSizeGeneration;
@@ -1416,19 +1521,9 @@ namespace C3D
 			m_context.graphicsCommandBuffers[i].Free(&m_context, m_context.device.graphicsCommandPool);
 		}
 
-		// Destroy FrameBuffers
-		for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
-		{
-			vkDestroyFramebuffer(m_context.device.logicalDevice, m_context.worldFrameBuffers[i], m_context.allocator);
-			vkDestroyFramebuffer(m_context.device.logicalDevice, m_context.swapChain.frameBuffers[i], m_context.allocator);
-		}
+		// Tell the renderer that a refresh is required
+		m_context.frontend->RegenerateRenderTargets();
 
-		m_context.mainRenderPass.area.x = 0;
-		m_context.mainRenderPass.area.y = 0;
-		m_context.mainRenderPass.area.z = static_cast<i32>(m_context.frameBufferWidth);
-		m_context.mainRenderPass.area.w = static_cast<i32>(m_context.frameBufferHeight);
-
-		RegenerateFrameBuffers();
 		CreateCommandBuffers();
 
 		m_context.recreatingSwapChain = false;

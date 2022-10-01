@@ -9,6 +9,7 @@
 #include "core/memory.h"
 
 #include "services/services.h"
+#include "systems/texture_system.h"
 
 namespace C3D
 {
@@ -41,10 +42,8 @@ namespace C3D
 	}
 
 	VulkanSwapChain::VulkanSwapChain()
-		: handle(nullptr), imageFormat(), imageCount(0), maxFramesInFlight(0), views(nullptr), frameBuffers{},
-		  m_presentMode(), m_images(nullptr)
-	{
-	}
+		: handle(nullptr), imageFormat(), imageCount(0), maxFramesInFlight(0), renderTextures(nullptr), depthTexture(nullptr), renderTargets{}, m_presentMode()
+	{}
 
 	void VulkanSwapChain::Create(VulkanContext* context, const u32 width, const u32 height)
 	{
@@ -57,10 +56,14 @@ namespace C3D
 		CreateInternal(context, width, height);
 	}
 
-	void VulkanSwapChain::Destroy(const VulkanContext* context)
+	void VulkanSwapChain::Destroy(const VulkanContext* context) const
 	{
 		Logger::Info("[VULKAN_SWAP_CHAIN] - Destroying SwapChain");
 		DestroyInternal(context);
+		for (u32 i = 0; i < imageCount; i++)
+		{
+			Memory.Free(renderTextures[i]->internalData, sizeof(VulkanImage), MemoryType::Texture);
+		}
 	}
 
 	bool VulkanSwapChain::AcquireNextImageIndex(VulkanContext* context, const u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
@@ -170,20 +173,53 @@ namespace C3D
 
 		imageCount = 0;
 		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, nullptr));
-		if (!m_images)
+		if (!renderTextures)
 		{
-			m_images = Memory.Allocate<VkImage>(imageCount, MemoryType::RenderSystem);
-		}
-		if (!views)
-		{
-			views = Memory.Allocate<VkImageView>(imageCount, MemoryType::RenderSystem);
-		}
-		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, m_images));
+			renderTextures = Memory.Allocate<Texture*>(imageCount, MemoryType::RenderSystem);
+			// If creating the array, then the internal texture objects aren't created yet either.
+			for (u32 i = 0; i < imageCount; ++i)
+			{
+				const auto internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
 
+				char texName[38] = "__internal_vulkan_swapChain_image_0__";
+				texName[34] = '0' + static_cast<char>(i);
+
+				renderTextures[i] = Textures.WrapInternal(texName, extent.width, extent.height, 4, false, true, false, internalData);
+
+				if (!renderTextures[i])
+				{
+					Logger::Fatal("[VULKAN_SWAP_CHAIN] Failed to generate new swapChain image texture.");
+					return;
+				}
+			}
+		}
+		else
+		{
+			for (u32 i = 0; i < imageCount; ++i)
+			{
+				// Just update the dimensions.
+				Textures.Resize(renderTextures[i], extent.width, extent.height, false);
+			}
+		}
+
+		VkImage swapChainImages[32];
+		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, swapChainImages));
 		for (u32 i = 0; i < imageCount; i++)
 		{
+			// Update the internal image for each.
+			const auto image = static_cast<VulkanImage*>(renderTextures[i]->internalData);
+			image->handle = swapChainImages[i];
+			image->width = extent.width;
+			image->height = extent.height;
+		}
+
+		// Views
+		for (u32 i = 0; i < imageCount; i++)
+		{
+			const auto image = static_cast<VulkanImage*>(renderTextures[i]->internalData);
+
 			VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-			viewInfo.image = m_images[i];
+			viewInfo.image = image->handle;
 			viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 			viewInfo.format = imageFormat.format;
 			viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -192,30 +228,42 @@ namespace C3D
 			viewInfo.subresourceRange.baseArrayLayer = 0;
 			viewInfo.subresourceRange.layerCount = 1;
 
-			VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewInfo, context->allocator, &views[i]));
+			VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewInfo, context->allocator, &image->view));
 		}
 
+		// Detect depth resources
 		if (!context->device.DetectDepthFormat())
 		{
 			context->device.depthFormat = VK_FORMAT_UNDEFINED;
 			Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to find a supported Depth Format");
 		}
 
-		depthAttachment.Create(context, VK_IMAGE_TYPE_2D, extent.width, extent.height, context->device.depthFormat,
+		// Create a depth image and it's view
+		const auto image = Memory.Allocate<VulkanImage>(MemoryType::Texture);
+		image->Create(context, VK_IMAGE_TYPE_2D, extent.width, extent.height, context->device.depthFormat,
 			VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			true, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		// Wrap it in a texture
+		context->swapChain.depthTexture = Textures.WrapInternal("__C3D_default_depth_texture__", extent.width, extent.height, context->device.depthChannelCount,
+			false, true, false, image);
 
 		Logger::Info("[VULKAN_SWAP_CHAIN] - Successfully created");
 	}
 
-	void VulkanSwapChain::DestroyInternal(const VulkanContext* context)
+	void VulkanSwapChain::DestroyInternal(const VulkanContext* context) const
 	{
 		vkDeviceWaitIdle(context->device.logicalDevice);
-		depthAttachment.Destroy(context);
+
+		const auto image = static_cast<VulkanImage*>(depthTexture->internalData);
+		image->Destroy(context);
+		Memory.Free(image, sizeof(VulkanImage), MemoryType::Texture);
+		depthTexture->internalData = nullptr;
 
 		for (u32 i = 0; i < imageCount; i++)
 		{
-			vkDestroyImageView(context->device.logicalDevice, views[i], context->allocator);
+			const auto img = static_cast<VulkanImage*>(renderTextures[i]->internalData);
+			vkDestroyImageView(context->device.logicalDevice, img->view, context->allocator);
 		}
 
 		vkDestroySwapchainKHR(context->device.logicalDevice, handle, context->allocator);

@@ -11,16 +11,16 @@
 namespace C3D
 {
 	VulkanImage::VulkanImage()
-		: handle(nullptr), view(nullptr), m_memory(nullptr), m_width(0), m_height(0)
+		: handle(nullptr), view(nullptr), width(0), height(0), m_memory(nullptr)
 	{
 	}
 
-	void VulkanImage::Create(const VulkanContext* context, VkImageType imageType, const u32 width, const u32 height, const VkFormat format,
+	void VulkanImage::Create(const VulkanContext* context, VkImageType imageType, const u32 _width, const u32 _height, const VkFormat format,
 	                         const VkImageTiling tiling, const VkImageUsageFlags usage, const VkMemoryPropertyFlags memoryFlags, const bool createView,
 							 const VkImageAspectFlags viewAspectFlags)
 	{
-		m_width = width;
-		m_height = height;
+		width = _width;
+		height = _height;
 
 		VkImageCreateInfo imageCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -141,8 +141,8 @@ namespace C3D
 		region.imageSubresource.baseArrayLayer = 0;
 		region.imageSubresource.layerCount = 1;
 
-		region.imageExtent.width = m_width;
-		region.imageExtent.height = m_height;
+		region.imageExtent.width = width;
+		region.imageExtent.height = height;
 		region.imageExtent.depth = 1;
 
 		vkCmdCopyBufferToImage(commandBuffer->handle, buffer, handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);

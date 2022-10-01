@@ -86,14 +86,14 @@ namespace C3D
 		shader->pushConstantStride = 128; 
 		shader->pushConstantSize = 0;
 
-		u8 renderPassId = INVALID_ID_U8;
-		if (!Renderer.GetRenderPassId(config->renderPassName, &renderPassId))
+		RenderPass* pass = Renderer.GetRenderPass(config->renderPassName);
+		if (!pass)
 		{
 			m_logger.Error("Create() - Unable to find RenderPass '{}' for shader: '{}'", config->renderPassName, config->name);
 			return false;
 		}
 
-		if (!Renderer.CreateShader(shader, renderPassId, config->stageFileNames, config->stages))
+		if (!Renderer.CreateShader(shader, pass, config->stageFileNames, config->stages))
 		{
 			m_logger.Error("Create() - Failed to create shader: '{}'", config->name);
 			return false;

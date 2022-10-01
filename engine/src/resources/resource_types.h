@@ -26,6 +26,44 @@ namespace C3D
 
 	struct Resource
 	{
+		Resource()
+			: loaderId(INVALID_ID), name(nullptr), fullPath(nullptr)
+		{}
+
+		Resource(const Resource& other) noexcept
+			: loaderId(other.loaderId), name(nullptr), fullPath(nullptr)
+		{
+			if (other.name) name = StringDuplicate(other.name);
+			if (other.fullPath) fullPath = StringDuplicate(other.fullPath);
+		}
+
+		Resource(Resource&& other) noexcept
+			: loaderId(other.loaderId), name(other.name), fullPath(other.fullPath)
+		{
+			other.loaderId = INVALID_ID;
+			other.name = nullptr;
+			other.fullPath = nullptr;
+		}
+
+		Resource& operator=(const Resource& other)
+		{
+			if (this != &other)
+			{
+				loaderId = other.loaderId;
+				if (other.name) name = StringDuplicate(other.name);
+				if (other.fullPath) fullPath = StringDuplicate(other.fullPath);
+			}
+			return *this;
+		}
+
+		Resource& operator=(Resource&& other) noexcept
+		{
+			std::swap(loaderId, other.loaderId);
+			std::swap(name, other.name);
+			std::swap(fullPath, other.fullPath);
+			return *this;
+		}
+
 		~Resource()
 		{
 			if (name)

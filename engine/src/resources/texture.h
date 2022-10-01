@@ -18,7 +18,7 @@ namespace C3D
 	enum class TextureFilter
 	{
 		ModeNearest = 0x0,
-		ModeLinear  = 0x1
+		ModeLinear = 0x1
 	};
 
 	enum class TextureRepeat
@@ -29,25 +29,58 @@ namespace C3D
 		ClampToBorder = 0x4
 	};
 
+	enum TextureFlag
+	{
+		None = 0x0,
+		// Indicates if the texture has transparency
+		HasTransparency = 0x1,
+		// Indicates if the texture is writable
+		IsWritable = 0x2,
+		// Indicates if the texture was created via wrapping vs traditional creation
+		IsWrapped = 0x4,
+	};
+
+	typedef u8 TextureFlagBits;
+
 	struct Texture
 	{
 		Texture()
-			: id(0), width(0), height(0), channelCount(0), hasTransparency(false), isWritable(false), name(), generation(0), internalData(nullptr)
-		{}
+			: id(0), width(0), height(0), channelCount(0), flags(0), name(), generation(INVALID_ID), internalData(nullptr)
+		{
+		}
 
-		Texture(const char* textureName, const u32 width, const u32 height, const u8 channelCount, const bool hasTransparency, const bool isWritable)
-			: id(INVALID_ID), width(width), height(height), channelCount(channelCount), hasTransparency(hasTransparency), isWritable(isWritable), name(),
-			  generation(INVALID_ID), internalData(nullptr)
+		Texture(const char* textureName, const u32 width, const u32 height, const u8 channelCount, const TextureFlagBits flags = 0)
+			: id(INVALID_ID), width(width), height(height), channelCount(channelCount), flags(flags), name(), generation(INVALID_ID), internalData(nullptr)
 		{
 			StringNCopy(name, textureName, TEXTURE_NAME_MAX_LENGTH);
+		}
+
+		void Set(const u32 _id, const char* _name, u32 _width, u32 _height, u8 _channelCount, TextureFlagBits _flags, void* _internalData = nullptr)
+		{
+			id = _id;
+			StringNCopy(name, _name, TEXTURE_NAME_MAX_LENGTH);
+			width = _width;
+			height = _height;
+			channelCount = _channelCount;
+			flags = _flags;
+			internalData = _internalData;
+		}
+
+		bool IsWritable() const
+		{
+			return flags & TextureFlag::IsWritable;
+		}
+
+		bool IsWrapped() const
+		{
+			return flags & TextureFlag::IsWrapped;
 		}
 
 		u32 id;
 		u32 width, height;
 
 		u8 channelCount;
-		bool hasTransparency;
-		bool isWritable;
+		TextureFlagBits flags;
 
 		char name[TEXTURE_NAME_MAX_LENGTH];
 
@@ -59,20 +92,22 @@ namespace C3D
 	{
 		TextureMap()
 			: texture(nullptr), use(), minifyFilter(), magnifyFilter(), repeatU(), repeatV(), repeatW(), internalData(nullptr)
-		{}
+		{
+		}
 
 		TextureMap(const TextureUse use, const TextureFilter minifyFilter, const TextureFilter magnifyFilter, const TextureRepeat repeatU, const TextureRepeat repeatV, const TextureRepeat repeatW)
 			: texture(nullptr), use(use), minifyFilter(minifyFilter), magnifyFilter(magnifyFilter), repeatU(repeatU), repeatV(repeatV), repeatW(repeatW), internalData(nullptr)
-		{}
+		{
+		}
 
 		TextureMap(const TextureUse use, const TextureFilter minifyFilter, const TextureFilter magnifyFilter, const TextureRepeat repeat)
 			: texture(nullptr), use(use), minifyFilter(minifyFilter), magnifyFilter(magnifyFilter), repeatU(repeat), repeatV(repeat), repeatW(repeat), internalData(nullptr)
-		{}
+		{
+		}
 
 		TextureMap(const TextureUse use, const TextureFilter filter, const TextureRepeat repeat)
 			: texture(nullptr), use(use), minifyFilter(filter), magnifyFilter(filter), repeatU(repeat), repeatV(repeat), repeatW(repeat), internalData(nullptr)
 		{
-			
 		}
 
 		// Pointer to the corresponding texture
@@ -93,4 +128,3 @@ namespace C3D
 		void* internalData;
 	};
 }
-

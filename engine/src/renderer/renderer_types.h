@@ -1,10 +1,13 @@
 
 #pragma once
+#include <SDL2/SDL.h>
+
 #include "core/defines.h"
 #include "containers/dynamic_array.h"
 
 #include "math/math_types.h"
 #include "resources/geometry.h"
+#include "renderpass.h"
 
 namespace C3D
 {
@@ -16,12 +19,6 @@ namespace C3D
 		Vulkan,
 		OpenGl,
 		DirectX,
-	};
-
-	enum BuiltinRenderPass : u8
-	{
-		World	= 0x01,
-		Ui		= 0x02,
 	};
 
 	enum RendererViewMode : i32
@@ -43,6 +40,29 @@ namespace C3D
 
 		DynamicArray<GeometryRenderData> geometries;
 		DynamicArray<GeometryRenderData> uiGeometries;
+	};
+
+	struct RenderTarget
+	{
+		bool syncToWindowSize;
+
+		u8 attachmentCount;
+		Texture** attachments;
+
+		void* internalFrameBuffer;
+	};
+
+	struct RendererBackendConfig
+	{
+		const char* applicationName;
+		u32 applicationVersion;
+
+		u16 renderPassCount;
+
+		RenderPassConfig* passConfigs;
+		RenderSystem* frontend;
+
+		SDL_Window* window;
 	};
 
 	struct RendererBackendState

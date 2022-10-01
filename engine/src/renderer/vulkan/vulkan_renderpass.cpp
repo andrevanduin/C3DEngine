@@ -9,21 +9,19 @@
 namespace C3D
 {
 	VulkanRenderPass::VulkanRenderPass()
-		: handle(nullptr), state(), area(), m_clearColor(), m_depth(0), m_stencil(0), m_clearFlags(0),
-		  m_hasPrevPass(false), m_hasNextPass(false)
-	{
-	}
+		: RenderPass(), handle(nullptr), state(), m_depth(0), m_stencil(0), m_context(nullptr)
+	{}
 
-	void VulkanRenderPass::Create(VulkanContext* context, const ivec4& renderArea, const vec4& clearColor, f32 depth, u32 stencil, u8 clearFlags, bool hasPrevPass, bool hasNextPass)
+	VulkanRenderPass::VulkanRenderPass(VulkanContext* context, const u16 _id, const RenderPassConfig& config)
+		: RenderPass(_id, config), handle(nullptr), state(), m_depth(0), m_stencil(0), m_context(context)
+	{}
+
+	void VulkanRenderPass::Create(f32 depth, u32 stencil)
 	{
-		area = renderArea;
-		m_clearColor = clearColor;
 		m_depth = depth;
 		m_stencil = stencil;
-		m_clearFlags = clearFlags;
-		m_hasNextPass = hasNextPass;
-		m_hasPrevPass = hasPrevPass;
 
+		// Main SubPass
 		VkSubpassDescription subPass = {};
 		subPass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
@@ -35,7 +33,7 @@ namespace C3D
 		bool doClearColor = m_clearFlags & ClearColor;
 
 		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = context->swapChain.imageFormat.format; // TODO: Make this configurable.
+		colorAttachment.format = m_context->swapChain.imageFormat.format; // TODO: Make this configurable.
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		// If the user has requested clear color we clear otherwise we load it
 		colorAttachment.loadOp = doClearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -61,8 +59,8 @@ namespace C3D
 		// Depth attachment, if there is one.
 		if (bool doClearDepth = m_clearFlags & ClearDepth)
 		{
-			VkAttachmentDescription depthAttachment;
-			depthAttachment.format = context->device.depthFormat;
+			VkAttachmentDescription depthAttachment{};
+			depthAttachment.format = m_context->device.depthFormat;
 			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			depthAttachment.loadOp = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -70,7 +68,6 @@ namespace C3D
 			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-			depthAttachment.flags = 0;
 
 			attachmentDescriptions[attachmentDescriptionCount] = depthAttachment;
 			attachmentDescriptionCount++;
@@ -100,6 +97,7 @@ namespace C3D
 		subPass.preserveAttachmentCount = 0;
 		subPass.preserveAttachmentCount = 0;
 
+		// RenderPass dependencies
 		VkSubpassDependency dependency;
 		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 		dependency.dstSubpass = 0;
@@ -109,6 +107,7 @@ namespace C3D
 		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		dependency.dependencyFlags = 0;
 
+		// RenderPass Create
 		VkRenderPassCreateInfo createInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
 		createInfo.attachmentCount = attachmentDescriptionCount;
 		createInfo.pAttachments = attachmentDescriptions;
@@ -119,31 +118,31 @@ namespace C3D
 		createInfo.pNext = nullptr;
 		createInfo.flags = 0;
 
-		VK_CHECK(vkCreateRenderPass(context->device.logicalDevice, &createInfo, context->allocator, &handle));
+		VK_CHECK(vkCreateRenderPass(m_context->device.logicalDevice, &createInfo, m_context->allocator, &handle));
 
 		Logger::Info("[VULKAN_RENDER_PASS] - RenderPass successfully created");
 	}
 
-	void VulkanRenderPass::Destroy(const VulkanContext* context)
+	void VulkanRenderPass::Destroy()
 	{
 		Logger::Info("[VULKAN_RENDER_PASS] - Destroying RenderPass");
 
 		if (handle)
 		{
-			vkDestroyRenderPass(context->device.logicalDevice, handle, context->allocator);
+			vkDestroyRenderPass(m_context->device.logicalDevice, handle, m_context->allocator);
 			handle = nullptr;
 		}
 	}
 
-	void VulkanRenderPass::Begin(VulkanCommandBuffer* commandBuffer, VkFramebuffer frameBuffer) const
+	void VulkanRenderPass::Begin(VulkanCommandBuffer* commandBuffer, const RenderTarget* target) const
 	{
 		VkRenderPassBeginInfo beginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 		beginInfo.renderPass = handle;
-		beginInfo.framebuffer = frameBuffer;
-		beginInfo.renderArea.offset.x = area.x;
-		beginInfo.renderArea.offset.y = area.y;
-		beginInfo.renderArea.extent.width = area.z;
-		beginInfo.renderArea.extent.height = area.w;
+		beginInfo.framebuffer = static_cast<VkFramebuffer>(target->internalFrameBuffer);
+		beginInfo.renderArea.offset.x = renderArea.x;
+		beginInfo.renderArea.offset.y = renderArea.y;
+		beginInfo.renderArea.extent.width = renderArea.z;
+		beginInfo.renderArea.extent.height = renderArea.w;
 
 		beginInfo.clearValueCount = 0;
 		beginInfo.pClearValues = nullptr;
@@ -173,7 +172,7 @@ namespace C3D
 		commandBuffer->state = VulkanCommandBufferState::InRenderPass;
 	}
 
-	void VulkanRenderPass::End(VulkanCommandBuffer* commandBuffer) const
+	void VulkanRenderPass::End(VulkanCommandBuffer* commandBuffer)
 	{
 		vkCmdEndRenderPass(commandBuffer->handle);
 		commandBuffer->state = VulkanCommandBufferState::Recording;
