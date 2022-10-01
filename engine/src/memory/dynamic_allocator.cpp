@@ -74,10 +74,17 @@ namespace C3D
 			return false;
 		}
 
+		if (m_memory == nullptr || m_totalSize == 0)
+		{
+			// Tried to free something from this allocator while it is not managing any memory
+			Logger::Error("[DYNAMIC_ALLOCATOR] - Free() called while dynamic allocator is not managing memory.");
+			return true;
+		}
+
 		if (block < m_memory || block > static_cast<u8*>(m_memory) + m_totalSize)
 		{
 			void* endOfBlock = static_cast<u8*>(m_memory) + m_totalSize;
-			Logger::Error("[DYNAMIC_ALLOCATOR] - Free() called with block ({}) outside of allocator range (0x{}) - (0x{})", block, m_memory, endOfBlock);
+			Logger::Error("[DYNAMIC_ALLOCATOR] - Free() called with block ({}) outside of allocator range ({}) - ({}).", block, m_memory, endOfBlock);
 			return false;
 		}
 

@@ -13,7 +13,6 @@
 #include "services/services.h"
 
 // TEMP
-#include "math/geometry_utils.h"
 #include "core/c3d_string.h"
 #include "renderer/transform.h"
 //
@@ -26,11 +25,12 @@
 #include "systems/shader_system.h"
 #include "systems/texture_system.h"
 #include "systems/camera_system.h"
+#include "systems/render_view_system.h"
 
 namespace C3D
 {
 	Application::Application(const ApplicationConfig& config)
-		: m_logger("APPLICATION"), m_meshCount(0)
+		: m_logger("APPLICATION"), m_meshCount(0), m_uiMeshCount(0)
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice")
 
@@ -56,15 +56,16 @@ namespace C3D
 
 		m_logger.Info("Successfully created SDL Window");
 
-		constexpr MemorySystemConfig	memorySystemConfig		{ MebiBytes(1024) };
-		constexpr ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../assets" };
-		constexpr ShaderSystemConfig	shaderSystemConfig		{ 128, 128, 31, 31 };
-		constexpr TextureSystemConfig	textureSystemConfig		{ 65536 };
-		constexpr MaterialSystemConfig	materialSystemConfig	{ 4096 };
-		constexpr GeometrySystemConfig	geometrySystemConfig	{ 4096 };
-		constexpr CameraSystemConfig	cameraSystemConfig		{ 61 };
+		constexpr MemorySystemConfig		memorySystemConfig		{ MebiBytes(1024) };
+		constexpr ResourceSystemConfig		resourceSystemConfig	{ 32, "../../../../assets" };
+		constexpr ShaderSystemConfig		shaderSystemConfig		{ 128, 128, 31, 31 };
+		constexpr TextureSystemConfig		textureSystemConfig		{ 65536 };
+		constexpr MaterialSystemConfig		materialSystemConfig	{ 4096 };
+		constexpr GeometrySystemConfig		geometrySystemConfig	{ 4096 };
+		constexpr CameraSystemConfig		cameraSystemConfig		{ 61 };
+		constexpr RenderViewSystemConfig	viewSystemConfig		{ 251 };
 
-		Services::Init(this, memorySystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig, cameraSystemConfig);
+		Services::Init(this, memorySystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig, cameraSystemConfig, viewSystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
@@ -73,6 +74,42 @@ namespace C3D
 
 		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
+
+		RenderViewConfig opaqueWorldConfig{};
+		opaqueWorldConfig.type = RenderViewKnownType::World;
+		opaqueWorldConfig.width = 1280;
+		opaqueWorldConfig.height = 720;
+		opaqueWorldConfig.name = "world_opaque";
+		opaqueWorldConfig.passCount = 1;
+
+		RenderViewPassConfig passes[1];
+		passes[0].name = "RenderPass.Builtin.World";
+
+		opaqueWorldConfig.passes = passes;
+		opaqueWorldConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
+
+		if (!Views.Create(opaqueWorldConfig))
+		{
+			m_logger.Fatal("Failed to Create view '{}'.", opaqueWorldConfig.name);
+		}
+
+		RenderViewConfig uiViewConfig{};
+		uiViewConfig.type = RenderViewKnownType::UI;
+		uiViewConfig.width = 1280;
+		uiViewConfig.height = 720;
+		uiViewConfig.name = "ui";
+		uiViewConfig.passCount = 1;
+
+		RenderViewPassConfig uiPasses[1];
+		uiPasses[0].name = "RenderPass.Builtin.UI";
+
+		uiViewConfig.passes = uiPasses;
+		uiViewConfig.viewMatrixSource = RenderViewViewMatrixSource::UiCamera;
+
+		if (!Views.Create(uiViewConfig))
+		{
+			m_logger.Fatal("Failed to Create view '{}'.", uiViewConfig.name);
+		}
 
 		// TEMP
 		Mesh* cubeMesh = &m_meshes[m_meshCount];
@@ -203,7 +240,10 @@ namespace C3D
 		uiConfig.indices.PushBack(0);
 		uiConfig.indices.PushBack(1);
 
-		m_testUiGeometry = Geometric.AcquireFromConfig(uiConfig, true);
+		m_uiMeshCount = 1;
+		m_uiMeshes[0].geometryCount = 1;
+		m_uiMeshes[0].geometries = Memory.Allocate<Geometry*>(1, MemoryType::Array);
+		m_uiMeshes[0].geometries[0] = Geometric.AcquireFromConfig(uiConfig, true);
 		// TEMP END
 
 		m_state.initialized = true;
@@ -231,93 +271,103 @@ namespace C3D
 
 		m_logger.Info(Memory.GetMemoryUsageString());
 
-		while (m_state.running)
 		{
-			HandleSdlEvents();
+			RenderPacket packet = {};
+			packet.views.Resize(2); // Ensure enough space for 2 views so we only allocate once
 
-			if (!m_state.suspended)
+			MeshPacketData worldMeshData = {};
+			worldMeshData.meshes.Reserve(m_meshCount);
+			for (u32 i = 0; i < m_meshCount; i++)
 			{
-				clock.Update();
-				const f64 currentTime = clock.GetElapsed();
-				const f64 delta = currentTime - m_state.lastTime;
-				const f64 frameStartTime = Platform::GetAbsoluteTime();
+				worldMeshData.meshes.PushBack(m_meshes[i]);
+			}
 
-				OnUpdate(delta);
-				OnRender(delta);
+			MeshPacketData uiMeshData = {};
+			uiMeshData.meshes.Reserve(m_uiMeshCount);
+			for (u32 i = 0; i < m_uiMeshCount; i++)
+			{
+				uiMeshData.meshes.PushBack(m_uiMeshes[i]);
+			}
 
-				//TODO: Refactor this
-				RenderPacket packet = { static_cast<f32>(delta) };
+			while (m_state.running)
+			{
+				HandleSdlEvents();
 
-				// TEMP
-				if (m_meshCount > 0)
+				if (!m_state.suspended)
 				{
-					packet.geometries.Reserve(); // TODO: refactor because this sucks :(
+					clock.Update();
+					const f64 currentTime = clock.GetElapsed();
+					const f64 delta = currentTime - m_state.lastTime;
+					const f64 frameStartTime = Platform::GetAbsoluteTime();
 
-					// Rotate 
-					quat rotation = angleAxis(0.5f * static_cast<f32>(delta), vec3(0.0f, 1.0f, 0.0f));
-					m_meshes[0].transform.Rotate(rotation);
+					OnUpdate(delta);
+					OnRender(delta);
 
-					if (m_meshCount > 1)
+					// TEMP
+					if (m_meshCount > 0)
 					{
-						m_meshes[1].transform.Rotate(rotation);
-					}
-					if (m_meshCount > 2)
-					{
-						m_meshes[2].transform.Rotate(rotation);
-					}
+						// Rotate 
+						quat rotation = angleAxis(0.5f * static_cast<f32>(delta), vec3(0.0f, 1.0f, 0.0f));
+						m_meshes[0].transform.Rotate(rotation);
 
-					for (u32 i = 0; i < m_meshCount; i++)
-					{
-						auto& mesh = m_meshes[i];
-						for (u32 j = 0; j < mesh.geometryCount; j++)
+						if (m_meshCount > 1)
 						{
-							GeometryRenderData data{};
-							data.geometry = mesh.geometries[j];
-							data.model = mesh.transform.GetWorld();
-							packet.geometries.PushBack(data);
+							m_meshes[1].transform.Rotate(rotation);
 						}
-
+						if (m_meshCount > 2)
+						{
+							m_meshes[2].transform.Rotate(rotation);
+						}
 					}
-				}
 
-				GeometryRenderData testUiRender{};
-				testUiRender.geometry = m_testUiGeometry;
-				testUiRender.model = translate(vec3(0, 0, 0));
+					packet.deltaTime = static_cast<f32>(delta);
 
-				packet.uiGeometries.Reserve(1);
-				packet.uiGeometries.PushBack(testUiRender);
-				// TEMP END
-
-				if (!Renderer.DrawFrame(&packet))
-				{
-					m_logger.Warn("DrawFrame() failed");
-				}
-
-				// Cleanup our dynamic arrays :)
-				packet.geometries.Destroy();
-				packet.uiGeometries.Destroy();
-
-				const f64 frameEndTime = Platform::GetAbsoluteTime();
-				const f64 frameElapsedTime = frameEndTime - frameStartTime;
-				runningTime += frameElapsedTime;
-				const f64 remainingSeconds = targetFrameSeconds - frameElapsedTime;
-
-				if (remainingSeconds > 0)
-				{
-					/*const u64 remainingMs = static_cast<u64>(remainingSeconds) * 1000;
-
-					constexpr bool limitFrames = false;
-					/if (remainingMs > 0 && limitFrames)
+					// World
+					if (!Views.BuildPacket(Views.Get("world_opaque"), &worldMeshData, &packet.views[0]))
 					{
-						Platform::SleepMs(remainingMs - 1);
-					}*/
+						m_logger.Error("Failed to build packet for view 'world_opaque'.");
+						return;
+					}
 
-					frameCount++;
+					// Ui
+					if (!Views.BuildPacket(Views.Get("ui"), &uiMeshData, &packet.views[1]))
+					{
+						m_logger.Error("Failed to build packet for view 'ui'.");
+						return;
+					}
+
+					if (!Renderer.DrawFrame(&packet))
+					{
+						m_logger.Warn("DrawFrame() failed");
+					}
+
+					for (auto& view : packet.views)
+					{
+						view.geometries.Clear();
+					}
+
+					const f64 frameEndTime = Platform::GetAbsoluteTime();
+					const f64 frameElapsedTime = frameEndTime - frameStartTime;
+					runningTime += frameElapsedTime;
+					const f64 remainingSeconds = targetFrameSeconds - frameElapsedTime;
+
+					if (remainingSeconds > 0)
+					{
+						/*const u64 remainingMs = static_cast<u64>(remainingSeconds) * 1000;
+
+						constexpr bool limitFrames = false;
+						/if (remainingMs > 0 && limitFrames)
+						{
+							Platform::SleepMs(remainingMs - 1);
+						}*/
+
+						frameCount++;
+					}
+
+					Services::GetInput().Update(delta);
+
+					m_state.lastTime = currentTime;
 				}
-
-				Services::GetInput().Update(delta);
-
-				m_state.lastTime = currentTime;
 			}
 		}
 

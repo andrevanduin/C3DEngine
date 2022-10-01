@@ -217,6 +217,7 @@ namespace C3D
 				pass.Destroy();
 			}
 		}
+		m_context.renderPassTable.Destroy();
 
 		m_logger.Info("Destroying SwapChain");
 		m_context.swapChain.Destroy(&m_context);

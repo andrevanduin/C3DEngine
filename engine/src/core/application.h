@@ -70,7 +70,6 @@ namespace C3D
 		static bool OnKeyEvent(u16 code, void* sender, EventContext context);
 
 		LoggerInstance m_logger;
-
 		ApplicationState m_state;
 
 		SDL_Window* m_window{ nullptr };
@@ -79,7 +78,8 @@ namespace C3D
 		Mesh m_meshes[10];
 		u32 m_meshCount;
 
-		Geometry* m_testUiGeometry;
+		Mesh m_uiMeshes[10];
+		u32 m_uiMeshCount;
 		// TEMP END
 
 		friend int ::main(int argc, char** argv);
