@@ -475,7 +475,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::DrawGeometry(const GeometryRenderData data)
+	void RendererVulkan::DrawGeometry(const GeometryRenderData& data)
 	{
 		// Simply ignore if there is no geometry to draw
 		if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
