@@ -11,12 +11,6 @@
 
 namespace C3D
 {
-	struct GeometryDistance
-	{
-		GeometryRenderData g;
-		f32 distance;
-	};
-
 	RenderViewWorld::RenderViewWorld(const u16 _id, const RenderViewConfig& config) // TODO: Set from configuration
 		: RenderView(_id, config), m_shaderId(INVALID_ID), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
 		m_projectionMatrix(), m_camera(nullptr), m_ambientColor(), m_renderMode(0)
@@ -49,6 +43,7 @@ namespace C3D
 	void RenderViewWorld::OnDestroy()
 	{
 		Event.UnRegister(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderViewWorld::OnEvent));
+		RenderView::OnDestroy();
 	}
 
 	void RenderViewWorld::OnResize(const u32 width, const u32 height)
@@ -68,7 +63,7 @@ namespace C3D
 		}
 	}
 
-	bool RenderViewWorld::OnBuildPacket(void* data, RenderViewPacket* outPacket) const
+	bool RenderViewWorld::OnBuildPacket(void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -84,16 +79,15 @@ namespace C3D
 		outPacket->viewPosition = m_camera->GetPosition();
 		outPacket->ambientColor = m_ambientColor;
 
-		//DynamicArray<GeometryDistance> geometryDistances(4);
 		for (auto& mesh : meshData->meshes)
 		{
-			//mat4 model = mesh.transform.GetWorld();
+			auto model = mesh.transform.GetWorld();
 
 			for (u16 i = 0; i < mesh.geometryCount; i++)
 			{
 				GeometryRenderData renderData
 				{
-					mesh.transform.GetWorld(),
+					model,
 					mesh.geometries[i],
 				};
 
@@ -102,7 +96,6 @@ namespace C3D
 					// Material has no transparency
 					outPacket->geometries.PushBack(renderData);
 				}
-				/*
 				else
 				{
 					vec3 center = vec4(renderData.geometry->center, 1.0f) * model;
@@ -113,24 +106,24 @@ namespace C3D
 						renderData,
 						Abs(distance)
 					};
-					geometryDistances.PushBack(gDistance);
-				}*/
+					m_distances.PushBack(gDistance);
+				}
 			}
 		}
 
-		/*
-		std::sort(geometryDistances.begin(), geometryDistances.end(),
+		std::sort(m_distances.begin(), m_distances.end(),
 			[](const GeometryDistance& a, const GeometryDistance& b)
 			{
-				return a.distance - b.distance;
+				return a.distance < b.distance;
 			}
 		);
 
-		for (auto& dist : geometryDistances)
+		for (auto& [g, distance] : m_distances)
 		{
-			outPacket->geometries.PushBack(dist.g);
+			outPacket->geometries.PushBack(g);
 		}
-		*/
+
+		m_distances.Clear();
 		return true;
 	}
 
@@ -151,7 +144,7 @@ namespace C3D
 			}
 
 			// TODO: Generic way to request data such as ambient color (which should come from a scene)
-			if (!Materials.ApplyGlobal(m_shaderId, &packet->projectionMatrix, &packet->viewMatrix, &packet->ambientColor, &packet->viewPosition, m_renderMode))
+			if (!Materials.ApplyGlobal(m_shaderId, frameNumber, &packet->projectionMatrix, &packet->viewMatrix, &packet->ambientColor, &packet->viewPosition, m_renderMode))
 			{
 				m_logger.Error("OnRender() - Failed to apply globals for shader with id {}", m_shaderId);
 				return false;

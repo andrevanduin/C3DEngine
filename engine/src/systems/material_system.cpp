@@ -80,7 +80,7 @@ namespace C3D
 	Material* MaterialSystem::Acquire(const char* name)
 	{
 		MaterialResource materialResource{};
-		if (!Resources.Load(name, ResourceType::Material, &materialResource))
+		if (!Resources.Load(name, &materialResource))
 		{
 			m_logger.Error("Failed to load material resource. Returning nullptr");
 			return nullptr;
@@ -237,8 +237,20 @@ namespace C3D
 		return false;									\
 	}
 
-	bool MaterialSystem::ApplyGlobal(u32 shaderId, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition, const u32 renderMode) const
+	bool MaterialSystem::ApplyGlobal(u32 shaderId, u64 frameNumber, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition, const u32 renderMode) const
 	{
+		Shader* s = Shaders.GetById(shaderId);
+		if (!s)
+		{
+			m_logger.Error("No Shader found with id '{}'.", shaderId);
+			return false;
+		}
+		if (s->frameNumber == frameNumber)
+		{
+			// The globals have already been applied for this frame so we don't need to do anything here.
+			return true;
+		}
+
 		if (shaderId == m_materialShaderId)
 		{
 			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.projection, projection))
@@ -259,6 +271,9 @@ namespace C3D
 		}
 
 		MATERIAL_APPLY_OR_FAIL(Shaders.ApplyGlobal())
+
+		// Sync the frameNumber
+		s->frameNumber = frameNumber;
 		return true;
 	}
 

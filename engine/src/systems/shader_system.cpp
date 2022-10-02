@@ -30,6 +30,7 @@ namespace C3D
 		for (u32 i = 0; i < m_config.maxShaderCount; i++)
 		{
 			m_shaders[i].id = INVALID_ID;
+			m_shaders[i].frameNumber = INVALID_ID_U64;
 		}
 		return true;
 	}
@@ -47,7 +48,7 @@ namespace C3D
 		Memory.Free(m_shaders, m_config.maxShaderCount * sizeof(Shader), MemoryType::Shader);
 	}
 
-	bool ShaderSystem::Create(const ShaderConfig* config)
+	bool ShaderSystem::Create(const ShaderConfig& config)
 	{
 		// Grab a new id for this shader
 		const u32 id = GetNewShaderId();
@@ -60,9 +61,7 @@ namespace C3D
 		}
 
 		shader->state = ShaderState::NotCreated;
-		shader->name = StringDuplicate(config->name);
-		shader->useInstances = config->useInstances;
-		shader->useLocals = config->useLocals;
+		shader->name = StringDuplicate(config.name);
 		shader->pushConstantRangeCount = 0;
 		shader->boundInstanceId = INVALID_ID;
 		shader->attributeStride = 0;
@@ -86,16 +85,16 @@ namespace C3D
 		shader->pushConstantStride = 128; 
 		shader->pushConstantSize = 0;
 
-		RenderPass* pass = Renderer.GetRenderPass(config->renderPassName);
+		RenderPass* pass = Renderer.GetRenderPass(config.renderPassName);
 		if (!pass)
 		{
-			m_logger.Error("Create() - Unable to find RenderPass '{}' for shader: '{}'", config->renderPassName, config->name);
+			m_logger.Error("Create() - Unable to find RenderPass '{}' for shader: '{}'", config.renderPassName, config.name);
 			return false;
 		}
 
-		if (!Renderer.CreateShader(shader, pass, config->stageFileNames, config->stages))
+		if (!Renderer.CreateShader(shader, config, pass))
 		{
-			m_logger.Error("Create() - Failed to create shader: '{}'", config->name);
+			m_logger.Error("Create() - Failed to create shader: '{}'", config.name);
 			return false;
 		}
 
@@ -103,13 +102,13 @@ namespace C3D
 		shader->state = ShaderState::Uninitialized;
 
 		// Add attributes
-		for (const auto& attribute : config->attributes)
+		for (const auto& attribute : config.attributes)
 		{
 			AddAttribute(shader, &attribute);
 		}
 
 		// Add Samplers and other uniforms
-		for (const auto& uniform : config->uniforms)
+		for (const auto& uniform : config.uniforms)
 		{
 			if (uniform.type == Uniform_Sampler)
 			{
@@ -124,12 +123,12 @@ namespace C3D
 		// Initialize the Shader
 		if (!Renderer.InitializeShader(shader))
 		{
-			m_logger.Error("Create() - Initialization failed for shader: '{}'", config->name);
+			m_logger.Error("Create() - Initialization failed for shader: '{}'", config.name);
 			return false;
 		}
 
 		// Store the shader id in our hashtable
-		m_nameToIdMap[config->name] = shader->id;
+		m_nameToIdMap[config.name] = shader->id;
 		return true;
 	}
 
@@ -326,12 +325,6 @@ namespace C3D
 
 	bool ShaderSystem::AddSampler(Shader* shader, const ShaderUniformConfig* config)
 	{
-		if (config->scope == ShaderScope::Instance && !shader->useInstances)
-		{
-			m_logger.Error("AddSampler() - Cannot add an instance sampler for a shader that does not use instances.");
-			return false;
-		}
-
 		// We cannot use PushConstants for samplers
 		if (config->scope == ShaderScope::Local)
 		{
@@ -430,12 +423,6 @@ namespace C3D
 		}
 		else
 		{
-			if (!shader->useLocals)
-			{
-				m_logger.Error("AddUniform() - Cannot add a locally-scoped uniform for a shader that does not use locals.");
-				return false;
-			}
-
 			entry.setIndex = INVALID_ID_U8;
 			const Range r = GetAlignedRange(shader->pushConstantSize, size, 4);
 			entry.offset = r.offset;

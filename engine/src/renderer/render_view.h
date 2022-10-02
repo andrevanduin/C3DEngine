@@ -7,6 +7,7 @@
 
 #include "resources/geometry.h"
 #include "resources/mesh.h"
+#include "resources/skybox.h"
 
 namespace C3D
 {
@@ -14,6 +15,7 @@ namespace C3D
 	{
 		World	= 0x01,
 		UI		= 0x02,
+		Skybox	= 0x03,
 	};
 
 	enum class RenderViewViewMatrixSource
@@ -25,8 +27,8 @@ namespace C3D
 
 	enum class RenderViewProjectionMatrixSource
 	{
-		DefaultPerpective		= 0x01,
-		DefualtOrthographic		= 0x02,
+		DefaultPerspective		= 0x01,
+		DefaultOrthographic		= 0x02,
 	};
 
 	struct RenderViewPassConfig
@@ -63,20 +65,26 @@ namespace C3D
 	public:
 		explicit RenderView(const u16 id, const RenderViewConfig& config)
 			: id(id), name(nullptr), type(), m_width(config.width), m_height(config.height), m_customShaderName(nullptr), m_logger(config.name)
-		{}
+		{
+			name = StringDuplicate(config.name);
+		}
 
 		virtual ~RenderView() = default;
 
 		virtual bool OnCreate() = 0;
-		virtual void OnDestroy() { }
+		virtual void OnDestroy()
+		{
+			const auto length = StringLength(name) + 1;
+			Memory.Free(name, length, MemoryType::String);
+		}
 
 		virtual void OnResize(u32 width, u32 height) = 0;
 
-		virtual bool OnBuildPacket(void* data, RenderViewPacket* outPacket) const = 0;
+		virtual bool OnBuildPacket(void* data, RenderViewPacket* outPacket) = 0;
 		virtual bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const = 0;
 
 		u16 id;
-		const char* name;
+		char* name;
 
 		RenderViewKnownType type;
 		DynamicArray<RenderPass*> passes;
@@ -115,5 +123,10 @@ namespace C3D
 	struct MeshPacketData
 	{
 		DynamicArray<Mesh> meshes;
+	};
+
+	struct SkyboxPacketData
+	{
+		Skybox* box;
 	};
 }

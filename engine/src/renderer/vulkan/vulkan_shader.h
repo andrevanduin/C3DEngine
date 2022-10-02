@@ -16,11 +16,6 @@ namespace C3D
 	/* @brief The index of the instance descriptor set. */
 	constexpr auto DESC_SET_INDEX_INSTANCE = 1;
 
-	/* @brief The index of the UBO binding. */
-	constexpr auto BINDING_INDEX_UBO = 0;
-	/* @brief The index of the image sampler binding. */
-	constexpr auto BINDING_INDEX_SAMPLER = 1;
-
 	/* @brief The maximum number of stages (such as vertex, fragment, compute etc.) allowed in a shader. */
 	constexpr auto VULKAN_SHADER_MAX_STAGES = 8;
 	/* @brief The maximum number of textures allowed at global level.  */
@@ -51,18 +46,22 @@ namespace C3D
 		u8 size;
 	};
 
-	/* Configuration for a specific shader stage. */
+	/* @brief Configuration for a specific shader stage. */
 	struct VulkanShaderStageConfig
 	{
 		VkShaderStageFlagBits stage;
 		char fileName[VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH];
 	};
 
-	/* Configuration for a specific descriptor set. */
+	/* @brief Configuration for a specific descriptor set. */
 	struct VulkanDescriptorSetConfig
 	{
+		/* @brief The number of bindings in this set. */
 		u8 bindingCount;
+		/* @brief An array of binding layouts for this set. */
 		VkDescriptorSetLayoutBinding bindings[VULKAN_SHADER_MAX_BINDINGS];
+		/* @brief The index of the sampler binding . */
+		u8 samplerBindingIndex;
 	};
 
 	struct VulkanShaderConfig
@@ -87,6 +86,8 @@ namespace C3D
 		VulkanDescriptorSetConfig descriptorSets[2];
 		/* @brief An array of attribute descriptions for this shader. */
 		VkVertexInputAttributeDescription attributes[VULKAN_SHADER_MAX_ATTRIBUTES];
+		/* @brief Face culling mode, provided by the front end. */
+		FaceCullMode cullMode;
 	};
 
 	struct VulkanDescriptorState
@@ -147,5 +148,25 @@ namespace C3D
 
 		u32 instanceCount;
 		VulkanShaderInstanceState instanceStates[VULKAN_MAX_MATERIAL_COUNT];
+
+		void ZeroOutCounts()
+		{
+			globalUniformCount = 0;
+			globalUniformSamplerCount = 0;
+			instanceUniformCount = 0;
+			instanceUniformSamplerCount = 0;
+			localUniformCount = 0;
+		}
+
+		/* @brief The number of global non-sampler uniforms. */
+		u8 globalUniformCount;
+		/* @brief The number of global sampler uniforms. */
+		u8 globalUniformSamplerCount;
+		/* @brief The number of instance non-sampler uniforms. */
+		u8 instanceUniformCount;
+		/* @brief The number of instance sampler uniforms. */
+		u8 instanceUniformSamplerCount;
+		/* @brief The number of local non-sampler uniforms. */
+		u8 localUniformCount;
 	};
 }

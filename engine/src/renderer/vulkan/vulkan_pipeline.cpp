@@ -12,9 +12,24 @@ namespace C3D
 {
 	VulkanPipeline::VulkanPipeline() : layout(nullptr), m_handle(nullptr) {}
 
+	VkCullModeFlagBits GetVkCullMode(FaceCullMode cullMode)
+	{
+		switch (cullMode)
+		{
+			case FaceCullMode::None:
+				return VK_CULL_MODE_NONE;
+			case FaceCullMode::Front:
+				return VK_CULL_MODE_FRONT_BIT;
+			case FaceCullMode::Back:
+				return VK_CULL_MODE_BACK_BIT;
+			case FaceCullMode::FrontAndBack:
+				return VK_CULL_MODE_FRONT_AND_BACK;
+		}
+	}
+
 	bool VulkanPipeline::Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 stride, u32 attributeCount, VkVertexInputAttributeDescription* attributes,
 		u32 descriptorSetLayoutCount, VkDescriptorSetLayout* descriptorSetLayouts, u32 stageCount, VkPipelineShaderStageCreateInfo* stages,
-		VkViewport viewport, VkRect2D scissor, bool isWireFrame, bool depthTestEnabled, u32 pushConstantRangeCount, Range* pushConstantRanges)
+		VkViewport viewport, VkRect2D scissor, FaceCullMode cullMode, bool isWireFrame, bool depthTestEnabled, u32 pushConstantRangeCount, Range* pushConstantRanges)
 	{
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 		viewportState.viewportCount = 1;
@@ -28,7 +43,7 @@ namespace C3D
 		rasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
 		rasterizerCreateInfo.polygonMode = isWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
 		rasterizerCreateInfo.lineWidth = 1.0f;
-		rasterizerCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizerCreateInfo.cullMode = GetVkCullMode(cullMode);
 		rasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizerCreateInfo.depthBiasEnable = VK_FALSE;
 		rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;

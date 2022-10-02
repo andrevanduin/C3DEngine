@@ -2,8 +2,10 @@
 #include "render_view_system.h"
 
 #include "renderer/renderer_frontend.h"
+
 #include "renderer/views/render_view_ui.h"
 #include "renderer/views/render_view_world.h"
+#include "renderer/views/render_view_skybox.h"
 
 namespace C3D
 {
@@ -56,7 +58,7 @@ namespace C3D
 
 		if (!config.name || StringLength(config.name) == 0)
 		{
-			m_logger.Error("Create() - Config must have a valid name");
+			m_logger.Error("Create() - Config must have a valid name.");
 			return false;
 		}
 
@@ -92,6 +94,9 @@ namespace C3D
 			case RenderViewKnownType::UI:
 				m_registeredViews[id] = new RenderViewUi(id, config);
 				break;
+			case RenderViewKnownType::Skybox:
+				m_registeredViews[id] = new RenderViewSkybox(id, config);
+				break;
 		}
 
 		RenderView* view = m_registeredViews[id];
@@ -102,7 +107,7 @@ namespace C3D
 		}
 
 		view->passes.Resize(config.passCount);
-		for (u8 i = 0; i < view->passes.Size(); i++)
+		for (size_t i = 0; i < view->passes.Size(); i++)
 		{
 			view->passes[i] = Renderer.GetRenderPass(config.passes[i].name);
 			if (!view->passes[i])
@@ -146,7 +151,7 @@ namespace C3D
 		return nullptr;
 	}
 
-	bool RenderViewSystem::BuildPacket(const RenderView* view, void* data, RenderViewPacket* outPacket) const
+	bool RenderViewSystem::BuildPacket(RenderView* view, void* data, RenderViewPacket* outPacket) const
 	{
 		if (view && outPacket)
 		{
@@ -164,7 +169,7 @@ namespace C3D
 			return view->OnRender(packet, frameNumber, renderTargetIndex);
 		}
 
-		m_logger.Error("OnRender() - Requires valid view and packet.");
+		m_logger.Error("OnRender() - Requires a valid pointer to a view and packet.");
 		return false;
 	}
 }

@@ -26,7 +26,7 @@ namespace C3D
 
 		RenderView* Get(const char* name);
 
-		bool BuildPacket(const RenderView* view, void* data, RenderViewPacket* outPacket) const;
+		bool BuildPacket(RenderView* view, void* data, RenderViewPacket* outPacket) const;
 		bool OnRender(const RenderView* view, const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const;
 
 	private:

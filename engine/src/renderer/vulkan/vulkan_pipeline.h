@@ -11,7 +11,7 @@ namespace C3D
 
 		bool Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 stride, u32 attributeCount, VkVertexInputAttributeDescription* attributes,
 			u32 descriptorSetLayoutCount, VkDescriptorSetLayout* descriptorSetLayouts, u32 stageCount, VkPipelineShaderStageCreateInfo* stages,
-			VkViewport viewport, VkRect2D scissor, bool isWireFrame, bool depthTestEnabled, u32 pushConstantRangeCount, Range* pushConstantRanges);
+			VkViewport viewport, VkRect2D scissor, FaceCullMode cullMode, bool isWireFrame, bool depthTestEnabled, u32 pushConstantRangeCount, Range* pushConstantRanges);
 
 		void Destroy(const VulkanContext* context);
 

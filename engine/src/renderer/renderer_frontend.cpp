@@ -41,26 +41,34 @@ namespace C3D
 		RendererBackendConfig backendConfig{};
 		backendConfig.applicationName = "TestEnv";
 		backendConfig.frontend = this;
-		backendConfig.renderPassCount = 2;
+		backendConfig.renderPassCount = 3;
 		backendConfig.window = application->GetWindow();
 
+		constexpr auto skyboxRenderPassName = "RenderPass.Builtin.Skybox";
 		constexpr auto worldRenderPassName = "RenderPass.Builtin.World";
 		constexpr auto uiRenderPassName = "RenderPass.Builtin.UI";
-
-		RenderPassConfig passConfigs[2];
-		passConfigs[0].name = worldRenderPassName;
+		
+		RenderPassConfig passConfigs[3];
+		passConfigs[0].name = skyboxRenderPassName;
 		passConfigs[0].previousName = nullptr;
-		passConfigs[0].nextName = uiRenderPassName;
+		passConfigs[0].nextName = worldRenderPassName;
 		passConfigs[0].renderArea = { 0, 0, 1280, 720 };
 		passConfigs[0].clearColor = { 0.0f, 0.0f, 0.2f, 1.0f };
-		passConfigs[0].clearFlags = ClearColor | ClearDepth | ClearStencil;
+		passConfigs[0].clearFlags = ClearColor;
 
-		passConfigs[1].name = uiRenderPassName;
-		passConfigs[1].previousName = worldRenderPassName;
-		passConfigs[1].nextName = nullptr;
+		passConfigs[1].name = worldRenderPassName;
+		passConfigs[1].previousName = skyboxRenderPassName;
+		passConfigs[1].nextName = uiRenderPassName;
 		passConfigs[1].renderArea = { 0, 0, 1280, 720 };
 		passConfigs[1].clearColor = { 0.0f, 0.0f, 0.2f, 1.0f };
-		passConfigs[1].clearFlags = ClearNone;
+		passConfigs[1].clearFlags = ClearDepth | ClearStencil;
+
+		passConfigs[2].name = uiRenderPassName;
+		passConfigs[2].previousName = worldRenderPassName;
+		passConfigs[2].nextName = nullptr;
+		passConfigs[2].renderArea = { 0, 0, 1280, 720 };
+		passConfigs[2].clearColor = { 0.0f, 0.0f, 0.2f, 1.0f };
+		passConfigs[2].clearFlags = ClearNone;
 
 		backendConfig.passConfigs = passConfigs;
 
@@ -71,6 +79,10 @@ namespace C3D
 		}
 
 		// TODO: We will know how to get these when we define views.
+		m_skyBoxRenderPass = m_backend->GetRenderPass(skyboxRenderPassName);
+		m_skyBoxRenderPass->renderTargetCount = m_windowRenderTargetCount;
+		m_skyBoxRenderPass->targets = Memory.Allocate<RenderTarget>(m_windowRenderTargetCount, MemoryType::Array);
+
 		m_worldRenderPass = m_backend->GetRenderPass(worldRenderPassName);
 		m_worldRenderPass->renderTargetCount = m_windowRenderTargetCount;
 		m_worldRenderPass->targets = Memory.Allocate<RenderTarget>(m_windowRenderTargetCount, MemoryType::Array);
@@ -82,22 +94,42 @@ namespace C3D
 		RegenerateRenderTargets();
 
 		// Update the dimensions for our RenderPasses
+		m_skyBoxRenderPass->renderArea = { 0, 0, m_frameBufferWidth, m_frameBufferHeight };
 		m_worldRenderPass->renderArea = { 0, 0, m_frameBufferWidth, m_frameBufferHeight };
 		m_uiRenderPass->renderArea = { 0, 0, m_frameBufferWidth, m_frameBufferHeight };
 
 		// Shaders
 		ShaderResource configResource{};
-		// Get shader resources for material shader
-		if (!Resources.Load(BUILTIN_SHADER_NAME_MATERIAL, ResourceType::Shader, &configResource))
+		// Get shader resources for skybox shader
+		if (!Resources.Load(BUILTIN_SHADER_NAME_SKY_BOX, &configResource))
 		{
-			m_logger.Error("Init() - Failed to load builtin material shader config resource");
+			m_logger.Error("Init() - Failed to load builtin skybox shader config resource.");
+			return false;
+		}
+
+		// Create our skybox shader
+		if (!Shaders.Create(configResource.config))
+		{
+			m_logger.Error("Init() - Failed to create builting skybox shader.");
+			return false;
+		}
+
+		// Unload resources for skybox shader config
+		Resources.Unload(&configResource);
+		// Obtain the shader id beloning to our skybox shader
+		m_skyBoxShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_SKY_BOX);
+
+		// Get shader resources for material shader
+		if (!Resources.Load(BUILTIN_SHADER_NAME_MATERIAL, &configResource))
+		{
+			m_logger.Error("Init() - Failed to load builtin material shader config resource.");
 			return false;
 		}
 
 		// Create our material shader
-		if (!Shaders.Create(&configResource.config))
+		if (!Shaders.Create(configResource.config))
 		{
-			m_logger.Error("Init() - Failed to create builtin material shader");
+			m_logger.Error("Init() - Failed to create builtin material shader.");
 			return false;
 		}
 
@@ -107,21 +139,22 @@ namespace C3D
 		m_materialShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_MATERIAL);
 
 		// Get shader resources for ui shader
-		if (!Resources.Load(BUILTIN_SHADER_NAME_UI, ResourceType::Shader, &configResource))
+		if (!Resources.Load(BUILTIN_SHADER_NAME_UI, &configResource))
 		{
-			m_logger.Error("Init() - Failed to load builtin ui shader config resource");
+			m_logger.Error("Init() - Failed to load builtin ui shader config resource.");
 			return false;
 		}
 
 		// Create our ui shader
-		if (!Shaders.Create(&configResource.config))
+		if (!Shaders.Create(configResource.config))
 		{
-			m_logger.Error("Init() - Failed to create builtin material shader");
+			m_logger.Error("Init() - Failed to create builtin material shader.");
 			return false;
 		}
 
 		// Unload resources for ui shader config
 		Resources.Unload(&configResource);
+		// Obtain the shader if beloning to our ui shader
 		m_uiShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_UI);
 
 		m_logger.Info("Initialized Vulkan Renderer Backend");
@@ -134,6 +167,7 @@ namespace C3D
 
 		for (u8 i = 0; i < m_windowRenderTargetCount; i++)
 		{
+			m_backend->DestroyRenderTarget(&m_skyBoxRenderPass->targets[i], true);
 			m_backend->DestroyRenderTarget(&m_worldRenderPass->targets[i], true);
 			m_backend->DestroyRenderTarget(&m_uiRenderPass->targets[i], true);
 		}
@@ -254,9 +288,9 @@ namespace C3D
 		return m_backend->EndRenderPass(pass);
 	}
 
-	bool RenderSystem::CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const
+	bool RenderSystem::CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const
 	{
-		return m_backend->CreateShader(shader, pass, stageFileNames, stages);
+		return m_backend->CreateShader(shader, config, pass);
 	}
 
 	void RenderSystem::DestroyShader(Shader* shader) const
@@ -334,11 +368,16 @@ namespace C3D
 		// Create render targets of each. TODO: Should be configurable
 		for (u8 i = 0; i < m_windowRenderTargetCount; i++)
 		{
+			m_backend->DestroyRenderTarget(&m_skyBoxRenderPass->targets[i], false);
 			m_backend->DestroyRenderTarget(&m_worldRenderPass->targets[i], false);
 			m_backend->DestroyRenderTarget(&m_uiRenderPass->targets[i], false);
 
 			Texture* windowTargetTexture = m_backend->GetWindowAttachment(i);
 			Texture* depthTargetTexture = m_backend->GetDepthAttachment();
+
+			// Skybox render targets
+			Texture* skyboxAttachments[1] = { windowTargetTexture };
+			m_backend->CreateRenderTarget(1, skyboxAttachments, m_skyBoxRenderPass, m_frameBufferWidth, m_frameBufferHeight, &m_skyBoxRenderPass->targets[i]);
 
 			// World render targets
 			Texture* attachments[2] = { windowTargetTexture, depthTargetTexture };

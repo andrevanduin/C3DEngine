@@ -55,8 +55,8 @@ namespace C3D
 	{
 		char* name;
 
-		bool useInstances;
-		bool useLocals;
+		/* @brief The face cull mode to be used. Default is BACK if not supplied. */
+		FaceCullMode cullMode;
 
 		DynamicArray<ShaderAttributeConfig> attributes;
 		DynamicArray<ShaderUniformConfig> uniforms;
@@ -97,9 +97,6 @@ namespace C3D
 		u32 id;
 		char* name;
 
-		bool useInstances;
-		bool useLocals;
-
 		u64 requiredUboAlignment;
 		u64 globalUboSize;
 		u64 globalUboStride;
@@ -127,6 +124,9 @@ namespace C3D
 		Range pushConstantRanges[32];
 
 		ShaderState state;
+
+		// @brief used to ensure the shaders globals are only updated once per frame.
+		u64 frameNumber;
 
 		// A pointer to the Renderer API specific data
 		// This memory needs to be manages separately by the current rendering API backend

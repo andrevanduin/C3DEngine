@@ -1,25 +1,16 @@
 
 #pragma once
-#include "core/events/event_context.h"
 #include "renderer/render_view.h"
+#include "renderer/camera.h"
 
-namespace C3D
+namespace C3D 
 {
-	class Camera;
-
-	struct GeometryDistance
-	{
-		GeometryRenderData g;
-		f32 distance;
-	};
-
-	class RenderViewWorld final : public RenderView
+	class RenderViewSkybox final : public RenderView
 	{
 	public:
-		RenderViewWorld(u16 _id, const RenderViewConfig& config);
+		RenderViewSkybox(u16 _id, const RenderViewConfig& config);
 
 		bool OnCreate() override;
-		void OnDestroy() override;
 
 		void OnResize(u32 width, u32 height) override;
 
@@ -28,10 +19,6 @@ namespace C3D
 		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const override;
 
 	private:
-		bool OnEvent(u16 code, void* sender, EventContext context);
-
-		DynamicArray<GeometryDistance> m_distances;
-
 		u32 m_shaderId;
 
 		f32 m_fov;
@@ -39,9 +26,11 @@ namespace C3D
 		f32 m_farClip;
 
 		mat4 m_projectionMatrix;
+		
 		Camera* m_camera;
 
-		vec4 m_ambientColor;
-		u32 m_renderMode;
+		u16 m_projectionLocation;
+		u16 m_viewLocation;
+		u16 m_cubeMapLocation;
 	};
 }

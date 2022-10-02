@@ -33,8 +33,7 @@ namespace C3D
 		}
 
 		outResource->fullPath = StringDuplicate(fullPath);
-		outResource->config.useInstances = false;
-		outResource->config.useLocals = false;
+		outResource->config.cullMode = FaceCullMode::Back;
 
 		outResource->config.renderPassName = nullptr;
 		outResource->config.name = nullptr;
@@ -94,13 +93,9 @@ namespace C3D
 			{
 				ParseStageFiles(&outResource->config, value);
 			}
-			else if (IEquals(varName.data(), "useInstances"))
+			else if (IEquals(varName.data(), "cullMode"))
 			{
-				StringToBool(value.data(), &outResource->config.useInstances);
-;			}
-			else if (IEquals(varName.data(), "useLocals"))
-			{
-				StringToBool(value.data(), &outResource->config.useLocals);
+				ParseCullMode(&outResource->config, value);
 			}
 			else if (IEquals(varName.data(), "attribute"))
 			{
@@ -378,5 +373,22 @@ namespace C3D
 		}
 
 		data->uniforms.PushBack(uniform);
+	}
+
+	void ResourceLoader<ShaderResource>::ParseCullMode(ShaderConfig* data, const string& value) const
+	{
+		if (IEquals(value.data(), "front"))
+		{
+			data->cullMode = FaceCullMode::Front;
+		}
+		else if (IEquals(value.data(), "front_and_back"))
+		{
+			data->cullMode = FaceCullMode::FrontAndBack;
+		}
+		else if (IEquals(value.data(), "none"))
+		{
+			data->cullMode = FaceCullMode::None;
+		}
+		// Default is BACK so we don't have to do anyting
 	}
 }

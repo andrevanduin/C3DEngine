@@ -11,6 +11,7 @@ namespace C3D
 	struct Texture;
 	struct Shader;
 	struct ShaderUniform;
+	struct ShaderConfig;
 
 	class RendererBackend
 	{
@@ -43,7 +44,7 @@ namespace C3D
 		virtual bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) = 0;
 		virtual void DestroyGeometry(Geometry* geometry) = 0;
 
-		virtual bool CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) = 0;
+		virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
 		virtual void DestroyShader(Shader* shader) = 0;
 
 		virtual bool InitializeShader(Shader* shader) = 0;

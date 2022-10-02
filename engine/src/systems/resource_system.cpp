@@ -107,5 +107,4 @@ namespace C3D
 		m_logger.Error("GetBasePath() called before initialization. Returning empty string");
 		return "";
 	}
-
 }

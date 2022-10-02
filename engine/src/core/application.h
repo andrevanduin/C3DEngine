@@ -5,6 +5,7 @@
 
 #include "resources/geometry.h"
 #include "resources/mesh.h"
+#include "resources/skybox.h"
 
 int main(int argc, char** argv);
 
@@ -75,6 +76,8 @@ namespace C3D
 		SDL_Window* m_window{ nullptr };
 
 		// TEMP
+		Skybox m_skybox;
+
 		Mesh m_meshes[10];
 		u32 m_meshCount;
 

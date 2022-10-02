@@ -4,6 +4,8 @@
 
 #include "renderer_types.h"
 #include "renderer_backend.h"
+#include "resources/shader.h"
+
 #include "core/events/event_context.h"
 
 namespace C3D
@@ -45,7 +47,7 @@ namespace C3D
 		bool BeginRenderPass(RenderPass* pass, RenderTarget* target) const;
 		bool EndRenderPass(RenderPass* pass) const;
 
-		bool CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) const;
+		bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const;
 		void DestroyShader(Shader* shader) const;
 
 		bool InitializeShader(Shader* shader) const;
@@ -77,13 +79,14 @@ namespace C3D
 
 		LoggerInstance m_logger;
 
-		u32 m_materialShaderId, m_uiShaderId;
+		u32 m_materialShaderId, m_uiShaderId, m_skyBoxShaderId;
 
 		u8 m_windowRenderTargetCount;
 		u32 m_frameBufferWidth, m_frameBufferHeight;
 
 		RenderPass* m_worldRenderPass;
 		RenderPass* m_uiRenderPass;
+		RenderPass* m_skyBoxRenderPass;
 
 		bool m_resizing;
 		u8 m_framesSinceResize;

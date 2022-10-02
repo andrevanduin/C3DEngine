@@ -67,7 +67,7 @@ namespace C3D
 		Geometry* GetDefault2D();
 
 		// NOTE: Vertex and index arrays are dynamically allocated so they should be freed by the user
-		[[nodiscard]] GeometryConfig<Vertex3D, u32> GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName) const;
+		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName);
 
 		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const string& name, const string& materialName);
 
@@ -140,11 +140,16 @@ namespace C3D
 			m_registeredGeometries[g->id].referenceCount = 0;
 			m_registeredGeometries[g->id].autoRelease = false;
 			g->id = INVALID_ID;
-			g->generation = INVALID_ID;
+			g->generation = INVALID_ID_U16;
 			g->internalId = INVALID_ID;
 
 			return false;
 		}
+
+		// Copy over the center and extents
+		g->center = config.center;
+		g->extents.min = config.minExtents;
+		g->extents.max = config.maxExtents;
 
 		// Acquire the material
 		if (StringLength(config.materialName) > 0)

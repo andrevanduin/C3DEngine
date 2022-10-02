@@ -30,7 +30,7 @@ namespace C3D
 		{
 			m_registeredGeometries[i].geometry.id = INVALID_ID;
 			m_registeredGeometries[i].geometry.internalId = INVALID_ID;
-			m_registeredGeometries[i].geometry.generation = INVALID_ID;
+			m_registeredGeometries[i].geometry.generation = INVALID_ID_U16;
 		}
 
 		if (!CreateDefaultGeometries())
@@ -111,7 +111,7 @@ namespace C3D
 		return &m_default2DGeometry;
 	}
 
-	GeometryConfig<Vertex3D, u32> GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName) const
+	GeometryConfig<Vertex3D, u32> GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName)
 	{
 		if (width == 0.f)	width = 1.0f;
 		if (height == 0.f)	height = 1.0f;
@@ -233,6 +233,10 @@ namespace C3D
 		f32 minUvY = 0.0f;
 		f32 maxUvX = tileX;
 		f32 maxUvY = tileY;
+
+		config.minExtents = { minX, minY, minZ };
+		config.maxExtents = { maxX, maxY, maxZ };
+		config.center = { 0, 0, 0 };
 
 		// Front face
 		config.vertices[(0 * 4) + 0].position = { minX, minY, maxZ };

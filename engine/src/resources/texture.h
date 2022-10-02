@@ -9,35 +9,67 @@ namespace C3D
 
 	enum class TextureUse
 	{
-		Unknown = 0x0,
-		Diffuse = 0x1,
-		Specular = 0x2,
-		Normal = 0x3,
+		Unknown		= 0x0,
+		Diffuse		= 0x1,
+		Specular	= 0x2,
+		Normal		= 0x3,
+		CubeMap		= 0x4,
 	};
 
 	enum class TextureFilter
 	{
 		ModeNearest = 0x0,
-		ModeLinear = 0x1
+		ModeLinear = 0x1,
 	};
 
 	enum class TextureRepeat
 	{
-		Repeat = 0x1,
-		MirroredRepeat = 0x2,
-		ClampToEdge = 0x3,
-		ClampToBorder = 0x4
+		Repeat			= 0x1,
+		MirroredRepeat	= 0x2,
+		ClampToEdge		= 0x3,
+		ClampToBorder	= 0x4,
 	};
 
 	enum TextureFlag
 	{
 		None = 0x0,
-		// Indicates if the texture has transparency
-		HasTransparency = 0x1,
-		// Indicates if the texture is writable
-		IsWritable = 0x2,
-		// Indicates if the texture was created via wrapping vs traditional creation
-		IsWrapped = 0x4,
+		/* @brief Indicates if the texture has transparency */
+		HasTransparency	= 0x1,
+		/* @brief Indicates if the texture is writable */
+		IsWritable		= 0x2,
+		/* @brief Indicates if the texture was created via wrapping vs traditional creation */
+		IsWrapped		= 0x4,
+	};
+
+	enum class FaceCullMode
+	{
+		/* @brief No faces are culled. */
+		None			= 0x0,
+		/* @brief Only front faces are culled. */
+		Front			= 0x1,
+		/* @brief Only back faces are culled. */
+		Back			= 0x2,
+		/* @brief Both front and back faces are culled. */
+		FrontAndBack	= 0x3
+	};
+
+	enum class TextureType
+	{
+		Type2D,
+		TypeCube,
+	};
+
+	struct ImageResourceData
+	{
+		u8 channelCount;
+		u32 width, height;
+		u8* pixels;
+	};
+
+	struct ImageResourceParams
+	{
+		/* @brief Indicated if the image should be flipped on the y-axis when loaded. */
+		bool flipY = true;
 	};
 
 	typedef u8 TextureFlagBits;
@@ -45,19 +77,19 @@ namespace C3D
 	struct Texture
 	{
 		Texture()
-			: id(0), width(0), height(0), channelCount(0), flags(0), name(), generation(INVALID_ID), internalData(nullptr)
-		{
-		}
+			: id(0), width(0), height(0), type(), channelCount(0), flags(0), name(), generation(INVALID_ID), internalData(nullptr)
+		{}
 
-		Texture(const char* textureName, const u32 width, const u32 height, const u8 channelCount, const TextureFlagBits flags = 0)
-			: id(INVALID_ID), width(width), height(height), channelCount(channelCount), flags(flags), name(), generation(INVALID_ID), internalData(nullptr)
+		Texture(const char* textureName, TextureType type, const u32 width, const u32 height, const u8 channelCount, const TextureFlagBits flags = 0)
+			: id(INVALID_ID), width(width), height(height), type(type), channelCount(channelCount), flags(flags), name(), generation(INVALID_ID), internalData(nullptr)
 		{
 			StringNCopy(name, textureName, TEXTURE_NAME_MAX_LENGTH);
 		}
 
-		void Set(const u32 _id, const char* _name, u32 _width, u32 _height, u8 _channelCount, TextureFlagBits _flags, void* _internalData = nullptr)
+		void Set(const u32 _id, TextureType _type, const char* _name, u32 _width, u32 _height, u8 _channelCount, TextureFlagBits _flags, void* _internalData = nullptr)
 		{
 			id = _id;
+			type = _type;
 			StringNCopy(name, _name, TEXTURE_NAME_MAX_LENGTH);
 			width = _width;
 			height = _height;
@@ -66,18 +98,19 @@ namespace C3D
 			internalData = _internalData;
 		}
 
-		bool IsWritable() const
+		[[nodiscard]] bool IsWritable() const
 		{
 			return flags & TextureFlag::IsWritable;
 		}
-
-		bool IsWrapped() const
+		[[nodiscard]] bool IsWrapped() const
 		{
 			return flags & TextureFlag::IsWrapped;
 		}
 
 		u32 id;
 		u32 width, height;
+
+		TextureType type;
 
 		u8 channelCount;
 		TextureFlagBits flags;

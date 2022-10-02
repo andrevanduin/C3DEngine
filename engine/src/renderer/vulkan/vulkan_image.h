@@ -5,6 +5,7 @@
 #include "core/defines.h"
 
 #include "vulkan_command_buffer.h"
+#include "resources/texture.h"
 
 namespace C3D
 {
@@ -15,16 +16,16 @@ namespace C3D
 	public:
 		VulkanImage();
 
-		void Create(const VulkanContext* context, VkImageType imageType, u32 _width, u32 _height, VkFormat format,
+		void Create(const VulkanContext* context, TextureType type, u32 _width, u32 _height, VkFormat format,
 			VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags, bool createView,
 			VkImageAspectFlags viewAspectFlags);
 
-		void CreateView(const VulkanContext* context, VkFormat format, VkImageAspectFlags aspectFlags);
+		void CreateView(const VulkanContext* context, TextureType type, VkFormat format, VkImageAspectFlags aspectFlags);
 
-		void TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer, VkFormat format, 
+		void TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer, TextureType type, VkFormat format, 
 			VkImageLayout oldLayout, VkImageLayout newLayout) const;
 
-		void CopyFromBuffer(const VulkanContext* context, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
+		void CopyFromBuffer(const VulkanContext* context, TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
 
 		void Destroy(const VulkanContext* context);
 

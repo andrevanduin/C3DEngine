@@ -4,7 +4,8 @@
 #include "vulkan_buffer.h"
 #include "vulkan_shader.h"
 
-#include "../renderer_backend.h"
+#include "renderer/renderer_backend.h"
+#include "resources/shader.h"
 
 struct SDL_Window;
 
@@ -41,7 +42,7 @@ namespace C3D
 		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) override;
 		void DestroyGeometry(Geometry* geometry) override;
 
-		bool CreateShader(Shader* shader, RenderPass* pass, const std::vector<char*>& stageFileNames, const std::vector<ShaderStage>& stages) override;
+		bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const override;
 		void DestroyShader(Shader* shader) override;
 
 		bool InitializeShader(Shader* shader) override;

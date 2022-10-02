@@ -12,7 +12,8 @@
 namespace C3D
 {
 	constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
-	constexpr auto BUILTIN_SHADER_NAME_UI = "Shader.Builtin.UI";
+	constexpr auto BUILTIN_SHADER_NAME_UI		= "Shader.Builtin.UI";
+	constexpr auto BUILTIN_SHADER_NAME_SKY_BOX	= "Shader.Builtin.Skybox";
 
 	enum class RendererBackendType
 	{
@@ -23,9 +24,9 @@ namespace C3D
 
 	enum RendererViewMode : i32
 	{
-		Default = 0,
-		Lighting = 1,
-		Normals = 2,
+		Default		= 0,
+		Lighting	= 1,
+		Normals		= 2,
 	};
 
 	struct RenderPacket

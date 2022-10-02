@@ -13,7 +13,7 @@ namespace C3D
 
 		void OnResize(u32 width, u32 height) override;
 
-		bool OnBuildPacket(void* data, RenderViewPacket* outPacket) const override;
+		bool OnBuildPacket(void* data, RenderViewPacket* outPacket) override;
 
 		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const override;
 
