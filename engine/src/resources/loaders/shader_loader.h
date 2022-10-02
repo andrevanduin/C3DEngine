@@ -28,5 +28,7 @@ namespace C3D
 
 		void ParseAttribute(ShaderConfig* data, const string& value) const;
 		void ParseUniform(ShaderConfig* data, const string& value) const;
+
+		void ParseCullMode(ShaderConfig* data, const string& value) const;
 	};
 }

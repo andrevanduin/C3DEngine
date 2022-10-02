@@ -75,7 +75,7 @@ namespace C3D
 
 		Material* GetDefault();
 
-		bool ApplyGlobal(u32 shaderId, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition, u32 renderMode) const;
+		bool ApplyGlobal(u32 shaderId, u64 frameNumber, const mat4* projection, const mat4* view, const vec4* ambientColor, const vec3* viewPosition, u32 renderMode) const;
 		bool ApplyInstance(Material* material, bool needsUpdate) const;
 		bool ApplyLocal(Material* material, const mat4* model) const;
 

@@ -34,5 +34,7 @@ namespace C3D
 	{
 	public:
 		ResourceLoader() : IResourceLoader("NONE", MemoryType::Unknown, ResourceType::None, nullptr, nullptr) {}
+
+		bool Load(const char* name, T* outResource) const;
 	};
 }

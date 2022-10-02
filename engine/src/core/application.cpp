@@ -75,6 +75,25 @@ namespace C3D
 		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
 
+		// Load render views
+		RenderViewConfig skyboxConfig{};
+		skyboxConfig.type = RenderViewKnownType::Skybox;
+		skyboxConfig.width = 1280;
+		skyboxConfig.height = 720;
+		skyboxConfig.name = "skybox";
+		skyboxConfig.passCount = 1;
+
+		RenderViewPassConfig skyboxPasses[1];
+		skyboxPasses[0].name = "RenderPass.Builtin.Skybox";
+
+		skyboxConfig.passes = skyboxPasses;
+		skyboxConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
+
+		if (!Views.Create(skyboxConfig))
+		{
+			m_logger.Fatal("Failed to create view '{}'.", skyboxConfig.name);
+		}
+
 		RenderViewConfig opaqueWorldConfig{};
 		opaqueWorldConfig.type = RenderViewKnownType::World;
 		opaqueWorldConfig.width = 1280;
@@ -90,7 +109,7 @@ namespace C3D
 
 		if (!Views.Create(opaqueWorldConfig))
 		{
-			m_logger.Fatal("Failed to Create view '{}'.", opaqueWorldConfig.name);
+			m_logger.Fatal("Failed to create view '{}'.", opaqueWorldConfig.name);
 		}
 
 		RenderViewConfig uiViewConfig{};
@@ -108,10 +127,36 @@ namespace C3D
 
 		if (!Views.Create(uiViewConfig))
 		{
-			m_logger.Fatal("Failed to Create view '{}'.", uiViewConfig.name);
+			m_logger.Fatal("Failed to create view '{}'.", uiViewConfig.name);
 		}
 
 		// TEMP
+		auto& cubeMap = m_skybox.cubeMap;
+		cubeMap.magnifyFilter = cubeMap.minifyFilter = TextureFilter::ModeLinear;
+		cubeMap.repeatU = cubeMap.repeatV = cubeMap.repeatW = TextureRepeat::ClampToEdge;
+		cubeMap.use = TextureUse::CubeMap;
+		if (!Renderer.AcquireTextureMapResources(&cubeMap))
+		{
+			m_logger.Fatal("Unable to acquire resources for cube map texture.");
+		}
+		cubeMap.texture = Textures.AcquireCube("skybox", true);
+		
+		GeometryConfig skyboxCubeConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "skybox_cube", "");
+		skyboxCubeConfig.materialName[0] = '\0';
+
+		m_skybox.g = Geometric.AcquireFromConfig(skyboxCubeConfig, true);
+		m_skybox.frameNumber = INVALID_ID_U64;
+
+		Geometric.DisposeConfig(&skyboxCubeConfig);
+
+		Shader* skyboxShader = Shaders.Get(BUILTIN_SHADER_NAME_SKY_BOX);
+		TextureMap* maps[1] = { &m_skybox.cubeMap };
+		if (!Renderer.AcquireShaderInstanceResources(skyboxShader, maps, &m_skybox.instanceId))
+		{
+			m_logger.Fatal("Unable to acquire shader resources for skybox texture.");
+		}
+
+		// World meshes
 		Mesh* cubeMesh = &m_meshes[m_meshCount];
 		cubeMesh->geometryCount = 1;
 		cubeMesh->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
@@ -160,12 +205,11 @@ namespace C3D
 		// Load up a test car mesh from file
 		Mesh* carMesh = &m_meshes[m_meshCount];
 		MeshResource carMeshResource{};
-		if (!Resources.Load("falcon", ResourceType::Mesh, &carMeshResource))
+		if (!Resources.Load("falcon", &carMeshResource))
 		{
 			m_logger.Fatal("Failed to load car mesh");
 			return;
 		}
-
 
 		carMesh->geometryCount = static_cast<u16>(carMeshResource.geometryConfigs.Size());
 		carMesh->geometries = Memory.Allocate<Geometry*>(carMesh->geometryCount, MemoryType::Array);
@@ -180,7 +224,7 @@ namespace C3D
 		// Load up a sponza mesh from file
 		Mesh* sponza = &m_meshes[m_meshCount];
 		MeshResource sponzaResource{};
-		if (!Resources.Load("sponza", ResourceType::Mesh, &sponzaResource))
+		if (!Resources.Load("sponza", &sponzaResource))
 		{
 			m_logger.Fatal("Failed to load sponza mesh");
 			return;
@@ -273,7 +317,10 @@ namespace C3D
 
 		{
 			RenderPacket packet = {};
-			packet.views.Resize(2); // Ensure enough space for 2 views so we only allocate once
+			packet.views.Resize(3); // Ensure enough space for 3 views so we only allocate once
+
+			SkyboxPacketData skyboxData = {};
+			skyboxData.box = &m_skybox;
 
 			MeshPacketData worldMeshData = {};
 			worldMeshData.meshes.Reserve(m_meshCount);
@@ -322,15 +369,22 @@ namespace C3D
 
 					packet.deltaTime = static_cast<f32>(delta);
 
+					// Skybox
+					if (!Views.BuildPacket(Views.Get("skybox"), &skyboxData, &packet.views[0]))
+					{
+						m_logger.Error("Failed to build packet for view 'skybox'.");
+						return;
+					}
+
 					// World
-					if (!Views.BuildPacket(Views.Get("world_opaque"), &worldMeshData, &packet.views[0]))
+					if (!Views.BuildPacket(Views.Get("world_opaque"), &worldMeshData, &packet.views[1]))
 					{
 						m_logger.Error("Failed to build packet for view 'world_opaque'.");
 						return;
 					}
 
 					// Ui
-					if (!Views.BuildPacket(Views.Get("ui"), &uiMeshData, &packet.views[1]))
+					if (!Views.BuildPacket(Views.Get("ui"), &uiMeshData, &packet.views[2]))
 					{
 						m_logger.Error("Failed to build packet for view 'ui'.");
 						return;
@@ -411,6 +465,11 @@ namespace C3D
 
 		Event.UnRegister(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.UnRegister(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
+
+		// TEMP
+		// TODO: Implement skybox destroy.
+		Renderer.ReleaseTextureMapResources(&m_skybox.cubeMap);
+		// TEMP END
 
 		Services::Shutdown();
 

@@ -21,6 +21,18 @@ typedef glm::mat4 mat4;
 
 typedef glm::quat quat;
 
+struct Extents2D
+{
+	vec2 min;
+	vec2 max;
+};
+
+struct Extents3D
+{
+	vec3 min;
+	vec3 max;
+};
+
 template<>
 struct fmt::formatter<vec2>
 {

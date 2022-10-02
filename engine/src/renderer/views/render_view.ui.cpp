@@ -44,7 +44,7 @@ namespace C3D
 		}
 	}
 
-	bool RenderViewUi::OnBuildPacket(void* data, RenderViewPacket* outPacket) const
+	bool RenderViewUi::OnBuildPacket(void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -77,7 +77,7 @@ namespace C3D
 
 	bool RenderViewUi::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex) const
 	{
-		for (auto pass : passes)
+		for (const auto pass : passes)
 		{
 			if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
 			{
@@ -91,7 +91,7 @@ namespace C3D
 				return false;
 			}
 
-			if (!Materials.ApplyGlobal(m_shaderId, &packet->projectionMatrix, &packet->viewMatrix, nullptr, nullptr, 0))
+			if (!Materials.ApplyGlobal(m_shaderId, frameNumber, &packet->projectionMatrix, &packet->viewMatrix, nullptr, nullptr, 0))
 			{
 				m_logger.Error("OnRender() - Failed to apply globals for shader with id {}", m_shaderId);
 				return false;

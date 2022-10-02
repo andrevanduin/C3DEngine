@@ -46,9 +46,10 @@ constexpr auto ToUnderlying(E e) noexcept
  * @brief Any id set to this value should be considered invalid,
  * and not actually pointing to a real object.
  */
-#define INVALID_ID UINT32_MAX
-#define INVALID_ID_U16 UINT16_MAX
-#define INVALID_ID_U8 UINT8_MAX
+#define INVALID_ID_U64	std::numeric_limits<u64>::max()
+#define INVALID_ID		std::numeric_limits<u32>::max()
+#define INVALID_ID_U16	std::numeric_limits<u16>::max()
+#define INVALID_ID_U8	std::numeric_limits<u8>::max()
 
 #ifdef C3D_EXPORT
 #ifdef _MSC_VER

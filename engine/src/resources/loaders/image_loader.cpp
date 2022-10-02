@@ -22,10 +22,15 @@ namespace C3D
 
 	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource* outResource) const
 	{
+		return Load(name, outResource, {});
+	}
+
+	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource* outResource, const ImageResourceParams& params) const
+	{
 		if (StringLength(name) == 0 || !outResource) return false;
 
 		constexpr i32 requiredChannelCount = 4;
-		stbi_set_flip_vertically_on_load(true);
+		stbi_set_flip_vertically_on_load(params.flipY);
 
 		char fullPath[512];
 

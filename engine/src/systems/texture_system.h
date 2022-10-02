@@ -4,6 +4,7 @@
 #include "resources/texture.h"
 
 #include <unordered_map>
+#include <array>
 
 #include "containers/hash_table.h"
 #include "core/logger.h"
@@ -38,6 +39,7 @@ namespace C3D
 		void Shutdown();
 
 		Texture* Acquire(const char* name, bool autoRelease);
+		Texture* AcquireCube(const char* name, bool autoRelease);
 		Texture* AcquireWritable(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency);
 
 		void Release(const char* name);
@@ -58,9 +60,11 @@ namespace C3D
 		void DestroyDefaultTextures();
 
 		bool LoadTexture(const char* name, Texture* texture) const;
+		bool LoadCubeTextures(const char* name, const std::array<char[TEXTURE_NAME_MAX_LENGTH], 6>& textureNames, Texture* texture) const;
+
 		static void DestroyTexture(Texture* texture);
 
-		bool ProcessTextureReference(const char* name, i8 referenceDiff, bool autoRelease, bool skipLoad, u32* outTextureId);
+		bool ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease, bool skipLoad, u32* outTextureId);
 
 		bool m_initialized;
 

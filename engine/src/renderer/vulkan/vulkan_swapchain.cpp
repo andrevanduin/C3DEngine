@@ -240,7 +240,7 @@ namespace C3D
 
 		// Create a depth image and it's view
 		const auto image = Memory.Allocate<VulkanImage>(MemoryType::Texture);
-		image->Create(context, VK_IMAGE_TYPE_2D, extent.width, extent.height, context->device.depthFormat,
+		image->Create(context, TextureType::Type2D, extent.width, extent.height, context->device.depthFormat,
 			VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			true, VK_IMAGE_ASPECT_DEPTH_BIT);
 

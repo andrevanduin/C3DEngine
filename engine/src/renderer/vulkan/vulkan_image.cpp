@@ -15,7 +15,29 @@ namespace C3D
 	{
 	}
 
-	void VulkanImage::Create(const VulkanContext* context, VkImageType imageType, const u32 _width, const u32 _height, const VkFormat format,
+	VkImageType GetVkImageType(TextureType type)
+	{
+		switch (type)
+		{
+			case TextureType::Type2D:
+				return VK_IMAGE_TYPE_2D;
+			case TextureType::TypeCube:
+				return VK_IMAGE_TYPE_2D;
+		}
+	}
+
+	VkImageViewType GetVkImageViewType(TextureType type)
+	{
+		switch (type)
+		{
+			case TextureType::Type2D:
+				return VK_IMAGE_VIEW_TYPE_2D;
+			case TextureType::TypeCube:
+				return VK_IMAGE_VIEW_TYPE_CUBE;
+		}
+	}
+
+	void VulkanImage::Create(const VulkanContext* context, TextureType type, const u32 _width, const u32 _height, const VkFormat format,
 	                         const VkImageTiling tiling, const VkImageUsageFlags usage, const VkMemoryPropertyFlags memoryFlags, const bool createView,
 							 const VkImageAspectFlags viewAspectFlags)
 	{
@@ -23,18 +45,22 @@ namespace C3D
 		height = _height;
 
 		VkImageCreateInfo imageCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-		imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+		imageCreateInfo.imageType = GetVkImageType(type);
 		imageCreateInfo.extent.width = width;
 		imageCreateInfo.extent.height = height;
 		imageCreateInfo.extent.depth = 1;	// TODO: Support different depth.
 		imageCreateInfo.mipLevels = 4;		// TODO: Support MipMapping.
-		imageCreateInfo.arrayLayers = 1;	// TODO: Support number of layers in the image.
+		imageCreateInfo.arrayLayers = type == TextureType::TypeCube ? 6 : 1;
 		imageCreateInfo.format = format;
 		imageCreateInfo.tiling = tiling;
 		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageCreateInfo.usage = usage;
 		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;			// TODO: Configurable sample count.
 		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;	// TODO: Configurable sharing mode.
+		if (type == TextureType::TypeCube)
+		{
+			imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		}
 
 		VK_CHECK(vkCreateImage(context->device.logicalDevice, &imageCreateInfo, context->allocator, &handle));
 
@@ -58,15 +84,15 @@ namespace C3D
 		if (createView)
 		{
 			view = nullptr;
-			CreateView(context, format, viewAspectFlags);
+			CreateView(context, type, format, viewAspectFlags);
 		}
 	}
 
-	void VulkanImage::CreateView(const VulkanContext* context, const VkFormat format, const VkImageAspectFlags aspectFlags)
+	void VulkanImage::CreateView(const VulkanContext* context, TextureType type, const VkFormat format, const VkImageAspectFlags aspectFlags)
 	{
 		VkImageViewCreateInfo viewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		viewCreateInfo.image = handle;
-		viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;	// TODO: Make configurable.
+		viewCreateInfo.viewType = GetVkImageViewType(type);
 		viewCreateInfo.format = format;
 		viewCreateInfo.subresourceRange.aspectMask = aspectFlags;
 
@@ -74,13 +100,13 @@ namespace C3D
 		viewCreateInfo.subresourceRange.baseMipLevel = 0;
 		viewCreateInfo.subresourceRange.levelCount = 1;
 		viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		viewCreateInfo.subresourceRange.layerCount = 1;
+		viewCreateInfo.subresourceRange.layerCount = type == TextureType::TypeCube ? 6 : 1;
 
 		VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewCreateInfo, context->allocator, &view));
 	}
 
 	void VulkanImage::TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer,
-		VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout) const
+		TextureType type, VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout) const
 	{
 		VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 		barrier.oldLayout = oldLayout;
@@ -92,7 +118,7 @@ namespace C3D
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = 1;
 		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
+		barrier.subresourceRange.layerCount = type == TextureType::TypeCube ? 6 : 1;
 
 		VkPipelineStageFlags sourceStage, destStage;
 
@@ -128,7 +154,7 @@ namespace C3D
 		vkCmdPipelineBarrier(commandBuffer->handle, sourceStage, destStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	}
 
-	void VulkanImage::CopyFromBuffer(const VulkanContext* context, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
+	void VulkanImage::CopyFromBuffer(const VulkanContext* context, TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
 	{
 		VkBufferImageCopy region;
 		Memory.Zero(&region, sizeof(VkBufferImageCopy));
@@ -139,7 +165,7 @@ namespace C3D
 		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		region.imageSubresource.mipLevel = 0;
 		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
+		region.imageSubresource.layerCount = type == TextureType::TypeCube ? 6 : 1;
 
 		region.imageExtent.width = width;
 		region.imageExtent.height = height;

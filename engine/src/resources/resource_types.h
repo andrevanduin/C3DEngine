@@ -84,32 +84,5 @@ namespace C3D
 
 		char* name;
 		char* fullPath;
-	}; 
-
-	struct ImageResourceData
-	{
-		u8 channelCount;
-		u32 width, height;
-		u8* pixels;
-	};
-
-	struct MaterialConfig
-	{
-		/* @brief Name of the Material. */
-		char name[MATERIAL_NAME_MAX_LENGTH];
-		/* @brief Name of the shader associated with this material. */
-		char* shaderName;
-		/* @brief Indicates if this material should automatically be release when no references to it remain. */
-		bool autoRelease;
-		/* @brief The diffuse color of the material. */
-		vec4 diffuseColor;
-		/* @brief How shiny this material is. */
-		float shininess;
-		/* @brief The diffuse map name. */
-		char diffuseMapName[TEXTURE_NAME_MAX_LENGTH];
-		/* @brief The specular map name. */
-		char specularMapName[TEXTURE_NAME_MAX_LENGTH];
-		/* @brief The normal map name. */
-		char normalMapName[TEXTURE_NAME_MAX_LENGTH];
 	};
 }

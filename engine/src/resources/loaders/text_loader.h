@@ -27,6 +27,6 @@ namespace C3D
 		ResourceLoader();
 
 		bool Load(const char* name, TextResource* outResource) const;
-		static void Unload(const TextResource* resource);
+		void Unload(const TextResource* resource);
 	};
 }

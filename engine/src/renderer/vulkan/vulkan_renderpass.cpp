@@ -62,7 +62,14 @@ namespace C3D
 			VkAttachmentDescription depthAttachment{};
 			depthAttachment.format = m_context->device.depthFormat;
 			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			depthAttachment.loadOp = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+			if (m_hasPrevPass)
+			{
+				depthAttachment.loadOp = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+			}
+			else
+			{
+				depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			}
 			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 			depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -153,8 +160,8 @@ namespace C3D
 		if (m_clearFlags & ClearColor)
 		{
 			Memory.Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
-			beginInfo.clearValueCount++;
 		}
+		beginInfo.clearValueCount++;
 
 		if (m_clearFlags & ClearDepth)
 		{
