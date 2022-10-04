@@ -14,6 +14,7 @@
 #define Shaders		C3D::Services::GetShaderSystem()
 #define Cam			C3D::Services::GetCameraSystem()
 #define Views		C3D::Services::GetViewSystem()
+#define Jobs		C3D::Services::GetJobSystem()
 
 namespace C3D
 {
@@ -48,12 +49,16 @@ namespace C3D
 	class RenderViewSystem;
 	struct RenderViewSystemConfig;
 
+	class JobSystem;
+	struct JobSystemConfig;
+
 	class C3D_API Services
 	{
 	public:
-		static bool Init(const Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig,
-		                 const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig,
-		                 const GeometrySystemConfig& geometrySystemConfig, const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& viewSystemConfig);
+		static bool Init(const Application* application, const MemorySystemConfig& memorySystemConfig, const JobSystemConfig& jobSystemConfig,
+			const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig,
+			const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig, const CameraSystemConfig& cameraSystemConfig,
+			const RenderViewSystemConfig& viewSystemConfig);
 
 		static bool InitMemory(const MemorySystemConfig& memorySystemConfig);
 
@@ -70,6 +75,7 @@ namespace C3D
 		static ShaderSystem&		GetShaderSystem()	{ return *m_pShaderSystem;		}
 		static CameraSystem&		GetCameraSystem()	{ return *m_pCameraSystem;		}
 		static RenderViewSystem&	GetViewSystem()		{ return *m_pViewSystem;		}
+		static JobSystem&			GetJobSystem()		{ return *m_pJobSystem;			}
 
 	private:
 		static MemorySystem*		m_pMemorySystem;
@@ -83,6 +89,7 @@ namespace C3D
 		static ShaderSystem*		m_pShaderSystem;
 		static CameraSystem*		m_pCameraSystem;
 		static RenderViewSystem*	m_pViewSystem;
+		static JobSystem*			m_pJobSystem;
 
 		static LinearAllocator m_allocator;
 		static LoggerInstance m_logger;

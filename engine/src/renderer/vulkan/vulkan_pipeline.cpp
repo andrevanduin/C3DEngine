@@ -12,7 +12,7 @@ namespace C3D
 {
 	VulkanPipeline::VulkanPipeline() : layout(nullptr), m_handle(nullptr) {}
 
-	VkCullModeFlagBits GetVkCullMode(FaceCullMode cullMode)
+	VkCullModeFlagBits GetVkCullMode(const FaceCullMode cullMode)
 	{
 		switch (cullMode)
 		{
@@ -25,11 +25,12 @@ namespace C3D
 			case FaceCullMode::FrontAndBack:
 				return VK_CULL_MODE_FRONT_AND_BACK;
 		}
+		return VK_CULL_MODE_BACK_BIT;
 	}
 
 	bool VulkanPipeline::Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 stride, u32 attributeCount, VkVertexInputAttributeDescription* attributes,
-		u32 descriptorSetLayoutCount, VkDescriptorSetLayout* descriptorSetLayouts, u32 stageCount, VkPipelineShaderStageCreateInfo* stages,
-		VkViewport viewport, VkRect2D scissor, FaceCullMode cullMode, bool isWireFrame, bool depthTestEnabled, u32 pushConstantRangeCount, Range* pushConstantRanges)
+	                            u32 descriptorSetLayoutCount, VkDescriptorSetLayout* descriptorSetLayouts, u32 stageCount, VkPipelineShaderStageCreateInfo* stages,
+	                            VkViewport viewport, VkRect2D scissor, FaceCullMode cullMode, bool isWireFrame, bool depthTestEnabled, u32 pushConstantRangeCount, Range* pushConstantRanges)
 	{
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 		viewportState.viewportCount = 1;

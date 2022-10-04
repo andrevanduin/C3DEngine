@@ -4,8 +4,10 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_executable (Tests "src/expect.h" "src/test_manager.h" "src/test_manager.cpp" "src/main.cpp" 
 	"src/memory/linear_allocator_tests.h" "src/memory/linear_allocator_tests.cpp"
+	"src/containers/array_tests.h" "src/containers/array_tests.cpp"
 	"src/containers/hash_table_tests.h" "src/containers/hash_table_tests.cpp"
 	"src/containers/dynamic_array_tests.h" "src/containers/dynamic_array_tests.cpp"
+	"src/containers/ring_queue_tests.h" "src/containers/ring_queue_tests.cpp"
 )
 
 target_link_libraries(Tests PUBLIC C3DEngine)

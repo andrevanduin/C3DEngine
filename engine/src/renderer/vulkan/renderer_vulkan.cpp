@@ -67,6 +67,9 @@ namespace C3D
 		m_debugMessenger = vkbInstance.debug_messenger;
 #endif
 
+		// TODO: Implement multiThreading
+		m_context.multiThreadingEnabled = false;
+
 		if (!SDL_Vulkan_CreateSurface(config.window, m_context.instance, &m_context.surface))
 		{
 			m_logger.Error("Init() - Failed to create Vulkan Surface.");
@@ -452,6 +455,11 @@ namespace C3D
 	u8 RendererVulkan::GetWindowAttachmentIndex()
 	{
 		return static_cast<u8>(m_context.imageIndex);
+	}
+
+	bool RendererVulkan::IsMultiThreaded() const
+	{
+		return m_context.multiThreadingEnabled;
 	}
 
 	bool RendererVulkan::BeginRenderPass(RenderPass* pass, RenderTarget* target)

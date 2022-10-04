@@ -15,5 +15,11 @@ namespace C3D
 
 		static f64 GetAbsoluteTime();
 		static void SleepMs(u64 ms);
+
+		/* @brief Obtains the number of logical processor cores. */
+		static i32 GetProcessorCount();
+
+		/* @brief Obtains the current thread's id. */
+		static u64 GetThreadId();
 	};
 }

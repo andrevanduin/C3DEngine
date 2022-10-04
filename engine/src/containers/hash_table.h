@@ -17,6 +17,13 @@ namespace C3D
 	{
 	public:
 		HashTable();
+		HashTable(const HashTable& other) = delete;
+		HashTable(HashTable&& other) = delete;
+
+		HashTable& operator=(const HashTable& other) = delete;
+		HashTable& operator=(HashTable&& other) = delete;
+
+		~HashTable();
 
 		bool Create(u32 elementCount);
 
@@ -38,6 +45,12 @@ namespace C3D
 
 	template <class T>
 	HashTable<T>::HashTable() : m_elementCount(0), m_elements(nullptr) {}
+
+	template <class T>
+	HashTable<T>::~HashTable()
+	{
+		Destroy();
+	}
 
 	template <class T>
 	bool HashTable<T>::Create(const u32 elementCount)
@@ -73,8 +86,12 @@ namespace C3D
 	template <class T>
 	void HashTable<T>::Destroy()
 	{
-		Memory.Free(m_elements, static_cast<u64>(m_elementCount) * sizeof(T), MemoryType::HashTable);
-		m_elementCount = 0;
+		if (m_elements && m_elementCount != 0)
+		{
+			Memory.Free(m_elements, static_cast<u64>(m_elementCount) * sizeof(T), MemoryType::HashTable);
+			m_elementCount = 0;
+			m_elements = nullptr;
+		}
 	}
 
 	template <class T>
