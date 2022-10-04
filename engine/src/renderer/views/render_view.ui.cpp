@@ -1,6 +1,7 @@
 
 #include "render_view_ui.h"
 
+#include "resources/mesh.h"
 #include "renderer/renderer_frontend.h"
 #include "services/services.h"
 #include "systems/shader_system.h"
@@ -58,14 +59,14 @@ namespace C3D
 		outPacket->projectionMatrix = m_projectionMatrix;
 		outPacket->viewMatrix = m_viewMatrix;
 
-		for (auto& mesh : meshData->meshes)
+		for (const auto mesh : meshData->meshes)
 		{
-			for (u16 i = 0; i < mesh.geometryCount; i++)
+			for (u16 i = 0; i < mesh->geometryCount; i++)
 			{
 				GeometryRenderData renderData
 				{
-					mesh.transform.GetWorld(),
-					mesh.geometries[i],
+					mesh->transform.GetWorld(),
+					mesh->geometries[i],
 				};
 
 				outPacket->geometries.PushBack(renderData);

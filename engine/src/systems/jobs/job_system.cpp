@@ -84,15 +84,9 @@ namespace C3D
 				// Execute the callback
 				entry.callback(entry.result);
 
-				// Free the result
-				if (entry.result)
-				{
-					Memory.Free(entry.result, entry.resultSize, MemoryType::Job);
-				}
-
 				// Lock our pending results and clear 
 				std::lock_guard resultLock(m_resultMutex);
-				pendingResult = JobResultEntry();
+				pendingResult.Clear();
 			}
 		}
 	}
@@ -109,7 +103,7 @@ namespace C3D
 					std::lock_guard threadLock(thread.mutex);
 					if (thread.IsFree())
 					{
-						m_logger.Trace("Job immediately submitted on thread {}", thread.index);
+						m_logger.Trace("Submit() - Job immediately submitted on thread {} since it has HIGH priority.", thread.index);
 						thread.SetInfo(info);
 						return;
 					}
@@ -138,9 +132,12 @@ namespace C3D
 				m_lowPriorityQueue.Enqueue(info);
 				break;
 			}
+			case JobPriority::None:
+				m_logger.Error("Submit() - Failed to submit job since it has priority type NONE {}.");
+				break;
 		}
 
-		m_logger.Trace("Job has been queued");
+		m_logger.Trace("Submit() - Job has been queued.");
 	}
 
 	void JobSystem::StoreResult(const std::function<void(void*)>& callback, const u64 dataSize, const void* data)
@@ -197,7 +194,7 @@ namespace C3D
 				// Call our entry point and do the work and store the result of the work
 				// if the user has provided a onSuccess callback (in the case of success)
 				// or if the user has provided a onFailure callback (in the case of a failure)
-				if (info.entryPoint->Call())
+				if (info.entryPoint(info.inputData, info.resultData))
 				{
 					if (info.onSuccess) StoreResult(info.onSuccess, info.resultDataSize, info.resultData);
 				}
@@ -206,16 +203,10 @@ namespace C3D
 					if (info.onFailure) StoreResult(info.onFailure, info.resultDataSize, info.resultData);
 				}
 
-				// If we have any result data we can free it now
-				if (info.resultData)
-				{
-					Memory.Free(info.resultData, info.resultDataSize, MemoryType::Job);
-				}
-
 				// Clear out our current thread's info
 				{
 					std::lock_guard threadLock(currentThread.mutex);
-					currentThread.SetInfo({});
+					currentThread.ClearInfo();
 				}
 			}
 

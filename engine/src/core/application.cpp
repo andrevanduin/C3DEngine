@@ -31,7 +31,7 @@
 namespace C3D
 {
 	Application::Application(const ApplicationConfig& config)
-		: m_logger("APPLICATION"), m_meshCount(0), m_uiMeshCount(0)
+		: m_logger("APPLICATION")
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice")
 
@@ -110,7 +110,10 @@ namespace C3D
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
 		Event.Register(SystemEventCode::FocusGained, new EventCallback(this, &Application::OnFocusGainedEvent));
-		Event.Register(SystemEventCode::Debug0, new EventCallback(this, &Application::OnDebugEvent));
+
+		auto callback = new EventCallback(this, &Application::OnDebugEvent);
+		Event.Register(SystemEventCode::Debug0, callback);
+		Event.Register(SystemEventCode::Debug1, callback);
 
 		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
@@ -197,7 +200,15 @@ namespace C3D
 		}
 
 		// World meshes
-		Mesh* cubeMesh = &m_meshes[m_meshCount];
+		for (u32 i = 0; i < 10; i++)
+		{
+			m_meshes[i].generation = INVALID_ID_U8;
+			m_uiMeshes[i].generation = INVALID_ID_U8;
+		}
+
+		u8 meshCount = 0;
+
+		Mesh* cubeMesh = &m_meshes[meshCount];
 		cubeMesh->geometryCount = 1;
 		cubeMesh->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 
@@ -206,13 +217,15 @@ namespace C3D
 
 		cubeMesh->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
 		cubeMesh->transform = Transform();
-		m_meshCount++;
+		cubeMesh->generation = 0;
+
+		meshCount++;
 
 		// Cleanup the allocations that we just did
 		Geometric.DisposeConfig(&gConfig);
 
 		// A second cube
-		Mesh* cubeMesh2 = &m_meshes[m_meshCount];
+		Mesh* cubeMesh2 = &m_meshes[meshCount];
 		cubeMesh2->geometryCount = 1;
 		cubeMesh2->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 
@@ -222,13 +235,15 @@ namespace C3D
 		cubeMesh2->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
 		cubeMesh2->transform = Transform(vec3(20.0f, 0.0f, 1.0f));
 		cubeMesh2->transform.SetParent(&cubeMesh->transform);
-		m_meshCount++;
+		cubeMesh2->generation = 0;
+
+		meshCount++;
 
 		// Cleanup the other allocations that we just did
 		Geometric.DisposeConfig(&gConfig);
 
 		// A third cube
-		Mesh* cubeMesh3 = &m_meshes[m_meshCount];
+		Mesh* cubeMesh3 = &m_meshes[meshCount];
 		cubeMesh3->geometryCount = 1;
 		cubeMesh3->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 
@@ -237,51 +252,20 @@ namespace C3D
 		cubeMesh3->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
 		cubeMesh3->transform = Transform(vec3(5.0f, 0.0f, 1.0f));
 		cubeMesh3->transform.SetParent(&cubeMesh2->transform);
-		m_meshCount++;
+		cubeMesh3->generation = 0;
+
+		meshCount++;
 
 		// Cleanup the other allocations that we just did
 		Geometric.DisposeConfig(&gConfig);
 
-		// Load up a test car mesh from file
-		Mesh* carMesh = &m_meshes[m_meshCount];
-		MeshResource carMeshResource{};
-		if (!Resources.Load("falcon", &carMeshResource))
-		{
-			m_logger.Fatal("Failed to load car mesh");
-			return;
-		}
+		carMesh = &m_meshes[meshCount];
+		carMesh->transform = Transform({ 15.0f, 0.0f, 1.0f });
+		meshCount++;
 
-		carMesh->geometryCount = static_cast<u16>(carMeshResource.geometryConfigs.Size());
-		carMesh->geometries = Memory.Allocate<Geometry*>(carMesh->geometryCount, MemoryType::Array);
-		for (u32 i = 0; i < carMesh->geometryCount; i++)
-		{
-			carMesh->geometries[i] = Geometric.AcquireFromConfig(carMeshResource.geometryConfigs[i], true);
-		}
-		carMesh->transform = Transform(vec3(15.0f, 0.0f, 1.0f));
-		Resources.Unload(&carMeshResource);
-		m_meshCount++;
-
-		// Load up a sponza mesh from file
-		Mesh* sponza = &m_meshes[m_meshCount];
-		MeshResource sponzaResource{};
-		if (!Resources.Load("sponza", &sponzaResource))
-		{
-			m_logger.Fatal("Failed to load sponza mesh");
-			return;
-		}
-
-		sponza->geometryCount = static_cast<u16>(sponzaResource.geometryConfigs.Size());
-		sponza->geometries = Memory.Allocate<Geometry*>(sponza->geometryCount, MemoryType::Array);
-		for (u32 i = 0; i < sponza->geometryCount; i++)
-		{
-			sponza->geometries[i] = Geometric.AcquireFromConfig(sponzaResource.geometryConfigs[i], true);
-		}
-		sponza->transform = Transform(vec3(15.0f, 0.0f, 1.0f));
-		// Scale down the model significantly
-		sponza->transform.Scale(vec3(0.05f, 0.05f, 0.05f));
-
-		Resources.Unload(&sponzaResource);
-		m_meshCount++;
+		sponzaMesh = &m_meshes[meshCount];
+		sponzaMesh->transform = Transform({ 15.0f, 0.0f, 1.0f }, mat4(1.0f), { 0.05f, 0.05f, 0.05f });
+		meshCount++;
 
 		// Load up our test ui geometry
 		GeometryConfig<Vertex2D, u32> uiConfig{};
@@ -324,10 +308,10 @@ namespace C3D
 		uiConfig.indices.PushBack(0);
 		uiConfig.indices.PushBack(1);
 
-		m_uiMeshCount = 1;
 		m_uiMeshes[0].geometryCount = 1;
-		m_uiMeshes[0].geometries = Memory.Allocate<Geometry*>(1, MemoryType::Array);
+		m_uiMeshes[0].geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 		m_uiMeshes[0].geometries[0] = Geometric.AcquireFromConfig(uiConfig, true);
+		m_uiMeshes[0].generation = INVALID_ID_U8;
 		// TEMP END
 
 		m_state.initialized = true;
@@ -356,28 +340,20 @@ namespace C3D
 		u16 frameCount = 0;
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
-		m_logger.Info(Memory.GetMemoryUsageString());
+		//m_logger.Info(Memory.GetMemoryUsageString());
 
 		{
 			RenderPacket packet = {};
-			packet.views.Resize(3); // Ensure enough space for 3 views so we only allocate once
+			packet.views.Resize(1); // Ensure enough space for 3 views so we only allocate once
 
 			SkyboxPacketData skyboxData = {};
 			skyboxData.box = &m_skybox;
 
 			MeshPacketData worldMeshData = {};
-			worldMeshData.meshes.Reserve(m_meshCount);
-			for (u32 i = 0; i < m_meshCount; i++)
-			{
-				worldMeshData.meshes.PushBack(m_meshes[i]);
-			}
+			worldMeshData.meshes.Reserve(10);
 
 			MeshPacketData uiMeshData = {};
-			uiMeshData.meshes.Reserve(m_uiMeshCount);
-			for (u32 i = 0; i < m_uiMeshCount; i++)
-			{
-				uiMeshData.meshes.PushBack(m_uiMeshes[i]);
-			}
+			uiMeshData.meshes.Reserve(10);
 
 			while (m_state.running)
 			{
@@ -395,22 +371,11 @@ namespace C3D
 					OnUpdate(delta);
 					OnRender(delta);
 
-					// TEMP
-					if (m_meshCount > 0)
-					{
-						// Rotate 
-						quat rotation = angleAxis(0.5f * static_cast<f32>(delta), vec3(0.0f, 1.0f, 0.0f));
-						m_meshes[0].transform.Rotate(rotation);
-
-						if (m_meshCount > 1)
-						{
-							m_meshes[1].transform.Rotate(rotation);
-						}
-						if (m_meshCount > 2)
-						{
-							m_meshes[2].transform.Rotate(rotation);
-						}
-					}
+					// Rotate 
+					quat rotation = angleAxis(0.5f * static_cast<f32>(delta), vec3(0.0f, 1.0f, 0.0f));
+					m_meshes[0].transform.Rotate(rotation);
+					m_meshes[1].transform.Rotate(rotation);
+					m_meshes[2].transform.Rotate(rotation);
 
 					packet.deltaTime = static_cast<f32>(delta);
 
@@ -421,11 +386,29 @@ namespace C3D
 						return;
 					}
 
+					worldMeshData.meshes.Clear();
+					for (auto& mesh : m_meshes)
+					{
+						if (mesh.generation != INVALID_ID_U8)
+						{
+							worldMeshData.meshes.PushBack(&mesh);
+						}
+					}
+
 					// World
 					if (!Views.BuildPacket(Views.Get("world_opaque"), &worldMeshData, &packet.views[1]))
 					{
 						m_logger.Error("Failed to build packet for view 'world_opaque'.");
 						return;
+					}
+
+					uiMeshData.meshes.Clear();
+					for (auto& mesh : m_meshes)
+					{
+						if (mesh.generation != INVALID_ID_U8)
+						{
+							uiMeshData.meshes.PushBack(&mesh);
+						}
 					}
 
 					// Ui
@@ -463,7 +446,7 @@ namespace C3D
 						frameCount++;
 					}
 
-					Services::GetInput().Update(delta);
+					Input.Update(delta);
 
 					m_state.lastTime = currentTime;
 				}
@@ -638,31 +621,56 @@ namespace C3D
 	}
 
 	// TEMP
-	bool Application::OnDebugEvent(u16 code, void* sender, EventContext context)
+	bool Application::OnDebugEvent(const u16 code, void* sender, EventContext context)
 	{
-		const char* names[3] = { "cobblestone", "paving", "paving2" };
-		static i8 choice = 2;
-
-		const char* oldName = names[choice];
-
-		choice++;
-		choice %= 3;
-
-		Geometry* g = m_meshes[0].geometries[0];
-		if (g)
+		if (code == SystemEventCode::Debug0)
 		{
-			// Acquire new material
-			g->material = Materials.Acquire(names[choice]);
-			if (!g->material)
+			const char* names[3] = { "cobblestone", "paving", "paving2" };
+			static i8 choice = 2;
+
+			const char* oldName = names[choice];
+
+			choice++;
+			choice %= 3;
+
+			Geometry* g = m_meshes[0].geometries[0];
+			if (g)
 			{
-				m_logger.Warn("[ON_DEBUG_EVENT] - No material found. Using default.");
-				g->material = Materials.GetDefault();
+				// Acquire new material
+				g->material = Materials.Acquire(names[choice]);
+				if (!g->material)
+				{
+					m_logger.Warn("[ON_DEBUG_EVENT] - No material found. Using default.");
+					g->material = Materials.GetDefault();
+				}
+
+				Materials.Release(oldName);
 			}
 
-			Materials.Release(oldName);
+			return true;
 		}
 
-		return true;
+		if (code == SystemEventCode::Debug1)
+		{
+			if (!modelsLoaded)
+			{
+				modelsLoaded = true;
+				m_logger.Debug("OnDebugEvent() - Loading models...");
+
+				if (!carMesh->LoadFromResource("falcon"))
+				{
+					m_logger.Error("OnDebugEvent() - Failed to load falcon mesh.");
+				}
+				if (!sponzaMesh->LoadFromResource("sponza"))
+				{
+					m_logger.Error("OnDebugEvent() - Failed to load sponza mesh.");
+				}
+			}
+
+			return true;
+		}
+		
+		return false;
 	}
 	// TEMP END
 

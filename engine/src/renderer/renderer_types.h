@@ -1,11 +1,11 @@
 
 #pragma once
 #include <SDL2/SDL.h>
+#undef main
 
 #include "core/defines.h"
 #include "containers/dynamic_array.h"
 
-#include "resources/geometry.h"
 #include "renderpass.h"
 #include "render_view.h"
 

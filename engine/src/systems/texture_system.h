@@ -3,11 +3,12 @@
 #include "core/defines.h"
 #include "resources/texture.h"
 
-#include <unordered_map>
 #include <array>
 
 #include "containers/hash_table.h"
 #include "core/logger.h"
+#include "resources/resource_types.h"
+#include "resources/loaders/image_loader.h"
 
 namespace C3D
 {
@@ -30,6 +31,16 @@ namespace C3D
 		bool autoRelease;
 	};
 
+	/* @brief Parameters that you provide for loading a Texture. Will also be used as the result data for the job. */
+	struct TextureLoadParams
+	{
+		char* resourceName;
+		Texture* outTexture;
+		Texture tempTexture;
+		u32 currentGeneration;
+		ImageResource imageResource;
+	};
+
 	class TextureSystem final : public System<TextureSystemConfig>
 	{
 	public:
@@ -48,7 +59,7 @@ namespace C3D
 
 		static bool SetInternal(Texture* t, void* internalData);
 
-		bool Resize(Texture* t, u32 width, u32 height, bool regenerateInternalData);
+		bool Resize(Texture* t, u32 width, u32 height, bool regenerateInternalData) const;
 
 		Texture* GetDefault();
 		Texture* GetDefaultDiffuse();
@@ -65,6 +76,10 @@ namespace C3D
 		static void DestroyTexture(Texture* texture);
 
 		bool ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease, bool skipLoad, u32* outTextureId);
+
+		static bool LoadJobEntryPoint(void* data, void* resultData);
+		void LoadJobSuccess(void* data) const;
+		void LoadJobFailure(void* data) const;
 
 		bool m_initialized;
 

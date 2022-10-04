@@ -10,7 +10,12 @@
 #include "renderer/renderer_frontend.h"
 #include "resources/resource_types.h"
 #include "resources/loaders/image_loader.h"
+
 #include "systems/resource_system.h"
+#include "systems/texture_system.h"
+
+#include "jobs/job.h"
+#include "jobs/job_system.h"
 
 namespace C3D
 {
@@ -185,7 +190,7 @@ namespace C3D
 		return false;
 	}
 
-	bool TextureSystem::Resize(Texture* t, u32 width, u32 height, const bool regenerateInternalData)
+	bool TextureSystem::Resize(Texture* t, const u32 width, const u32 height, const bool regenerateInternalData) const
 	{
 		if (t)
 		{
@@ -358,71 +363,24 @@ namespace C3D
 
 	bool TextureSystem::LoadTexture(const char* name, Texture* texture) const
 	{
-		ImageResource res {};
-		ImageResourceParams params { true };
+		TextureLoadParams params;
+		params.resourceName = StringDuplicate(name);
+		params.outTexture = texture;
+		params.currentGeneration = texture->generation;
 
-		if (!Resources.Load(name, &res, params))
-		{
-			m_logger.Error("LoadTexture() - Failed to load image resource for texture '{}'.", name);
-			return false;
-		}
+		JobInfo info;
+		info.entryPoint = LoadJobEntryPoint;
+		info.onSuccess = [this](void* r) { LoadJobSuccess(r); };
+		info.onFailure = [this](void* r) { LoadJobFailure(r); };
+		info.SetData(&params, sizeof(TextureLoadParams));
 
-		if (!res.data.pixels)
-		{
-			m_logger.Error("LoadTexture() - Failed to load image data for texture '{}'.", name);
-			return false;
-		}
-
-		Texture temp;
-		temp.width = res.data.width;
-		temp.height = res.data.height;
-		temp.channelCount = res.data.channelCount;
-
-		const u32 currentGeneration = texture->generation;
-		texture->generation = INVALID_ID;
-
-		const u64 totalSize = static_cast<u64>(temp.width) * temp.height * temp.channelCount;
-		bool hasTransparency = false;
-		for (u64 i = 0; i < totalSize; i += temp.channelCount)
-		{
-			if (const u8 a = res.data.pixels[i + 3]; a < 255)
-			{
-				hasTransparency = true;
-				break;
-			}
-		}
-
-		StringNCopy(temp.name, name, TEXTURE_NAME_MAX_LENGTH);
-		temp.generation = INVALID_ID;
-		temp.flags |= (hasTransparency ? TextureFlag::HasTransparency : 0);
-
-		Renderer.CreateTexture(res.data.pixels, &temp);
-
-		// Take a copy of the old texture
-		Texture old = *texture;
-		// And assign our newly loaded to the provided texture
-		*texture = temp;
-		// Destroy the old texture
-		Renderer.DestroyTexture(&old);
-
-		if (currentGeneration == INVALID_ID)
-		{
-			// Texture is new so it's generation starts at 0
-			texture->generation = 0;
-		}
-		else
-		{
-			// Texture already existed so we increment it's generation
-			texture->generation = currentGeneration + 1;
-		}
-
-		Resources.Unload(&res);
+		Jobs.Submit(info);
 		return true;
 	}
 
 	bool TextureSystem::LoadCubeTextures(const char* name, const std::array<char[TEXTURE_NAME_MAX_LENGTH], 6>& textureNames, Texture* texture) const
 	{
-		ImageResourceParams params { false };
+		constexpr ImageResourceParams params { false };
 
 		u8* pixels = nullptr;
 		u64 imageSize = 0;
@@ -453,7 +411,7 @@ namespace C3D
 				texture->generation = 0;
 				StringNCopy(texture->name, name, TEXTURE_NAME_MAX_LENGTH);
 
-				imageSize = texture->width * texture->height * texture->channelCount;
+				imageSize = static_cast<u64>(texture->width) * texture->height * texture->channelCount;
 				pixels = Memory.Allocate<u8>(imageSize * 6, MemoryType::Array); // 6 textures one for every side of the cube
 			}
 			else
@@ -497,7 +455,7 @@ namespace C3D
 		texture->generation = INVALID_ID;
 	}
 
-	bool TextureSystem::ProcessTextureReference(const char* name, TextureType type, const i8 referenceDiff, const bool autoRelease, bool skipLoad, u32* outTextureId)
+	bool TextureSystem::ProcessTextureReference(const char* name, const TextureType type, const i8 referenceDiff, const bool autoRelease, bool skipLoad, u32* outTextureId)
 	{
 		*outTextureId = INVALID_ID;
 		TextureReference ref = m_registeredTextureTable.Get(name);
@@ -610,5 +568,93 @@ namespace C3D
 		// Whatever happens if we get to this point we should update our hashtable
 		m_registeredTextureTable.Set(nameCopy, &ref);
 		return true;
+	}
+
+	bool TextureSystem::LoadJobEntryPoint(void* data, void* resultData)
+	{
+		const auto loadParams = static_cast<TextureLoadParams*>(data);
+
+		constexpr ImageResourceParams resourceParams{ true };
+
+		const auto result = Resources.Load(loadParams->resourceName, &loadParams->imageResource, resourceParams);
+		if (result)
+		{
+			const ImageResourceData& resourceData = loadParams->imageResource.data;
+
+			// Use our temporary texture to load into
+			loadParams->tempTexture.width = resourceData.width;
+			loadParams->tempTexture.height = resourceData.height;
+			loadParams->tempTexture.channelCount = resourceData.channelCount;
+
+			loadParams->currentGeneration = loadParams->outTexture->generation;
+			loadParams->outTexture->generation = INVALID_ID;
+
+			const u64 totalSize = static_cast<u64>(loadParams->tempTexture.width) * loadParams->tempTexture.height * loadParams->tempTexture.channelCount;
+			// Check for transparency
+			bool hasTransparency = false;
+			for (u64 i = 0; i < totalSize; i += loadParams->tempTexture.channelCount)
+			{
+				const u8 a = resourceData.pixels[i + 3]; // Get the alpha channel of this pixel
+				if (a < 255)
+				{
+					hasTransparency = true;
+					break;
+				}
+			}
+
+			// Take a copy of the name
+			StringNCopy(loadParams->tempTexture.name, loadParams->resourceName, TEXTURE_NAME_MAX_LENGTH);
+			loadParams->tempTexture.generation = INVALID_ID;
+			loadParams->tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
+
+			// NOTE: The load params are also used as the result data here, only the imageResource field is populated now.
+			Memory.Copy(resultData, loadParams, sizeof(TextureLoadParams));
+		}
+
+		return result;
+	}
+
+	void TextureSystem::LoadJobSuccess(void* data) const
+	{
+		const auto params = static_cast<TextureLoadParams*>(data);
+
+		// TODO: This still handles the GPU upload. This can't be jobified before our renderer supports multiThreading.
+		const ImageResourceData& resourceData = params->imageResource.data;
+
+		// Acquire internal texture resources and upload to GPU.
+		Renderer.CreateTexture(resourceData.pixels, &params->tempTexture);
+		// Take a copy of the old texture.
+		Texture old = *params->outTexture;
+		// Assign the temp texture to the pointer
+		*params->outTexture = params->tempTexture;
+		// Destroy the old texture
+		Renderer.DestroyTexture(&old);
+
+		if (params->currentGeneration == INVALID_ID)
+		{
+			params->outTexture->generation = 0;
+		}
+		else
+		{
+			params->outTexture->generation++;
+		}
+
+		m_logger.Trace("LoadJobSuccess() - Successfully loaded texture '{}'.", params->resourceName);
+
+		// Cleanup our data
+		Resources.Unload(&params->imageResource);
+		if (params->resourceName)
+		{
+			const auto length = StringLength(params->resourceName) + 1;
+			Memory.Free(params->resourceName, sizeof(char) * length, MemoryType::String);
+			params->resourceName = nullptr;
+		}
+	}
+
+	void TextureSystem::LoadJobFailure(void* data) const
+	{
+		const auto params = static_cast<TextureLoadParams*>(data);
+		m_logger.Error("LoadJobFailure() - Failed to load texture '{}'.", params->resourceName);
+		Resources.Unload(&params->imageResource);
 	}
 }

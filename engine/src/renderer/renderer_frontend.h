@@ -6,8 +6,6 @@
 #include "renderer_backend.h"
 #include "resources/shader.h"
 
-#include "core/events/event_context.h"
-
 namespace C3D
 {
 	class Application;

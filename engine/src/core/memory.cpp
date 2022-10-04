@@ -81,6 +81,8 @@ namespace C3D
 			m_logger.Warn("Allocate called using MemoryType::UNKNOWN");
 		}
 
+		std::lock_guard allocLoc(m_mutex);
+
 		m_stats.totalAllocated += size;
 		m_stats.allocCount++;
 
@@ -91,6 +93,7 @@ namespace C3D
 		// TODO: Memory alignment
 		void* block = m_allocator.Allocate(size);
 		Platform::ZeroOutMemory(block, size);
+
 		return block;
 	}
 
@@ -100,6 +103,8 @@ namespace C3D
 		{
 			m_logger.Warn("Free called using MemoryType::UNKNOWN");
 		}
+
+		std::lock_guard freeLock(m_mutex);
 
 		m_stats.totalAllocated -= size;
 

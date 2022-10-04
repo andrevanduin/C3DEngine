@@ -117,10 +117,9 @@ namespace C3D
 	template <class T>
 	DynamicArray<T>& DynamicArray<T>::operator=(const DynamicArray<T>& other)
 	{
-		if (this != &other)
-		{
-			Copy(other);
-		}
+		if (this == &other) return *this;
+
+		Copy(other);
 		return *this;
 	}
 
@@ -145,8 +144,8 @@ namespace C3D
 	DynamicArray<T>::DynamicArray(DynamicArray<T>&& other) noexcept
 		: m_capacity(other.Capacity()), m_size(other.Size()), m_elements(other.GetData())
 	{
-		// Take all data from other and null out other so it does not call Free() twice on the same memory
 		other.m_capacity = 0;
+		// Take all data from other and null out other so it does not call Free() twice on the sa
 		other.m_size = 0;
 		other.m_elements = nullptr;
 	}

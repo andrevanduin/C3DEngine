@@ -90,6 +90,9 @@ namespace C3D
 
 		MemoryStats m_stats;
 		DynamicAllocator m_allocator;
+
+		// Mutex to enable multiThreaded use
+		std::mutex m_mutex;
 	};
 
 	template <class T, class... Args>

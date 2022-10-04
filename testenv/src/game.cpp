@@ -101,6 +101,12 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		C3D::EventContext context = {};
 		Event.Fire(C3D::SystemEventCode::Debug0, this, context);
 	}
+
+	if (Input.IsKeyUp('l') && Input.WasKeyDown('l'))
+	{
+		C3D::EventContext context = {};
+		Event.Fire(C3D::SystemEventCode::Debug1, this, context);
+	}
 	// TEMP END
 
 	if (Input.IsKeyDown('s'))

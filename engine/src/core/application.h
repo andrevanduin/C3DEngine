@@ -3,7 +3,6 @@
 #include "defines.h"
 #include "logger.h"
 
-#include "resources/geometry.h"
 #include "resources/mesh.h"
 #include "resources/skybox.h"
 
@@ -79,10 +78,12 @@ namespace C3D
 		Skybox m_skybox;
 
 		Mesh m_meshes[10];
-		u32 m_meshCount;
+
+		Mesh* carMesh;
+		Mesh* sponzaMesh;
+		bool modelsLoaded = false;
 
 		Mesh m_uiMeshes[10];
-		u32 m_uiMeshCount;
 		// TEMP END
 
 		friend int ::main(int argc, char** argv);
