@@ -15,6 +15,7 @@
 #include "systems/shader_system.h"
 #include "systems/camera_system.h"
 #include "systems/render_view_system.h"
+#include "systems/jobs/job_system.h"
 
 namespace C3D
 {
@@ -33,10 +34,12 @@ namespace C3D
 	ShaderSystem*		Services::m_pShaderSystem	= nullptr;
 	CameraSystem*		Services::m_pCameraSystem	= nullptr;
 	RenderViewSystem*	Services::m_pViewSystem		= nullptr;
+	JobSystem*			Services::m_pJobSystem		= nullptr;
 
-	bool Services::Init(const Application* application, const MemorySystemConfig& memorySystemConfig, const ResourceSystemConfig& resourceSystemConfig,
-	                    const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, const MaterialSystemConfig& materialSystemConfig, 
-	                    const GeometrySystemConfig& geometrySystemConfig, const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& viewSystemConfig)
+	bool Services::Init(const Application* application, const MemorySystemConfig& memorySystemConfig, const JobSystemConfig& jobSystemConfig, 
+						const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, 
+						const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig, const CameraSystemConfig& cameraSystemConfig, 
+						const RenderViewSystemConfig& viewSystemConfig)
 	{
 		m_pMemorySystem = new MemorySystem();
 		if (!m_pMemorySystem->Init(memorySystemConfig))
@@ -53,6 +56,13 @@ namespace C3D
 		if (!m_pEventSystem->Init())
 		{
 			m_logger.Fatal("EventSystem failed to be Initialized.");
+		}
+
+		// Job System
+		m_pJobSystem = m_allocator.New<JobSystem>();
+		if (!m_pJobSystem->Init(jobSystemConfig))
+		{
+			m_logger.Fatal("JobSystem failed to be Initialized.");
 		}
 
 		// Input System
@@ -145,6 +155,7 @@ namespace C3D
 		m_pResourceSystem->Shutdown();
 		m_pInputSystem->Shutdown();
 		m_pEventSystem->Shutdown();
+		m_pJobSystem->Shutdown();
 
 		m_logger.Info("Destroying Linear Allocator");
 		m_allocator.Destroy();

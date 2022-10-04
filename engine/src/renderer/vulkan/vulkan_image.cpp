@@ -15,18 +15,20 @@ namespace C3D
 	{
 	}
 
-	VkImageType GetVkImageType(TextureType type)
+	VkImageType GetVkImageType(const TextureType type)
 	{
+		/*
 		switch (type)
 		{
 			case TextureType::Type2D:
 				return VK_IMAGE_TYPE_2D;
 			case TextureType::TypeCube:
 				return VK_IMAGE_TYPE_2D;
-		}
+		}*/ // TODO: This currently is not used
+		return VK_IMAGE_TYPE_2D;
 	}
 
-	VkImageViewType GetVkImageViewType(TextureType type)
+	VkImageViewType GetVkImageViewType(const TextureType type)
 	{
 		switch (type)
 		{
@@ -35,6 +37,7 @@ namespace C3D
 			case TextureType::TypeCube:
 				return VK_IMAGE_VIEW_TYPE_CUBE;
 		}
+		return VK_IMAGE_VIEW_TYPE_2D;
 	}
 
 	void VulkanImage::Create(const VulkanContext* context, TextureType type, const u32 _width, const u32 _height, const VkFormat format,

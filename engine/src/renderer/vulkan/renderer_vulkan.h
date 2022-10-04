@@ -5,9 +5,6 @@
 #include "vulkan_shader.h"
 
 #include "renderer/renderer_backend.h"
-#include "resources/shader.h"
-
-struct SDL_Window;
 
 namespace C3D
 {
@@ -15,6 +12,13 @@ namespace C3D
 	{
 	public:
 		RendererVulkan();
+
+		RendererVulkan(const RendererVulkan& other) = delete;
+		RendererVulkan(RendererVulkan&& other) = delete;
+
+		RendererVulkan& operator=(const RendererVulkan& other) = delete;
+		RendererVulkan& operator=(RendererVulkan&& other) = delete;
+
 		virtual ~RendererVulkan() = default;
 
 		bool Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount) override;
@@ -70,6 +74,7 @@ namespace C3D
 
 		u8 GetWindowAttachmentIndex() override;
 
+		[[nodiscard]] bool IsMultiThreaded() const override;
 	private:
 		void CreateCommandBuffers();
 

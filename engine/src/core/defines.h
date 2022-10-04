@@ -2,7 +2,9 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include <thread>
 #include <type_traits>
+#include <fmt/format.h>
 
 typedef uint8_t		u8;
 typedef uint16_t	u16;
@@ -115,3 +117,16 @@ C3D_INLINE Range GetAlignedRange(const u64 offset, const u64 size, const u64 gra
 {
 	return { GetAligned(offset, granularity), GetAligned(size, granularity) };
 }
+
+template<>
+struct fmt::formatter<std::thread::id>
+{
+	template<typename ParseContext>
+	constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+	template<typename FormatContext>
+	auto format(std::thread::id const& id, FormatContext& ctx)
+	{
+		return fmt::format_to(ctx.out(), "{}", std::hash<std::thread::id>{}(id));
+	}
+};

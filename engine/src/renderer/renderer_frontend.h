@@ -73,6 +73,8 @@ namespace C3D
 
 		void RegenerateRenderTargets() const;
 
+		[[nodiscard]] bool IsMultiThreaded() const;
+
 	private:
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend() const;

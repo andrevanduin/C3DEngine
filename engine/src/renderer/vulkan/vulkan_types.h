@@ -78,6 +78,8 @@ namespace C3D
 		/* @brief Render targets used for world rendering. One per frame. */
 		RenderTarget worldRenderTargets[3];
 
+		/* @brief Indicates if multiThreading is supported by this device. */
+		bool multiThreadingEnabled;
 		bool recreatingSwapChain;
 
 		[[nodiscard]] i32 FindMemoryIndex(const u32 typeFilter, const u32 propertyFlags) const

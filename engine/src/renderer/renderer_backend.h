@@ -73,6 +73,8 @@ namespace C3D
 
 		virtual u8 GetWindowAttachmentIndex() = 0;
 
+		[[nodiscard]] virtual bool IsMultiThreaded() const = 0;
+
 		RendererBackendType type;
 		RendererBackendState state;
 

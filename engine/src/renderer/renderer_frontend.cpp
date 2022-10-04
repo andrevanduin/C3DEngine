@@ -110,13 +110,13 @@ namespace C3D
 		// Create our skybox shader
 		if (!Shaders.Create(configResource.config))
 		{
-			m_logger.Error("Init() - Failed to create builting skybox shader.");
+			m_logger.Error("Init() - Failed to create builtin skybox shader.");
 			return false;
 		}
 
 		// Unload resources for skybox shader config
 		Resources.Unload(&configResource);
-		// Obtain the shader id beloning to our skybox shader
+		// Obtain the shader id belonging to our skybox shader
 		m_skyBoxShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_SKY_BOX);
 
 		// Get shader resources for material shader
@@ -154,7 +154,7 @@ namespace C3D
 
 		// Unload resources for ui shader config
 		Resources.Unload(&configResource);
-		// Obtain the shader if beloning to our ui shader
+		// Obtain the shader if belonging to our ui shader
 		m_uiShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_UI);
 
 		m_logger.Info("Initialized Vulkan Renderer Backend");
@@ -387,6 +387,11 @@ namespace C3D
 			Texture* uiAttachments[1] = { windowTargetTexture };
 			m_backend->CreateRenderTarget(1, uiAttachments, m_uiRenderPass, m_frameBufferWidth, m_frameBufferHeight, &m_uiRenderPass->targets[i]);
 		}
+	}
+
+	bool RenderSystem::IsMultiThreaded() const
+	{
+		return m_backend->IsMultiThreaded();
 	}
 
 	bool RenderSystem::CreateBackend(const RendererBackendType type)

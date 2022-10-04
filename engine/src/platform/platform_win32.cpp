@@ -7,7 +7,7 @@
 
 namespace C3D
 {
-	static f64 CLOCK_FREQUENCY = 0;
+	static f64 CLOCK_FREQUENCY = 0.0;
 	static LARGE_INTEGER START_TIME;
 
 	void ClockSetup() {
@@ -44,19 +44,31 @@ namespace C3D
 
 	f64 Platform::GetAbsoluteTime()
 	{
-		if (!CLOCK_FREQUENCY)
+		if (CLOCK_FREQUENCY == 0.0)
 		{
 			ClockSetup();
 		}
 
 		LARGE_INTEGER nowTime;
 		QueryPerformanceCounter(&nowTime);
-		return nowTime.QuadPart * CLOCK_FREQUENCY;
+		return static_cast<f64>(nowTime.QuadPart) * CLOCK_FREQUENCY;
 	}
 
 	void Platform::SleepMs(const u64 ms)
 	{
 		Sleep(static_cast<u32>(ms));
+	}
+
+	i32 Platform::GetProcessorCount()
+	{
+		SYSTEM_INFO sysInfo;
+		GetSystemInfo(&sysInfo);
+		return static_cast<i32>(sysInfo.dwNumberOfProcessors);
+	}
+
+	u64 Platform::GetThreadId()
+	{
+		return GetCurrentThreadId();
 	}
 }
 

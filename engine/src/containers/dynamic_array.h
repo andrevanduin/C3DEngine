@@ -94,8 +94,8 @@ namespace C3D
 
 		[[nodiscard]] u64 Capacity() const noexcept { return m_capacity; }
 
-		T* begin() const noexcept;
-		T* end() const noexcept;
+		[[nodiscard]] T* begin() const noexcept;
+		[[nodiscard]] T* end() const noexcept;
 	private:
 		void Resize();
 		void Free();

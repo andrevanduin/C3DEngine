@@ -17,6 +17,11 @@ namespace C3D
 
 	File::File() : isValid(false), bytesWritten(0), bytesRead(0) {}
 
+	File::~File()
+	{
+		Close();
+	}
+
 	bool File::Exists(const string& path)
 	{
 		const fs::path f{ path };

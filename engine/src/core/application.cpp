@@ -26,6 +26,7 @@
 #include "systems/texture_system.h"
 #include "systems/camera_system.h"
 #include "systems/render_view_system.h"
+#include "systems/jobs/job_system.h"
 
 namespace C3D
 {
@@ -56,6 +57,44 @@ namespace C3D
 
 		m_logger.Info("Successfully created SDL Window");
 
+		auto threadCount = Platform::GetProcessorCount();
+		if (threadCount <= 1)
+		{
+			m_logger.Fatal("System reported {} threads. C3DEngine requires at least 1 thread besides the main thread.", threadCount);
+		}
+		else
+		{
+			m_logger.Info("System reported {} threads (including main thread).", threadCount);
+		}
+
+		constexpr auto maxThreadCount = 15;
+		if (threadCount - 1 > maxThreadCount)
+		{
+			m_logger.Info("Available threads on this system is greater than {} (). Capping used threads at {}", maxThreadCount, (threadCount - 1), maxThreadCount);
+			threadCount = maxThreadCount;
+		}
+
+		constexpr auto rendererMultiThreaded = false;
+
+		u32 jobThreadTypes[15];
+		for (u32& jobThreadType : jobThreadTypes) jobThreadType = JobTypeGeneral;
+
+		if (threadCount == 1 || !rendererMultiThreaded)
+		{
+			jobThreadTypes[0] |= (JobTypeGpuResource | JobTypeResourceLoad);
+		}
+		else if (threadCount == 2)
+		{
+			jobThreadTypes[0] |= JobTypeGpuResource;
+			jobThreadTypes[1] |= JobTypeResourceLoad;
+		}
+		else
+		{
+			jobThreadTypes[0] = JobTypeGpuResource;
+			jobThreadTypes[1] = JobTypeResourceLoad;
+		}
+
+		JobSystemConfig	jobSystemConfig { maxThreadCount, jobThreadTypes };
 		constexpr MemorySystemConfig		memorySystemConfig		{ MebiBytes(1024) };
 		constexpr ResourceSystemConfig		resourceSystemConfig	{ 32, "../../../../assets" };
 		constexpr ShaderSystemConfig		shaderSystemConfig		{ 128, 128, 31, 31 };
@@ -65,7 +104,8 @@ namespace C3D
 		constexpr CameraSystemConfig		cameraSystemConfig		{ 61 };
 		constexpr RenderViewSystemConfig	viewSystemConfig		{ 251 };
 
-		Services::Init(this, memorySystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, materialSystemConfig, geometrySystemConfig, cameraSystemConfig, viewSystemConfig);
+		Services::Init(this, memorySystemConfig, jobSystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, 
+			materialSystemConfig, geometrySystemConfig, cameraSystemConfig, viewSystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
@@ -292,6 +332,9 @@ namespace C3D
 
 		m_state.initialized = true;
 		m_state.lastTime = 0;
+
+		Application::OnResize(m_state.width, m_state.height);
+		Renderer.OnResize(m_state.width, m_state.height);
 	}
 
 	Application::~Application() = default;
@@ -346,6 +389,8 @@ namespace C3D
 					const f64 currentTime = clock.GetElapsed();
 					const f64 delta = currentTime - m_state.lastTime;
 					const f64 frameStartTime = Platform::GetAbsoluteTime();
+
+					Jobs.Update();
 
 					OnUpdate(delta);
 					OnRender(delta);
@@ -586,7 +631,7 @@ namespace C3D
 			const u16 height = context.data.u16[1];
 
 			OnResize(width, height);
-			Services::GetRenderer().OnResize(width, height);
+			Renderer.OnResize(width, height);
 		}
 
 		return false;

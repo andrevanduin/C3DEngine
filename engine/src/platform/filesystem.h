@@ -17,6 +17,7 @@ namespace C3D
 	{
 	public:
 		File();
+		~File();
 
 		static [[nodiscard]] bool Exists(const string& path);
 
