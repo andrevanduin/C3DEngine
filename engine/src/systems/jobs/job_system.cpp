@@ -44,7 +44,7 @@ namespace C3D
 		{
 			m_jobThreads[i].index = i;
 			m_jobThreads[i].typeMask = config.typeMasks[i];
-			m_jobThreads[i].thread = std::thread([this, i] { Runner(i); });
+			//m_jobThreads[i].thread = std::thread([this, i] { Runner(i); });
 
 			m_jobThreads[i].SetInfo({});
 		}
@@ -194,6 +194,8 @@ namespace C3D
 				// Call our entry point and do the work and store the result of the work
 				// if the user has provided a onSuccess callback (in the case of success)
 				// or if the user has provided a onFailure callback (in the case of a failure)
+				m_logger.Trace("Executing job on thread #{}.", index);
+
 				if (info.entryPoint(info.inputData, info.resultData))
 				{
 					if (info.onSuccess) StoreResult(info.onSuccess, info.resultDataSize, info.resultData);

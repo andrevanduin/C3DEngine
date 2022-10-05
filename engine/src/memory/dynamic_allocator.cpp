@@ -9,22 +9,24 @@ namespace C3D
 {
 	DynamicAllocator::DynamicAllocator(): m_logger("DYNAMIC_ALLOCATOR"), m_initialized(false), m_totalSize(0), m_memory(nullptr) {}
 
-	bool DynamicAllocator::Create(const u64 totalSize, void* memory)
+	bool DynamicAllocator::Create(const u64 usableSize, void* memory)
 	{
-		if (totalSize < 1)
+		if (usableSize == 0)
 		{
 			m_logger.Error("Create() - Size cannot be 0. Creation failed");
 			return false;
 		}
 
-		m_totalSize = totalSize;
-		// The first part of our memory will be used by our freelist
-		m_freeList.Create(totalSize, memory);
-		// The second part of the memory will store the actual data that this allocator manages
-		const u64 freeListMemoryRequirement = FreeList::GetMemoryRequirements(totalSize);
-		m_memory = static_cast<u8*>(memory) + freeListMemoryRequirement;
+		const u64 freeListMemoryRequirement = FreeList::GetMemoryRequirements(usableSize);
 
-		Memory.Zero(m_memory, totalSize);
+		m_totalSize = usableSize + freeListMemoryRequirement;
+
+		// The first part of our memory will be used by our freelist
+		m_freeList.Create(usableSize, memory);
+
+		// The second part of the memory will store the actual data that this allocator manages
+		
+		m_memory = static_cast<u8*>(memory) + freeListMemoryRequirement;
 
 		m_initialized = true;
 		return true;
@@ -35,7 +37,7 @@ namespace C3D
 		// Destroy our freelist (frees it's memory)
 		m_freeList.Destroy();
 		// Free the memory we are holding on to
-		Memory.Free(m_memory, m_totalSize + FreeList::GetMemoryRequirements(m_totalSize), MemoryType::DynamicAllocator);
+		Memory.Free(m_memory, m_totalSize, MemoryType::DynamicAllocator);
 
 		m_totalSize = 0;
 		m_memory = nullptr;
@@ -54,8 +56,10 @@ namespace C3D
 		// Get an offset into our block of memory from our freelist
 		if (m_freeList.AllocateBlock(size, &offset)) 
 		{
+			m_logger.Trace("Allocated {} bytes at {:#x}", size, offset);
+
 			// To get our requested block we simply add the offset to the start of our memory block
-			const auto block = static_cast<u8*>(m_memory) + offset;
+			const auto block = static_cast<char*>(m_memory) + offset;
 			return block;
 		}
 
@@ -94,17 +98,13 @@ namespace C3D
 			Logger::Error("[DYNAMIC_ALLOCATOR] - Free() failed");
 			return false;
 		}
+
+		m_logger.Trace("Freed {} bytes at {:#x}", size, offset);
 		return true;
 	}
 
 	u64 DynamicAllocator::FreeSpace() const
 	{
 		return m_freeList.FreeSpace();
-	}
-
-	u64 DynamicAllocator::GetMemoryRequirements(const u64 totalSize)
-	{
-		const u64 freeListMemoryRequirement = FreeList::GetMemoryRequirements(totalSize);
-		return freeListMemoryRequirement + totalSize;
 	}
 }

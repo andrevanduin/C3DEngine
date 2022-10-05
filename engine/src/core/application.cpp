@@ -18,7 +18,6 @@
 //
 
 #include "renderer/renderer_frontend.h"
-#include "resources/loaders/mesh_loader.h"
 #include "systems/geometry_system.h"
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
@@ -31,7 +30,7 @@
 namespace C3D
 {
 	Application::Application(const ApplicationConfig& config)
-		: m_logger("APPLICATION")
+		: m_logger("APPLICATION"), m_meshes{}, m_uiMeshes{}
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice")
 
@@ -113,7 +112,7 @@ namespace C3D
 
 		auto callback = new EventCallback(this, &Application::OnDebugEvent);
 		Event.Register(SystemEventCode::Debug0, callback);
-		Event.Register(SystemEventCode::Debug1, callback);
+		//Event.Register(SystemEventCode::Debug1, callback);
 
 		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
@@ -265,6 +264,7 @@ namespace C3D
 
 		sponzaMesh = &m_meshes[meshCount];
 		sponzaMesh->transform = Transform({ 15.0f, 0.0f, 1.0f }, mat4(1.0f), { 0.05f, 0.05f, 0.05f });
+
 		meshCount++;
 
 		// Load up our test ui geometry
@@ -309,6 +309,9 @@ namespace C3D
 		uiConfig.indices.PushBack(1);
 
 		m_uiMeshes[0].geometryCount = 1;
+
+		auto rens = Memory.GetFreeSpace();
+
 		m_uiMeshes[0].geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 		m_uiMeshes[0].geometries[0] = Geometric.AcquireFromConfig(uiConfig, true);
 		m_uiMeshes[0].generation = INVALID_ID_U8;

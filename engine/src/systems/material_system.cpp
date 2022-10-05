@@ -46,7 +46,8 @@ namespace C3D
 		}
 
 		// Ensure that we have enough space for all our textures
-		m_registeredMaterialTable.reserve(config.maxMaterialCount);
+		m_registeredMaterialTable.Create(config.maxMaterialCount);
+		m_registeredMaterialTable.FillDefault();
 
 		if (!CreateDefaultMaterial())
 		{
@@ -103,16 +104,15 @@ namespace C3D
 			return &m_defaultMaterial;
 		}
 
-		const auto& it = m_registeredMaterialTable.find(config.name);
-		// No Material could be found for this name
-		if (it == m_registeredMaterialTable.end())
+		MaterialReference ref = m_registeredMaterialTable.Get(config.name);
+
+		// This should only happen the first time a material is loaded
+		if (ref.referenceCount == 0)
 		{
-			m_registeredMaterialTable.emplace(config.name, MaterialReference{ 0, INVALID_ID, config.autoRelease });
+			ref.autoRelease = config.autoRelease;
 		}
 
-		auto& ref = m_registeredMaterialTable[config.name];
 		ref.referenceCount++;
-
 		if (ref.handle == INVALID_ID)
 		{
 			// No material exists yet. Let's find a free index for it
@@ -169,10 +169,10 @@ namespace C3D
 				m_uiLocations.model = Shaders.GetUniformIndex(shader, "model");
 			}
 
-
 			if (mat->generation == INVALID_ID) mat->generation = 0;
 			else mat->generation++;
 
+			// Use the handle (location in the array) as the material id
 			mat->id = ref.handle;
 			m_logger.Trace("Material {} did not exist yet. Created and the refCount is now {}", config.name, ref.referenceCount);
 		}
@@ -181,6 +181,7 @@ namespace C3D
 			m_logger.Trace("Material {} already exists. The refCount is now {}", config.name, ref.referenceCount);
 		}
 
+		m_registeredMaterialTable.Set(config.name, &ref);
 		return &m_registeredMaterials[ref.handle];
 	}
 
@@ -192,16 +193,15 @@ namespace C3D
 			return;
 		}
 
-		const auto it = m_registeredMaterialTable.find(name);
-		if (it == m_registeredMaterialTable.end())
+
+		MaterialReference ref = m_registeredMaterialTable.Get(name);
+		if (ref.referenceCount == 0)
 		{
 			m_logger.Warn("Tried to release a material that does not exist: {}", name);
 			return;
 		}
 
-		auto& ref = it->second;
 		ref.referenceCount--;
-
 		if (ref.referenceCount == 0 && ref.autoRelease)
 		{
 			// This material is marked for auto release and we are holding no more references to it
@@ -210,14 +210,18 @@ namespace C3D
 			// Destroy the material
 			DestroyMaterial(mat);
 
-			// Remove the reference
-			m_registeredMaterialTable.erase(it);
+			// Reset the reference
+			ref.handle = INVALID_ID;
+			ref.autoRelease = false;
 
 			m_logger.Info("Released material {}. The texture was unloaded because refCount = 0 and autoRelease = true", name);
-			return;
+		}
+		else
+		{
+			m_logger.Info("Released material {}. The material now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
 		}
 
-		m_logger.Info("Released material {}. The material now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
+		m_registeredMaterialTable.Set(name, &ref);
 	}
 
 	Material* MaterialSystem::GetDefault()

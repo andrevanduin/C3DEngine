@@ -54,7 +54,10 @@ namespace C3D
 		m_stats.totalAllocated = 0;
 		Zero(m_stats.taggedAllocations, sizeof(MemoryAllocation) * ToUnderlying(MemoryType::MaxType));
 
-		m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)] = { memoryRequirement, 1 };
+		if (!config.excludeFromStats)
+		{
+			m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)] = { memoryRequirement, 1 };
+		}
 
 		if (!m_allocator.Create(config.totalAllocSize, m_memory))
 		{
@@ -182,5 +185,10 @@ namespace C3D
 	u64 MemorySystem::GetMemoryUsage(const MemoryType type) const
 	{
 		return m_stats.taggedAllocations[ToUnderlying(type)].size;
+	}
+
+	u64 MemorySystem::GetFreeSpace() const
+	{
+		return m_allocator.FreeSpace();
 	}
 }

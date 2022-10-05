@@ -11,7 +11,7 @@ namespace C3D
 	public:
 		DynamicAllocator();
 
-		bool Create(u64 totalSize, void* memory);
+		bool Create(u64 usableSize, void* memory);
 
 		bool Destroy();
 
@@ -21,7 +21,7 @@ namespace C3D
 
 		[[nodiscard]] u64 FreeSpace() const;
 
-		static u64 GetMemoryRequirements(u64 totalSize);
+		static constexpr u64 GetMemoryRequirements(u64 totalSize);
 	private:
 		LoggerInstance m_logger;
 
@@ -33,4 +33,9 @@ namespace C3D
 		// A pointer to the actual block of memory that this allocator manages
 		void* m_memory;
 	};
+
+	constexpr u64 DynamicAllocator::GetMemoryRequirements(const u64 totalSize)
+	{
+		return FreeList::GetMemoryRequirements(totalSize) + totalSize;
+	}
 }

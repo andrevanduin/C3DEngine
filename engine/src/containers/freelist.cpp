@@ -7,40 +7,39 @@
 
 namespace C3D
 {
-	// The smallest allocation someone would make is of the size of a single pointer (should be 8 bytes on most platforms)
-	constexpr auto FREELIST_SIZE_OF_SMALLEST_ALLOCATION = sizeof(void*);
-	// The size of one of our FreeListNodes
-	constexpr auto FREELIST_SIZE_OF_NODE = sizeof(FreeListNode);
-
 	FreeList::FreeList()
-		: m_totalSize(0), m_maxEntries(0), m_head(nullptr), m_nodes(nullptr)
+		: m_size(0), m_maxEntries(0), m_head(nullptr), m_nodes(nullptr)
 	{}
 
-	bool FreeList::Create(const u64 totalSize, void* memory)
+	bool FreeList::Create(const u64 useableMemory, void* memory)
 	{
 		// The maximum entries we could possibly have (assuming the smallest allocation would always be at least an 8 byte pointer)
 		// NOTE: This is quite overkill
-		m_maxEntries = totalSize / (FREELIST_SIZE_OF_SMALLEST_ALLOCATION * FREELIST_SIZE_OF_NODE);
+		m_maxEntries = useableMemory / (FREELIST_SIZE_OF_SMALLEST_ALLOCATION * FREELIST_SIZE_OF_NODE);
 		if (m_maxEntries < 20)
 		{
 			Logger::Warn("[FREELIST] - MaxEntries < 20. MaxEntries set to 20. Keep in mind that FreeLists are inefficient for small blocks of memory.");
 			m_maxEntries = 20;
 		}
 
-		m_totalSize = totalSize;
+		m_size = GetMemoryRequirements(useableMemory);
 
 		m_nodes = static_cast<FreeListNode*>(memory);
+		Memory.Zero(m_nodes, m_size);
 
 		m_head = &m_nodes[0];
+
 		m_head->offset = 0;
-		m_head->size = totalSize;
+
+		// Set the size to the total amount of memory minus the size of this structure
+		m_head->size = useableMemory;
 		m_head->next = nullptr;
 
 		// Invalidate the size and offset for all nodes (except for the head) 
 		for (u64 i = 1; i < m_maxEntries; i++)
 		{
-			m_nodes[i].offset = INVALID_ID;
-			m_nodes[i].size = INVALID_ID;
+			m_nodes[i].offset = INVALID_ID_U64;
+			m_nodes[i].size = INVALID_ID_U64;
 		}
 
 		return true;
@@ -48,26 +47,27 @@ namespace C3D
 
 	bool FreeList::Resize(void* newMemory, const u64 newSize, void** outOldMemory)
 	{
-		if (m_totalSize > newSize) return false;
+		if (m_size > newSize) return false;
 
 		// NOTE: This is quite overkill
 
 		*outOldMemory = m_nodes;
-		const auto sizeDifference = newSize - m_totalSize;
-		const auto oldSize = m_totalSize;
+		const auto sizeDifference = newSize - m_size;
+		const auto oldSize = m_size;
 		const auto oldHead = m_head;
 
 		m_nodes = static_cast<FreeListNode*>(newMemory);
 
 		m_maxEntries = newSize / (FREELIST_SIZE_OF_SMALLEST_ALLOCATION * FREELIST_SIZE_OF_NODE);
-		m_totalSize = newSize;
+		m_size = newSize;
 
 		// Invalidate the size and offset for all nodes (except for the head) 
 		for (u64 i = 1; i < m_maxEntries; i++)
 		{
-			m_nodes[i].offset = INVALID_ID;
-			m_nodes[i].size = INVALID_ID;
+			m_nodes[i].offset = INVALID_ID_U64;
+			m_nodes[i].size = INVALID_ID_U64;
 		}
+
 		// Store our new head
 		m_head = &m_nodes[0];
 
@@ -161,6 +161,7 @@ namespace C3D
 				ReturnNode(nodeToReturn);
 				return true;
 			}
+
 			if (node->size > size)
 			{
 				// Then node is larger than required. Deduct the memory from it and move the offset
@@ -269,12 +270,12 @@ namespace C3D
 		// Invalidate all nodes except the head
 		for (u64 i = 1; i < m_maxEntries; i++)
 		{
-			m_nodes[i].offset = INVALID_ID;
-			m_nodes[i].size = INVALID_ID;
+			m_nodes[i].offset = INVALID_ID_U64;
+			m_nodes[i].size = INVALID_ID_U64;
 		}
 
 		m_head->offset = 0;
-		m_head->size = m_totalSize;
+		m_head->size = m_size;
 		m_head->next = nullptr;
 	}
 
@@ -290,18 +291,11 @@ namespace C3D
 		return total;
 	}
 
-	u64 FreeList::GetMemoryRequirements(const u64 totalSize)
-	{
-		auto elementCount = totalSize / (FREELIST_SIZE_OF_SMALLEST_ALLOCATION * FREELIST_SIZE_OF_NODE);
-		if (elementCount < 20) elementCount = 20;
-		return elementCount * FREELIST_SIZE_OF_NODE;
-	}
-
 	FreeListNode* FreeList::GetNode() const
 	{
 		for (u64 i = 1; i < m_maxEntries; i++)
 		{
-			if (m_nodes[i].offset == INVALID_ID)
+			if (m_nodes[i].offset == INVALID_ID_U64)
 			{
 				return &m_nodes[i];
 			}
@@ -314,8 +308,8 @@ namespace C3D
 
 	void FreeList::ReturnNode(FreeListNode* node)
 	{
-		node->offset = INVALID_ID;
-		node->size = INVALID_ID;
+		node->offset = INVALID_ID_U64;
+		node->size = INVALID_ID_U64;
 		node->next = nullptr;
 	}
 }

@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include "system.h"
+#include "containers/hash_table.h"
 #include "core/defines.h"
 #include "core/logger.h"
 
@@ -20,6 +21,8 @@ namespace C3D
 
 	struct MaterialReference
 	{
+		MaterialReference() : referenceCount(0), handle(INVALID_ID), autoRelease(false) {}
+
 		u64 referenceCount;
 		u32 handle;
 		bool autoRelease;
@@ -90,7 +93,9 @@ namespace C3D
 
 		Material m_defaultMaterial;
 		Material* m_registeredMaterials;
-		std::unordered_map<string, MaterialReference> m_registeredMaterialTable;
+
+		// Hashtable to map names to material-references
+		HashTable<MaterialReference> m_registeredMaterialTable;
 
 		// Known locations for the material shader
 		MaterialUniformLocations m_materialLocations;

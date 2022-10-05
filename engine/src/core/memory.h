@@ -52,6 +52,7 @@ namespace C3D
 	struct MemorySystemConfig
 	{
 		u64 totalAllocSize;
+		bool excludeFromStats = false;
 	};
 
 	class C3D_API MemorySystem : public System<MemorySystemConfig>
@@ -85,6 +86,7 @@ namespace C3D
 
 		[[nodiscard]] u64 GetAllocCount() const;
 		[[nodiscard]] u64 GetMemoryUsage(MemoryType type) const;
+		[[nodiscard]] u64 GetFreeSpace() const;
 	private:
 		void* m_memory;
 
