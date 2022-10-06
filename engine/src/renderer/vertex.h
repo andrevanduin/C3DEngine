@@ -16,7 +16,7 @@ namespace C3D
 		/* @brief: The color of the vertex. */
 		vec4 color;
 		/* @brief: The tangent of the vertex. */
-		vec4 tangent;
+		vec3 tangent;
 
 		bool operator==(const Vertex3D& other) const
 		{
@@ -45,7 +45,7 @@ namespace std
 		std::size_t operator()(const Vertex3D& vertex) const
 		{
 			return hash<vec3>()(vertex.position) ^ hash<vec3>()(vertex.normal) ^ hash<vec2>()(vertex.texture)
-				^ hash<vec4>()(vertex.color) ^ hash<vec4>()(vertex.tangent);
+				^ hash<vec4>()(vertex.color) ^ hash<vec3>()(vertex.tangent);
 		}
 	};
 }

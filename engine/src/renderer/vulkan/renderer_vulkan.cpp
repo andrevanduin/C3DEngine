@@ -372,8 +372,8 @@ namespace C3D
 		commandBuffer->UpdateSubmitted();
 
 		// Present the image (and give it back to the SwapChain)
-		m_context.swapChain.Present(&m_context, m_context.device.graphicsQueue,
-			m_context.device.presentQueue, m_context.queueCompleteSemaphores[m_context.currentFrame], m_context.imageIndex);
+		m_context.swapChain.Present(&m_context, m_context.device.presentQueue, 
+			m_context.queueCompleteSemaphores[m_context.currentFrame], m_context.imageIndex);
 
 		return true;
 	}
@@ -509,7 +509,7 @@ namespace C3D
 	void RendererVulkan::CreateTexture(const u8* pixels, Texture* texture)
 	{
 		// Internal data creation
-		texture->internalData = Memory.Allocate(sizeof(VulkanImage), MemoryType::Texture);
+		texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
 
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
 		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height * texture->channelCount;

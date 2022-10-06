@@ -18,7 +18,7 @@ namespace C3D
 		info.entryPoint = LoadJobEntryPoint;
 		info.onSuccess = LoadJobSuccess;
 		info.onFailure = LoadJobFailure;
-		info.SetData(&params, sizeof(MeshLoadParams));
+		info.SetData<MeshLoadParams, MeshLoadParams>(&params);
 
 		Jobs.Submit(info);
 		return true;

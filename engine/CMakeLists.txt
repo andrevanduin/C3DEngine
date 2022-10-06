@@ -9,6 +9,7 @@ add_library(C3DEngine SHARED ${C3DEngine_SRC})
 
 add_compile_definitions(C3D_EXPORT)
 add_compile_definitions(C3D_PLATFORM_WINDOWS)
+# add_compile_definitions(C3D_TRACE_ALLOCS)
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(C3DEngine PUBLIC Vulkan::Vulkan)

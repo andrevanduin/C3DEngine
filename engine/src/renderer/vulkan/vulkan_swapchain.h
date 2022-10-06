@@ -23,7 +23,7 @@ namespace C3D
 
 		bool AcquireNextImageIndex(VulkanContext* context, u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex);
 
-		void Present(VulkanContext* context, VkQueue graphicsQueue, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, u32 presentImageIndex);
+		void Present(VulkanContext* context, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, u32 presentImageIndex);
 
 		VkSwapchainKHR handle;
 

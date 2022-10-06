@@ -69,7 +69,7 @@ layout(location = 1) in struct dto
 	vec3 viewPosition;
 	vec3 fragPosition;
 	vec4 color;
-	vec4 tangent;
+	vec3 tangent;
 } inDto;
 
 // Matrix to take normals from texture space to world space
@@ -85,9 +85,9 @@ vec4 CalculatePointLight(PointLight light, vec3 normal, vec3 fragPosition, vec3 
 void main() 
 {
 	vec3 normal = inDto.normal;
-	vec3 tangent = inDto.tangent.xyz;
+	vec3 tangent = inDto.tangent;
 	tangent = (tangent - dot(tangent, normal) * normal);
-	vec3 biTangent = cross(inDto.normal, inDto.tangent.xyz) * inDto.tangent.w;
+	vec3 biTangent = cross(inDto.normal, inDto.tangent);
 	TBN = mat3(tangent, biTangent, normal);
 
 	// Update the normal to use a sample from the normal map

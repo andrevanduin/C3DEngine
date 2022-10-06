@@ -357,7 +357,7 @@ namespace C3D
 		return true;
 	}
 
-	bool MaterialSystem::LoadMaterial(MaterialConfig config, Material* mat) const
+	bool MaterialSystem::LoadMaterial(const MaterialConfig& config, Material* mat) const
 	{
 		Memory.Zero(mat, sizeof(Material));
 

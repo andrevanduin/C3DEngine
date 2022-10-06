@@ -372,7 +372,7 @@ namespace C3D
 		info.entryPoint = LoadJobEntryPoint;
 		info.onSuccess = [this](void* r) { LoadJobSuccess(r); };
 		info.onFailure = [this](void* r) { LoadJobFailure(r); };
-		info.SetData(&params, sizeof(TextureLoadParams));
+		info.SetData<TextureLoadParams, TextureLoadParams>(&params);
 
 		Jobs.Submit(info);
 		return true;

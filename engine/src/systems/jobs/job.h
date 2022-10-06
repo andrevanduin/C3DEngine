@@ -48,8 +48,17 @@ namespace C3D
 
 		~JobInfo();
 
-		template <typename T>
-		void SetData(T* data, u64 resultSize = 0);
+		/* @brief Store the input data (Allocates space and makes a copy of your provided data internally).
+		 * This version of the method should be used if you are not expecting result data.
+		 */
+		template <typename InputType>
+		void SetData(InputType* data);
+
+		/* @brief Store the input data and space for the output data (Allocates space and makes a copy of your provided data internally).
+		 * This version of the method should be used if you are expecting result data.
+		 */
+		template <typename InputType, typename OutputType>
+		void SetData(InputType* data);
 
 		void Clear();
 
@@ -78,18 +87,25 @@ namespace C3D
 		void Copy();
 	};
 
-	template <typename T>
-	void JobInfo::SetData(T* data, const u64 resultSize)
+	template <typename InputType>
+	void JobInfo::SetData(InputType* data)
 	{
-		inputDataSize = sizeof(T);
-		inputData = Memory.Allocate(inputDataSize, MemoryType::Job);
+		inputDataSize = sizeof(InputType);
+		inputData = Memory.Allocate<InputType>(MemoryType::Job);
 		Memory.Copy(inputData, data, inputDataSize);
 
-		if (resultSize)
-		{
-			resultDataSize = resultSize;
-			resultData = Memory.Allocate(resultDataSize, MemoryType::Job);
-		}
+		resultDataSize = 0;
+	}
+
+	template <typename InputType, typename OutputType>
+	void JobInfo::SetData(InputType* data)
+	{
+		inputDataSize = sizeof(InputType);
+		inputData = Memory.Allocate<InputType>(MemoryType::Job);
+		Memory.Copy(inputData, data, inputDataSize);
+
+		resultDataSize = sizeof(OutputType);
+		resultData = Memory.Allocate<OutputType>(MemoryType::Job);
 	}
 
 	class JobThread

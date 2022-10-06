@@ -63,11 +63,10 @@ namespace C3D::GeometryUtils
 			const f32 tx = deltaV1, ty = deltaV2;
 			const f32 handedness = ((tx * sy - ty * sx) < 0.0f) ? -1.0f : 1.0f;
 
-			const auto t4 = vec4(tangent, handedness);
-
-			vertices[i0].tangent = t4;
-			vertices[i1].tangent = t4;
-			vertices[i2].tangent = t4;
+			const auto t3 = tangent * handedness;
+			vertices[i0].tangent = t3;
+			vertices[i1].tangent = t3;
+			vertices[i2].tangent = t3;
 		}
 	}
 

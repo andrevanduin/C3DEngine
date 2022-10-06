@@ -82,7 +82,7 @@ namespace C3D
 		return true;
 	}
 
-	void VulkanSwapChain::Present(VulkanContext* context, VkQueue graphicsQueue, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, const u32 presentImageIndex)
+	void VulkanSwapChain::Present(VulkanContext* context, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, const u32 presentImageIndex)
 	{
 		// Return the image to the SwapChain for presentation
 		VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };

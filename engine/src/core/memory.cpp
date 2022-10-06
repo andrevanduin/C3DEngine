@@ -30,6 +30,12 @@ namespace C3D
 		"EntityNode       ",
 		"Scene            ",
 		"Shader           ",
+		"Resource         ",
+		"Vulkan           ",
+		"VulkanExternal   ",
+		"Direct3D         ",
+		"OpenGL           ",
+		"GpuLocal         ",
 	};
 
 	MemorySystem::MemorySystem()
@@ -42,7 +48,6 @@ namespace C3D
 
 		// Total size required for our dynamic allocator with the given totalSize
 		const u64 memoryRequirement = DynamicAllocator::GetMemoryRequirements(config.totalAllocSize);
-		// TODO: memory alignment
 		m_memory = Platform::Allocate(memoryRequirement, false);
 		if (!m_memory)
 		{
@@ -58,8 +63,8 @@ namespace C3D
 		{
 			m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)] = { memoryRequirement, 1 };
 		}
-
-		if (!m_allocator.Create(config.totalAllocSize, m_memory))
+		
+		if (!m_allocator.Create(m_memory, memoryRequirement, config.totalAllocSize))
 		{
 			m_logger.Error("Failed to create dynamic allocator");
 			return false;
@@ -71,7 +76,6 @@ namespace C3D
 	void MemorySystem::Shutdown()
 	{
 		m_allocator.Destroy();
-		// TODO: alignment
 		Platform::Free(m_memory, false);
 
 		m_logger.Info("Memory Usage after free:\n {}", GetMemoryUsageString());
@@ -79,9 +83,19 @@ namespace C3D
 
 	void* MemorySystem::Allocate(const u64 size, const MemoryType type)
 	{
+		return AllocateAligned(size, 1, type);
+	}
+
+	void* MemorySystem::AllocateAligned(const u64 size, const u16 alignment, MemoryType type)
+	{
+		void* ptr = malloc(size);
+		Platform::ZeroOutMemory(ptr, size);
+		return ptr;
+
+		/*
 		if (type == MemoryType::Unknown)
 		{
-			m_logger.Warn("Allocate called using MemoryType::UNKNOWN");
+			m_logger.Warn("AllocateAligned() - Called using MemoryType::UNKNOWN");
 		}
 
 		std::lock_guard allocLoc(m_mutex);
@@ -94,17 +108,36 @@ namespace C3D
 		m_stats.taggedAllocations[t].count++;
 
 		// TODO: Memory alignment
-		void* block = m_allocator.Allocate(size);
+		void* block = m_allocator.AllocateAligned(size, alignment);
 		Platform::ZeroOutMemory(block, size);
 
-		return block;
+		return block;*/
+	}
+
+	void MemorySystem::AllocateReport(const u64 size, MemoryType type)
+	{
+		std::lock_guard allocateLock(m_mutex);
+
+		m_stats.totalAllocated += size;
+
+		const auto t = static_cast<u8>(type);
+		m_stats.taggedAllocations[t].size += size;
+		m_stats.taggedAllocations[t].count++;
 	}
 
 	void MemorySystem::Free(void* block, const u64 size, const MemoryType type)
 	{
+		return FreeAligned(block, size, type);
+	}
+
+	void MemorySystem::FreeAligned(void* block, const u64 size, MemoryType type)
+	{
+		free(block);
+
+		/*
 		if (type == MemoryType::Unknown)
 		{
-			m_logger.Warn("Free called using MemoryType::UNKNOWN");
+			m_logger.Warn("FreeAligned() - Called using MemoryType::UNKNOWN");
 		}
 
 		std::lock_guard freeLock(m_mutex);
@@ -115,11 +148,37 @@ namespace C3D
 		m_stats.taggedAllocations[t].size -= size;
 		m_stats.taggedAllocations[t].count--;
 
-		if (!m_allocator.Free(block, size))
+		if (!m_allocator.FreeAligned(block))
 		{
-			m_logger.Warn("Failed to free memory with dynamic allocator. Trying Platform::Free()");
+			m_logger.Warn("FreeAligned() - Failed to free memory with dynamic allocator. Trying Platform::Free()");
 			Platform::Free(block, false); // TODO: alignment
-		}
+		}*/
+	}
+
+	void MemorySystem::FreeReport(const u64 size, MemoryType type)
+	{
+		std::lock_guard allocateLock(m_mutex);
+
+		m_stats.totalAllocated -= size;
+
+		const auto t = static_cast<u8>(type);
+		m_stats.taggedAllocations[t].size -= size;
+		m_stats.taggedAllocations[t].count--;
+	}
+
+	bool MemorySystem::GetSizeAlignment(void* block, u64* outSize, u16* outAlignment)
+	{
+		return DynamicAllocator::GetSizeAlignment(block, outSize, outAlignment);
+	}
+
+	bool MemorySystem::GetAlignment(void* block, u16* outAlignment)
+	{
+		return DynamicAllocator::GetAlignment(block, outAlignment);
+	}
+
+	bool MemorySystem::GetAlignment(const void* block, u16* outAlignment)
+	{
+		return DynamicAllocator::GetAlignment(block, outAlignment);
 	}
 
 	void* MemorySystem::Zero(void* block, const u64 size)

@@ -2,17 +2,64 @@
 #include "dynamic_allocator_tests.h"
 
 #include <algorithm>
+#include <array>
 #include <random>
 
 #include "../expect.h"
 
 #include <memory/dynamic_allocator.h>
-#include <containers/freelist.h>
 
 #include <core/defines.h>
 #include <core/memory.h>
 
 #include <services/services.h>
+
+class Util
+{
+public:
+    Util()
+    {
+        const auto seedData = GenerateSeedData();
+        std::seed_seq seedSeq(seedData.begin(), seedData.end());
+        generator.seed(seedSeq);
+    }
+
+    std::vector<u64> GenerateRandomIntegers(const int amount, const int low, const int high)
+    {
+        std::uniform_int_distribution distribution(low, high);
+        std::vector<u64> values(amount);
+        std::generate(values.begin(), values.end(), [&] { return distribution(generator); });
+        return values;
+    }
+
+    u64 GenerateRandomInt(const int low, const int high)
+    {
+        std::uniform_int_distribution distribution(low, high);
+        return distribution(generator);
+    }
+
+    std::mt19937 generator;
+
+private:
+    [[nodiscard]] std::array<uint32_t, 8> GenerateSeedData() const
+    {
+        std::array<u32, 8> randomData{};
+        std::random_device randomSource;
+        std::generate(randomData.begin(), randomData.end(), std::ref(randomSource));
+        return randomData;
+    }
+};
+
+struct AllocStruct
+{
+    AllocStruct() : dataPtr(nullptr), data(0), size(0), alignment(0) {}
+
+    char* dataPtr;
+    char data;
+
+    u64 size;
+    u16 alignment;
+};
 
 u8 DynamicAllocatorShouldCreateAndDestroy()
 {
@@ -22,171 +69,220 @@ u8 DynamicAllocatorShouldCreateAndDestroy()
     const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
 
     C3D::DynamicAllocator allocator;
-    allocator.Create(usableMemory, memoryBlock);
+    allocator.Create(memoryBlock, neededMemory, usableMemory);
 
     ExpectShouldBe(neededMemory, Memory.GetMemoryUsage(C3D::MemoryType::DynamicAllocator));
 
     allocator.Destroy();
+
+    Memory.Free(memoryBlock, neededMemory, C3D::MemoryType::DynamicAllocator);
 
     ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicAllocator));
 
     return true;
 }
 
-u8 DynamicAllocatorShouldReportCorrectFreeSpace()
+constexpr u16 POSSIBLE_ALIGNMENTS[3] = { 1, 4, 8 };
+
+template <u64 Size>
+bool MakeAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator, Util& util)
 {
-    constexpr u64 usableMemory = MebiBytes(16);
-    constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
-
-    const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
-
-    C3D::DynamicAllocator allocator;
-    allocator.Create(usableMemory, memoryBlock);
-
-    ExpectShouldBe(usableMemory, allocator.FreeSpace());
-
-    for (auto i = 0; i < 64; i++)
+    for (auto& allocation : data)
     {
-        constexpr u64 allocSize = 1024;
-        allocator.Allocate(allocSize);
+        // Skip if allocation is already made for this index
+        if (allocation.size != 0) continue;
 
-        ExpectShouldBe(usableMemory - (allocSize * (i + 1)), allocator.FreeSpace());
+        // Generate an index in our possible alignments array
+        const auto alignmentIndex = util.GenerateRandomInt(0, 2);
+        const auto alignment = POSSIBLE_ALIGNMENTS[alignmentIndex];
+
+        // Generate a random size for our allocation between 4 bytes and 4 KibiBytes
+        auto allocSize = util.GenerateRandomInt(4, KibiBytes(4));
+
+        // Ensure our randomly generator allocSize is divisible by our alignment
+        while (allocSize % alignment != 0)
+        {
+            allocSize = util.GenerateRandomInt(4, KibiBytes(4));
+        }
+
+        // Keep track of the pointer to our data so we can check it later
+        allocation.dataPtr = static_cast<char*>(allocator.AllocateAligned(allocSize, alignment));
+        // Also keep track of our alignment so we can verify it later on
+        allocation.alignment = alignment;
+
+        // Keep track of the size so we know how large the allocation should be
+        allocation.size = allocSize;
+
+        // Generate a random char as our 'data'
+        allocation.data = static_cast<char>(util.GenerateRandomInt(65, 90));
+
+        // Ensure that we have gotten a valid pointer
+        ExpectShouldNotBe(nullptr, allocation.dataPtr);
+
+        // Check if the allocated alignment matches our requested alignment
+        u16 allocatedAlignment = 0;
+        C3D::DynamicAllocator::GetAlignment(allocation.dataPtr, &allocatedAlignment);
+        ExpectShouldBe(alignment, allocatedAlignment);
+
+        // Fill our entire array with our randomly generated char for the entire size of our dataPtr
+        std::fill_n(allocation.dataPtr, allocSize, allocation.data);
     }
 
-    allocator.Destroy();
     return true;
 }
 
-u8 DynamicAllocatorShouldAllocAndFree()
+u8 DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees()
 {
-    constexpr u64 amountOfAllocations = 10;
+    constexpr u64 amountOfAllocations = 4000;
     constexpr u64 usableMemory = MebiBytes(16);
     constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
 
     const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
 
+    Util util;
+
     C3D::DynamicAllocator allocator;
-    allocator.Create(usableMemory, memoryBlock);
+    allocator.Create(memoryBlock, neededMemory, usableMemory);
 
     ExpectShouldBe(usableMemory, allocator.FreeSpace());
 
-    u8* allocations[amountOfAllocations]{};
-    constexpr u64 allocSize = MebiBytes(1);
+    void* allocations[amountOfAllocations]{};
 
-    auto freeSpace = usableMemory;
     for (auto& allocation : allocations)
     {
-	    allocation = static_cast<u8*>(allocator.Allocate(allocSize));
-        freeSpace -= allocSize;
-
-        ExpectShouldBe(freeSpace, allocator.FreeSpace());
+        // Generate a random size for our allocation between 4 bytes and 4 KibiBytes
+        const auto allocSize = util.GenerateRandomInt(4, KibiBytes(4));
+        // Provided an alignment of 1 since we will ignore alignment for this test
+        allocation = allocator.AllocateAligned(allocSize, 1);
+        ExpectShouldNotBe(nullptr, allocation);
     }
 
-    for (auto& allocation : allocations)
+    for (const auto allocation : allocations)
     {
-        ExpectShouldBe(true, allocator.Free(allocation, allocSize));
-        freeSpace += allocSize;
-
-        ExpectShouldBe(freeSpace, allocator.FreeSpace());
+        ExpectShouldBe(true, allocator.FreeAligned(allocation));
     }
 
     allocator.Destroy();
+    Memory.Free(memoryBlock, neededMemory, C3D::MemoryType::DynamicAllocator);
+
+	return true;
+}
+
+template <u64 Size>
+bool IsDataCorrect(const std::array<AllocStruct, Size>& data)
+{
+    // Verify that all our data is still correct
+    for (const auto& d : data)
+    {
+        if (d.size == 0) continue;
+
+        // Check if the allocated alignment matches our expected alignment
+        u16 allocatedAlignment = 0;
+        C3D::DynamicAllocator::GetAlignment(d.dataPtr, &allocatedAlignment);
+        ExpectShouldBe(d.alignment, allocatedAlignment);
+
+        for (u64 i = 0; i < d.size; i++)
+        {
+            ExpectShouldBe(d.data, d.dataPtr[i]);
+        }
+    }
+    return true;
+}
+
+u8 DynamicAllocatorShouldHaveNoDataCorruption()
+{
+    constexpr u64 amountOfAllocations = 4000;
+    constexpr u64 usableMemory = MebiBytes(16);
+    constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
+
+    const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
+
+    Util util;
+
+    C3D::DynamicAllocator allocator;
+    allocator.Create(memoryBlock, neededMemory, usableMemory);
+
+    ExpectShouldBe(usableMemory, allocator.FreeSpace());
+
+    std::array<AllocStruct, amountOfAllocations> allocations{};
+
+    if (!MakeAllocations(allocations, allocator, util)) return false;
+
+    // Verify that all our data is still correct
+    if (!IsDataCorrect(allocations)) return false;
+
+    allocator.Destroy();
+    Memory.Free(memoryBlock, neededMemory, C3D::MemoryType::DynamicAllocator);
+
     return true;
 }
 
 template <u64 Size>
-struct Data
+bool FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator, Util& util, const int freeCount)
 {
-	explicit Data(const u64 size)
+    // Randomly pick some indices into the allocation array to free them
+    const auto freeIndices = util.GenerateRandomIntegers(freeCount, 0, data.size() - 1);
+
+    for (const auto i : freeIndices)
     {
-        for (auto i = 0; i < size; i++)
+        auto& alloc = data[i];
+        if (alloc.size != 0)
         {
-            data[i] = 'A';
+            ExpectShouldBe(true, allocator.FreeAligned(alloc.dataPtr));
+            alloc.size = 0;
+            alloc.dataPtr = nullptr;
+            alloc.data = 0;
         }
     }
 
-    char data[Size];
-};
+    return true;
+}
 
-u8 DynamicAllocatorShouldDoRandomAllocations()
+u8 DynamicAllocatorShouldHaveNoDataCorruptionWithFrees()
 {
+    constexpr u64 amountOfAllocations = 4000;
     constexpr u64 usableMemory = MebiBytes(16);
     constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
 
     const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
 
+    Util util;
+
     C3D::DynamicAllocator allocator;
-    allocator.Create(usableMemory, memoryBlock);
+    allocator.Create(memoryBlock, neededMemory, usableMemory);
 
     ExpectShouldBe(usableMemory, allocator.FreeSpace());
 
-    std::vector<std::pair<u8*, u64>> allocations;
-    allocations.emplace_back(std::make_pair(nullptr, KibiBytes(5)));
-    allocations.emplace_back(std::make_pair(nullptr, KibiBytes(15)));
-    allocations.emplace_back(std::make_pair(nullptr, KibiBytes(35)));
-    allocations.emplace_back(std::make_pair(nullptr, KibiBytes(2)));
-    allocations.emplace_back(std::make_pair(nullptr, KibiBytes(3)));
-    allocations.emplace_back(std::make_pair(nullptr, KibiBytes(17)));
-    allocations.emplace_back(std::make_pair(nullptr, MebiBytes(2)));
-    allocations.emplace_back(std::make_pair(nullptr, KibiBytes(24)));
-    allocations.emplace_back(std::make_pair(nullptr, MebiBytes(5)));
-    allocations.emplace_back(std::make_pair(nullptr, KibiBytes(105)));
+    std::array<AllocStruct, amountOfAllocations> allocations;
 
-    auto freeSpace = usableMemory;
-    auto charI = 0;
+    // Make some allocations
+    if (!MakeAllocations(allocations, allocator, util)) return false;
 
-    // Do 10 random allocations
-    for (auto& allocation : allocations)
-    {
-        allocation.first = static_cast<u8*>(allocator.Allocate(allocation.second));
-        for (u64 i = 0; i < allocation.second; i++)
-        {
-            allocation.first[i] = 'A' + charI;
-        }
+    // Verify our memory
+    if (!IsDataCorrect(allocations)) return false;
 
-        charI++;
-        freeSpace -= allocation.second;
-    }
+    // Free ~800 random allocations
+    if (!FreeRandomAllocations(allocations, allocator, util, 800)) return false;
 
-    //std::shuffle(allocations.begin(), allocations.end(), std::random_device());
+    // Verify our memory again
+    if (!IsDataCorrect(allocations)) return false;
 
-    // Do 5 frees
-    for (auto i = 3; i < 8; i++)
-    {
-        auto& allocation = allocations[i];
+    // Make some allocations
+    if (!MakeAllocations(allocations, allocator, util)) return false;
 
-        ExpectShouldBe(true, allocator.Free(allocation.first, allocation.second));
-        allocation.first = nullptr;
-
-        freeSpace += allocation.second;
-
-        ExpectShouldBe(freeSpace, allocator.FreeSpace());
-    }
-
-    // Do 3 more allocations
-    for (auto i = 3; i < 6; i++)
-    {
-        auto& allocation = allocations[i];
-        allocation.first = static_cast<u8*>(allocator.Allocate(allocation.second));
-        for (u64 j = 0; j < allocation.second; j++)
-        {
-            allocation.first[j] = 'A' + i;
-        }
-    }
+    // Verify our memory again
+    if (!IsDataCorrect(allocations)) return false;
 
     allocator.Destroy();
+    Memory.Free(memoryBlock, neededMemory, C3D::MemoryType::DynamicAllocator);
+
     return true;
 }
-
-struct MemAllocTestObject
-{
-	
-};
 
 void DynamicAllocator::RegisterTests(TestManager* manager)
 {
     manager->Register(DynamicAllocatorShouldCreateAndDestroy, "Dynamic Allocator should create and destroy.");
-    manager->Register(DynamicAllocatorShouldReportCorrectFreeSpace, "Dynamic Allocator should always report the correct amount of free space.");
-    manager->Register(DynamicAllocatorShouldAllocAndFree, "Dynamic Allocator should always allocate and free the correct amount of space.");
-    manager->Register(DynamicAllocatorShouldDoRandomAllocations, "Dynamic Allocator should always allocate and free correctly with random allocations.");
+    manager->Register(DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees, "Dynamic Allocator should always allocate and free for lot's of random allocations");
+    manager->Register(DynamicAllocatorShouldHaveNoDataCorruption, "Dynamic Allocator should always allocate without data corruption");
+    manager->Register(DynamicAllocatorShouldHaveNoDataCorruptionWithFrees, "Dynamic Allocator should always allocate and free without data corruption");
 }

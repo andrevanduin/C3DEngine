@@ -148,7 +148,10 @@ namespace C3D
 		entry.callback = callback;
 		if (entry.resultSize > 0)
 		{
-			entry.result = Memory.Allocate(entry.resultSize, MemoryType::Job);
+			u16 alignment = 0;
+			Memory.GetAlignment(data, &alignment);
+
+			entry.result = Memory.AllocateAligned(entry.resultSize, alignment, MemoryType::Job);
 			Memory.Copy(entry.result, data, dataSize);
 		}
 		else
