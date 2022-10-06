@@ -139,23 +139,28 @@ namespace C3D
 		data->stages.clear();
 
 		// Cleanup attributes
-		for (const auto& attribute : data->attributes)
+		for (auto& attribute : data->attributes)
 		{
 			const auto count = StringLength(attribute.name) + 1;
 			Memory.Free(attribute.name, count, MemoryType::String);
+			attribute.name = nullptr;
 		}
 		data->attributes.Destroy();
 
 		// Cleanup uniforms
-		for (const auto& uniform : data->uniforms)
+		for (auto& uniform : data->uniforms)
 		{
-			const auto count = StringLength(uniform.name);
+			const auto count = StringLength(uniform.name) + 1;
 			Memory.Free(uniform.name, count, MemoryType::String);
+			uniform.name = nullptr;
 		}
 		data->uniforms.Destroy();
 
 		Memory.Free(data->renderPassName, StringLength(data->renderPassName) + 1, MemoryType::String);
+		data->renderPassName = nullptr;
+
 		Memory.Free(data->name, StringLength(data->name) + 1, MemoryType::String);
+		data->name = nullptr;
 	}
 
 	void ResourceLoader<ShaderResource>::ParseStages(ShaderConfig* data, const string& value) const

@@ -341,6 +341,7 @@ namespace C3D
 		return m_backend->ReleaseShaderInstanceResources(shader, instanceId);
 	}
 
+
 	bool RenderSystem::AcquireTextureMapResources(TextureMap* map) const
 	{
 		return m_backend->AcquireTextureMapResources(map);

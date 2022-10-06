@@ -1274,7 +1274,7 @@ namespace C3D
 								break;
 							case TextureUse::Unknown:
 							default:
-								m_logger.Warn("Undefined textures use {}", ToUnderlying(map->use));
+								m_logger.Warn("Undefined TextureUse {}", ToUnderlying(map->use));
 								t = Textures.GetDefault();
 								break;
 						}
@@ -1324,7 +1324,7 @@ namespace C3D
 			case TextureRepeat::ClampToEdge:
 				return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 			case TextureRepeat::ClampToBorder:
-				return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+				return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 			default:
 				m_logger.Warn("ConvertRepeatType(axis = {}) - Type '{}' is not supported. Defaulting to repeat.", axis, ToUnderlying(repeat));
 				return VK_SAMPLER_ADDRESS_MODE_REPEAT;

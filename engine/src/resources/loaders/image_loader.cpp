@@ -113,7 +113,7 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<ImageResource>::Unload(const ImageResource* resource)
+	void ResourceLoader<ImageResource>::Unload(ImageResource* resource)
 	{
 		// Free the pixel data loaded in by STBI
 		stbi_image_free(resource->data.pixels);
@@ -122,12 +122,14 @@ namespace C3D
 		{
 			const auto size = StringLength(resource->fullPath) + 1;
 			Memory.Free(resource->fullPath, size, MemoryType::String);
+			resource->fullPath = nullptr;
 		}
 
 		if (resource->name)
 		{
 			const auto size = StringLength(resource->name) + 1;
 			Memory.Free(resource->name, size, MemoryType::String);
+			resource->name = nullptr;
 		}
 	}
 }

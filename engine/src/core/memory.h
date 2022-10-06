@@ -121,6 +121,8 @@ namespace C3D
 	private:
 		void* m_memory;
 
+		u64 m_freeListMemorySize;
+
 		MemoryStats m_stats;
 		DynamicAllocator m_allocator;
 

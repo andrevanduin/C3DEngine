@@ -55,13 +55,17 @@ namespace C3D
 			return false;
 		}
 
+		// Keep track of the memory usage of our freeList so we can subtract it during shutdown for accurate stats
+		m_freeListMemorySize = memoryRequirement - config.totalAllocSize;
+
 		m_stats.allocCount = 0;
 		m_stats.totalAllocated = 0;
 		Zero(m_stats.taggedAllocations, sizeof(MemoryAllocation) * ToUnderlying(MemoryType::MaxType));
 
 		if (!config.excludeFromStats)
 		{
-			m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)] = { memoryRequirement, 1 };
+			m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)] =	{ config.totalAllocSize, 1	};
+			m_stats.taggedAllocations[static_cast<u8>(MemoryType::FreeList)] =			{ m_freeListMemorySize, 1	};
 		}
 		
 		if (!m_allocator.Create(m_memory, memoryRequirement, config.totalAllocSize))
@@ -78,6 +82,13 @@ namespace C3D
 		m_allocator.Destroy();
 		Platform::Free(m_memory, false);
 
+		// To get accurate stats at the end of the run we manually update the stats on our DynamicAllocator and FreeList
+		m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)].count--;
+		m_stats.taggedAllocations[static_cast<u8>(MemoryType::DynamicAllocator)].size -= m_config.totalAllocSize;
+
+		m_stats.taggedAllocations[static_cast<u8>(MemoryType::FreeList)].count--;
+		m_stats.taggedAllocations[static_cast<u8>(MemoryType::FreeList)].size -= m_freeListMemorySize;
+
 		m_logger.Info("Memory Usage after free:\n {}", GetMemoryUsageString());
 	}
 
@@ -88,11 +99,6 @@ namespace C3D
 
 	void* MemorySystem::AllocateAligned(const u64 size, const u16 alignment, MemoryType type)
 	{
-		void* ptr = malloc(size);
-		Platform::ZeroOutMemory(ptr, size);
-		return ptr;
-
-		/*
 		if (type == MemoryType::Unknown)
 		{
 			m_logger.Warn("AllocateAligned() - Called using MemoryType::UNKNOWN");
@@ -111,7 +117,7 @@ namespace C3D
 		void* block = m_allocator.AllocateAligned(size, alignment);
 		Platform::ZeroOutMemory(block, size);
 
-		return block;*/
+		return block;
 	}
 
 	void MemorySystem::AllocateReport(const u64 size, MemoryType type)
@@ -132,9 +138,6 @@ namespace C3D
 
 	void MemorySystem::FreeAligned(void* block, const u64 size, MemoryType type)
 	{
-		free(block);
-
-		/*
 		if (type == MemoryType::Unknown)
 		{
 			m_logger.Warn("FreeAligned() - Called using MemoryType::UNKNOWN");
@@ -150,9 +153,8 @@ namespace C3D
 
 		if (!m_allocator.FreeAligned(block))
 		{
-			m_logger.Warn("FreeAligned() - Failed to free memory with dynamic allocator. Trying Platform::Free()");
-			Platform::Free(block, false); // TODO: alignment
-		}*/
+			m_logger.Fatal("FreeAligned() - Failed to free memory with dynamic allocator. Trying Platform::Free()");
+		}
 	}
 
 	void MemorySystem::FreeReport(const u64 size, MemoryType type)

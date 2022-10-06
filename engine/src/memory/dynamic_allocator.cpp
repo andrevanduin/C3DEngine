@@ -42,8 +42,8 @@ namespace C3D
 
 	bool DynamicAllocator::Destroy()
 	{
-		// Destroy our freelist (frees it's memory)
 		m_freeList.Destroy();
+
 
 		m_totalSize = 0;
 		m_memory = nullptr;

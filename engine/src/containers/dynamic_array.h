@@ -322,8 +322,10 @@ namespace C3D
 	template <class T>
 	void DynamicArray<T>::Copy(const T* elements, const u64 count)
 	{
+		if (count == 0) return; // No need to do anything
+		
 #ifdef _DEBUG
-		assert(elements && count > 0);
+		assert(elements);
 #endif
 
 		// If we have any memory allocated we have to free it first
@@ -386,10 +388,10 @@ namespace C3D
 		u64 newSize = 0;
 
 		// If there exists an element pointer
-		if (m_elements)
+		if (m_elements && m_size > 0)
 		{
 			// Copy over old elements to the newly allocated block of memory
-			if (m_size != 0) Memory.Copy(newElements, m_elements, m_size * sizeof(T));
+			Memory.Copy(newElements, m_elements, m_size * sizeof(T));
 			newSize = m_size;
 
 			// Free the old memory if it exists

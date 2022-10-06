@@ -44,7 +44,7 @@ namespace C3D
 		{
 			m_jobThreads[i].index = i;
 			m_jobThreads[i].typeMask = config.typeMasks[i];
-			//m_jobThreads[i].thread = std::thread([this, i] { Runner(i); });
+			m_jobThreads[i].thread = std::thread([this, i] { Runner(i); });
 
 			m_jobThreads[i].SetInfo({});
 		}
@@ -54,6 +54,11 @@ namespace C3D
 	void JobSystem::Shutdown()
 	{
 		m_running = false;
+
+		for (auto& jobThread : m_jobThreads)
+		{
+			if (jobThread.thread.joinable()) jobThread.thread.join();
+		}
 
 		// Destroy our queues
 		m_lowPriorityQueue.Destroy();
@@ -91,7 +96,7 @@ namespace C3D
 		}
 	}
 
-	void JobSystem::Submit(const JobInfo& info)
+	void JobSystem::Submit(JobInfo info)
 	{
 		// If the job priority is high, we try to start it immediately
 		if (info.priority == JobPriority::High)
@@ -249,7 +254,8 @@ namespace C3D
 						// Lock the queue
 						{
 							std::lock_guard queueLock(queueMutex);
-							nextJobInfo = queue.Dequeue();
+							auto kaas = queue.Dequeue();
+							nextJobInfo = kaas;
 						}
 
 						thread.SetInfo(nextJobInfo);

@@ -215,11 +215,6 @@ namespace C3D
 			groups[i].faces.Destroy();
 		}
 
-		groups.Destroy();
-		positions.Destroy();
-		normals.Destroy();
-		texCoords.Destroy();
-
 		if (StringLength(materialFileName) > 0)
 		{
 			// Load up the material file

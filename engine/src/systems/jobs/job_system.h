@@ -32,7 +32,7 @@ namespace C3D
 
 		void Update();
 
-		C3D_API void Submit(const JobInfo& info);
+		C3D_API void Submit(JobInfo info);
 
 	private:
 		void StoreResult(const std::function<void(void*)>& callback, u64 dataSize, const void* data);

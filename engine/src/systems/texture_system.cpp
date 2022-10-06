@@ -459,10 +459,18 @@ namespace C3D
 	{
 		*outTextureId = INVALID_ID;
 		TextureReference ref = m_registeredTextureTable.Get(name);
-		if (ref.referenceCount == 0 && referenceDiff > 0)
+		if (ref.referenceCount == 0)
 		{
-			// Set autoRelease to the provided value if this is the first time the texture is loaded
-			ref.autoRelease = autoRelease;
+			if (referenceDiff > 0)
+			{
+				// Set autoRelease to the provided value if this is the first time the texture is loaded
+				ref.autoRelease = autoRelease;
+			}
+			else
+			{
+				m_logger.Warn("ProcessTextureReference() - Tried to release a texture that has referenceCount = 0");
+				return true;
+			}
 		}
 
 		// Increment / Decrement our reference count

@@ -36,15 +36,9 @@ namespace C3D
 	}
 
 	JobInfo::JobInfo(JobInfo&& other) noexcept
-		: type(JobTypeGeneral), priority(JobPriority::Normal), entryPoint(nullptr), onSuccess(nullptr), onFailure(nullptr)
+		: type(other.type), priority(other.priority), entryPoint(std::move(other.entryPoint)),
+		  onSuccess(std::move(other.onSuccess)), onFailure(std::move(other.onFailure))
 	{
-		// Swap all values
-		std::swap(type, other.type);
-		std::swap(priority, other.priority);
-		std::swap(entryPoint, other.entryPoint);
-		std::swap(onSuccess, other.onSuccess);
-		std::swap(onFailure, other.onFailure);
-
 		// Take the inputData pointer from other
 		inputData = other.inputData;
 		// Set other inputData to nullptr so we don't double free
@@ -159,11 +153,6 @@ namespace C3D
 			resultData = nullptr;
 			resultDataSize = 0;
 		}
-	}
-
-	void JobInfo::Copy()
-	{
-
 	}
 
 	JobResultEntry::JobResultEntry()

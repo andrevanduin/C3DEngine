@@ -84,7 +84,6 @@ namespace C3D
 
 	private:
 		void FreeMemory();
-		void Copy();
 	};
 
 	template <typename InputType>

@@ -112,7 +112,7 @@ namespace C3D
 
 		auto callback = new EventCallback(this, &Application::OnDebugEvent);
 		Event.Register(SystemEventCode::Debug0, callback);
-		//Event.Register(SystemEventCode::Debug1, callback);
+		Event.Register(SystemEventCode::Debug1, callback);
 
 		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
@@ -309,12 +309,9 @@ namespace C3D
 		uiConfig.indices.PushBack(1);
 
 		m_uiMeshes[0].geometryCount = 1;
-
-		auto rens = Memory.GetFreeSpace();
-
 		m_uiMeshes[0].geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 		m_uiMeshes[0].geometries[0] = Geometric.AcquireFromConfig(uiConfig, true);
-		m_uiMeshes[0].generation = INVALID_ID_U8;
+		m_uiMeshes[0].generation = 0;
 		// TEMP END
 
 		m_state.initialized = true;
@@ -343,11 +340,11 @@ namespace C3D
 		u16 frameCount = 0;
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
-		//m_logger.Info(Memory.GetMemoryUsageString());
+		m_logger.Info(Memory.GetMemoryUsageString());
 
 		{
 			RenderPacket packet = {};
-			packet.views.Resize(1); // Ensure enough space for 3 views so we only allocate once
+			packet.views.Resize(3); // Ensure enough space for 3 views so we only allocate once
 
 			SkyboxPacketData skyboxData = {};
 			skyboxData.box = &m_skybox;
@@ -406,7 +403,7 @@ namespace C3D
 					}
 
 					uiMeshData.meshes.Clear();
-					for (auto& mesh : m_meshes)
+					for (auto& mesh : m_uiMeshes)
 					{
 						if (mesh.generation != INVALID_ID_U8)
 						{
