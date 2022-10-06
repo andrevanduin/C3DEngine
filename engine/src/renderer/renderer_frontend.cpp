@@ -14,6 +14,7 @@
 #include "services/services.h"
 
 #include "core/events/event.h"
+#include "platform/platform.h"
 #include "resources/loaders/shader_loader.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
@@ -202,6 +203,8 @@ namespace C3D
 			}
 			else
 			{
+				// Simulate a 60FPS frame
+				Platform::SleepMs(16);
 				// Skip rendering this frame
 				return true;
 			}
@@ -337,6 +340,7 @@ namespace C3D
 	{
 		return m_backend->ReleaseShaderInstanceResources(shader, instanceId);
 	}
+
 
 	bool RenderSystem::AcquireTextureMapResources(TextureMap* map) const
 	{

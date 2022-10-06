@@ -2,7 +2,7 @@
 #pragma once
 #include "core/defines.h"
 #include "vulkan_types.h"
-#include "containers/freelist.h"
+#include "memory/freelist.h"
 
 namespace C3D
 {

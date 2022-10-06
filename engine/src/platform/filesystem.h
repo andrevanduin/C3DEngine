@@ -42,7 +42,9 @@ namespace C3D
 		template<typename T>
 		bool Write(const T* data, u64 count = 1);
 
-		bool Size(u64* outSize);
+		bool Size(u64* outSize = nullptr);
+
+		[[nodiscard]] u64 GetSize() const { return m_size; }
 
 		bool isValid;
 		u64 bytesWritten;
@@ -50,6 +52,7 @@ namespace C3D
 
 		std::string currentPath;
 	private:
+		u64 m_size;
 		std::fstream m_file;
 	};
 

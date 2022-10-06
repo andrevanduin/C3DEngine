@@ -28,6 +28,7 @@ namespace C3D
 		bool Create(u32 elementCount);
 
 		bool Fill(const T& value);
+		bool FillDefault();
 
 		void Destroy();
 
@@ -80,6 +81,19 @@ namespace C3D
 			return false;
 		}
 		std::fill_n(m_elements, m_elementCount, value);
+		return true;
+	}
+
+	template <class T>
+	bool HashTable<T>::FillDefault()
+	{
+		if (std::is_pointer<T>())
+		{
+			Logger::Error("[HASHTABLE] - FillDefault() - Should not be used with pointer types");
+			return false;
+		}
+
+		std::fill_n(m_elements, m_elementCount, T());
 		return true;
 	}
 

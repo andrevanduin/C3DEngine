@@ -372,8 +372,8 @@ namespace C3D
 		commandBuffer->UpdateSubmitted();
 
 		// Present the image (and give it back to the SwapChain)
-		m_context.swapChain.Present(&m_context, m_context.device.graphicsQueue,
-			m_context.device.presentQueue, m_context.queueCompleteSemaphores[m_context.currentFrame], m_context.imageIndex);
+		m_context.swapChain.Present(&m_context, m_context.device.presentQueue, 
+			m_context.queueCompleteSemaphores[m_context.currentFrame], m_context.imageIndex);
 
 		return true;
 	}
@@ -509,7 +509,7 @@ namespace C3D
 	void RendererVulkan::CreateTexture(const u8* pixels, Texture* texture)
 	{
 		// Internal data creation
-		texture->internalData = Memory.Allocate(sizeof(VulkanImage), MemoryType::Texture);
+		texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
 
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
 		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height * texture->channelCount;
@@ -1193,9 +1193,9 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::ShaderApplyInstance(Shader* shader, bool needsUpdate)
+	bool RendererVulkan::ShaderApplyInstance(Shader* shader, const bool needsUpdate)
 	{
-		auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
+		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
 		if (internal->instanceUniformCount == 0 && internal->instanceUniformSamplerCount == 0)
 		{
 			m_logger.Error("ShaderApplyInstance() - This shader does not use instances");
@@ -1248,7 +1248,7 @@ namespace C3D
 			// Iterate samplers.
 			if (internal->instanceUniformSamplerCount > 0)
 			{
-				auto samplerBindingIndex = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].samplerBindingIndex;
+				const auto samplerBindingIndex = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].samplerBindingIndex;
 				const u32 totalSamplerCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindings[samplerBindingIndex].descriptorCount;
 				u32 updateSamplerCount = 0;
 				VkDescriptorImageInfo imageInfos[VULKAN_SHADER_MAX_GLOBAL_TEXTURES];
@@ -1257,6 +1257,28 @@ namespace C3D
 					// TODO: only update in the list if actually needing an update
 					const TextureMap* map = internal->instanceStates[shader->boundInstanceId].instanceTextureMaps[i];
 					const Texture* t = map->texture;
+
+					// Ensure the texture is valid.
+					if (t->generation == INVALID_ID)
+					{
+						switch (map->use)
+						{
+							case TextureUse::Diffuse:
+								t = Textures.GetDefaultDiffuse();
+								break;
+							case TextureUse::Specular:
+								t = Textures.GetDefaultSpecular();
+								break;
+							case TextureUse::Normal:
+								t = Textures.GetDefaultNormal();
+								break;
+							case TextureUse::Unknown:
+							default:
+								m_logger.Warn("Undefined TextureUse {}", ToUnderlying(map->use));
+								t = Textures.GetDefault();
+								break;
+						}
+					}
 
 					const auto internalData = static_cast<VulkanTextureData*>(t->internalData);
 					imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1302,7 +1324,7 @@ namespace C3D
 			case TextureRepeat::ClampToEdge:
 				return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 			case TextureRepeat::ClampToBorder:
-				return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+				return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 			default:
 				m_logger.Warn("ConvertRepeatType(axis = {}) - Type '{}' is not supported. Defaulting to repeat.", axis, ToUnderlying(repeat));
 				return VK_SAMPLER_ADDRESS_MODE_REPEAT;

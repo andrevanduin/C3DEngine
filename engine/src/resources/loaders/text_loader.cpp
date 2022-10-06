@@ -58,8 +58,9 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<TextResource>::Unload(const TextResource* resource)
+	void ResourceLoader<TextResource>::Unload(TextResource* resource)
 	{
 		Memory.Free(resource->text, resource->size, MemoryType::Array);
+		resource->text = nullptr;
 	}
 }

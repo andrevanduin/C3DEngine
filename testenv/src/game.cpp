@@ -31,10 +31,10 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	const u64 prevAllocCount = allocCount;
 	allocCount = Memory.GetAllocCount();
 
-
 	if (Input.IsKeyUp(C3D::KeyM) && Input.WasKeyDown('m'))
 	{
 		C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
+		C3D::Logger::Debug(Memory.GetMemoryUsageString());
 	}
 
 	if (Input.IsKeyUp('p') && Input.WasKeyDown('p'))
@@ -100,6 +100,12 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		C3D::Logger::Debug("Swapping Texture");
 		C3D::EventContext context = {};
 		Event.Fire(C3D::SystemEventCode::Debug0, this, context);
+	}
+
+	if (Input.IsKeyUp('l') && Input.WasKeyDown('l'))
+	{
+		C3D::EventContext context = {};
+		Event.Fire(C3D::SystemEventCode::Debug1, this, context);
 	}
 	// TEMP END
 

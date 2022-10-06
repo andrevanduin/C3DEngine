@@ -20,6 +20,6 @@ namespace C3D
 		bool Load(const char* name, ImageResource* outResource) const;
 		bool Load(const char* name, ImageResource* outResource, const ImageResourceParams& params) const;
 
-		static void Unload(const ImageResource* resource);
+		static void Unload(ImageResource* resource);
 	};
 }

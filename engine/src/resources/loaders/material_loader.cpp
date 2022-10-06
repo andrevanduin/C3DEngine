@@ -125,12 +125,13 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<MaterialResource>::Unload(const MaterialResource* resource)
+	void ResourceLoader<MaterialResource>::Unload(MaterialResource* resource)
 	{
 		if (resource->config.shaderName)
 		{
 			const auto count = StringLength(resource->config.shaderName) + 1;
 			Memory.Free(resource->config.shaderName, count, MemoryType::String);
+			resource->config.shaderName = nullptr;
 		}
 	}
 }

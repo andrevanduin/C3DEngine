@@ -58,8 +58,9 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<BinaryResource>::Unload(const BinaryResource* resource)
+	void ResourceLoader<BinaryResource>::Unload(BinaryResource* resource)
 	{
 		Memory.Free(resource->data, resource->size, MemoryType::Array);
+		resource->data = nullptr;
 	}
 }

@@ -6,11 +6,12 @@
 #include "renderer/renderpass.h"
 
 #include "resources/geometry.h"
-#include "resources/mesh.h"
 #include "resources/skybox.h"
 
 namespace C3D
 {
+	class Mesh;
+
 	enum class RenderViewKnownType
 	{
 		World	= 0x01,
@@ -122,7 +123,7 @@ namespace C3D
 
 	struct MeshPacketData
 	{
-		DynamicArray<Mesh> meshes;
+		DynamicArray<Mesh*> meshes;
 	};
 
 	struct SkyboxPacketData

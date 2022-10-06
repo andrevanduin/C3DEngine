@@ -117,10 +117,9 @@ namespace C3D
 	template <class T>
 	DynamicArray<T>& DynamicArray<T>::operator=(const DynamicArray<T>& other)
 	{
-		if (this != &other)
-		{
-			Copy(other);
-		}
+		if (this == &other) return *this;
+
+		Copy(other);
 		return *this;
 	}
 
@@ -145,8 +144,8 @@ namespace C3D
 	DynamicArray<T>::DynamicArray(DynamicArray<T>&& other) noexcept
 		: m_capacity(other.Capacity()), m_size(other.Size()), m_elements(other.GetData())
 	{
-		// Take all data from other and null out other so it does not call Free() twice on the same memory
 		other.m_capacity = 0;
+		// Take all data from other and null out other so it does not call Free() twice on the sa
 		other.m_size = 0;
 		other.m_elements = nullptr;
 	}
@@ -323,8 +322,10 @@ namespace C3D
 	template <class T>
 	void DynamicArray<T>::Copy(const T* elements, const u64 count)
 	{
+		if (count == 0) return; // No need to do anything
+		
 #ifdef _DEBUG
-		assert(elements && count > 0);
+		assert(elements);
 #endif
 
 		// If we have any memory allocated we have to free it first
@@ -387,10 +388,10 @@ namespace C3D
 		u64 newSize = 0;
 
 		// If there exists an element pointer
-		if (m_elements)
+		if (m_elements && m_size > 0)
 		{
 			// Copy over old elements to the newly allocated block of memory
-			if (m_size != 0) Memory.Copy(newElements, m_elements, m_size * sizeof(T));
+			Memory.Copy(newElements, m_elements, m_size * sizeof(T));
 			newSize = m_size;
 
 			// Free the old memory if it exists

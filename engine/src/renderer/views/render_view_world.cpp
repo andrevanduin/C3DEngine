@@ -8,6 +8,7 @@
 #include "systems/camera_system.h"
 #include "systems/material_system.h"
 #include "systems/shader_system.h"
+#include "resources/mesh.h"
 
 namespace C3D
 {
@@ -56,7 +57,7 @@ namespace C3D
 			const auto aspectRatio = static_cast<f32>(width) / static_cast<f32>(height);
 			m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
 
-			for (auto pass : passes)
+			for (const auto pass : passes)
 			{
 				pass->renderArea = ivec4(0, 0, m_width, m_height);
 			}
@@ -79,19 +80,19 @@ namespace C3D
 		outPacket->viewPosition = m_camera->GetPosition();
 		outPacket->ambientColor = m_ambientColor;
 
-		for (auto& mesh : meshData->meshes)
+		for (const auto mesh : meshData->meshes)
 		{
-			auto model = mesh.transform.GetWorld();
+			auto model = mesh->transform.GetWorld();
 
-			for (u16 i = 0; i < mesh.geometryCount; i++)
+			for (u16 i = 0; i < mesh->geometryCount; i++)
 			{
 				GeometryRenderData renderData
 				{
 					model,
-					mesh.geometries[i],
+					mesh->geometries[i],
 				};
 
-				if ((mesh.geometries[i]->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
+				if ((mesh->geometries[i]->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
 				{
 					// Material has no transparency
 					outPacket->geometries.PushBack(renderData);

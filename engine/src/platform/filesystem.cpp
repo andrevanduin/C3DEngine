@@ -15,7 +15,7 @@ namespace C3D
 {
 	namespace fs = std::filesystem;
 
-	File::File() : isValid(false), bytesWritten(0), bytesRead(0) {}
+	File::File() : isValid(false), bytesWritten(0), bytesRead(0), m_size(0) {}
 
 	File::~File()
 	{
@@ -48,6 +48,7 @@ namespace C3D
 
 	bool File::Close()
 	{
+		m_size = 0;
 		bytesWritten = 0;
 		bytesRead = 0;
 		currentPath = "";
@@ -66,7 +67,6 @@ namespace C3D
 		if (!isValid) return false;
 		if (!std::getline(m_file, line)) return false;
 		return true;
-		
 	}
 
 	bool File::WriteLine(const string& line)
@@ -91,16 +91,19 @@ namespace C3D
 	bool File::ReadAll(char* outBytes, u64* outBytesRead)
 	{
 		if (!isValid) return false;
-
-		u64 size;
-		if (!Size(&size)) return false;
-
+		// If we have no size yet we get it
+		if (m_size == 0) Size();
 		// Read the data
-		m_file.read(outBytes, static_cast<std::streamsize>(size));
+		m_file.read(outBytes, static_cast<std::streamsize>(m_size));
 		// Get the amount of bytes read
 		*outBytesRead = m_file.gcount();
 		// If we did not read all bytes we return false
-		if (*outBytesRead != size) return false;
+		/*
+		if (*outBytesRead != m_size)
+		{
+			Logger::Error("[FILE] - ReadAll() - File size of {} did not match the read bytes", currentPath);
+			return false;
+		}*/
 		// Otherwise reading was successful 
 		return true;
 	}
@@ -129,12 +132,12 @@ namespace C3D
 	{
 		if (!isValid) return false;
 
-		// Go to the end of the file
-		m_file.seekg(0, std::ios::end);
-		// Check it's length
-		*outSize = m_file.tellg();
-		// Go back to the start of the file
-		m_file.seekg(0, std::ios::beg);
+		// Get the file size
+		const auto s = std::filesystem::file_size(currentPath);
+		// Store it internally
+		m_size = s;
+		// Save off the size to the outPtr if it is valid
+		if (outSize != nullptr) *outSize = s;
 		return true;
 	}
 

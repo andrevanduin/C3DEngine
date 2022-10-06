@@ -12,6 +12,7 @@
 #include "systems/resource_system.h"
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_STDIO
 #include "stb_image.h"
 
 namespace C3D
@@ -30,7 +31,7 @@ namespace C3D
 		if (StringLength(name) == 0 || !outResource) return false;
 
 		constexpr i32 requiredChannelCount = 4;
-		stbi_set_flip_vertically_on_load(params.flipY);
+		stbi_set_flip_vertically_on_load_thread(params.flipY);
 
 		char fullPath[512];
 
@@ -51,9 +52,24 @@ namespace C3D
 			}
 		}
 
+		// Take a copy of the resource path and name
+		outResource->fullPath = StringDuplicate(fullPath);
+		outResource->name = StringDuplicate(name);
+
 		if (!found)
 		{
-			m_logger.Error("Load() - Failed to find file '{}' with any supported extension", name);
+			m_logger.Error("Load() - Failed to find file '{}' with any supported extension.", name);
+			return false;
+		}
+
+		File f;
+		f.Open(fullPath, FileModeRead | FileModeBinary);
+		
+		u64 fileSize;
+		if (!f.Size(&fileSize))
+		{
+			m_logger.Error("Load() - Failed to get file size for '{}'.", fullPath);
+			f.Close();
 			return false;
 		}
 
@@ -61,30 +77,34 @@ namespace C3D
 		i32 height;
 		i32 channelCount;
 
-		// For now, assume 8 bits per channel and 4 channels
-		// TODO: extend this to make it configurable
-		u8* data = stbi_load(fullPath, &width, &height, &channelCount, requiredChannelCount);
-
-		/*
-		if (auto failReason = stbi_failure_reason())
+		// Allocate enough space for everything in the file
+		const auto rawData = Memory.Allocate<u8>(fileSize, MemoryType::Texture);
+		if (!rawData)
 		{
-			m_logger.Error("Failed to load file '{}': {}", fullPath, failReason);
-			// Clear the error so the next load does not fail
-			stbi__err(nullptr, 0);
-
-			// Free the image data if we have any
-			if (data) stbi_image_free(data);
-
-			return false;
-		}*/
-
-		if (!data)
-		{
-			m_logger.Error("Failed to load file '{}': {}", fullPath);
+			m_logger.Error("Load() - Unable to allocate memory to store raw data for '{}'.", fullPath);
+			f.Close();
 			return false;
 		}
 
-		outResource->fullPath = StringDuplicate(fullPath);
+		// Actually read our file and store the result in rawData
+		u64 bytesRead = 0;
+		const auto result = f.ReadAll(reinterpret_cast<char*>(rawData), &bytesRead);
+		f.Close();
+
+		// Check if we could actually successfully read the data
+		if (!result)
+		{
+			m_logger.Error("Load() - Unable to read data for '{}'.", fullPath);
+			return false;
+		}
+
+		u8* data = stbi_load_from_memory(rawData, static_cast<i32>(fileSize), &width, &height, &channelCount, requiredChannelCount);
+		if (!data)
+		{
+			m_logger.Error("Load() - STBI failed to load data from memory for '{}'.", fullPath);
+			return false;
+		}
+		
 		outResource->data.pixels = data;
 		outResource->data.width = width;
 		outResource->data.height = height;
@@ -93,9 +113,23 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<ImageResource>::Unload(const ImageResource* resource)
+	void ResourceLoader<ImageResource>::Unload(ImageResource* resource)
 	{
 		// Free the pixel data loaded in by STBI
 		stbi_image_free(resource->data.pixels);
+
+		if (resource->fullPath)
+		{
+			const auto size = StringLength(resource->fullPath) + 1;
+			Memory.Free(resource->fullPath, size, MemoryType::String);
+			resource->fullPath = nullptr;
+		}
+
+		if (resource->name)
+		{
+			const auto size = StringLength(resource->name) + 1;
+			Memory.Free(resource->name, size, MemoryType::String);
+			resource->name = nullptr;
+		}
 	}
 }

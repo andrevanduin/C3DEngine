@@ -4,26 +4,26 @@
 namespace C3D
 {
 	Transform::Transform()
-		: m_parent(nullptr), m_position(0), m_scale(1), m_rotation(1.0f, 0, 0, 0), m_local(1.0f), m_needsUpdate(false)
+		:  m_position(0), m_scale(1), m_rotation(1.0f, 0, 0, 0), m_local(1.0f)
 	{}
 
 	Transform::Transform(const vec3& position)
-		: m_parent(nullptr), m_position(position), m_scale(1), m_rotation(1.0f, 0, 0, 0), m_local(1.0f), m_needsUpdate(true)
+		: m_position(position), m_scale(1), m_rotation(1.0f, 0, 0, 0), m_local(1.0f), m_needsUpdate(true)
 	{}
 
 	Transform::Transform(const quat& rotation)
-		: m_parent(nullptr), m_position(0), m_scale(1), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
+		: m_position(0), m_scale(1), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
 	{
 	}
 
 	Transform::Transform(const vec3& position, const quat& rotation)
-		: m_parent(nullptr), m_position(position), m_scale(1), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
+		: m_position(position), m_scale(1), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
 	{
 
 	}
 
 	Transform::Transform(const vec3& position, const quat& rotation, const vec3& scale)
-		: m_parent(nullptr), m_position(position), m_scale(scale), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
+		: m_position(position), m_scale(scale), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
 	{
 	}
 

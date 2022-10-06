@@ -55,6 +55,11 @@ namespace C3D
 	{
 		m_running = false;
 
+		for (auto& jobThread : m_jobThreads)
+		{
+			if (jobThread.thread.joinable()) jobThread.thread.join();
+		}
+
 		// Destroy our queues
 		m_lowPriorityQueue.Destroy();
 		m_normalPriorityQueue.Destroy();
@@ -84,20 +89,14 @@ namespace C3D
 				// Execute the callback
 				entry.callback(entry.result);
 
-				// Free the result
-				if (entry.result)
-				{
-					Memory.Free(entry.result, entry.resultSize, MemoryType::Job);
-				}
-
 				// Lock our pending results and clear 
 				std::lock_guard resultLock(m_resultMutex);
-				pendingResult = JobResultEntry();
+				pendingResult.Clear();
 			}
 		}
 	}
 
-	void JobSystem::Submit(const JobInfo& info)
+	void JobSystem::Submit(JobInfo info)
 	{
 		// If the job priority is high, we try to start it immediately
 		if (info.priority == JobPriority::High)
@@ -109,7 +108,7 @@ namespace C3D
 					std::lock_guard threadLock(thread.mutex);
 					if (thread.IsFree())
 					{
-						m_logger.Trace("Job immediately submitted on thread {}", thread.index);
+						m_logger.Trace("Submit() - Job immediately submitted on thread {} since it has HIGH priority.", thread.index);
 						thread.SetInfo(info);
 						return;
 					}
@@ -138,9 +137,12 @@ namespace C3D
 				m_lowPriorityQueue.Enqueue(info);
 				break;
 			}
+			case JobPriority::None:
+				m_logger.Error("Submit() - Failed to submit job since it has priority type NONE {}.");
+				break;
 		}
 
-		m_logger.Trace("Job has been queued");
+		m_logger.Trace("Submit() - Job has been queued.");
 	}
 
 	void JobSystem::StoreResult(const std::function<void(void*)>& callback, const u64 dataSize, const void* data)
@@ -151,7 +153,10 @@ namespace C3D
 		entry.callback = callback;
 		if (entry.resultSize > 0)
 		{
-			entry.result = Memory.Allocate(entry.resultSize, MemoryType::Job);
+			u16 alignment = 0;
+			Memory.GetAlignment(data, &alignment);
+
+			entry.result = Memory.AllocateAligned(entry.resultSize, alignment, MemoryType::Job);
 			Memory.Copy(entry.result, data, dataSize);
 		}
 		else
@@ -197,7 +202,9 @@ namespace C3D
 				// Call our entry point and do the work and store the result of the work
 				// if the user has provided a onSuccess callback (in the case of success)
 				// or if the user has provided a onFailure callback (in the case of a failure)
-				if (info.entryPoint->Call())
+				m_logger.Trace("Executing job on thread #{}.", index);
+
+				if (info.entryPoint(info.inputData, info.resultData))
 				{
 					if (info.onSuccess) StoreResult(info.onSuccess, info.resultDataSize, info.resultData);
 				}
@@ -206,16 +213,10 @@ namespace C3D
 					if (info.onFailure) StoreResult(info.onFailure, info.resultDataSize, info.resultData);
 				}
 
-				// If we have any result data we can free it now
-				if (info.resultData)
-				{
-					Memory.Free(info.resultData, info.resultDataSize, MemoryType::Job);
-				}
-
 				// Clear out our current thread's info
 				{
 					std::lock_guard threadLock(currentThread.mutex);
-					currentThread.SetInfo({});
+					currentThread.ClearInfo();
 				}
 			}
 
@@ -253,7 +254,8 @@ namespace C3D
 						// Lock the queue
 						{
 							std::lock_guard queueLock(queueMutex);
-							nextJobInfo = queue.Dequeue();
+							auto kaas = queue.Dequeue();
+							nextJobInfo = kaas;
 						}
 
 						thread.SetInfo(nextJobInfo);
