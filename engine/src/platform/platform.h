@@ -2,6 +2,22 @@
 #pragma once
 #include "../core/defines.h"
 
+#if C3D_PLATFORM_WINDOWS
+#define SPRINTF(bufferSize, format, value)									\
+	char buffer[bufferSize];												\
+	if (sprintf_s(buffer, format, value) == -1)								\
+	{																		\
+		throw std::invalid_argument("Sprintf returned -1");					\
+	}																		
+#elif C3D_PLATFORM_LINUX
+#define SPRINTF(bufferSize, format, value)									\
+	char buffer[bufferSize];												\
+	if (snprintf(buffer, format, value) == -1)								\
+	{																		\
+		throw std::invalid_argument("Sprintf returned -1");					\
+	}
+#endif
+
 namespace C3D
 {
 	class Platform

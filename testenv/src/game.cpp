@@ -3,6 +3,7 @@
 
 #include <core/memory.h>
 #include "core/logger.h"
+#include "containers/string.h"
 
 #include <services/services.h>
 #include <systems/camera_system.h>
@@ -34,7 +35,9 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	if (Input.IsKeyUp(C3D::KeyM) && Input.WasKeyDown('m'))
 	{
 		C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
-		C3D::Logger::Debug(Memory.GetMemoryUsageString());
+
+		const auto memStr = Memory.GetMemoryUsageString();
+		C3D::Logger::Debug(memStr.Data());
 	}
 
 	if (Input.IsKeyUp('p') && Input.WasKeyDown('p'))

@@ -66,6 +66,7 @@ u8 ArrayShouldBeIterableWithBeginAndEnd()
 
 void Array::RegisterTests(TestManager* manager)
 {
+	manager->StartType("Array");
 	manager->Register(ArrayShouldCreate, "Array should properly create and hold values.");
 	manager->Register(ArrayShouldCreateWithInitializerList, "Array should properly create and hold values when provided with an initializer list.");
 	manager->Register(ArrayShouldSetAndGetValuesCorrectly, "Array should set and get values properly.");

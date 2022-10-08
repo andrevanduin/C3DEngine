@@ -3,9 +3,9 @@
 
 #include <algorithm>
 #include <array>
-#include <random>
 
 #include "../expect.h"
+#include "../util.h"
 
 #include <memory/dynamic_allocator.h>
 
@@ -13,42 +13,6 @@
 #include <core/memory.h>
 
 #include <services/services.h>
-
-class Util
-{
-public:
-    Util()
-    {
-        const auto seedData = GenerateSeedData();
-        std::seed_seq seedSeq(seedData.begin(), seedData.end());
-        generator.seed(seedSeq);
-    }
-
-    std::vector<u64> GenerateRandomIntegers(const int amount, const int low, const int high)
-    {
-        std::uniform_int_distribution distribution(low, high);
-        std::vector<u64> values(amount);
-        std::generate(values.begin(), values.end(), [&] { return distribution(generator); });
-        return values;
-    }
-
-    u64 GenerateRandomInt(const int low, const int high)
-    {
-        std::uniform_int_distribution distribution(low, high);
-        return distribution(generator);
-    }
-
-    std::mt19937 generator;
-
-private:
-    [[nodiscard]] std::array<uint32_t, 8> GenerateSeedData() const
-    {
-        std::array<u32, 8> randomData{};
-        std::random_device randomSource;
-        std::generate(randomData.begin(), randomData.end(), std::ref(randomSource));
-        return randomData;
-    }
-};
 
 struct AllocStruct
 {
@@ -93,16 +57,16 @@ bool MakeAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator&
         if (allocation.size != 0) continue;
 
         // Generate an index in our possible alignments array
-        const auto alignmentIndex = util.GenerateRandomInt(0, 2);
+        const auto alignmentIndex = util.GenerateRandom<u64>(0, 2);
         const auto alignment = POSSIBLE_ALIGNMENTS[alignmentIndex];
 
         // Generate a random size for our allocation between 4 bytes and 4 KibiBytes
-        auto allocSize = util.GenerateRandomInt(4, KibiBytes(4));
+        auto allocSize = util.GenerateRandom<u64>(4, KibiBytes(4));
 
         // Ensure our randomly generator allocSize is divisible by our alignment
         while (allocSize % alignment != 0)
         {
-            allocSize = util.GenerateRandomInt(4, KibiBytes(4));
+            allocSize = util.GenerateRandom<u64>(4, KibiBytes(4));
         }
 
         // Keep track of the pointer to our data so we can check it later
@@ -114,7 +78,7 @@ bool MakeAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator&
         allocation.size = allocSize;
 
         // Generate a random char as our 'data'
-        allocation.data = static_cast<char>(util.GenerateRandomInt(65, 90));
+        allocation.data = static_cast<char>(util.GenerateRandom<u32>(65, 90));
 
         // Ensure that we have gotten a valid pointer
         ExpectShouldNotBe(nullptr, allocation.dataPtr);
@@ -151,7 +115,7 @@ u8 DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees()
     for (auto& allocation : allocations)
     {
         // Generate a random size for our allocation between 4 bytes and 4 KibiBytes
-        const auto allocSize = util.GenerateRandomInt(4, KibiBytes(4));
+        const auto allocSize = util.GenerateRandom<u64>(4, KibiBytes(4));
         // Provided an alignment of 1 since we will ignore alignment for this test
         allocation = allocator.AllocateAligned(allocSize, 1);
         ExpectShouldNotBe(nullptr, allocation);
@@ -221,7 +185,7 @@ template <u64 Size>
 bool FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator, Util& util, const int freeCount)
 {
     // Randomly pick some indices into the allocation array to free them
-    const auto freeIndices = util.GenerateRandomIntegers(freeCount, 0, data.size() - 1);
+    const auto freeIndices = util.GenerateRandom<u64>(freeCount, 0, data.size() - 1);
 
     for (const auto i : freeIndices)
     {

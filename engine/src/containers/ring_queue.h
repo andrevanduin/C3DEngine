@@ -88,6 +88,12 @@ namespace C3D
 	{
 		if (m_elements && m_capacity != 0)
 		{
+			// Call destructors for all our elements since they might need to do some deallocation first
+			for (u64 i = 0; i < m_capacity; i++)
+			{
+				m_elements[i].~T();
+			}
+
 			Memory.Free(m_elements, m_capacity * sizeof(T), MemoryType::RingQueue);
 			m_elements = nullptr;
 			m_count = 0;
@@ -122,8 +128,7 @@ namespace C3D
 	{
 		if (m_count == m_capacity)
 		{
-			Logger::Error("[RING_QUEUE] - Attempted to Enqueue an element but the RingQueue is full.");
-			return T(std::forward<Args>(args)...);
+			throw std::exception("[RING_QUEUE] - Queue is full.");
 		}
 
 		// Increment the tail

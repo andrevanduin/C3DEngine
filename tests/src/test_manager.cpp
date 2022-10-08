@@ -6,11 +6,17 @@
 
 TestManager::TestManager() : m_logger("TEST_MANAGER") {}
 
+void TestManager::StartType(const std::string& type)
+{
+	m_currentType = type;
+}
+
 void TestManager::Register(u8 (*pFnTest)(), const std::string& description)
 {
 	TestEntry e;
 	e.func = pFnTest;
 	e.description = description;
+	e.type = m_currentType;
 	m_tests.push_back(e);
 }
 
@@ -26,11 +32,17 @@ void TestManager::RunTests()
 	auto i = 0;
 	for (auto& test : m_tests)
 	{
+		if (m_prevType != test.type)
+		{
+			m_logger.Info("------------------- {} -------------------", test.type);
+			m_prevType = test.type;
+		}
+
 		i++;
 
 		C3D::Clock testTime;
 		testTime.Start();
-
+		
 		const u8 result = test.func();
 
 		testTime.Update();

@@ -246,6 +246,7 @@ u8 DynamicArrayShouldCallDestructorsOfElementsWhenGoingOutOfScope()
 
 void DynamicArray::RegisterTests(TestManager* manager)
 {
+	manager->StartType("DynamicArray");
 	manager->Register(DynamicArrayShouldCreateAndDestroy, "Dynamic array should internally allocate memory and destroy it properly on destroy");
 	manager->Register(DynamicArrayShouldReserve, "Dynamic array should internally allocate enough space after Reserve() call");
 	manager->Register(DynamicArrayShouldReserveWithElementsPresent, "Dynamic array should internally allocate enough space after Reserve() call");

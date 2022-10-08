@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "logger.h"
 #include "platform/platform.h"
+#include "containers/string.h"
 
 namespace C3D
 {
@@ -17,6 +18,7 @@ namespace C3D
 		"RingQueue        ",
 		"Bst              ",
 		"String           ",
+		"C3DString        ",
 		"Application      ",
 		"ResourceLoader   ",
 		"Job              ",
@@ -39,7 +41,7 @@ namespace C3D
 	};
 
 	MemorySystem::MemorySystem()
-		: System("MEMORY"), m_memory(nullptr), m_stats()
+		: System("MEMORY"), m_memory(nullptr), m_initialized(false), m_freeListMemorySize(0), m_stats()
 	{}
 
 	bool MemorySystem::Init(const MemorySystemConfig& config)
@@ -74,11 +76,14 @@ namespace C3D
 			return false;
 		}
 
+		m_initialized = true;
 		return true;
 	}
 
 	void MemorySystem::Shutdown()
 	{
+		m_initialized = false;
+
 		m_allocator.Destroy();
 		Platform::Free(m_memory, false);
 
@@ -99,6 +104,12 @@ namespace C3D
 
 	void* MemorySystem::AllocateAligned(const u64 size, const u16 alignment, MemoryType type)
 	{
+		if (!m_initialized)
+		{
+			// If our memory system is not initialized we fallback to our platform's allocate
+			return Platform::Allocate(size, true);
+		}
+
 		if (type == MemoryType::Unknown)
 		{
 			m_logger.Warn("AllocateAligned() - Called using MemoryType::UNKNOWN");
@@ -138,6 +149,13 @@ namespace C3D
 
 	void MemorySystem::FreeAligned(void* block, const u64 size, MemoryType type)
 	{
+		if (!m_initialized)
+		{
+			// If our memory system is not initialized we fallback to our platform's free
+			Platform::Free(block, true);
+			return;
+		}
+
 		if (type == MemoryType::Unknown)
 		{
 			m_logger.Warn("FreeAligned() - Called using MemoryType::UNKNOWN");
@@ -153,7 +171,7 @@ namespace C3D
 
 		if (!m_allocator.FreeAligned(block))
 		{
-			m_logger.Fatal("FreeAligned() - Failed to free memory with dynamic allocator. Trying Platform::Free()");
+			m_logger.Fatal("FreeAligned() - Failed to free memory with dynamic allocator.");
 		}
 	}
 
@@ -198,44 +216,60 @@ namespace C3D
 		return Platform::SetMemory(dest, value, size);
 	}
 
-	string MemorySystem::GetMemoryUsageString()
+	String SizeToText(const u64 size)
 	{
-		constexpr u64 kib = 1024;
-		constexpr u64 mib = kib * 1024;
-		constexpr u64 gib = mib * 1024;
+		constexpr static auto gb = GibiBytes(1);
+		constexpr static auto mb = MebiBytes(1);
+		constexpr static auto kb = KibiBytes(1);
 
-		char buffer[2000] = "System's Dynamic Memory usage:\n";
-		u64 offset = strlen(buffer);
-		u8 i = 0;
-		for (const auto& allocation : m_stats.taggedAllocations)
+		f64 amount = static_cast<f64>(size);
+		if (size >= gb)
 		{
-			f64 amount = static_cast<f64>(allocation.size);
-			char unit[4] = "XiB";
-			if (allocation.size >= gib)
-			{
-				unit[0] = 'G';
-				amount /= static_cast<f64>(gib);
-			}
-			else if (allocation.size >= mib)
-			{
-				unit[0] = 'M';
-				amount /= static_cast<f64>(mib);
-			}
-			else if (allocation.size >= kib)
-			{
-				unit[0] = 'K';
-				amount /= static_cast<f64>(kib);
-			}
-			else
-			{
-				unit[0] = 'B';
-				unit[1] = 0;
-			}
+			amount /= static_cast<f64>(gb);
+			return String(amount, "{:.4}GB");
+		}
+		if (size >= mb)
+		{
+			amount /= static_cast<f64>(mb);
+			return String(amount, "{:.4}MB");
+		}
+		if (size >= kb)
+		{
+			amount /= static_cast<f64>(kb);
+			return String(amount, "{:.4}KB");
+		}
 
-			offset += snprintf(buffer + offset, 2000, "  %s: %.2f%s (%d)\n", MEMORY_TYPE_STRINGS[i], amount, unit, allocation.count);
+		return String::Format("{}B", size);
+	}
+
+	String MemorySystem::GetMemoryUsageString()
+	{
+		String str, line;
+		str.Reserve(2000);
+		line.Reserve(100);
+
+		str.Append("System's Dynamic Memory usage:\n");
+
+		auto i = 0;
+		for (const auto& [size, count] : m_stats.taggedAllocations)
+		{
+			line += String::Format("  {} - ({:0>3}) {}\n", MEMORY_TYPE_STRINGS[i], count, SizeToText(size));
+			str.Append(line);
+			line.Clear();
 			i++;
 		}
-		return buffer;
+
+		if (m_initialized)
+		{
+			const auto freeSpace = m_allocator.FreeSpace();
+			const auto totalSpace = m_allocator.GetTotalUsableSize();
+			const auto usedSpace = totalSpace - freeSpace;
+			const auto percentage = static_cast<f32>(usedSpace) / static_cast<f32>(totalSpace) * 100.0f;
+
+			str += String::Format("Using {} out of {} total ({:.3}% used)", SizeToText(usedSpace), SizeToText(totalSpace), percentage);
+		}
+
+		return str;
 	}
 
 	u64 MemorySystem::GetAllocCount() const

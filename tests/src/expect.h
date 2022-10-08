@@ -46,3 +46,5 @@
         C3D::Logger::Error("--> Expected false, but got: true. File: {}:{}.", __FILE__, __LINE__);          \
         return false;                                                                                       \
     }
+
+#define AssertFail(error) C3D::Logger::Error("Asserted failure: {}", (error)); return false;

@@ -102,6 +102,12 @@ namespace C3D
 	{
 		if (m_elements && m_elementCount != 0)
 		{
+			// Call destructors for every element
+			for (u32 i = 0; i < m_elementCount; i++)
+			{
+				m_elements[i].~T();
+			}
+
 			Memory.Free(m_elements, static_cast<u64>(m_elementCount) * sizeof(T), MemoryType::HashTable);
 			m_elementCount = 0;
 			m_elements = nullptr;

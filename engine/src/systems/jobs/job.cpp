@@ -141,13 +141,13 @@ namespace C3D
 
 	void JobInfo::FreeMemory()
 	{
-		if (inputData)
+		if (inputData && inputDataSize != 0)
 		{
 			Memory.Free(inputData, inputDataSize, MemoryType::Job);
 			inputData = nullptr;
 			inputDataSize = 0;
 		}
-		if (resultData)
+		if (resultData && resultDataSize != 0)
 		{
 			Memory.Free(resultData, resultDataSize, MemoryType::Job);
 			resultData = nullptr;

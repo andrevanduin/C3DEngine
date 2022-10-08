@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "input.h"
 #include "clock.h"
+#include "containers/string.h"
 
 #include <SDL2/SDL.h>
 
@@ -340,9 +341,10 @@ namespace C3D
 		u16 frameCount = 0;
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
-		m_logger.Info(Memory.GetMemoryUsageString());
-
 		{
+			const auto memStr = Memory.GetMemoryUsageString();
+			m_logger.Info(memStr.Data());
+
 			RenderPacket packet = {};
 			packet.views.Resize(3); // Ensure enough space for 3 views so we only allocate once
 
@@ -496,6 +498,26 @@ namespace C3D
 
 		// TEMP
 		// TODO: Implement skybox destroy.
+		for (auto& mesh : m_meshes)
+		{
+			if (mesh.generation != INVALID_ID_U8 && mesh.geometries && mesh.geometryCount > 0)
+			{
+				Memory.Free(mesh.geometries, mesh.geometryCount * sizeof(Geometry*), MemoryType::Array);
+				mesh.geometries = nullptr;
+				mesh.geometryCount = 0;
+			}
+		}
+
+		for (auto& mesh : m_uiMeshes)
+		{
+			if (mesh.generation != INVALID_ID_U8 && mesh.geometries && mesh.geometryCount > 0)
+			{
+				Memory.Free(mesh.geometries, mesh.geometryCount * sizeof(Geometry*), MemoryType::Array);
+				mesh.geometries = nullptr;
+				mesh.geometryCount = 0;
+			}
+		}
+
 		Renderer.ReleaseTextureMapResources(&m_skybox.cubeMap);
 		// TEMP END
 

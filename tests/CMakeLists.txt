@@ -9,6 +9,7 @@ add_executable (Tests "src/expect.h" "src/test_manager.h" "src/test_manager.cpp"
 	"src/containers/hash_table_tests.h" "src/containers/hash_table_tests.cpp"
 	"src/containers/dynamic_array_tests.h" "src/containers/dynamic_array_tests.cpp"
 	"src/containers/ring_queue_tests.h" "src/containers/ring_queue_tests.cpp"
+	"src/containers/string_tests.h" "src/containers/string_tests.cpp"
 )
 
 target_link_libraries(Tests PUBLIC C3DEngine)

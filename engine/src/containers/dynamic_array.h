@@ -8,8 +8,8 @@ namespace C3D
 {
 	// Default capacity of dynamic array if no capacity is provided in create method
 	constexpr u32 DYNAMIC_ARRAY_DEFAULT_CAPACITY = 4;
-	// Times how much the dynamic array is increase every time a resize is required
-	constexpr u8 DYNAMIC_ARRAY_RESIZE_FACTOR = 2;
+	// Times how much the dynamic array is increased every time a resize is required
+	constexpr f32 DYNAMIC_ARRAY_RESIZE_FACTOR = 1.5f;
 
 	template<class T>
 	class __declspec(dllexport) DynamicArray
@@ -380,7 +380,7 @@ namespace C3D
 #endif
 
 		// Increase our capacity by the resize factor
-		auto newCapacity = m_capacity * DYNAMIC_ARRAY_RESIZE_FACTOR;
+		auto newCapacity = static_cast<u64>(static_cast<f32>(m_capacity) * DYNAMIC_ARRAY_RESIZE_FACTOR);
 		if (newCapacity == 0) newCapacity = DYNAMIC_ARRAY_DEFAULT_CAPACITY;
 
 		// Allocate memory for the new capacity

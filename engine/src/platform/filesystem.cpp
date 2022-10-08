@@ -166,7 +166,7 @@ namespace C3D
 				const char c = path[i];
 				if (c == '/' || c == '\\')
 				{
-					strcpy(dest, path + i + 1);
+					std::strcpy(dest, path + i + 1);
 					return;
 				}
 			}
@@ -189,7 +189,7 @@ namespace C3D
 				}
 			}
 
-			StringMid(dest, path, start, end - start);
+			StringMid(dest, path, static_cast<i32>(start), static_cast<i32>(end - start));
 		}
 	}
 }

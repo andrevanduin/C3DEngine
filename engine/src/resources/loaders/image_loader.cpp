@@ -104,6 +104,8 @@ namespace C3D
 			m_logger.Error("Load() - STBI failed to load data from memory for '{}'.", fullPath);
 			return false;
 		}
+
+		Memory.Free(rawData, fileSize, MemoryType::Texture);
 		
 		outResource->data.pixels = data;
 		outResource->data.width = width;

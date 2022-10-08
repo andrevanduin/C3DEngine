@@ -9,6 +9,7 @@
 #include "containers/hash_table_tests.h"
 #include "containers/dynamic_array_tests.h"
 #include "containers/ring_queue_tests.h"
+#include "containers/string_tests.h"
 
 #include "core/memory.h"
 
@@ -29,6 +30,7 @@ int main(int argc, char** argv)
 	LinearAllocator::RegisterTests(&manager);
 	DynamicAllocator::RegisterTests(&manager);
 	DynamicArray::RegisterTests(&manager);
+	String::RegisterTests(&manager);
 
 	C3D::Logger::Debug("Starting tests...");
 	manager.RunTests();

@@ -160,8 +160,6 @@ namespace C3D
 		m_logger.Info("Destroying Linear Allocator");
 		m_allocator.Destroy();
 
-		m_logger.Info("Shutting down MemorySystem");
-		m_pMemorySystem->Shutdown();
 		m_logger.Info("Shutdown finished");
 	}
 }
