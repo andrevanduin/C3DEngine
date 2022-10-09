@@ -21,15 +21,165 @@
 #include "resources/shader.h"
 
 #include "renderer/vertex.h"
-#include "resources/resource_types.h"
 #include "resources/loaders/binary_loader.h"
 
 #include "services/services.h"
 #include "systems/resource_system.h"
 #include "systems/texture_system.h"
 
+#ifndef C3D_VULKAN_ALLOCATOR_TRACE
+#undef C3D_VULKAN_ALLOCATOR_TRACE
+#endif
+
+#ifndef C3D_VULKAN_USE_CUSTOM_ALLOCATOR
+#define C3D_VULKAN_USE_CUSTOM_ALLOCATOR 1
+#endif
+
 namespace C3D
 {
+#ifdef C3D_VULKAN_USE_CUSTOM_ALLOCATOR
+	/*
+	 * @brief Implementation of PFN_vkAllocationFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkAllocationFunction.html
+	 */
+	void* VulkanAllocatorAllocate(void* userData, const size_t size, const size_t alignment, const VkSystemAllocationScope allocationScope)
+	{
+		// The spec states that we should return nullptr if size == 0
+		if (size == 0) return nullptr;
+
+		void* result = Memory.AllocateAligned(size, static_cast<u16>(alignment), MemoryType::Vulkan);
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+		Logger::Trace("[VULKAN_ALLOCATE] - {} (Size = {}B, Alignment = {}).", fmt::ptr(result), size, alignment);
+#endif
+
+		return result;
+	}
+
+	/*
+	 * @brief Implementation of PFN_vkFreeFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkFreeFunction.html
+	 */
+	void VulkanAllocatorFree(void* userData, void* memory)
+	{
+		if (!memory)
+		{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_FREE] - Block was null. Nothing to free.");
+#endif
+			return;
+		}
+
+		u64 size;
+		u16 alignment;
+		if (Memory.GetSizeAlignment(memory, &size, &alignment))
+		{
+			Memory.FreeAligned(memory, size, MemoryType::Vulkan);
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_FREE] - Block at: {} was Freed.", fmt::ptr(memory));
+#endif
+		}
+		else
+		{
+			Logger::Error("[VULKAN_FREE] - Failed to get alignment lookup for block: {}.", fmt::ptr(memory));
+		}
+	}
+
+	/*
+	 * @brief Implementation of PFN_vkReallocationFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkReallocationFunction.html
+	 */
+	void* VulkanAllocatorReallocate(void* userData, void* original, const size_t size, const size_t alignment, const VkSystemAllocationScope allocationScope)
+	{
+		// The spec states that we should do an simple allocation if original is nullptr
+		if (!original)
+		{
+			return VulkanAllocatorAllocate(userData, size, alignment, allocationScope);
+		}
+
+		// The spec states that we should return nullptr if size == 0
+		if (size == 0) return nullptr;
+
+		u64 allocSize;
+		u16 allocAlignment;
+		if (!Memory.GetSizeAlignment(original, &allocSize, &allocAlignment))
+		{
+			Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.", fmt::ptr(original));
+			return nullptr;
+		}
+
+		// The spec states that the alignment provided should not differ from the original memory's alignment.
+		if (alignment != allocAlignment)
+		{
+			Logger::Error("[VULKAN_REALLOCATE] - Attempted to do a reallocation with a different alignment of: {}. Original alignment was: {}.", alignment, allocAlignment);
+			return nullptr;
+		}
+
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+		Logger::Trace("[VULKAN_REALLOCATE] - Reallocating block: {}", fmt::ptr(original));
+#endif
+
+		void* result = VulkanAllocatorAllocate(userData, size, alignment, allocationScope);
+		if (result)
+		{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_REALLOCATE] - Successfully reallocated to: {}. Copying data.", fmt::ptr(result));
+#endif
+			Memory.Copy(result, original, size);
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", fmt::ptr(original));
+#endif
+			Memory.FreeAligned(original, allocSize, MemoryType::Vulkan);
+		}
+		else
+		{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_REALLOCATE] - Failed to Reallocate: {}.", fmt::ptr(original));
+#endif
+		}
+
+		return result;
+	}
+
+	/*
+	 * @brief Implementation of PFN_vkReallocationFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkInternalAllocationNotification.html
+	 */
+	void VulkanAllocatorInternalAllocation(void* userData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope)
+	{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+		Logger::Trace("[VULKAN_EXTERNAL_ALLOCATE] - Allocation of size {}.", size);
+#endif
+		Memory.AllocateReport(size, MemoryType::VulkanExternal);
+	}
+
+	/*
+	 * @brief Implementation of PFN_vkReallocationFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkInternalAllocationNotification.html
+	 */
+	void VulkanAllocatorInternalFree(void* userData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope)
+	{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+		Logger::Trace("[VULKAN_EXTERNAL_FREE] - Free of size {}.", size);
+#endif
+		Memory.FreeReport(size, MemoryType::VulkanExternal);
+	}
+
+	bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks)
+	{
+		if (callbacks)
+		{
+			callbacks->pfnAllocation = VulkanAllocatorAllocate;
+			callbacks->pfnReallocation = VulkanAllocatorReallocate;
+			callbacks->pfnFree = VulkanAllocatorFree;
+			callbacks->pfnInternalAllocation = VulkanAllocatorInternalAllocation;
+			callbacks->pfnInternalFree = VulkanAllocatorInternalFree;
+			callbacks->pUserData = nullptr;
+			return true;
+		}
+		return false;
+	}
+#endif
+
 	RendererVulkan::RendererVulkan()
 		: RendererBackend("VULKAN_RENDERER"), m_context(), m_geometries{}
 	{}
@@ -38,8 +188,17 @@ namespace C3D
 	{
 		type = RendererBackendType::Vulkan;
 
-		// TODO: Possibly add a custom allocator
-		m_context.allocator = nullptr;
+#if C3D_VULKAN_USE_CUSTOM_ALLOCATOR == 1
+		m_context.allocator = Memory.Allocate<VkAllocationCallbacks>(MemoryType::RenderSystem);
+		if (!CreateVulkanAllocator(m_context.allocator))
+		{
+			m_logger.Error("Failed to initialize requested CustomVulkanAllocator");
+			return false;
+		}
+#else
+		m_context = nullptr;
+#endif
+
 		m_context.frontend = config.frontend;
 		m_context.frameBufferWidth = 1280;
 		m_context.frameBufferHeight = 720;
@@ -55,8 +214,8 @@ namespace C3D
 			.request_validation_layers(true)
 			.set_debug_callback(Logger::VkDebugLog)
 		#endif
-			.require_api_version(1, 2)
 			.set_allocation_callbacks(m_context.allocator)
+			.require_api_version(1, 2)
 			.build();
 
 		m_logger.Info("Instance Initialized");
@@ -77,7 +236,7 @@ namespace C3D
 		}
 
 		m_logger.Info("SDL Surface Initialized");
-		if (!m_context.device.Create(vkbInstance, &m_context))
+		if (!m_context.device.Create(vkbInstance, &m_context, m_context.allocator))
 		{
 			m_logger.Error("Init() - Failed to create Vulkan Device.");
 			return false;
@@ -86,7 +245,7 @@ namespace C3D
 		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
 
 		// Save the number of images we have as a the number of render targets required
-		*outWindowRenderTargetCount = m_context.swapChain.imageCount;
+		*outWindowRenderTargetCount = static_cast<u8>(m_context.swapChain.imageCount);
 
 		// Invalidate all render passes
 		for (auto& pass : m_context.registeredRenderPasses)
@@ -221,16 +380,25 @@ namespace C3D
 		m_logger.Info("Destroying Device");
 		m_context.device.Destroy(&m_context);
 
+		// TODO: This should use our custom allocator
 		m_logger.Info("Destroying Vulkan Surface");
-		vkDestroySurfaceKHR(m_context.instance, m_context.surface, m_context.allocator);
+		vkDestroySurfaceKHR(m_context.instance, m_context.surface, nullptr);
 
 #ifdef _DEBUG
 		m_logger.Info("Destroying Vulkan debug messenger");
-		vkb::destroy_debug_utils_messenger(m_context.instance, m_debugMessenger);
+		vkb::destroy_debug_utils_messenger(m_context.instance, m_debugMessenger, m_context.allocator);
 #endif
 
 		m_logger.Info("Destroying Instance");
 		vkDestroyInstance(m_context.instance, m_context.allocator);
+
+#if C3D_VULKAN_USE_CUSTOM_ALLOCATOR == 1
+		if (m_context.allocator)
+		{
+			Memory.Free(m_context.allocator, sizeof(VkAllocationCallbacks), MemoryType::RenderSystem);
+			m_context.allocator = nullptr;
+		}
+#endif
 	}
 
 	void RendererVulkan::OnResize(const u16 width, const u16 height)
@@ -435,6 +603,16 @@ namespace C3D
 				target->attachments = nullptr;
 			}
 		}
+	}
+
+	bool RendererVulkan::CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist, RenderBuffer* outBuffer)
+	{
+		auto buffer = Memory.New<VulkanBuffer>(MemoryType::RenderSystem, type, );
+
+
+
+		outBuffer = buffer;
+		return true;
 	}
 
 	Texture* RendererVulkan::GetWindowAttachment(const u8 index)

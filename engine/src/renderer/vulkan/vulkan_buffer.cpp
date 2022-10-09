@@ -10,13 +10,11 @@
 
 namespace C3D
 {
-	VulkanBuffer::VulkanBuffer()
-		: handle(nullptr), m_totalSize(0), m_freeListBlock(nullptr), m_freeListMemoryRequirement(0), m_usage(),
-		  m_memory(nullptr), m_memoryIndex(0), m_memoryPropertyFlags(0), m_isLocked(false), m_hasFreeList(false)
-	{
-	}
+	VulkanBuffer::VulkanBuffer(const VulkanContext* context, const RenderBufferType type, const u64 totalSize, u32 usage, u32 memoryPropertyFlags, bool bindOnCreate)
+		: RenderBuffer(type, totalSize)
+	{}
 
-	bool VulkanBuffer::Create(const VulkanContext* context, const u64 size, const u32 usage, const u32 memoryPropertyFlags, const bool bindOnCreate, bool useFreeList)
+	bool VulkanBuffer::Create(const VulkanContext* context, const u64 size, const u32 usage, const u32 memoryPropertyFlags, const bool bindOnCreate, const bool useFreeList)
 	{
 		m_hasFreeList = useFreeList;
 		m_totalSize = size;
@@ -39,9 +37,8 @@ namespace C3D
 		VK_CHECK(vkCreateBuffer(context->device.logicalDevice, &bufferCreateInfo, context->allocator, &handle));
 
 		// Gather memory requirements
-		VkMemoryRequirements requirements;
-		vkGetBufferMemoryRequirements(context->device.logicalDevice, handle, &requirements);
-		m_memoryIndex = context->FindMemoryIndex(requirements.memoryTypeBits, m_memoryPropertyFlags);
+		vkGetBufferMemoryRequirements(context->device.logicalDevice, handle, &m_memoryRequirements);
+		m_memoryIndex = context->FindMemoryIndex(m_memoryRequirements.memoryTypeBits, m_memoryPropertyFlags);
 		if (m_memoryIndex == -1)
 		{
 			Logger::Error("[VULKAN_BUFFER] - Unable to create because the required memory type index was not found");
@@ -51,10 +48,16 @@ namespace C3D
 
 		// Allocate memory info
 		VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-		allocateInfo.allocationSize = requirements.size;
+		allocateInfo.allocationSize = m_memoryRequirements.size;
 		allocateInfo.memoryTypeIndex = static_cast<u32>(m_memoryIndex);
 
 		const VkResult result = vkAllocateMemory(context->device.logicalDevice, &allocateInfo, context->allocator, &m_memory);
+
+		// Determine if memory is on device heap.
+		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		// Report memory as in-use
+		Memory.AllocateReport(m_memoryRequirements.size, isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan);
+
 		if (result != VK_SUCCESS)
 		{
 			Logger::Error("[VULKAN_BUFFER] - Unable to create because the required memory allocation failed. Error: {}", result);
@@ -82,9 +85,20 @@ namespace C3D
 			vkDestroyBuffer(context->device.logicalDevice, handle, context->allocator);
 			handle = nullptr;
 		}
+
+		// Report the freeing of the memory.
+		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		Memory.FreeReport(m_memoryRequirements.size, isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan);
+		Memory.Zero(&m_memoryRequirements, sizeof(VkMemoryRequirements));
+
 		m_totalSize = 0;
 		m_usage = {};
 		m_isLocked = false;
+	}
+
+	bool VulkanBuffer::Create(bool useFreelist)
+	{
+		
 	}
 
 	bool VulkanBuffer::Resize(const VulkanContext* context, const u64 newSize, const VkQueue queue, const VkCommandPool pool)
@@ -101,6 +115,7 @@ namespace C3D
 			const u64 newMemoryRequirement = FreeList::GetMemoryRequirements(newSize);
 			void* newBlock = Memory.Allocate(newMemoryRequirement, MemoryType::RenderSystem);
 			void* oldBlock;
+
 			if (!m_freeList.Resize(newBlock, newSize, &oldBlock))
 			{
 				Logger::Error("[VULKAN_BUFFER] - Resize() failed to resize internal freelist");
@@ -163,6 +178,15 @@ namespace C3D
 			vkDestroyBuffer(context->device.logicalDevice, handle, context->allocator);
 			handle = nullptr;
 		}
+
+		// Determine if memory is on device heap.
+		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		const auto memoryType = isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan;
+
+		// Report memory as in-use
+		Memory.FreeReport(m_memoryRequirements.size, memoryType);
+		m_memoryRequirements = requirements;
+		Memory.AllocateReport(m_memoryRequirements.size, memoryType);
 
 		// Set our new properties
 		m_totalSize = newSize;

@@ -46,6 +46,7 @@ namespace C3D
 	{
 		width = _width;
 		height = _height;
+		m_memoryFlags = memoryFlags;
 
 		VkImageCreateInfo imageCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 		imageCreateInfo.imageType = GetVkImageType(type);
@@ -67,10 +68,9 @@ namespace C3D
 
 		VK_CHECK(vkCreateImage(context->device.logicalDevice, &imageCreateInfo, context->allocator, &handle));
 
-		VkMemoryRequirements memoryRequirements;
-		vkGetImageMemoryRequirements(context->device.logicalDevice, handle, &memoryRequirements);
+		vkGetImageMemoryRequirements(context->device.logicalDevice, handle, &m_memoryRequirements);
 
-		const i32 memoryType = context->FindMemoryIndex(memoryRequirements.memoryTypeBits, memoryFlags);
+		const i32 memoryType = context->FindMemoryIndex(m_memoryRequirements.memoryTypeBits, memoryFlags);
 		if (memoryType == -1)
 		{
 			Logger::Error("[IMAGE] - Required memory type not found. Image not valid.");
@@ -78,11 +78,14 @@ namespace C3D
 		}
 
 		VkMemoryAllocateInfo memoryAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-		memoryAllocateInfo.allocationSize = memoryRequirements.size;
+		memoryAllocateInfo.allocationSize = m_memoryRequirements.size;
 		memoryAllocateInfo.memoryTypeIndex = memoryType;
 		VK_CHECK(vkAllocateMemory(context->device.logicalDevice, &memoryAllocateInfo, context->allocator, &m_memory));
 
 		VK_CHECK(vkBindImageMemory(context->device.logicalDevice, handle, m_memory, 0)); // TODO: Configurable memory offset.
+
+		const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		Memory.AllocateReport(m_memoryRequirements.size, isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan);
 
 		if (createView)
 		{
@@ -109,7 +112,7 @@ namespace C3D
 	}
 
 	void VulkanImage::TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer,
-		TextureType type, VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout) const
+	                                   const TextureType type, VkFormat format, const VkImageLayout oldLayout, const VkImageLayout newLayout) const
 	{
 		VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
 		barrier.oldLayout = oldLayout;
@@ -157,7 +160,7 @@ namespace C3D
 		vkCmdPipelineBarrier(commandBuffer->handle, sourceStage, destStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	}
 
-	void VulkanImage::CopyFromBuffer(const VulkanContext* context, TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
+	void VulkanImage::CopyFromBuffer(const TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
 	{
 		VkBufferImageCopy region;
 		Memory.Zero(&region, sizeof(VkBufferImageCopy));
@@ -194,5 +197,9 @@ namespace C3D
 			vkDestroyImage(context->device.logicalDevice, handle, context->allocator);
 			handle = nullptr;
 		}
+
+		const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		Memory.FreeReport(m_memoryRequirements.size, isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan);
+		Memory.Zero(&m_memoryRequirements, sizeof(VkMemoryRequirements));
 	}
 }

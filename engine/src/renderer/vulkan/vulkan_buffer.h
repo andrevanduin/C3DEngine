@@ -2,18 +2,17 @@
 #pragma once
 #include "core/defines.h"
 #include "vulkan_types.h"
-#include "memory/freelist.h"
+#include "renderer/render_buffer.h"
 
 namespace C3D
 {
-	class VulkanBuffer
+	class VulkanBuffer final : RenderBuffer
 	{
 	public:
-		VulkanBuffer();
+		VulkanBuffer(const VulkanContext* context, RenderBufferType type, u64 totalSize, u32 usage, u32 memoryPropertyFlags, bool bindOnCreate);
 
-		bool Create(const VulkanContext* context, u64 size, u32 usage, u32 memoryPropertyFlags, bool bindOnCreate, bool useFreeList);
-
-		void Destroy(const VulkanContext* context);
+		bool Create(bool useFreelist) override;
+		void Destroy() override;
 
 		bool Resize(const VulkanContext* context, u64 newSize, VkQueue queue, VkCommandPool pool);
 
@@ -34,18 +33,15 @@ namespace C3D
 		void CleanupFreeList();
 
 		u64 m_totalSize;
-
-		void* m_freeListBlock;
-		u64 m_freeListMemoryRequirement;
-		FreeList m_freeList;
-
+		
 		VkBufferUsageFlagBits m_usage;
 
 		VkDeviceMemory m_memory;
+		VkMemoryRequirements m_memoryRequirements;
+
 		i32 m_memoryIndex;
 		u32 m_memoryPropertyFlags;
 
 		bool m_isLocked;
-		bool m_hasFreeList;
 	};
 }

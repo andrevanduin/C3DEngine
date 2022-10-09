@@ -25,7 +25,7 @@ namespace C3D
 		void TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer, TextureType type, VkFormat format, 
 			VkImageLayout oldLayout, VkImageLayout newLayout) const;
 
-		void CopyFromBuffer(const VulkanContext* context, TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
+		void CopyFromBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
 
 		void Destroy(const VulkanContext* context);
 
@@ -35,5 +35,7 @@ namespace C3D
 		u32 width, height;
 	private:
 		VkDeviceMemory m_memory;
+		VkMemoryRequirements m_memoryRequirements;
+		VkMemoryPropertyFlags m_memoryFlags;
 	};
 }

@@ -22,7 +22,7 @@ namespace C3D
 	public:
 		EventSystem();
 
-		bool Init() const;
+		[[nodiscard]] bool Init() const;
 		void Shutdown();
 
 		C3D_API bool Register(u16 code, IEventCallback* onEvent);

@@ -4,6 +4,7 @@
 #include "core/logger.h"
 
 #include "renderer_types.h"
+#include "render_buffer.h"
 
 namespace C3D
 {
@@ -17,6 +18,13 @@ namespace C3D
 	{
 	public:
 		explicit RendererBackend(const std::string& loggerName) : type(), state(), m_logger(loggerName) {}
+		RendererBackend(const RendererBackend&) = delete;
+		RendererBackend(RendererBackend&&) = delete;
+
+		RendererBackend& operator=(const RendererBackend&) = delete;
+		RendererBackend& operator=(RendererBackend&&) = delete;
+
+		virtual ~RendererBackend() = default;
 
 		virtual bool Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount) = 0;
 		virtual void Shutdown() = 0;
@@ -67,6 +75,8 @@ namespace C3D
 
 		virtual void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) = 0;
 		virtual void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) = 0;
+
+		virtual bool CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist, RenderBuffer* outBuffer) = 0;
 
 		virtual Texture* GetWindowAttachment(u8 index) = 0;
 		virtual Texture* GetDepthAttachment() = 0;

@@ -19,7 +19,7 @@ namespace C3D
 		RendererVulkan& operator=(const RendererVulkan& other) = delete;
 		RendererVulkan& operator=(RendererVulkan&& other) = delete;
 
-		virtual ~RendererVulkan() = default;
+		~RendererVulkan() override = default;
 
 		bool Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount) override;
 		void Shutdown() override;
@@ -68,6 +68,8 @@ namespace C3D
 
 		void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) override;
 		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) override;
+
+		bool CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist, RenderBuffer* outBuffer) override;
 
 		Texture* GetWindowAttachment(u8 index) override;
 		Texture* GetDepthAttachment() override;
