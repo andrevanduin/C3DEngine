@@ -11,12 +11,12 @@ namespace C3D
 	VulkanDevice::VulkanDevice()
 		: physicalDevice(nullptr), logicalDevice(nullptr), swapChainSupport(), supportsDeviceLocalHostVisible(false),
 			graphicsCommandPool(nullptr), graphicsQueue(nullptr), presentQueue(nullptr), transferQueue(nullptr),
-			depthFormat(), graphicsQueueIndex(0), presentQueueIndex(0), transferQueueIndex(0), m_logger("DEVICE"), properties(),
-			m_features(), m_memory()
+			depthFormat(), depthChannelCount(0), graphicsQueueIndex(0), presentQueueIndex(0), transferQueueIndex(0), properties(),
+			m_logger("DEVICE"), m_features(), m_memory()
 	{
 	}
 
-	bool VulkanDevice::Create(vkb::Instance instance, VulkanContext* context)
+	bool VulkanDevice::Create(vkb::Instance instance, VulkanContext* context, VkAllocationCallbacks* callbacks)
 	{
 		// Use VKBootstrap to select a GPU for us
 		vkb::PhysicalDeviceSelector selector{ instance };
@@ -37,7 +37,7 @@ namespace C3D
 
 		// Create the Vulkan logicalDevice
 		vkb::DeviceBuilder deviceBuilder{ vkbPhysicalDevice };
-		vkb::Device vkbDevice = deviceBuilder.build().value();
+		vkb::Device vkbDevice = deviceBuilder.set_allocation_callbacks(callbacks).build().value();
 
 		m_logger.Info("Logical Device Created");
 

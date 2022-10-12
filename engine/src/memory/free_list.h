@@ -27,6 +27,8 @@ namespace C3D
 		bool Create(void* memory, u64 memorySizeForNodes, u64 smallestPossibleAllocation, u64 managedSize);
 		void Destroy();
 
+		bool Resize(void* newMemory, u64 newSize, void** outOldMemory);
+
 		bool AllocateBlock(u64 size, u64* outOffset);
 		bool FreeBlock(u64 size, u64 offset);
 
@@ -49,6 +51,8 @@ namespace C3D
 		u64 m_totalNodes;
 		/* @brief The size of the memory block that holds the nodes. */
 		u64 m_nodesSize;
+		/* @brief The size of the smallest allocation a user could possibly make with this freelist. */
+		u64 m_smallestPossibleAllocation;
 		/* @brief The amount of memory that this freelist is used for. */
 		u64 m_totalManagedSize;
 	};

@@ -6,128 +6,159 @@
 
 #include "core/logger.h"
 #include "core/memory.h"
+#include "memory/freelist.h"
 #include "services/services.h"
 
 namespace C3D
 {
-	VulkanBuffer::VulkanBuffer()
-		: handle(nullptr), m_totalSize(0), m_freeListBlock(nullptr), m_freeListMemoryRequirement(0), m_usage(),
-		  m_memory(nullptr), m_memoryIndex(0), m_memoryPropertyFlags(0), m_isLocked(false), m_hasFreeList(false)
-	{
-	}
+	VulkanBuffer::VulkanBuffer(const VulkanContext* context)
+		: RenderBuffer("VULKAN_BUFFER"), handle(), m_context(context), m_usage(), m_memory(),
+			m_memoryRequirements(), m_memoryIndex(), m_memoryPropertyFlags(), m_isLocked(true)
+	{}
 
-	bool VulkanBuffer::Create(const VulkanContext* context, const u64 size, const u32 usage, const u32 memoryPropertyFlags, const bool bindOnCreate, bool useFreeList)
+	bool VulkanBuffer::Create(const RenderBufferType bufferType, const u64 size, const bool useFreelist)
 	{
-		m_hasFreeList = useFreeList;
-		m_totalSize = size;
-		m_usage = static_cast<VkBufferUsageFlagBits>(usage);
-		m_memoryPropertyFlags = memoryPropertyFlags;
+		if (!RenderBuffer::Create(bufferType, size, useFreelist)) return false;
 
-		if (m_hasFreeList)
+		const u32 deviceLocalBits = m_context->device.supportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
+		switch (bufferType)
 		{
-			// Create a new freelist
-			m_freeListMemoryRequirement = FreeList::GetMemoryRequirements(size);
-			m_freeListBlock = Memory.Allocate(m_freeListMemoryRequirement, MemoryType::RenderSystem);
-			m_freeList.Create(size, m_freeListBlock);
+			case RenderBufferType::Vertex:
+				m_usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+				m_memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+				break;
+			case RenderBufferType::Index:
+				m_usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+				m_memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+				break;
+			case RenderBufferType::Uniform:
+				m_usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+				m_memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | deviceLocalBits;
+				break;
+			case RenderBufferType::Staging:
+				m_usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+				m_memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+				break;
+			case RenderBufferType::Read:
+				m_usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+				m_memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+				break;
+			case RenderBufferType::Storage:
+				m_logger.Error("Create() - RenderBufferType::Storage is not yet supported.");
+				return false;
+			case RenderBufferType::Unknown:
+				m_logger.Error("Create() - Unsupported buffer type: '{}'.", ToUnderlying(bufferType));
+				return false;
 		}
 
 		VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCreateInfo.size = size;
-		bufferCreateInfo.usage = usage;
+		bufferCreateInfo.usage = m_usage;
 		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // NOTE: we assume this is only used in one queue
 
-		VK_CHECK(vkCreateBuffer(context->device.logicalDevice, &bufferCreateInfo, context->allocator, &handle));
+		VK_CHECK(vkCreateBuffer(m_context->device.logicalDevice, &bufferCreateInfo, m_context->allocator, &handle));
 
 		// Gather memory requirements
-		VkMemoryRequirements requirements;
-		vkGetBufferMemoryRequirements(context->device.logicalDevice, handle, &requirements);
-		m_memoryIndex = context->FindMemoryIndex(requirements.memoryTypeBits, m_memoryPropertyFlags);
+		vkGetBufferMemoryRequirements(m_context->device.logicalDevice, handle, &m_memoryRequirements);
+		m_memoryIndex = m_context->FindMemoryIndex(m_memoryRequirements.memoryTypeBits, m_memoryPropertyFlags);
 		if (m_memoryIndex == -1)
 		{
-			Logger::Error("[VULKAN_BUFFER] - Unable to create because the required memory type index was not found");
-			CleanupFreeList();
+			m_logger.Error("Create() - Unable to create because the required memory type index was not found");
 			return false;
 		}
 
 		// Allocate memory info
 		VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-		allocateInfo.allocationSize = requirements.size;
+		allocateInfo.allocationSize = m_memoryRequirements.size;
 		allocateInfo.memoryTypeIndex = static_cast<u32>(m_memoryIndex);
 
-		const VkResult result = vkAllocateMemory(context->device.logicalDevice, &allocateInfo, context->allocator, &m_memory);
+		const VkResult result = vkAllocateMemory(m_context->device.logicalDevice, &allocateInfo, m_context->allocator, &m_memory);
+
+		// Determine if memory is on device heap.
+		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		// Report memory as in-use
+		Memory.AllocateReport(m_memoryRequirements.size, isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan);
+
 		if (result != VK_SUCCESS)
 		{
-			Logger::Error("[VULKAN_BUFFER] - Unable to create because the required memory allocation failed. Error: {}", result);
-			CleanupFreeList();
+			m_logger.Error("Create() - Unable to create because the required memory allocation failed. Error: {}", result);
 			return false;
 		}
-
-		if (bindOnCreate) Bind(context, 0);
 
 		return true;
 	}
 
-	void VulkanBuffer::Destroy(const VulkanContext* context)
+	void VulkanBuffer::Destroy()
 	{
-		if (m_freeListBlock)
-		{
-			CleanupFreeList();
-		}
+		RenderBuffer::Destroy();
+
 		if (m_memory)
 		{
-			vkFreeMemory(context->device.logicalDevice, m_memory, context->allocator);
+			vkFreeMemory(m_context->device.logicalDevice, m_memory, m_context->allocator);
+			m_memory = nullptr;
 		}
 		if (handle)
 		{
-			vkDestroyBuffer(context->device.logicalDevice, handle, context->allocator);
+			vkDestroyBuffer(m_context->device.logicalDevice, handle, m_context->allocator);
 			handle = nullptr;
 		}
-		m_totalSize = 0;
+
+		// Report the freeing of the memory.
+		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		Memory.FreeReport(m_memoryRequirements.size, isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan);
+		Memory.Zero(&m_memoryRequirements, sizeof(VkMemoryRequirements));
+
+		totalSize = 0;
 		m_usage = {};
 		m_isLocked = false;
 	}
 
-	bool VulkanBuffer::Resize(const VulkanContext* context, const u64 newSize, const VkQueue queue, const VkCommandPool pool)
+	bool VulkanBuffer::Bind(const u64 offset)
 	{
-		if (newSize < m_totalSize)
+		VK_CHECK(vkBindBufferMemory(m_context->device.logicalDevice, handle, m_memory, offset));
+		return true;
+	}
+
+	void* VulkanBuffer::MapMemory(const u64 offset, const u64 size)
+	{
+		void* data;
+		VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, offset, size, 0, &data));
+		return data;
+	}
+
+	void VulkanBuffer::UnMapMemory(const u64 offset, u64 size)
+	{
+		vkUnmapMemory(m_context->device.logicalDevice, m_memory);
+	}
+
+	bool VulkanBuffer::Flush(const u64 offset, const u64 size)
+	{
+		if (!IsHostCoherent())
 		{
-			Logger::Error("[VULKAN_BUFFER] - Resize() requires the new size to be greater than the old size");
-			return false;
+			VkMappedMemoryRange range = { VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+			range.memory = m_memory;
+			range.offset = offset;
+			range.size = size;
+			VK_CHECK(vkFlushMappedMemoryRanges(m_context->device.logicalDevice, 1, &range));
 		}
+		return true;
+	}
 
-		if (m_hasFreeList)
-		{
-			// Resize our freelist
-			const u64 newMemoryRequirement = FreeList::GetMemoryRequirements(newSize);
-			void* newBlock = Memory.Allocate(newMemoryRequirement, MemoryType::RenderSystem);
-			void* oldBlock;
-			if (!m_freeList.Resize(newBlock, newSize, &oldBlock))
-			{
-				Logger::Error("[VULKAN_BUFFER] - Resize() failed to resize internal freelist");
-				Memory.Free(newBlock, newMemoryRequirement, MemoryType::RenderSystem);
-				return false;
-			}
+	bool VulkanBuffer::Resize(const u64 newSize)
+	{
+		RenderBuffer::Resize(newSize);
 
-			// Free our old memory, and assign our new properties
-			Memory.Free(oldBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
-			m_freeListMemoryRequirement = newMemoryRequirement;
-			m_freeListBlock = newBlock;
-		}
-
-		m_totalSize = newSize;
-
-		// Create a new buffer
 		VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferCreateInfo.size = newSize;
 		bufferCreateInfo.usage = m_usage;
-		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // NOTE: we assume this is only used in one queue
+		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // NOTE: We assume this is used only in one queue
 
 		VkBuffer newBuffer;
-		VK_CHECK(vkCreateBuffer(context->device.logicalDevice, &bufferCreateInfo, context->allocator, &newBuffer));
+		VK_CHECK(vkCreateBuffer(m_context->device.logicalDevice, &bufferCreateInfo, m_context->allocator, &newBuffer));
 
 		// Gather memory requirements
 		VkMemoryRequirements requirements;
-		vkGetBufferMemoryRequirements(context->device.logicalDevice, newBuffer, &requirements);
+		vkGetBufferMemoryRequirements(m_context->device.logicalDevice, newBuffer, &requirements);
 
 		// Allocate memory info 
 		VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
@@ -136,129 +167,215 @@ namespace C3D
 
 		// Allocate the memory
 		VkDeviceMemory newMemory;
-		VkResult result = vkAllocateMemory(context->device.logicalDevice, &allocateInfo, context->allocator, &newMemory);
+		VkResult result = vkAllocateMemory(m_context->device.logicalDevice, &allocateInfo, m_context->allocator, &newMemory);
 		if (result != VK_SUCCESS)
 		{
-			Logger::Error("[VULKAN_BUFFER] - Unable to resize because the required memory allocation failed. Error: {}", result);
+			m_logger.Error("Resize() - Unable to resize because the required memory allocation failed. Error: {}", result);
 			return false;
 		}
 
 		// Bind the new buffer's memory
-		VK_CHECK(vkBindBufferMemory(context->device.logicalDevice, newBuffer, newMemory, 0));
+		VK_CHECK(vkBindBufferMemory(m_context->device.logicalDevice, newBuffer, newMemory, 0));
 
 		// Copy over the data
-		CopyTo(context, pool, nullptr, queue, 0, newBuffer, 0, m_totalSize);
+		CopyRangeInternal(0, newBuffer, 0, totalSize);
 
 		// Make sure anything potentially using these is finished
-		vkDeviceWaitIdle(context->device.logicalDevice);
+		vkDeviceWaitIdle(m_context->device.logicalDevice);
 
 		// Destroy the old buffer
 		if (m_memory)
 		{
-			vkFreeMemory(context->device.logicalDevice, m_memory, context->allocator);
+			vkFreeMemory(m_context->device.logicalDevice, m_memory, m_context->allocator);
 			m_memory = nullptr;
 		}
 		if (handle)
 		{
-			vkDestroyBuffer(context->device.logicalDevice, handle, context->allocator);
+			vkDestroyBuffer(m_context->device.logicalDevice, handle, m_context->allocator);
 			handle = nullptr;
 		}
 
+		// Determine if memory is on device heap.
+		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		const auto memoryType = isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan;
+
+		// Report memory as in-use
+		Memory.FreeReport(m_memoryRequirements.size, memoryType);
+		m_memoryRequirements = requirements;
+		Memory.AllocateReport(m_memoryRequirements.size, memoryType);
+
 		// Set our new properties
-		m_totalSize = newSize;
+		totalSize = newSize;
 		m_memory = newMemory;
 		handle = newBuffer;
 
 		return true;
 	}
 
-	void VulkanBuffer::Bind(const VulkanContext* context, const u64 offset) const
+	bool VulkanBuffer::Read(const u64 offset, const u64 size, void** outMemory)
 	{
-		VK_CHECK(vkBindBufferMemory(context->device.logicalDevice, handle, m_memory, offset));
-	}
-
-	void* VulkanBuffer::LockMemory(const VulkanContext* context, const u64 offset, const u64 size, const u32 flags) const
-	{
-		void* data;
-		VK_CHECK(vkMapMemory(context->device.logicalDevice, m_memory, offset, size, flags, &data));
-		return data;
-	}
-
-	void VulkanBuffer::UnlockMemory(const VulkanContext* context) const
-	{
-		vkUnmapMemory(context->device.logicalDevice, m_memory);
-	}
-
-	bool VulkanBuffer::Allocate(const u64 size, u64* outOffset)
-	{
-		if (!size && !outOffset)
+		if (!outMemory)
 		{
-			Logger::Error("[VULKAN_BUFFER] - Allocate() called with size = 0 or outOffset = nullptr");
+			m_logger.Error("Read() - Requires a valid pointer to outMemory pointer.");
 			return false;
 		}
 
-		if (!m_hasFreeList)
+		if (IsDeviceLocal() && !IsHostVisible())
 		{
-			Logger::Warn("[VULKAN_BUFFER] - Allocate() called on buffer not using freelists. Offset will not be valid. Call LoadData() instead.");
-			*outOffset = 0;
-			return true;
+			// If the buffer's memory is not host visible but is device local we need a read buffer
+			// We use the read buffer to copy the data to it and read from that buffer
+
+			VulkanBuffer read(m_context);
+			if (!read.Create(RenderBufferType::Read, size, false))
+			{
+				m_logger.Error("Read() - Failed to create read buffer.");
+				return false;
+			}
+			read.Bind(0);
+
+			// Perform the copy from device local to the read buffer
+			CopyRange(offset, &read, 0, size);
+
+			// Map, copy and unmap
+			void* mappedData;
+			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, read.m_memory, 0, size, 0, &mappedData));
+			Memory.Copy(*outMemory, mappedData, size);
+			vkUnmapMemory(m_context->device.logicalDevice, read.m_memory);
+
+			// Cleanup the read buffer
+			read.Unbind();
+			read.Destroy();
+		}
+		else
+		{
+			// We don't need a read buffer can just directly map, copy and unmap
+			void* mappedData;
+			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, 0, size, 0, &mappedData));
+			Memory.Copy(*outMemory, mappedData, size);
+			vkUnmapMemory(m_context->device.logicalDevice, m_memory);
 		}
 
-		return m_freeList.AllocateBlock(size, outOffset);
+		return true;
 	}
 
-	bool VulkanBuffer::Free(const u64 size, const u64 offset)
+	bool VulkanBuffer::LoadRange(const u64 offset, const u64 size, const void* data)
 	{
-		if (!size)
+		if (!data)
 		{
-			Logger::Error("[VULKAN_BUFFER] - Free() called with size = 0");
+			m_logger.Error("LoadRange() - Requires valid data to load.");
 			return false;
 		}
 
-		if (!m_hasFreeList)
+		if (IsDeviceLocal() && !IsHostVisible())
 		{
-			Logger::Warn("[VULKAN_BUFFER] - Free() called on buffer not using freelists. Nothing was done.");
+			// The memory is local but not host visible so we need a staging buffer
+			VulkanBuffer staging(m_context);
+			if (!staging.Create(RenderBufferType::Staging, size, false))
+			{
+				m_logger.Error("LoadRange() - Failed to create staging buffer.");
+				return false;
+			}
+			staging.Bind(0);
+
+			// Load the data into the staging buffer
+			if (!staging.LoadRange(0, size, data))
+			{
+				m_logger.Error("LoadRange() - Failed to run Staging::LoadRange().");
+				return false;
+			}
+
+			// Perform the copy from the staging to the device local buffer
+			staging.CopyRangeInternal(0, handle, offset, size);
+
+			// Cleanup the staging buffer
+			staging.Unbind();
+			staging.Destroy();
+		}
+		else
+		{
+			// If we don't need a staging buffer we just map, copy and unmap directly
+			void* mappedData;
+			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, offset, size, 0, &mappedData));
+			Memory.Copy(mappedData, data, size);
+			vkUnmapMemory(m_context->device.logicalDevice, m_memory);
+		}
+
+		return true;
+	}
+
+	bool VulkanBuffer::CopyRange(const u64 srcOffset, RenderBuffer* dest, const u64 dstOffset, const u64 size)
+	{
+		if (!dest || size == 0)
+		{
+			m_logger.Error("CopyRange() - Requires a valid destination and a nonzero size");
+			return false;
+		}
+		return CopyRangeInternal(srcOffset, dynamic_cast<VulkanBuffer*>(dest)->handle, dstOffset, size);
+	}
+
+	bool VulkanBuffer::Draw(const u64 offset, const u32 elementCount, const bool bindOnly)
+	{
+		const VulkanCommandBuffer* commandBuffer = &m_context->graphicsCommandBuffers[m_context->imageIndex];
+
+		if (type == RenderBufferType::Vertex)
+		{
+			const VkDeviceSize offsets[1] = { offset };
+			vkCmdBindVertexBuffers(commandBuffer->handle, 0, 1, &handle, offsets);
+			if (!bindOnly)
+			{
+				vkCmdDraw(commandBuffer->handle, elementCount, 1, 0, 0);
+			}
 			return true;
 		}
 
-		return m_freeList.FreeBlock(size, offset);
+		if (type == RenderBufferType::Index)
+		{
+			vkCmdBindIndexBuffer(commandBuffer->handle, handle, offset, VK_INDEX_TYPE_UINT32);
+			if (!bindOnly)
+			{
+				vkCmdDrawIndexed(commandBuffer->handle, elementCount, 1, 0, 0, 0);
+			}
+			return true;
+		}
+		
+		m_logger.Error("Draw() - Cannot draw a buffer of type: '{}'.", ToUnderlying(type));
+		return false;
 	}
 
-	void VulkanBuffer::LoadData(const VulkanContext* context, const u64 offset, const u64 size, const u32 flags, const void* data) const
+	bool VulkanBuffer::IsDeviceLocal() const
 	{
-		void* dataPtr;
-		VK_CHECK(vkMapMemory(context->device.logicalDevice, m_memory, offset, size, flags, &dataPtr));
-		Memory.Copy(dataPtr, data, size);
-		vkUnmapMemory(context->device.logicalDevice, m_memory);
+		return m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	}
 
-	void VulkanBuffer::CopyTo(const VulkanContext* context, VkCommandPool pool, VkFence fence, VkQueue queue, const u64 sourceOffset, VkBuffer dest, const u64 destOffset, const u64 size) const
+	bool VulkanBuffer::IsHostVisible() const
 	{
+		return m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	}
+
+	bool VulkanBuffer::IsHostCoherent() const
+	{
+		return m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	}
+
+	bool VulkanBuffer::CopyRangeInternal(const u64 srcOffset, const VkBuffer dst, const u64 dstOffset, const u64 size) const
+	{
+		// TODO: Assuming queue and pool usage here. Might want dedicated queue.
+		VkQueue queue = m_context->device.graphicsQueue;
 		vkQueueWaitIdle(queue);
-		// Create a one-time-use command buffer
+		// Create a one-time-use command buffer.
 		VulkanCommandBuffer tempCommandBuffer;
-		tempCommandBuffer.AllocateAndBeginSingleUse(context, pool);
+		tempCommandBuffer.AllocateAndBeginSingleUse(m_context, m_context->device.graphicsCommandPool);
 
-		// Prepare the copy command and add it to the command buffer
+		// Prepare the copy command and add it to the command buffer.
 		VkBufferCopy copyRegion;
-		copyRegion.srcOffset = sourceOffset;
-		copyRegion.dstOffset = destOffset;
+		copyRegion.srcOffset = srcOffset;
+		copyRegion.dstOffset = dstOffset;
 		copyRegion.size = size;
-
-		vkCmdCopyBuffer(tempCommandBuffer.handle, handle, dest, 1, &copyRegion);
+		vkCmdCopyBuffer(tempCommandBuffer.handle, handle, dst, 1, &copyRegion);
 
 		// Submit the buffer for execution and wait for it to complete.
-		tempCommandBuffer.EndSingleUse(context, pool, queue);
-	}
+		tempCommandBuffer.EndSingleUse(m_context, m_context->device.graphicsCommandPool, queue);
 
-	void VulkanBuffer::CleanupFreeList()
-	{
-		if (m_hasFreeList)
-		{
-			m_freeList.Destroy();
-			Memory.Free(m_freeListBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
-			m_freeListMemoryRequirement = 0;
-			m_freeListBlock = nullptr;
-		}
+		return true;
 	}
 }

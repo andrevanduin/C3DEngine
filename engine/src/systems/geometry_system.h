@@ -24,6 +24,8 @@ namespace C3D
 	template<typename VertexType, typename IndexType>
 	struct GeometryConfig
 	{
+		GeometryConfig() : center(), minExtents(), maxExtents(), name(), materialName() {}
+
 		DynamicArray<VertexType> vertices;
 		DynamicArray<IndexType> indices;
 

@@ -140,7 +140,7 @@ namespace C3D
 		if (block < m_memory || block > m_memory + m_totalSize)
 		{
 			void* endOfBlock = m_memory + m_totalSize;
-			m_logger.Error("FreeAligned() - Called with block ({:#x}) outside of allocator range ({:#x}) - ({:#x}).", fmt::ptr(block), fmt::ptr(m_memory), fmt::ptr(endOfBlock));
+			m_logger.Error("FreeAligned() - Called with block ({}) outside of allocator range ({}) - ({}).", fmt::ptr(block), fmt::ptr(m_memory), fmt::ptr(endOfBlock));
 			return false;
 		}
 

@@ -26,7 +26,7 @@ namespace C3D
 	public:
 		VulkanDevice();
 
-		bool Create(vkb::Instance instance, VulkanContext* context);
+		bool Create(vkb::Instance instance, VulkanContext* context, VkAllocationCallbacks* callbacks);
 
 		void Destroy(const VulkanContext* context);
 

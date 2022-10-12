@@ -129,7 +129,7 @@ namespace C3D
 		u64 frameNumber;
 
 		// A pointer to the Renderer API specific data
-		// This memory needs to be manages separately by the current rendering API backend
+		// This memory needs to be managed separately by the current rendering API backend
 		void* apiSpecificData;
 	};
 }

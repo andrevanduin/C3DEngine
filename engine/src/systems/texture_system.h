@@ -46,8 +46,8 @@ namespace C3D
 	public:
 		TextureSystem();
 
-		bool Init(const TextureSystemConfig& config);
-		void Shutdown();
+		bool Init(const TextureSystemConfig& config) override;
+		void Shutdown() override;
 
 		Texture* Acquire(const char* name, bool autoRelease);
 		Texture* AcquireCube(const char* name, bool autoRelease);

@@ -226,36 +226,33 @@ namespace C3D
 		if (size >= gb)
 		{
 			amount /= static_cast<f64>(gb);
-			return String(amount, "{:.4}GB");
+			return String::FromFormat("{:.4}GB", amount);
 		}
 		if (size >= mb)
 		{
 			amount /= static_cast<f64>(mb);
-			return String(amount, "{:.4}MB");
+			return String::FromFormat("{:.4}MB", amount);
 		}
 		if (size >= kb)
 		{
 			amount /= static_cast<f64>(kb);
-			return String(amount, "{:.4}KB");
+			return String::FromFormat("{:.4}KB", amount);
 		}
 
-		return String::Format("{}B", size);
+		return String::FromFormat("{}B", size);
 	}
 
 	String MemorySystem::GetMemoryUsageString()
 	{
-		String str, line;
+		String str;
 		str.Reserve(2000);
-		line.Reserve(100);
 
 		str.Append("System's Dynamic Memory usage:\n");
 
 		auto i = 0;
 		for (const auto& [size, count] : m_stats.taggedAllocations)
 		{
-			line += String::Format("  {} - ({:0>3}) {}\n", MEMORY_TYPE_STRINGS[i], count, SizeToText(size));
-			str.Append(line);
-			line.Clear();
+			str.Append(String::FromFormat("  {} - ({:0>3}) {}\n", MEMORY_TYPE_STRINGS[i], count, SizeToText(size)));
 			i++;
 		}
 
@@ -266,7 +263,7 @@ namespace C3D
 			const auto usedSpace = totalSpace - freeSpace;
 			const auto percentage = static_cast<f32>(usedSpace) / static_cast<f32>(totalSpace) * 100.0f;
 
-			str += String::Format("Using {} out of {} total ({:.3}% used)", SizeToText(usedSpace), SizeToText(totalSpace), percentage);
+			str += String::FromFormat("Using {} out of {} total ({:.3}% used)", SizeToText(usedSpace), SizeToText(totalSpace), percentage);
 		}
 
 		return str;

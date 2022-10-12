@@ -2,50 +2,50 @@
 #pragma once
 #include "core/defines.h"
 #include "vulkan_types.h"
-#include "memory/freelist.h"
+#include "renderer/render_buffer.h"
 
 namespace C3D
 {
-	class VulkanBuffer
+	class VulkanBuffer final : public RenderBuffer
 	{
 	public:
-		VulkanBuffer();
+		explicit VulkanBuffer(const VulkanContext* context);
 
-		bool Create(const VulkanContext* context, u64 size, u32 usage, u32 memoryPropertyFlags, bool bindOnCreate, bool useFreeList);
+		bool Create(RenderBufferType bufferType, u64 size, bool useFreelist) override;
+		void Destroy() override;
 
-		void Destroy(const VulkanContext* context);
+		bool Bind(u64 offset) override;
 
-		bool Resize(const VulkanContext* context, u64 newSize, VkQueue queue, VkCommandPool pool);
+		void* MapMemory(u64 offset, u64 size) override;
+		void UnMapMemory(u64 offset, u64 size) override;
 
-		void Bind(const VulkanContext* context, u64 offset) const;
+		bool Flush(u64 offset, u64 size) override;
+		bool Resize(u64 newSize) override;
 
-		void* LockMemory(const VulkanContext* context, u64 offset, u64 size, u32 flags) const;
-		void  UnlockMemory(const VulkanContext* context) const;
+		bool Read(u64 offset, u64 size, void** outMemory) override;
+		bool LoadRange(u64 offset, u64 size, const void* data) override;
+		bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size) override;
+		
+		bool Draw(u64 offset, u32 elementCount, bool bindOnly) override;
 
-		bool Allocate(u64 size, u64* outOffset);
-		bool Free(u64 size, u64 offset);
-
-		void LoadData(const VulkanContext* context, u64 offset, u64 size, u32 flags, const void* data) const;
-
-		void CopyTo(const VulkanContext* context, VkCommandPool pool, VkFence fence, VkQueue queue, u64 sourceOffset, VkBuffer dest, u64 destOffset, u64 size) const;
+		[[nodiscard]] bool IsDeviceLocal() const;
+		[[nodiscard]] bool IsHostVisible() const;
+		[[nodiscard]] bool IsHostCoherent() const;
 
 		VkBuffer handle;
-	private:
-		void CleanupFreeList();
 
-		u64 m_totalSize;
+	protected:
+		bool CopyRangeInternal(u64 srcOffset, VkBuffer dst, u64 dstOffset, u64 size) const;
 
-		void* m_freeListBlock;
-		u64 m_freeListMemoryRequirement;
-		FreeList m_freeList;
-
+		const VulkanContext* m_context;
 		VkBufferUsageFlagBits m_usage;
 
 		VkDeviceMemory m_memory;
+		VkMemoryRequirements m_memoryRequirements;
+
 		i32 m_memoryIndex;
 		u32 m_memoryPropertyFlags;
 
 		bool m_isLocked;
-		bool m_hasFreeList;
 	};
 }

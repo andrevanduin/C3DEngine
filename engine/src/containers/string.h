@@ -24,6 +24,10 @@ namespace C3D
 
 	class String
 	{
+	public:
+		using value_type = char;
+
+	private:
 		void Init(const u64 length)
 		{
 			m_size = length;
@@ -47,7 +51,6 @@ namespace C3D
 
 		void Resize(const u64 requiredSize)
 		{
-			
 			if (m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP)
 			{
 				// The string is already allocated on the heap
@@ -397,10 +400,21 @@ namespace C3D
 		 * Internally uses fmt::format to build out the string.
 		 */
 		template <typename... Args>
-		static String Format(const char* format, Args&&... args)
+		static String FromFormat(const char* format, Args&&... args)
 		{
-			const auto str = fmt::format(format, std::forward<Args>(args)...);
-			return String(str.data());
+			String buffer;
+			fmt::format_to(std::back_inserter(buffer), format, std::forward<Args>(args)...);
+			return buffer;
+		}
+
+		/* @brief Builds this string from the format and the provided arguments.
+		 * Internally uses fmt::format to build out the string.
+		 * The formatted output will appended to the back of the string.
+		 */
+		template <typename... Args>
+		void Format(const char* format, Args&&... args)
+		{
+			fmt::format_to(std::back_inserter(*this), format, std::forward<Args>(args)...);
 		}
 
 		/* @brief Append the provided string to the end of this string. */
@@ -433,6 +447,27 @@ namespace C3D
 			m_data[requiredSize] = '\0';
 			// Store our new size
 			m_size = requiredSize;
+		}
+
+		/* @brief Append the provided const char to the end of this string. */
+		void Append(const char c)
+		{
+			// Calculate the totalSize that we will require for our appended string
+			const u64 requiredSize = m_size + 1;
+			// Resize our internal buffer if it is needed (including '\0' byte)
+			Resize(requiredSize + 1);
+			// Copy data from the other string into our newly allocated buffer
+			m_data[m_size] = c;
+			// Add '\0' character at the end
+			m_data[requiredSize] = '\0';
+			// Store our new size
+			m_size = requiredSize;
+		}
+
+		/* @brief Added to support using default std::back_inserter(). */
+		void push_back(const char c)
+		{
+			Append(c);
 		}
 
 		[[nodiscard]] u64 Size() const { return m_size; }

@@ -21,25 +21,184 @@
 #include "resources/shader.h"
 
 #include "renderer/vertex.h"
-#include "resources/resource_types.h"
 #include "resources/loaders/binary_loader.h"
 
 #include "services/services.h"
 #include "systems/resource_system.h"
 #include "systems/texture_system.h"
 
+#ifndef C3D_VULKAN_ALLOCATOR_TRACE
+#undef C3D_VULKAN_ALLOCATOR_TRACE
+#endif
+
+#ifndef C3D_VULKAN_USE_CUSTOM_ALLOCATOR
+#define C3D_VULKAN_USE_CUSTOM_ALLOCATOR 1
+#endif
+
 namespace C3D
 {
+#ifdef C3D_VULKAN_USE_CUSTOM_ALLOCATOR
+	/*
+	 * @brief Implementation of PFN_vkAllocationFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkAllocationFunction.html
+	 */
+	void* VulkanAllocatorAllocate(void* userData, const size_t size, const size_t alignment, const VkSystemAllocationScope allocationScope)
+	{
+		// The spec states that we should return nullptr if size == 0
+		if (size == 0) return nullptr;
+
+		void* result = Memory.AllocateAligned(size, static_cast<u16>(alignment), MemoryType::Vulkan);
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+		Logger::Trace("[VULKAN_ALLOCATE] - {} (Size = {}B, Alignment = {}).", fmt::ptr(result), size, alignment);
+#endif
+
+		return result;
+	}
+
+	/*
+	 * @brief Implementation of PFN_vkFreeFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkFreeFunction.html
+	 */
+	void VulkanAllocatorFree(void* userData, void* memory)
+	{
+		if (!memory)
+		{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_FREE] - Block was null. Nothing to free.");
+#endif
+			return;
+		}
+
+		u64 size;
+		u16 alignment;
+		if (Memory.GetSizeAlignment(memory, &size, &alignment))
+		{
+			Memory.FreeAligned(memory, size, MemoryType::Vulkan);
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_FREE] - Block at: {} was Freed.", fmt::ptr(memory));
+#endif
+		}
+		else
+		{
+			Logger::Error("[VULKAN_FREE] - Failed to get alignment lookup for block: {}.", fmt::ptr(memory));
+		}
+	}
+
+	/*
+	 * @brief Implementation of PFN_vkReallocationFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkReallocationFunction.html
+	 */
+	void* VulkanAllocatorReallocate(void* userData, void* original, const size_t size, const size_t alignment, const VkSystemAllocationScope allocationScope)
+	{
+		// The spec states that we should do an simple allocation if original is nullptr
+		if (!original)
+		{
+			return VulkanAllocatorAllocate(userData, size, alignment, allocationScope);
+		}
+
+		// The spec states that we should return nullptr if size == 0
+		if (size == 0) return nullptr;
+
+		u64 allocSize;
+		u16 allocAlignment;
+		if (!Memory.GetSizeAlignment(original, &allocSize, &allocAlignment))
+		{
+			Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.", fmt::ptr(original));
+			return nullptr;
+		}
+
+		// The spec states that the alignment provided should not differ from the original memory's alignment.
+		if (alignment != allocAlignment)
+		{
+			Logger::Error("[VULKAN_REALLOCATE] - Attempted to do a reallocation with a different alignment of: {}. Original alignment was: {}.", alignment, allocAlignment);
+			return nullptr;
+		}
+
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+		Logger::Trace("[VULKAN_REALLOCATE] - Reallocating block: {}", fmt::ptr(original));
+#endif
+
+		void* result = VulkanAllocatorAllocate(userData, size, alignment, allocationScope);
+		if (result)
+		{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_REALLOCATE] - Successfully reallocated to: {}. Copying data.", fmt::ptr(result));
+#endif
+			Memory.Copy(result, original, allocSize);
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", fmt::ptr(original));
+#endif
+			Memory.FreeAligned(original, allocSize, MemoryType::Vulkan);
+		}
+		else
+		{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+			Logger::Trace("[VULKAN_REALLOCATE] - Failed to Reallocate: {}.", fmt::ptr(original));
+#endif
+		}
+
+		return result;
+	}
+
+	/*
+	 * @brief Implementation of PFN_vkReallocationFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkInternalAllocationNotification.html
+	 */
+	void VulkanAllocatorInternalAllocation(void* userData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope)
+	{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+		Logger::Trace("[VULKAN_EXTERNAL_ALLOCATE] - Allocation of size {}.", size);
+#endif
+		Memory.AllocateReport(size, MemoryType::VulkanExternal);
+	}
+
+	/*
+	 * @brief Implementation of PFN_vkReallocationFunction
+	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkInternalAllocationNotification.html
+	 */
+	void VulkanAllocatorInternalFree(void* userData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope)
+	{
+#ifdef C3D_VULKAN_ALLOCATOR_TRACE
+		Logger::Trace("[VULKAN_EXTERNAL_FREE] - Free of size {}.", size);
+#endif
+		Memory.FreeReport(size, MemoryType::VulkanExternal);
+	}
+
+	bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks)
+	{
+		if (callbacks)
+		{
+			callbacks->pfnAllocation = VulkanAllocatorAllocate;
+			callbacks->pfnReallocation = VulkanAllocatorReallocate;
+			callbacks->pfnFree = VulkanAllocatorFree;
+			callbacks->pfnInternalAllocation = VulkanAllocatorInternalAllocation;
+			callbacks->pfnInternalFree = VulkanAllocatorInternalFree;
+			callbacks->pUserData = nullptr;
+			return true;
+		}
+		return false;
+	}
+#endif
+
 	RendererVulkan::RendererVulkan()
-		: RendererBackend("VULKAN_RENDERER"), m_context(), m_geometries{}
+		: RendererBackend("VULKAN_RENDERER"), m_context(), m_objectVertexBuffer(&m_context), m_objectIndexBuffer(&m_context), m_geometries{}
 	{}
 
 	bool RendererVulkan::Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount)
 	{
 		type = RendererBackendType::Vulkan;
 
-		// TODO: Possibly add a custom allocator
-		m_context.allocator = nullptr;
+#if C3D_VULKAN_USE_CUSTOM_ALLOCATOR == 1
+		m_context.allocator = Memory.Allocate<VkAllocationCallbacks>(MemoryType::RenderSystem);
+		if (!CreateVulkanAllocator(m_context.allocator))
+		{
+			m_logger.Error("Failed to initialize requested CustomVulkanAllocator");
+			return false;
+		}
+#else
+		m_context = nullptr;
+#endif
+
 		m_context.frontend = config.frontend;
 		m_context.frameBufferWidth = 1280;
 		m_context.frameBufferHeight = 720;
@@ -55,8 +214,8 @@ namespace C3D
 			.request_validation_layers(true)
 			.set_debug_callback(Logger::VkDebugLog)
 		#endif
-			.require_api_version(1, 2)
 			.set_allocation_callbacks(m_context.allocator)
+			.require_api_version(1, 2)
 			.build();
 
 		m_logger.Info("Instance Initialized");
@@ -77,7 +236,7 @@ namespace C3D
 		}
 
 		m_logger.Info("SDL Surface Initialized");
-		if (!m_context.device.Create(vkbInstance, &m_context))
+		if (!m_context.device.Create(vkbInstance, &m_context, m_context.allocator))
 		{
 			m_logger.Error("Init() - Failed to create Vulkan Device.");
 			return false;
@@ -86,7 +245,7 @@ namespace C3D
 		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
 
 		// Save the number of images we have as a the number of render targets required
-		*outWindowRenderTargetCount = m_context.swapChain.imageCount;
+		*outWindowRenderTargetCount = static_cast<u8>(m_context.swapChain.imageCount);
 
 		// Invalidate all render passes
 		for (auto& pass : m_context.registeredRenderPasses)
@@ -135,16 +294,16 @@ namespace C3D
 			// Save the id as an entry in our hash table
 			m_context.renderPassTable.Set(passConfig.name, &id);
 
-			m_logger.Info("Successfully created RenderPass '{}'", passConfig.name);
+			m_logger.Info("Init() - Successfully created RenderPass '{}'", passConfig.name);
 		}
 
 		CreateCommandBuffers();
-		m_logger.Info("Command Buffers Initialized");
+		m_logger.Info("Init() - Command Buffers Initialized");
 
 		m_context.imageAvailableSemaphores.resize(m_context.swapChain.maxFramesInFlight);
 		m_context.queueCompleteSemaphores.resize(m_context.swapChain.maxFramesInFlight);
 
-		m_logger.Info("Creating Semaphores and Fences");
+		m_logger.Info("Init() - Creating Semaphores and Fences");
 		for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
 		{
 			VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
@@ -161,7 +320,22 @@ namespace C3D
 			m_context.imagesInFlight[i] = nullptr;
 		}
 
-		CreateBuffers();
+		// Create and bind our buffers
+		constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 1024 * 1024;
+		if (!m_objectVertexBuffer.Create(RenderBufferType::Vertex, vertexBufferSize, true))
+		{
+			m_logger.Error("Init() - Error creating vertex buffer.");
+			return false;
+		}
+		m_objectVertexBuffer.Bind(0);
+
+		constexpr u64 indexBufferSize = sizeof(u32) * 1024 * 1024;
+		if (!m_objectIndexBuffer.Create(RenderBufferType::Index, indexBufferSize, true))
+		{
+			m_logger.Error("Init() - Error creating index buffer.");
+			return false;
+		}
+		m_objectIndexBuffer.Bind(0);
 
 		// Mark all the geometry as invalid
 		for (auto& geometry : m_geometries)
@@ -181,8 +355,8 @@ namespace C3D
 		m_context.device.WaitIdle();
 
 		// Destroy stuff in opposite order of creation
-		m_objectVertexBuffer.Destroy(&m_context);
-		m_objectIndexBuffer.Destroy(&m_context);
+		m_objectVertexBuffer.Destroy();
+		m_objectIndexBuffer.Destroy();
 
 		m_logger.Info("Destroying Semaphores and Fences");
 		for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
@@ -221,16 +395,25 @@ namespace C3D
 		m_logger.Info("Destroying Device");
 		m_context.device.Destroy(&m_context);
 
+		// TODO: This should use our custom allocator
 		m_logger.Info("Destroying Vulkan Surface");
-		vkDestroySurfaceKHR(m_context.instance, m_context.surface, m_context.allocator);
+		vkDestroySurfaceKHR(m_context.instance, m_context.surface, nullptr);
 
 #ifdef _DEBUG
 		m_logger.Info("Destroying Vulkan debug messenger");
-		vkb::destroy_debug_utils_messenger(m_context.instance, m_debugMessenger);
+		vkb::destroy_debug_utils_messenger(m_context.instance, m_debugMessenger, m_context.allocator);
 #endif
 
 		m_logger.Info("Destroying Instance");
 		vkDestroyInstance(m_context.instance, m_context.allocator);
+
+#if C3D_VULKAN_USE_CUSTOM_ALLOCATOR == 1
+		if (m_context.allocator)
+		{
+			Memory.Free(m_context.allocator, sizeof(VkAllocationCallbacks), MemoryType::RenderSystem);
+			m_context.allocator = nullptr;
+		}
+#endif
 	}
 
 	void RendererVulkan::OnResize(const u16 width, const u16 height)
@@ -437,6 +620,20 @@ namespace C3D
 		}
 	}
 
+	RenderBuffer* RendererVulkan::CreateRenderBuffer(const RenderBufferType bufferType, const u64 totalSize, const bool useFreelist)
+	{
+		const auto buffer = Memory.New<VulkanBuffer>(MemoryType::RenderSystem, &m_context);
+		buffer->Create(bufferType, totalSize, useFreelist);
+		return buffer;
+	}
+
+	bool RendererVulkan::DestroyRenderBuffer(RenderBuffer* buffer)
+	{
+		buffer->Destroy();
+		Memory.FreeAligned(buffer, sizeof(VulkanBuffer), MemoryType::RenderSystem);
+		return true;
+	}
+
 	Texture* RendererVulkan::GetWindowAttachment(const u8 index)
 	{
 		if (index >= m_context.swapChain.imageCount)
@@ -483,26 +680,20 @@ namespace C3D
 		if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
 
 		const auto bufferData = &m_geometries[data.geometry->internalId];
-		const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
+		const bool includesIndexData = bufferData->indexCount > 0;
 
-		// Bind vertex buffer at offset
-		const VkDeviceSize offsets[1] = { bufferData->vertexBufferOffset };
-		vkCmdBindVertexBuffers(commandBuffer->handle, 0, 1, &m_objectVertexBuffer.handle, offsets);
-
-		if (bufferData->indexCount > 0)
+		if (!m_objectVertexBuffer.Draw(bufferData->vertexBufferOffset, bufferData->vertexCount, includesIndexData))
 		{
-			// We have indices so we should draw indexed
-
-			// Bind index buffer at offset
-			vkCmdBindIndexBuffer(commandBuffer->handle, m_objectIndexBuffer.handle, bufferData->indexBufferOffset, VK_INDEX_TYPE_UINT32);
-
-			// Issue the draw
-			vkCmdDrawIndexed(commandBuffer->handle, bufferData->indexCount, 1, 0, 0, 0);
+			m_logger.Error("DrawGeometry() - Failed to draw vertex buffer.");
+			return;
 		}
-		else
+
+		if (includesIndexData)
 		{
-			// No indices so we do a simple non-indexed draw
-			vkCmdDraw(commandBuffer->handle, bufferData->vertexCount, 1, 0, 0);
+			if (!m_objectIndexBuffer.Draw(bufferData->indexBufferOffset, bufferData->indexCount, false))
+			{
+				m_logger.Error("DrawGeometry() - Failed to draw index buffer.");
+			}
 		}
 	}
 
@@ -512,7 +703,9 @@ namespace C3D
 		texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
 
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
-		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height * texture->channelCount;
+		const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height
+			* texture->channelCount * (texture->type == TextureType::TypeCube ? 6 : 1);
+
 		constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM; // NOTE: Assumes 8 bits per channel
 
 		image->Create(&m_context, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
@@ -555,19 +748,18 @@ namespace C3D
 		texture->generation++;
 	}
 
-	void RendererVulkan::WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels)
+	void RendererVulkan::WriteDataToTexture(Texture* texture, u32 offset, const u32 size, const u8* pixels)
 	{
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
-		const VkDeviceSize imageSize = texture->width * texture->height * texture->channelCount * (texture->type == TextureType::TypeCube ? 6 : 1);
 		const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
 		// Create a staging buffer and load data into it.
-		constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		constexpr VkMemoryPropertyFlags memoryPropFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		VulkanBuffer staging;
-		staging.Create(&m_context, imageSize, usage, memoryPropFlags, true, false);
+		VulkanBuffer staging(&m_context);
+		staging.Create(RenderBufferType::Staging, size, false);
+		staging.Bind(0);
 
-		staging.LoadData(&m_context, 0, imageSize, 0, pixels);
+		// Load the data into our staging buffer
+		staging.LoadRange(0, size, pixels);
 
 		VulkanCommandBuffer tempBuffer;
 		VkCommandPool pool = m_context.device.graphicsCommandPool;
@@ -579,14 +771,15 @@ namespace C3D
 		image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 		// Copy the data from the buffer.
-		image->CopyFromBuffer(&m_context, texture->type, staging.handle, &tempBuffer);
+		image->CopyFromBuffer(texture->type, staging.handle, &tempBuffer);
 
 		// Transition from optimal for receiving data to shader-read-only optimal layout.
 		image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 		tempBuffer.EndSingleUse(&m_context, pool, queue);
 
-		staging.Destroy(&m_context);
+		staging.Unbind();
+		staging.Destroy();
 		texture->generation++;
 	}
 
@@ -664,21 +857,24 @@ namespace C3D
 
 		if (!internalData)
 		{
-			m_logger.Fatal("CreateGeometry() failed to find a free index for a new geometry upload. Adjust the config to allow for more");
+			m_logger.Fatal("CreateGeometry() failed to find a free index for a new geometry upload. Adjust the config to allow for more.");
 			return false;
 		}
-
-		VkCommandPool pool = m_context.device.graphicsCommandPool;
-		VkQueue queue = m_context.device.graphicsQueue;
 
 		// Vertex data
 		internalData->vertexCount = static_cast<u32>(vertexCount);
 		internalData->vertexElementSize = sizeof(Vertex3D);
-
 		u64 totalSize = vertexCount * vertexSize;
-		if (!UploadDataRange(pool, nullptr, queue, &m_objectVertexBuffer, &internalData->vertexBufferOffset, totalSize, vertices))
+
+		if (!m_objectVertexBuffer.Allocate(totalSize, &internalData->vertexBufferOffset))
 		{
-			m_logger.Error("CreateGeometry() failed to upload to the vertex buffer");
+			m_logger.Error("CreateGeometry() - Failed to allocate from the vertex buffer.");
+			return false;
+		}
+
+		if (!m_objectVertexBuffer.LoadRange(internalData->vertexBufferOffset, totalSize, vertices))
+		{
+			m_logger.Error("CreateGeometry() - Failed to upload vertices to the vertex buffer.");
 			return false;
 		}
 
@@ -687,11 +883,17 @@ namespace C3D
 		{
 			internalData->indexCount = static_cast<u32>(indexCount);
 			internalData->indexElementSize = sizeof(u32);
-
 			totalSize = indexCount * indexSize;
-			if (!UploadDataRange(pool, nullptr, queue, &m_objectIndexBuffer, &internalData->indexBufferOffset, totalSize, indices))
+
+			if (!m_objectIndexBuffer.Allocate(totalSize, &internalData->indexBufferOffset))
 			{
-				m_logger.Error("CreateGeometry() failed to upload to the index buffer");
+				m_logger.Error("CreateGeometry() - Failed to allocate from the index buffer.");
+				return false;
+			}
+
+			if (!m_objectIndexBuffer.LoadRange(internalData->indexBufferOffset, totalSize, indices))
+			{
+				m_logger.Error("CreateGeometry() - Failed to upload indices to the index buffer.");
 				return false;
 			}
 		}
@@ -702,12 +904,12 @@ namespace C3D
 		if (isReupload)
 		{
 			// Free vertex data
-			FreeDataRange(&m_objectVertexBuffer, oldRange.vertexBufferOffset, static_cast<u64>(oldRange.vertexElementSize) * oldRange.vertexCount);
+			m_objectVertexBuffer.Free(static_cast<u64>(oldRange.vertexElementSize) * oldRange.vertexCount, oldRange.vertexBufferOffset);
 
 			// Free index data, if applicable
 			if (oldRange.indexElementSize > 0)
 			{
-				FreeDataRange(&m_objectIndexBuffer, oldRange.indexBufferOffset, static_cast<u64>(oldRange.indexElementSize) * oldRange.indexCount);
+				m_objectIndexBuffer.Free(static_cast<u64>(oldRange.indexElementSize) * oldRange.indexCount, oldRange.indexBufferOffset);
 			}
 		}
 
@@ -723,12 +925,12 @@ namespace C3D
 			VulkanGeometryData* internalData = &m_geometries[geometry->internalId];
 
 			// Free vertex data
-			FreeDataRange(&m_objectVertexBuffer, internalData->vertexBufferOffset, static_cast<u64>(internalData->vertexElementSize) * internalData->vertexCount);
+			m_objectVertexBuffer.Free(static_cast<u64>(internalData->vertexElementSize) * internalData->vertexCount, internalData->vertexBufferOffset);
 
 			// Free index data, if applicable
 			if (internalData->indexElementSize > 0)
 			{
-				FreeDataRange(&m_objectIndexBuffer, internalData->indexBufferOffset, static_cast<u64>(internalData->indexElementSize) * internalData->indexCount);
+				m_objectIndexBuffer.Free(static_cast<u64>(internalData->indexElementSize) * internalData->indexCount, internalData->indexBufferOffset);
 			}
 
 			// Clean up data
@@ -741,7 +943,7 @@ namespace C3D
 	bool RendererVulkan::CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const
 	{
 		// Allocate enough memory for the 
-		shader->apiSpecificData = Memory.Allocate<VulkanShader>(MemoryType::Shader);
+		shader->apiSpecificData = Memory.New<VulkanShader>(MemoryType::Shader, &m_context);
 
 		// Translate stages
 		VkShaderStageFlags vulkanStages[VULKAN_SHADER_MAX_STAGES]{};
@@ -940,9 +1142,9 @@ namespace C3D
 			}
 
 			// Cleanup Uniform buffer
-			vulkanShader->uniformBuffer.UnlockMemory(&m_context);
+			vulkanShader->uniformBuffer.UnMapMemory(0, VK_WHOLE_SIZE);
 			vulkanShader->mappedUniformBufferBlock = nullptr;
-			vulkanShader->uniformBuffer.Destroy(&m_context);
+			vulkanShader->uniformBuffer.Destroy();
 
 			// Cleanup Pipeline
 			vulkanShader->pipeline.Destroy(&m_context);
@@ -1075,7 +1277,7 @@ namespace C3D
 
 		if (!pipelineCreateResult)
 		{
-			m_logger.Error("InitializeShader() - Failed to load graphics pipeline");
+			m_logger.Error("InitializeShader() - Failed to load graphics pipeline.");
 			return false;
 		}
 
@@ -1087,27 +1289,24 @@ namespace C3D
 		shader->uboStride = GetAligned(shader->uboSize, shader->requiredUboAlignment);
 
 		// Uniform buffer
-		const u32 deviceLocalBits = m_context.device.supportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
 		// TODO: max count should be configurable, or perhaps long term support of buffer resizing
-		u64 totalBufferSize = shader->globalUboStride + shader->uboStride * VULKAN_MAX_MATERIAL_COUNT;
-		if (!vulkanShader->uniformBuffer.Create(&m_context, totalBufferSize, 
-			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | deviceLocalBits,
-			true, true))
+		const u64 totalBufferSize = shader->globalUboStride + shader->uboStride * VULKAN_MAX_MATERIAL_COUNT;
+		if (!vulkanShader->uniformBuffer.Create(RenderBufferType::Uniform, totalBufferSize, true))
 		{
-			m_logger.Error("InitializeShader() - Failed to create VulkanBuffer");
+			m_logger.Error("InitializeShader() - Failed to create VulkanBuffer.");
 			return false;
 		}
+		vulkanShader->uniformBuffer.Bind(0);
 
 		// Allocate space for the global UBO, which should occupy the stride space and not the actual size need
 		if (!vulkanShader->uniformBuffer.Allocate(shader->globalUboStride, &shader->globalUboOffset))
 		{
-			m_logger.Error("InitializeShader() - Failed to allocate space for the uniform buffer");
+			m_logger.Error("InitializeShader() - Failed to allocate space for the uniform buffer.");
 			return false;
 		}
 
 		// Map the entire buffer's memory
-		vulkanShader->mappedUniformBufferBlock = vulkanShader->uniformBuffer.LockMemory(&m_context, 0, VK_WHOLE_SIZE, 0);
+		vulkanShader->mappedUniformBufferBlock = vulkanShader->uniformBuffer.MapMemory(0, VK_WHOLE_SIZE);
 
 		const VkDescriptorSetLayout globalLayouts[3] =
 		{
@@ -1497,7 +1696,7 @@ namespace C3D
 	{
 		if (map)
 		{
-			// TEMP: Remove this once we cleanup our skybox stuff
+			// NOTE: This ensures there's no way this is in use.
 			vkDeviceWaitIdle(m_context.device.logicalDevice);
 			vkDestroySampler(m_context.device.logicalDevice, static_cast<VkSampler>(map->internalData), m_context.allocator);
 			map->internalData = nullptr;
@@ -1605,30 +1804,6 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::CreateBuffers()
-	{
-		constexpr auto baseFlagBits = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-		constexpr auto memoryPropertyFlagBits = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-		// Geometry vertex buffer
-		constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 1024 * 1024;
-		if (!m_objectVertexBuffer.Create(&m_context, vertexBufferSize, baseFlagBits | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, memoryPropertyFlagBits, true, true))
-		{
-			m_logger.Error("Error creating vertex buffer");
-			return false;
-		}
-
-		// Geometry index buffer
-		constexpr u64 indexBufferSize = sizeof(u32) * 1024 * 1024;
-		if (!m_objectIndexBuffer.Create(&m_context, indexBufferSize, baseFlagBits | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, memoryPropertyFlagBits, true, true))
-		{
-			m_logger.Error("Error creating index buffer");
-			return false;
-		}
-
-		return true;
-	}
-
 	bool RendererVulkan::CreateModule(VulkanShaderStageConfig config, VulkanShaderStage* shaderStage) const
 	{
 		// Read the resource
@@ -1655,30 +1830,5 @@ namespace C3D
 		shaderStage->shaderStageCreateInfo.pName = "main"; // TODO: make this configurable?
 
 		return true;
-	}
-
-	bool RendererVulkan::UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer* buffer, u64* outOffset, const u64 size, const void* data) const
-	{
-		if (!buffer || !buffer->Allocate(size, outOffset))
-		{
-			m_logger.Error("UploadDataRange() failed to allocate from the provided buffer");
-			return false;
-		}
-
-		constexpr VkBufferUsageFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		VulkanBuffer staging;
-		staging.Create(&m_context, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, flags, true, false);
-
-		staging.LoadData(&m_context, 0, size, 0, data);
-		staging.CopyTo(&m_context, pool, fence, queue, 0, buffer->handle, *outOffset, size);
-
-		staging.Destroy(&m_context);
-
-		return true;
-	}
-
-	void RendererVulkan::FreeDataRange(VulkanBuffer* buffer, const u64 offset, const u64 size)
-	{
-		if (buffer) buffer->Free(size, offset);
 	}
 }

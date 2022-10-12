@@ -4,6 +4,7 @@
 
 #include "renderer_types.h"
 #include "renderer_backend.h"
+#include "render_buffer.h"
 #include "resources/shader.h"
 
 namespace C3D
@@ -23,7 +24,7 @@ namespace C3D
 		RenderSystem();
 
 		bool Init(const Application* application);
-		void Shutdown() const;
+		void Shutdown();
 
 		void OnResize(u16 width, u16 height);
 
@@ -69,13 +70,16 @@ namespace C3D
 		void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) const;
 		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) const;
 
+		[[nodiscard]] RenderBuffer* CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist) const;
+		bool DestroyRenderBuffer(RenderBuffer* buffer) const;
+
 		void RegenerateRenderTargets() const;
 
 		[[nodiscard]] bool IsMultiThreaded() const;
 
 	private:
 		bool CreateBackend(RendererBackendType type);
-		void DestroyBackend() const;
+		void DestroyBackend();
 
 		LoggerInstance m_logger;
 

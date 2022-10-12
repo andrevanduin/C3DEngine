@@ -76,6 +76,9 @@ namespace C3D
 		// Free the memory we allocated for all our materials
 		Memory.Free(m_registeredMaterials, sizeof(Material) * m_config.maxMaterialCount, MemoryType::MaterialInstance);
 		m_registeredMaterials = nullptr;
+
+		// Cleanup our material table
+		m_registeredMaterialTable.Destroy();
 	}
 
 	Material* MaterialSystem::Acquire(const char* name)

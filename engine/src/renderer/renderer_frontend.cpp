@@ -162,7 +162,7 @@ namespace C3D
 		return true;
 	}
 
-	void RenderSystem::Shutdown() const
+	void RenderSystem::Shutdown()
 	{
 		m_logger.Info("Shutting Down");
 
@@ -341,7 +341,6 @@ namespace C3D
 		return m_backend->ReleaseShaderInstanceResources(shader, instanceId);
 	}
 
-
 	bool RenderSystem::AcquireTextureMapResources(TextureMap* map) const
 	{
 		return m_backend->AcquireTextureMapResources(map);
@@ -365,6 +364,16 @@ namespace C3D
 	void RenderSystem::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory) const
 	{
 		return m_backend->DestroyRenderTarget(target, freeInternalMemory);
+	}
+
+	RenderBuffer* RenderSystem::CreateRenderBuffer(const RenderBufferType type, const u64 totalSize, const bool useFreelist) const
+	{
+		return m_backend->CreateRenderBuffer(type, totalSize, useFreelist);
+	}
+
+	bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const
+	{
+		return m_backend->DestroyRenderBuffer(buffer);
 	}
 
 	void RenderSystem::RegenerateRenderTargets() const
@@ -410,11 +419,12 @@ namespace C3D
 		return false;
 	}
 
-	void RenderSystem::DestroyBackend() const
+	void RenderSystem::DestroyBackend()
 	{
 		if (m_backend->type == RendererBackendType::Vulkan)
 		{
 			Memory.Free(m_backend, sizeof(RendererVulkan), MemoryType::RenderSystem);
+			m_backend = nullptr;
 		}
 	}
 }
