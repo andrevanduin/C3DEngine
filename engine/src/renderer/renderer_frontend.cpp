@@ -366,9 +366,14 @@ namespace C3D
 		return m_backend->DestroyRenderTarget(target, freeInternalMemory);
 	}
 
-	bool RenderSystem::CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist, RenderBuffer* outBuffer) const
+	RenderBuffer* RenderSystem::CreateRenderBuffer(const RenderBufferType type, const u64 totalSize, const bool useFreelist) const
 	{
-		return m_backend->CreateRenderBuffer(type, totalSize, useFreelist, outBuffer);
+		return m_backend->CreateRenderBuffer(type, totalSize, useFreelist);
+	}
+
+	bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const
+	{
+		return m_backend->DestroyRenderBuffer(buffer);
 	}
 
 	void RenderSystem::RegenerateRenderTargets() const

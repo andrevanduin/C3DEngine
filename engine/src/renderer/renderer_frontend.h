@@ -70,7 +70,8 @@ namespace C3D
 		void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) const;
 		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) const;
 
-		bool CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist, RenderBuffer* outBuffer) const;
+		[[nodiscard]] RenderBuffer* CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist) const;
+		bool DestroyRenderBuffer(RenderBuffer* buffer) const;
 
 		void RegenerateRenderTargets() const;
 

@@ -26,7 +26,7 @@ namespace C3D
 	class RenderBuffer
 	{
 	public:
-		RenderBuffer(RenderBufferType type, u64 totalSize);
+		explicit RenderBuffer(const char* name);
 		RenderBuffer(const RenderBuffer& other) = delete;
 		RenderBuffer(RenderBuffer&& other) = delete;
 
@@ -35,28 +35,33 @@ namespace C3D
 
 		virtual ~RenderBuffer() = default;
 
-		virtual bool Create(bool useFreelist);
+		virtual bool Create(RenderBufferType bufferType, u64 size, bool useFreelist);
 		virtual void Destroy();
 
-		virtual bool Bind(u64 offset) = 0;
-		virtual bool Unbind() = 0;
+		virtual bool Bind(u64 offset);
+		virtual bool Unbind();
 
-		virtual void* MapMemory(u64 offset, u64 size) = 0;
-		virtual void UnmapMemory(u64 offset, u64 size) = 0;
+		virtual void* MapMemory(u64 offset, u64 size);
+		virtual void UnMapMemory(u64 offset, u64 size);
 
-		virtual bool Flush(u64 offset, u64 size) = 0;
-		virtual bool Resize(u64 newTotalSize) = 0;
-		
-		virtual bool Read(u64 offset, u64 size, void** outMemory) = 0;
-		virtual bool LoadRange(u64 offset, u64 size, const void* data) = 0;
-		virtual bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size) = 0;
+		virtual bool Flush(u64 offset, u64 size);
+		virtual bool Resize(u64 newTotalSize);
 
-		virtual bool Draw(u64 offset, u32 elementCount, bool bindOnly) = 0;
+		virtual bool Allocate(u64 size, u64* outOffset);
+		virtual bool Free(u64 size, u64 offset);
+
+		virtual bool Read(u64 offset, u64 size, void** outMemory);
+		virtual bool LoadRange(u64 offset, u64 size, const void* data);
+		virtual bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size);
+
+		virtual bool Draw(u64 offset, u32 elementCount, bool bindOnly);
 
 		RenderBufferType type;
 		u64 totalSize;
 
 	protected:
+		LoggerInstance m_logger;
+
 		u64 m_freeListMemoryRequirement;
 		NewFreeList m_freeList;
 		void* m_freeListBlock;

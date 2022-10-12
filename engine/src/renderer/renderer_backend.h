@@ -76,7 +76,8 @@ namespace C3D
 		virtual void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) = 0;
 		virtual void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) = 0;
 
-		virtual bool CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist, RenderBuffer* outBuffer) = 0;
+		virtual RenderBuffer* CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist) = 0;
+		virtual bool DestroyRenderBuffer(RenderBuffer* buffer) = 0;
 
 		virtual Texture* GetWindowAttachment(u8 index) = 0;
 		virtual Texture* GetDepthAttachment() = 0;

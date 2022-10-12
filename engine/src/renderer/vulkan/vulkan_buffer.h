@@ -6,34 +6,38 @@
 
 namespace C3D
 {
-	class VulkanBuffer final : RenderBuffer
+	class VulkanBuffer final : public RenderBuffer
 	{
 	public:
-		VulkanBuffer(const VulkanContext* context, RenderBufferType type, u64 totalSize, u32 usage, u32 memoryPropertyFlags, bool bindOnCreate);
+		explicit VulkanBuffer(const VulkanContext* context);
 
-		bool Create(bool useFreelist) override;
+		bool Create(RenderBufferType bufferType, u64 size, bool useFreelist) override;
 		void Destroy() override;
 
-		bool Resize(const VulkanContext* context, u64 newSize, VkQueue queue, VkCommandPool pool);
+		bool Bind(u64 offset) override;
 
-		void Bind(const VulkanContext* context, u64 offset) const;
+		void* MapMemory(u64 offset, u64 size) override;
+		void UnMapMemory(u64 offset, u64 size) override;
 
-		void* LockMemory(const VulkanContext* context, u64 offset, u64 size, u32 flags) const;
-		void  UnlockMemory(const VulkanContext* context) const;
+		bool Flush(u64 offset, u64 size) override;
+		bool Resize(u64 newSize) override;
 
-		bool Allocate(u64 size, u64* outOffset);
-		bool Free(u64 size, u64 offset);
+		bool Read(u64 offset, u64 size, void** outMemory) override;
+		bool LoadRange(u64 offset, u64 size, const void* data) override;
+		bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size) override;
+		
+		bool Draw(u64 offset, u32 elementCount, bool bindOnly) override;
 
-		void LoadData(const VulkanContext* context, u64 offset, u64 size, u32 flags, const void* data) const;
-
-		void CopyTo(const VulkanContext* context, VkCommandPool pool, VkFence fence, VkQueue queue, u64 sourceOffset, VkBuffer dest, u64 destOffset, u64 size) const;
+		[[nodiscard]] bool IsDeviceLocal() const;
+		[[nodiscard]] bool IsHostVisible() const;
+		[[nodiscard]] bool IsHostCoherent() const;
 
 		VkBuffer handle;
-	private:
-		void CleanupFreeList();
 
-		u64 m_totalSize;
-		
+	protected:
+		bool CopyRangeInternal(u64 srcOffset, VkBuffer dst, u64 dstOffset, u64 size) const;
+
+		const VulkanContext* m_context;
 		VkBufferUsageFlagBits m_usage;
 
 		VkDeviceMemory m_memory;

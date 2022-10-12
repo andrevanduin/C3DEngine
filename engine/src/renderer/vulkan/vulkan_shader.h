@@ -129,6 +129,13 @@ namespace C3D
 
 	struct VulkanShader
 	{
+		explicit VulkanShader(const VulkanContext* context)
+			: mappedUniformBufferBlock(nullptr), config(), renderPass(nullptr), stages{}, descriptorPool(nullptr),
+		      descriptorSetLayouts{}, globalDescriptorSets{}, uniformBuffer(context), instanceCount(0),
+		      instanceStates{}, globalUniformCount(0), globalUniformSamplerCount(0), instanceUniformCount(0),
+		      instanceUniformSamplerCount(0), localUniformCount(0)
+		{}
+
 		void* mappedUniformBufferBlock;
 
 		VulkanShaderConfig config;

@@ -69,7 +69,8 @@ namespace C3D
 		void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) override;
 		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) override;
 
-		bool CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist, RenderBuffer* outBuffer) override;
+		RenderBuffer* CreateRenderBuffer(RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
+		bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
 		Texture* GetWindowAttachment(u8 index) override;
 		Texture* GetDepthAttachment() override;
@@ -81,13 +82,8 @@ namespace C3D
 		void CreateCommandBuffers();
 
 		bool RecreateSwapChain();
-		bool CreateBuffers();
 
 		bool CreateModule(VulkanShaderStageConfig config, VulkanShaderStage* shaderStage) const;
-
-		// TEMP
-		bool UploadDataRange(VkCommandPool pool, VkFence fence, VkQueue queue, VulkanBuffer* buffer, u64* outOffset, u64 size, const void* data) const;
-		static void FreeDataRange(VulkanBuffer* buffer, u64 offset, u64 size);
 
 		VkSamplerAddressMode ConvertRepeatType(const char* axis, TextureRepeat repeat) const;
 		VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;
@@ -98,7 +94,7 @@ namespace C3D
 		// TODO: make dynamic
 		VulkanGeometryData m_geometries[VULKAN_MAX_GEOMETRY_COUNT];
 
-#if defined(_DEBUG)
+#ifdef _DEBUG
 		VkDebugUtilsMessengerEXT m_debugMessenger{ nullptr };
 #endif
 	};
