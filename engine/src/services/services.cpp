@@ -5,6 +5,7 @@
 #include "core/input.h"
 #include "core/events/event.h"
 #include "core/logger.h"
+#include "core/utils.h"
 
 #include "renderer/renderer_frontend.h"
 
@@ -159,6 +160,8 @@ namespace C3D
 
 		m_logger.Info("Destroying Linear Allocator");
 		m_allocator.Destroy();
+
+		Utils::GenerateMemoryUsageString(*m_pMemorySystem);
 
 		m_logger.Info("Shutdown finished");
 	}

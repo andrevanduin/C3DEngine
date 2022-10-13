@@ -1,6 +1,7 @@
 
 #pragma once
 #include "resource_loader.h"
+#include "resources/material.h"
 
 namespace C3D
 {

@@ -1,10 +1,13 @@
 
 #pragma once
+#include <iostream>
 #include <ostream>
 #include <fmt/core.h>
 
 #include "core/defines.h"
 #include "core/memory.h"
+#include "containers/dynamic_array.h"
+
 #include "services/services.h"
 
 namespace C3D
@@ -142,7 +145,7 @@ namespace C3D
 			m_sso.data[MEMORY_TYPE] = SSO_USE_STACK;
 		}
 
-		explicit String(const char* value)
+		String(const char* value)
 			: m_data(nullptr), m_size(0)
 		{
 			if (value == nullptr)
@@ -283,11 +286,12 @@ namespace C3D
 		{
 			if (this == &other) return *this;
 
+			// Copy over the size
+			m_size = other.m_size;
+
 			// Check 'other' is stack or heap allocated
 			if (other.m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP) // Heap allocated
 			{
-				// Copy over the size
-				m_size = other.m_size;
 				// Reserve enough capacity for the space that the other string is taking (Extra byte for '\0' character).
 				m_sso.capacity = m_size + 1;
 				// Set our MEMORY_TYPE bit to use the heap
@@ -470,8 +474,164 @@ namespace C3D
 			Append(c);
 		}
 
+		/* @brief Removes the last count characters from the string.
+		 * If count > String::Size(), String::Size() characters will be removed (leaving you with an empty string).
+		 */
+		void RemoveLast(const u64 count = 1)
+		{
+			u64 newSize = 0;
+			if (count < m_size)
+			{
+				newSize = m_size - count;
+			}
+
+			m_data[newSize] = '\0';
+			m_size = newSize;
+		}
+
+		/* @brief Splits the string at the given delimiter. */
+		[[nodiscard]] DynamicArray<String> Split(const char delimiter, const bool skipEmpty = true) const
+		{
+			DynamicArray<String> elements;
+			String current;
+			for (u64 i = 0; i < m_size; i++)
+			{
+				if (m_data[i] == delimiter)
+				{
+					if (!skipEmpty || !current.Empty())
+					{
+						elements.PushBack(current);
+						current.Clear();
+					}
+				}
+				else
+				{
+					current.Append(m_data[i]);
+				}
+			}
+
+			if (!current.Empty()) elements.PushBack(current);
+			return elements;
+		}
+
+		/* @brief Removes all starting whitespace characters from the string. */
+		void TrimLeft()
+		{
+			u64 newStart = 0;
+			// Find the first non-space character
+			while (std::isspace(m_data[newStart]))
+			{
+				newStart++;
+			}
+			// If the first character is a non-space character we do nothing
+			if (newStart == 0) return;
+			// Decrement the size by however many characters we have removed
+			m_size -= newStart;
+			// Copy over the remaining characters
+			std::memcpy(m_data, m_data + newStart, m_size);
+			// Add a null termination character
+			m_data[m_size] = '\0';
+		}
+
+		/* @brief Removes all the trailing whitespace characters from the string. */
+		void TrimRight()
+		{
+			u64 newSize = m_size;
+			// Find the first no-space character at the end
+			while (std::isspace(m_data[newSize - 1]))
+			{
+				newSize--;
+			}
+			// If the last character is a non-space character we do nothing
+			if (newSize == m_size) return;
+			// We save off our new size
+			m_size = newSize;
+			// Set the null termination character to end our string
+			m_data[m_size] = '\0';
+		}
+
+		/* @brief Remove all the starting and trailing whitespace characters from the string. */
+		void Trim()
+		{
+			TrimLeft();
+			TrimRight();
+		}
+
+		/* @brief Checks if string starts with provided character sequence. */
+		[[nodiscard]] bool StartsWith(const String& sequence) const
+		{
+			// If our string is shorter than the sequence our string can not start with the sequence.
+			if (m_size < sequence.Size()) return false;
+			
+			return std::equal(begin(), begin() + sequence.Size(), sequence.begin(), sequence.end());
+		}
+
+		/* @brief Checks if string starts with provided character. */
+		[[nodiscard]] bool StartsWith(const char c) const
+		{
+			// If we have an empty string it can not start with a char.
+			if (m_size == 0) return false;
+
+			return m_data[0] == c;
+		}
+
+		/* @brief Checks if string ends in the provided character sequence. */
+		[[nodiscard]] bool EndsWith(const String& sequence) const
+		{
+			// If our string is shorter than the sequence our string can not start with the sequence.
+			if (m_size < sequence.Size()) return false;
+
+			return std::equal(end() - sequence.Size(), end(), sequence.begin(), sequence.end());
+		}
+
+		/* @brief Checks if string ends with the provided character. */
+		[[nodiscard]] bool EndsWith(const char c) const
+		{
+			// If we have an empty string it can not end with a char.
+			if (m_size == 0) return false;
+
+			return m_data[m_size - 1] == c;
+		}
+
+		/* @brief Converts string to an i32. */
+		[[nodiscard]] i32 ToI32(const i32 base = 10) const
+		{
+			return std::strtol(m_data, nullptr, base);
+		}
+
+		/* @brief Converts string to an u32. */
+		[[nodiscard]] u32 ToU32(const i32 base = 10) const
+		{
+			return std::strtoul(m_data, nullptr, base);
+		}
+
+		/* @brief Converts string to an i16. */
+		[[nodiscard]] i16 ToI16(const i32 base = 10) const
+		{
+			return static_cast<i16>(std::strtol(m_data, nullptr, base));
+		}
+
+		/* @brief Converts string to an u16. */
+		[[nodiscard]] u16 ToU16(const i32 base = 10) const
+		{
+			return static_cast<u16>(std::strtoul(m_data, nullptr, base));
+		}
+
+		/* @brief Converts string to an i8. */
+		[[nodiscard]] i8 ToI8(const i32 base = 10) const
+		{
+			return static_cast<i8>(std::strtol(m_data, nullptr, base));
+		}
+
+		/* @brief Converts string to an u8. */
+		[[nodiscard]] u8 ToU8(const i32 base = 10) const
+		{
+			return static_cast<u8>(std::strtoul(m_data, nullptr, base));
+		}
+
 		[[nodiscard]] u64 Size() const { return m_size; }
 		[[nodiscard]] u64 Length() const { return m_size; }
+		[[nodiscard]] bool Empty() const { return m_size == 0;  }
 
 		[[nodiscard]] const char* Data() const { return m_data; }
 

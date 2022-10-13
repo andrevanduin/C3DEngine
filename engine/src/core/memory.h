@@ -1,6 +1,7 @@
 
 #pragma once
 #include "defines.h"
+
 #include "systems/system.h"
 #include "memory/dynamic_allocator.h"
 
@@ -38,7 +39,9 @@ namespace C3D
 		Direct3D,
 		OpenGL,
 		GpuLocal,
-		MaxType
+		BitmapFont,
+		SystemFont,
+		MaxType,
 	};
 
 	struct MemoryAllocation
@@ -60,9 +63,7 @@ namespace C3D
 		bool excludeFromStats = false;
 	};
 
-	class String;
-
-	class C3D_API MemorySystem : public System<MemorySystemConfig>
+	class C3D_API MemorySystem final : public System<MemorySystemConfig>
 	{
 	public:
 		MemorySystem();
@@ -114,11 +115,16 @@ namespace C3D
 
 		static void* Set(void* dest, i32 value, u64 size);
 
-		String GetMemoryUsageString();
+		[[nodiscard]] const MemoryAllocation* GetTaggedAllocations() const;
 
 		[[nodiscard]] u64 GetAllocCount() const;
 		[[nodiscard]] u64 GetMemoryUsage(MemoryType type) const;
+
 		[[nodiscard]] u64 GetFreeSpace() const;
+		[[nodiscard]] u64 GetTotalUsableSpace() const;
+
+		[[nodiscard]] bool IsInitialized() const;
+
 	private:
 		void* m_memory;
 

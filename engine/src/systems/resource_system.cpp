@@ -11,8 +11,7 @@
 #include "resources/loaders/mesh_loader.h"
 #include "resources/loaders/shader_loader.h"
 #include "resources/loaders/text_loader.h"
-
-#include "services/services.h"
+#include "resources/loaders/bitmap_font_loader.h"
 
 namespace C3D
 {
@@ -45,7 +44,7 @@ namespace C3D
 		IResourceLoader* loaders[] =
 		{
 			new ResourceLoader<TextResource>(), new ResourceLoader<BinaryResource>(), new ResourceLoader<ImageResource>(), new ResourceLoader<MaterialResource>(),
-			new ResourceLoader<ShaderResource>(), new ResourceLoader<MeshResource>()
+			new ResourceLoader<ShaderResource>(), new ResourceLoader<MeshResource>(), new ResourceLoader<BitmapFontResource>()
 		};
 
 		for (const auto loader : loaders)

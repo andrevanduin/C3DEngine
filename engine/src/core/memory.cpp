@@ -2,44 +2,9 @@
 #include "memory.h"
 #include "logger.h"
 #include "platform/platform.h"
-#include "containers/string.h"
 
 namespace C3D
 {
-	static const char* MEMORY_TYPE_STRINGS[static_cast<u8>(MemoryType::MaxType)] =
-	{
-		"Unknown          ",
-		"Dynamic_Allocator",
-		"Linear_Allocator ",
-		"FreeList         ",
-		"Array            ",
-		"DynamicArray     ",
-		"HashTable        ",
-		"RingQueue        ",
-		"Bst              ",
-		"String           ",
-		"C3DString        ",
-		"Application      ",
-		"ResourceLoader   ",
-		"Job              ",
-		"Texture          ",
-		"MaterialInstance ",
-		"Geometry         ",
-		"RenderSystem     ",
-		"Game             ",
-		"Transform        ",
-		"Entity           ",
-		"EntityNode       ",
-		"Scene            ",
-		"Shader           ",
-		"Resource         ",
-		"Vulkan           ",
-		"VulkanExternal   ",
-		"Direct3D         ",
-		"OpenGL           ",
-		"GpuLocal         ",
-	};
-
 	MemorySystem::MemorySystem()
 		: System("MEMORY"), m_memory(nullptr), m_initialized(false), m_freeListMemorySize(0), m_stats()
 	{}
@@ -93,8 +58,6 @@ namespace C3D
 
 		m_stats.taggedAllocations[static_cast<u8>(MemoryType::FreeList)].count--;
 		m_stats.taggedAllocations[static_cast<u8>(MemoryType::FreeList)].size -= m_freeListMemorySize;
-
-		m_logger.Info("Memory Usage after free:\n {}", GetMemoryUsageString());
 	}
 
 	void* MemorySystem::Allocate(const u64 size, const MemoryType type)
@@ -216,57 +179,9 @@ namespace C3D
 		return Platform::SetMemory(dest, value, size);
 	}
 
-	String SizeToText(const u64 size)
+	const MemoryAllocation* MemorySystem::GetTaggedAllocations() const
 	{
-		constexpr static auto gb = GibiBytes(1);
-		constexpr static auto mb = MebiBytes(1);
-		constexpr static auto kb = KibiBytes(1);
-
-		f64 amount = static_cast<f64>(size);
-		if (size >= gb)
-		{
-			amount /= static_cast<f64>(gb);
-			return String::FromFormat("{:.4}GB", amount);
-		}
-		if (size >= mb)
-		{
-			amount /= static_cast<f64>(mb);
-			return String::FromFormat("{:.4}MB", amount);
-		}
-		if (size >= kb)
-		{
-			amount /= static_cast<f64>(kb);
-			return String::FromFormat("{:.4}KB", amount);
-		}
-
-		return String::FromFormat("{}B", size);
-	}
-
-	String MemorySystem::GetMemoryUsageString()
-	{
-		String str;
-		str.Reserve(2000);
-
-		str.Append("System's Dynamic Memory usage:\n");
-
-		auto i = 0;
-		for (const auto& [size, count] : m_stats.taggedAllocations)
-		{
-			str.Append(String::FromFormat("  {} - ({:0>3}) {}\n", MEMORY_TYPE_STRINGS[i], count, SizeToText(size)));
-			i++;
-		}
-
-		if (m_initialized)
-		{
-			const auto freeSpace = m_allocator.FreeSpace();
-			const auto totalSpace = m_allocator.GetTotalUsableSize();
-			const auto usedSpace = totalSpace - freeSpace;
-			const auto percentage = static_cast<f32>(usedSpace) / static_cast<f32>(totalSpace) * 100.0f;
-
-			str += String::FromFormat("Using {} out of {} total ({:.3}% used)", SizeToText(usedSpace), SizeToText(totalSpace), percentage);
-		}
-
-		return str;
+		return m_stats.taggedAllocations;
 	}
 
 	u64 MemorySystem::GetAllocCount() const
@@ -282,5 +197,15 @@ namespace C3D
 	u64 MemorySystem::GetFreeSpace() const
 	{
 		return m_allocator.FreeSpace();
+	}
+
+	u64 MemorySystem::GetTotalUsableSpace() const
+	{
+		return m_allocator.GetTotalUsableSize();
+	}
+
+	bool MemorySystem::IsInitialized() const
+	{
+		return m_initialized;
 	}
 }

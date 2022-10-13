@@ -5,6 +5,7 @@
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
+#include "resources/material.h"
 #include "services/services.h"
 
 #include "systems/resource_system.h"

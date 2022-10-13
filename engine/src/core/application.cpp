@@ -18,7 +18,9 @@
 #include "renderer/transform.h"
 //
 
+#include "utils.h"
 #include "renderer/renderer_frontend.h"
+#include "resources/loaders/bitmap_font_loader.h"
 #include "systems/geometry_system.h"
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
@@ -117,6 +119,10 @@ namespace C3D
 
 		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
+
+		// TODO: Remove after testing
+		BitmapFontResource res;
+		Resources.Load("UbuntuMono21px", &res);
 
 		// Load render views
 		RenderViewConfig skyboxConfig{};
@@ -342,7 +348,7 @@ namespace C3D
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
 		{
-			const auto memStr = Memory.GetMemoryUsageString();
+			const auto memStr = Utils::GenerateMemoryUsageString(Memory);
 			m_logger.Info(memStr.Data());
 
 			RenderPacket packet = {};

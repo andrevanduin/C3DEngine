@@ -3,9 +3,11 @@
 #include "../expect.h"
 #include "../util.h"
 
-#include <containers/string.h>
 #include <vector>
 #include <iostream>
+
+#include "services/services.h"
+#include "core/memory.h"
 
 u8 StringShouldCreateEmptyWithEmptyCtor()
 {
@@ -19,8 +21,6 @@ u8 StringShouldCreateEmptyWithEmptyCtor()
 	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::C3DString));
 	return true;
 }
-
-
 
 u8 StringShouldDoIntegerConversion()
 {
@@ -86,7 +86,7 @@ u8 StringShouldBeTruthy()
 	return true;
 }
 
-u8 StringShouldAppendToOtherStrings()
+u8 StringShouldAppend()
 {
 	C3D::String a("Hello ");
 	const C3D::String b("World");
@@ -109,6 +109,46 @@ u8 StringShouldAppendToOtherStrings()
 	ExpectToBeTrue(std::strcmp("Long String That we will add to another very long string to test if it also works when not using SSO", e.Data()) == 0);
 	ExpectShouldBe(100, e.Size());
 
+	C3D::String ch("Test123");
+	ch.Append('4');
+
+	ExpectShouldBe("Test1234", ch);
+	ExpectShouldBe(8, ch.Size());
+
+	return true;
+}
+
+u8 StringShouldTrim()
+{
+	C3D::String right("Test123  ");
+	right.TrimRight();
+	ExpectShouldBe("Test123", right);
+
+	C3D::String left("   Test123");
+	left.TrimLeft();
+	ExpectShouldBe("Test123", left);
+
+	C3D::String trim("    Test 1234567    ");
+	trim.Trim();
+	ExpectShouldBe("Test 1234567", trim);
+
+	C3D::String newLines("\n\nTest1234\n\n\n\n");
+	newLines.Trim();
+	ExpectShouldBe("Test1234", newLines);
+
+	return true;
+}
+
+u8 StringShouldSplit()
+{
+	C3D::String test("size=21");
+
+	auto result = test.Split('=');
+
+	ExpectShouldBe(2, result.Size());
+	ExpectShouldBe("size", result[0]);
+	ExpectShouldBe("21", result[1]);
+
 	return true;
 }
 
@@ -121,5 +161,7 @@ void String::RegisterTests(TestManager* manager)
 	manager->Register(StringShouldUseSso, "Strings should not dynamically allocate memory if they are small (SSO).");
 	manager->Register(StringShouldCompare, "String should compare with each other and with char* .");
 	manager->Register(StringShouldBeTruthy, "String should evaluate to truthy values.");
-	manager->Register(StringShouldAppendToOtherStrings, "Strings should append to other strings.");
+	manager->Register(StringShouldAppend, "Strings and chars should append to strings.");
+	manager->Register(StringShouldTrim, "String should properly trim.");
+	manager->Register(StringShouldSplit, "String should properly split into parts.");
 }

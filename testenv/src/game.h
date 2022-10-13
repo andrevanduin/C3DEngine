@@ -1,6 +1,7 @@
 
 #pragma once
 #include <core/application.h>
+#include "containers/string.h"
 
 namespace C3D
 {
