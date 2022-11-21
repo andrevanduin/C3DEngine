@@ -15,6 +15,7 @@
 #define Cam			C3D::Services::GetCameraSystem()
 #define Views		C3D::Services::GetViewSystem()
 #define Jobs		C3D::Services::GetJobSystem()
+#define Fonts		C3D::Services::GetFontSystem()
 
 namespace C3D
 {
@@ -52,15 +53,22 @@ namespace C3D
 	class JobSystem;
 	struct JobSystemConfig;
 
+	class FontSystem;
+	struct FontSystemConfig;
+
 	class C3D_API Services
 	{
 	public:
-		static bool Init(const Application* application, const MemorySystemConfig& memorySystemConfig, const JobSystemConfig& jobSystemConfig,
+		static bool Init(const Application* application, const JobSystemConfig& jobSystemConfig,
 			const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig,
-			const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig, const CameraSystemConfig& cameraSystemConfig,
-			const RenderViewSystemConfig& viewSystemConfig);
+			const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& viewSystemConfig, const FontSystemConfig& fontSystemConfig);
 
 		static bool InitMemory(const MemorySystemConfig& memorySystemConfig);
+
+		static void SetMemorySystem(MemorySystem* memorySystem) { m_pMemorySystem = memorySystem; }
+
+		static bool InitMaterialSystem(const MaterialSystemConfig& config);
+		static bool InitGeometrySystem(const GeometrySystemConfig& config);
 
 		static void Shutdown();
 
@@ -76,6 +84,7 @@ namespace C3D
 		static CameraSystem&		GetCameraSystem()	{ return *m_pCameraSystem;		}
 		static RenderViewSystem&	GetViewSystem()		{ return *m_pViewSystem;		}
 		static JobSystem&			GetJobSystem()		{ return *m_pJobSystem;			}
+		static FontSystem&			GetFontSystem()		{ return *m_pFontSystem;		}
 
 	private:
 		static MemorySystem*		m_pMemorySystem;
@@ -90,6 +99,7 @@ namespace C3D
 		static CameraSystem*		m_pCameraSystem;
 		static RenderViewSystem*	m_pViewSystem;
 		static JobSystem*			m_pJobSystem;
+		static FontSystem*			m_pFontSystem;
 
 		static LinearAllocator m_allocator;
 		static LoggerInstance m_logger;

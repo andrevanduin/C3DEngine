@@ -32,8 +32,7 @@ namespace C3D
 			return false;
 		}
 
-		// TODO: Should really use an allocator
-		outResource->fullPath = StringDuplicate(fullPath);
+		outResource->fullPath = fullPath;
 
 		u64 fileSize = 0;
 		if (!file.Size(&fileSize))
@@ -45,7 +44,7 @@ namespace C3D
 
 		// TODO: should be using an allocator here
 		outResource->data = Memory.Allocate<char>(fileSize, MemoryType::Array);
-		outResource->name = StringDuplicate(name);
+		outResource->name = name;
 
 		if (!file.ReadAll(outResource->data, &outResource->size))
 		{
@@ -62,5 +61,8 @@ namespace C3D
 	{
 		Memory.Free(resource->data, resource->size, MemoryType::Array);
 		resource->data = nullptr;
+
+		resource->name.Destroy();
+		resource->fullPath.Destroy();
 	}
 }

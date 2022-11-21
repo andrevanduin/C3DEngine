@@ -11,9 +11,8 @@
 namespace C3D
 {
 	VulkanImage::VulkanImage()
-		: handle(nullptr), view(nullptr), width(0), height(0), m_memory(nullptr)
-	{
-	}
+		: handle(nullptr), view(nullptr), width(0), height(0), m_memory(nullptr), m_memoryRequirements(), m_memoryFlags(0)
+	{}
 
 	VkImageType GetVkImageType(const TextureType type)
 	{
@@ -151,6 +150,22 @@ namespace C3D
 			// The fragment stage
 			destStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		}
+		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			destStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+		{
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			destStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
 		else
 		{
 			Logger::Fatal("[VULKAN_IMAGE] - Unsupported layout transition");
@@ -162,8 +177,7 @@ namespace C3D
 
 	void VulkanImage::CopyFromBuffer(const TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
 	{
-		VkBufferImageCopy region;
-		Memory.Zero(&region, sizeof(VkBufferImageCopy));
+		VkBufferImageCopy region = {};
 		region.bufferOffset = 0;
 		region.bufferRowLength = 0;
 		region.bufferImageHeight = 0;
@@ -178,6 +192,46 @@ namespace C3D
 		region.imageExtent.depth = 1;
 
 		vkCmdCopyBufferToImage(commandBuffer->handle, buffer, handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	}
+
+	void VulkanImage::CopyToBuffer(const TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
+	{
+		VkBufferImageCopy region = {};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = type == TextureType::TypeCube ? 6 : 1;
+
+		region.imageExtent.width = width;
+		region.imageExtent.height = height;
+		region.imageExtent.depth = 1;
+
+		vkCmdCopyImageToBuffer(commandBuffer->handle, handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
+	}
+
+	void VulkanImage::CopyPixelToBuffer(const TextureType type, VkBuffer buffer, const u32 x, const u32 y, const VulkanCommandBuffer* commandBuffer) const
+	{
+		VkBufferImageCopy region = {};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = type == TextureType::TypeCube ? 6 : 1;
+
+		region.imageOffset.x = static_cast<i32>(x);
+		region.imageOffset.y = static_cast<i32>(y);
+		region.imageExtent.width = 1;
+		region.imageExtent.height = 1;
+		region.imageExtent.depth = 1;
+
+		vkCmdCopyImageToBuffer(commandBuffer->handle, handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
 	}
 
 	void VulkanImage::Destroy(const VulkanContext* context)

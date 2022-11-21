@@ -1,6 +1,7 @@
 
 #pragma once
 #include "system.h"
+#include "containers/hash_map.h"
 #include "resources/shader.h"
 
 namespace C3D
@@ -21,7 +22,7 @@ namespace C3D
 		bool Init(const ShaderSystemConfig& config) override;
 		void Shutdown() override;
 
-		bool Create(const ShaderConfig& config);
+		bool Create(RenderPass* pass, const ShaderConfig& config);
 
 		u32 GetId(const char* name);
 
@@ -58,7 +59,7 @@ namespace C3D
 		bool UniformAddStateIsValid(const Shader* shader) const;
 		bool UniformNameIsValid(Shader* shader, const char* name) const;
 
-		std::unordered_map<string, u32> m_nameToIdMap;
+		HashMap<const char*, u32> m_nameToIdMap;
 
 		u32 m_currentShaderId;
 		Shader* m_shaders;

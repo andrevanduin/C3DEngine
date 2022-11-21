@@ -25,6 +25,8 @@ namespace C3D
 		m_loaderTypes[ToUnderlying(ResourceType::Material)]		= "Material";
 		m_loaderTypes[ToUnderlying(ResourceType::Mesh)]			= "StaticMesh";
 		m_loaderTypes[ToUnderlying(ResourceType::Shader)]		= "Shader";
+		m_loaderTypes[ToUnderlying(ResourceType::BitmapFont)]	= "BitmapFont";
+		m_loaderTypes[ToUnderlying(ResourceType::SystemFont)]   = "SystemFont";
 		m_loaderTypes[ToUnderlying(ResourceType::Custom)]		= "Custom";
 	}
 

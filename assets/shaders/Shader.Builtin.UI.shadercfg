@@ -1,11 +1,11 @@
 # UI Shader config file
-version= 1.0
+version = 1.0
 name = Shader.Builtin.UI
 renderPass = RenderPass.Builtin.UI
 stages = vertex, fragment
 stageFiles = shaders/Builtin.UIShader.vert.spv, shaders/Builtin.UIShader.frag.spv
-useInstances = true
-useLocals = true
+depthTest  = false
+depthWrite = false
 
 # Attributes: (type, name)
 attribute = vec2, inPosition

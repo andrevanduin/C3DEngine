@@ -56,4 +56,9 @@ namespace C3D
 		i8 id;
 		char file[256];
 	};
+
+	struct SystemFontFace
+	{
+		char name[256];
+	};
 }

@@ -95,7 +95,7 @@ namespace C3D
 		return &m_registeredTextures[id];
 	}
 
-	Texture* TextureSystem::AcquireCube(const char* name, bool autoRelease)
+	Texture* TextureSystem::AcquireCube(const char* name, const bool autoRelease)
 	{
 		// If the default texture is requested we return it. But we warn about it since it should be
 		// retrieved with GetDefault()
@@ -150,10 +150,11 @@ namespace C3D
 		}
 	}
 
-	Texture* TextureSystem::WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency, bool isWritable, const bool registerTexture, void* internalData)
+	void TextureSystem::WrapInternal(const char* name, const u32 width, const u32 height, const u8 channelCount, const bool hasTransparency, 
+		const bool isWritable, const bool registerTexture, void* internalData, Texture* outTexture)
 	{
 		u32 id = INVALID_ID;
-		Texture* t = nullptr;
+		Texture* t;
 		if (registerTexture)
 		{
 			// NOTE: Wrapped textures are never auto-released because it means that their
@@ -161,14 +162,20 @@ namespace C3D
 			if (!ProcessTextureReference(name, TextureType::Type2D, 1, false, true, &id))
 			{
 				m_logger.Error("WrapInternal() - Failed to obtain a new texture id.");
-				return nullptr;
+				return;
 			}
 			t = &m_registeredTextures[id];
 		}
 		else
 		{
-			t = Memory.Allocate<Texture>(MemoryType::Texture);
-			//m_logger.Trace("WrapInternal() - Created texture '{}', but not registering, resulting in an allocation. It is up to the caller to free this memory.", name);
+			if (outTexture)
+			{
+				t = outTexture;
+			}
+			else
+			{
+				t = Memory.Allocate<Texture>(MemoryType::Texture);
+			}
 		}
 
 		auto flags = hasTransparency ? HasTransparency : 0;
@@ -176,7 +183,6 @@ namespace C3D
 		flags |= IsWrapped;
 
 		t->Set(id, TextureType::Type2D, name, width, height, channelCount, flags, internalData);
-		return t;
 	}
 
 	bool TextureSystem::SetInternal(Texture* t, void* internalData)
@@ -210,6 +216,16 @@ namespace C3D
 			}
 
 			t->generation++;
+			return true;
+		}
+		return false;
+	}
+
+	bool TextureSystem::WriteData(Texture* t, const u32 offset, const u32 size, const u8* data)
+	{
+		if (t)
+		{
+			Renderer.WriteDataToTexture(t, offset, size, data);
 			return true;
 		}
 		return false;

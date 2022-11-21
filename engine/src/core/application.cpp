@@ -18,6 +18,7 @@
 #include "renderer/transform.h"
 //
 
+#include "identifier.h"
 #include "utils.h"
 #include "renderer/renderer_frontend.h"
 #include "resources/loaders/bitmap_font_loader.h"
@@ -27,6 +28,7 @@
 #include "systems/shader_system.h"
 #include "systems/texture_system.h"
 #include "systems/camera_system.h"
+#include "systems/font_system.h"
 #include "systems/render_view_system.h"
 #include "systems/jobs/job_system.h"
 
@@ -35,10 +37,12 @@ namespace C3D
 	Application::Application(const ApplicationConfig& config)
 		: m_logger("APPLICATION"), m_meshes{}, m_uiMeshes{}
 	{
-		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice")
-
+		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice");
+		
 		Logger::Init();
 		m_logger.Info("Starting");
+
+		Services::InitMemory(config.memorySystemConfig);
 
 		m_state.name = config.name;
 		m_state.width = config.width;
@@ -97,7 +101,7 @@ namespace C3D
 		}
 
 		JobSystemConfig	jobSystemConfig { maxThreadCount, jobThreadTypes };
-		constexpr MemorySystemConfig		memorySystemConfig		{ MebiBytes(1024) };
+		
 		constexpr ResourceSystemConfig		resourceSystemConfig	{ 32, "../../../../assets" };
 		constexpr ShaderSystemConfig		shaderSystemConfig		{ 128, 128, 31, 31 };
 		constexpr TextureSystemConfig		textureSystemConfig		{ 65536 };
@@ -106,8 +110,26 @@ namespace C3D
 		constexpr CameraSystemConfig		cameraSystemConfig		{ 61 };
 		constexpr RenderViewSystemConfig	viewSystemConfig		{ 251 };
 
-		Services::Init(this, memorySystemConfig, jobSystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, 
-			materialSystemConfig, geometrySystemConfig, cameraSystemConfig, viewSystemConfig);
+		FontSystemConfig fontSystemConfig;
+		fontSystemConfig.autoRelease = false;
+		fontSystemConfig.defaultBitmapFontCount = 1;
+
+		BitmapFontConfig bmpFontConfig = {};
+		bmpFontConfig.name = "Ubuntu Mono 21px";
+		bmpFontConfig.resourceName = "UbuntuMono21px";
+		bmpFontConfig.size = 21;
+
+		fontSystemConfig.bitmapFontConfigs = &bmpFontConfig;
+
+		fontSystemConfig.defaultSystemFontCount = 0;
+		fontSystemConfig.systemFontConfigs = nullptr;
+		fontSystemConfig.maxBitmapFontCount = 101;
+		fontSystemConfig.maxSystemFontCount = 101;
+
+		Identifier::Init();
+
+		Services::Init(this, jobSystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, 
+			cameraSystemConfig, viewSystemConfig, fontSystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
@@ -119,10 +141,7 @@ namespace C3D
 
 		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
 		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
-
-		// TODO: Remove after testing
-		BitmapFontResource res;
-		Resources.Load("UbuntuMono21px", &res);
+		Event.Register(SystemEventCode::ObjectHoverIdChanged, new EventCallback(this, &Application::OnEvent));
 
 		// Load render views
 		RenderViewConfig skyboxConfig{};
@@ -131,34 +150,72 @@ namespace C3D
 		skyboxConfig.height = 720;
 		skyboxConfig.name = "skybox";
 		skyboxConfig.passCount = 1;
+		skyboxConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
 
-		RenderViewPassConfig skyboxPasses[1];
+		RenderPassConfig skyboxPasses[1];
 		skyboxPasses[0].name = "RenderPass.Builtin.Skybox";
+		skyboxPasses[0].renderArea = { 0, 0, 1280, 720 };
+		skyboxPasses[0].clearColor = { 0, 0, 0.2f, 1.0f };
+		skyboxPasses[0].clearFlags = ClearColorBuffer;
+		skyboxPasses[0].depth = 1.0f;
+		skyboxPasses[0].stencil = 0;
+
+		RenderTargetAttachmentConfig skyboxTargetAttachment = {};
+		skyboxTargetAttachment.type = RenderTargetAttachmentTypeColor;
+		skyboxTargetAttachment.source = RenderTargetAttachmentSourceDefault;
+		skyboxTargetAttachment.loadOperation = RenderTargetAttachmentLoadOperationDontCare;
+		skyboxTargetAttachment.storeOperation = RenderTargetAttachmentStoreOperationStore;
+		skyboxTargetAttachment.presentAfter = false;
+
+		skyboxPasses[0].target.attachmentCount = 1;
+		skyboxPasses[0].target.attachments = &skyboxTargetAttachment;
+		skyboxPasses[0].renderTargetCount = Renderer.GetWindowAttachmentCount();
 
 		skyboxConfig.passes = skyboxPasses;
-		skyboxConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
 
 		if (!Views.Create(skyboxConfig))
 		{
 			m_logger.Fatal("Failed to create view '{}'.", skyboxConfig.name);
 		}
 
-		RenderViewConfig opaqueWorldConfig{};
-		opaqueWorldConfig.type = RenderViewKnownType::World;
-		opaqueWorldConfig.width = 1280;
-		opaqueWorldConfig.height = 720;
-		opaqueWorldConfig.name = "world_opaque";
-		opaqueWorldConfig.passCount = 1;
+		RenderViewConfig worldConfig{};
+		worldConfig.type = RenderViewKnownType::World;
+		worldConfig.width = 1280;
+		worldConfig.height = 720;
+		worldConfig.name = "world";
+		worldConfig.passCount = 1;
+		worldConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
 
-		RenderViewPassConfig passes[1];
-		passes[0].name = "RenderPass.Builtin.World";
+		RenderPassConfig worldPasses[1];
+		worldPasses[0].name = "RenderPass.Builtin.World";
+		worldPasses[0].renderArea = { 0, 0, 1280, 720 };
+		worldPasses[0].clearColor = { 0, 0, 0.2f, 1.0f };
+		worldPasses[0].clearFlags = ClearDepthBuffer | ClearStencilBuffer;
+		worldPasses[0].depth = 1.0f;
+		worldPasses[0].stencil = 0;
 
-		opaqueWorldConfig.passes = passes;
-		opaqueWorldConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
+		RenderTargetAttachmentConfig worldTargetAttachments[2]{};
+		worldTargetAttachments[0].type = RenderTargetAttachmentTypeColor;
+		worldTargetAttachments[0].source = RenderTargetAttachmentSourceDefault;
+		worldTargetAttachments[0].loadOperation = RenderTargetAttachmentLoadOperationLoad;
+		worldTargetAttachments[0].storeOperation = RenderTargetAttachmentStoreOperationStore;
+		worldTargetAttachments[0].presentAfter = false;
 
-		if (!Views.Create(opaqueWorldConfig))
+		worldTargetAttachments[1].type = RenderTargetAttachmentTypeDepth;
+		worldTargetAttachments[1].source = RenderTargetAttachmentSourceDefault;
+		worldTargetAttachments[1].loadOperation = RenderTargetAttachmentLoadOperationDontCare;
+		worldTargetAttachments[1].storeOperation = RenderTargetAttachmentStoreOperationStore;
+		worldTargetAttachments[1].presentAfter = false;
+
+		worldPasses[0].target.attachmentCount = 2;
+		worldPasses[0].target.attachments = worldTargetAttachments;
+		worldPasses[0].renderTargetCount = Renderer.GetWindowAttachmentCount();
+
+		worldConfig.passes = worldPasses;
+
+		if (!Views.Create(worldConfig))
 		{
-			m_logger.Fatal("Failed to create view '{}'.", opaqueWorldConfig.name);
+			m_logger.Fatal("Failed to create view '{}'.", worldConfig.name);
 		}
 
 		RenderViewConfig uiViewConfig{};
@@ -167,19 +224,53 @@ namespace C3D
 		uiViewConfig.height = 720;
 		uiViewConfig.name = "ui";
 		uiViewConfig.passCount = 1;
+		uiViewConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
 
-		RenderViewPassConfig uiPasses[1];
+		RenderPassConfig uiPasses[1];
 		uiPasses[0].name = "RenderPass.Builtin.UI";
+		uiPasses[0].renderArea = { 0, 0, 1280, 720 };
+		uiPasses[0].clearColor = { 0, 0, 0.2f, 1.0f };
+		uiPasses[0].clearFlags = ClearNone;
+		uiPasses[0].depth = 1.0f;
+		uiPasses[0].stencil = 0;
+
+		RenderTargetAttachmentConfig uiAttachment = {};
+		uiAttachment.type = RenderTargetAttachmentTypeColor;
+		uiAttachment.source = RenderTargetAttachmentSourceDefault;
+		uiAttachment.loadOperation = RenderTargetAttachmentLoadOperationLoad;
+		uiAttachment.storeOperation = RenderTargetAttachmentStoreOperationStore;
+		uiAttachment.presentAfter = true;
+
+		uiPasses[0].target.attachmentCount = 1;
+		uiPasses[0].target.attachments = &uiAttachment;
+		uiPasses[0].renderTargetCount = Renderer.GetWindowAttachmentCount();
 
 		uiViewConfig.passes = uiPasses;
-		uiViewConfig.viewMatrixSource = RenderViewViewMatrixSource::UiCamera;
 
 		if (!Views.Create(uiViewConfig))
 		{
 			m_logger.Fatal("Failed to create view '{}'.", uiViewConfig.name);
 		}
 
+		// Init material and geometry system since they need the shader created above
+		if (!Services::InitMaterialSystem(materialSystemConfig))
+		{
+			m_logger.Fatal("Failed to init Material system.");
+		}
+		if (!Services::InitGeometrySystem(geometrySystemConfig))
+		{
+			m_logger.Fatal("Failed to init Geometry system.");
+		}
+
 		// TEMP
+		// Create test ui text objects
+		if (!m_testText.Create(UITextType::Bitmap, "Ubuntu Mono 21px", 21, "Some test text 123,\nyesyes!\n\tKaas!"))
+		{
+			m_logger.Fatal("Failed to load basic ui bitmap text.");
+		}
+
+		m_testText.SetPosition({ 10, 640, 0 });
+
 		auto& cubeMap = m_skybox.cubeMap;
 		cubeMap.magnifyFilter = cubeMap.minifyFilter = TextureFilter::ModeLinear;
 		cubeMap.repeatU = cubeMap.repeatV = cubeMap.repeatW = TextureRepeat::ClampToEdge;
@@ -198,7 +289,7 @@ namespace C3D
 
 		Geometric.DisposeConfig(&skyboxCubeConfig);
 
-		Shader* skyboxShader = Shaders.Get(BUILTIN_SHADER_NAME_SKY_BOX);
+		Shader* skyboxShader = Shaders.Get("Shader.Builtin.Skybox");
 		TextureMap* maps[1] = { &m_skybox.cubeMap };
 		if (!Renderer.AcquireShaderInstanceResources(skyboxShader, maps, &m_skybox.instanceId))
 		{
@@ -224,6 +315,7 @@ namespace C3D
 		cubeMesh->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
 		cubeMesh->transform = Transform();
 		cubeMesh->generation = 0;
+		cubeMesh->uniqueId = Identifier::GetNewId(cubeMesh);
 
 		meshCount++;
 
@@ -242,6 +334,7 @@ namespace C3D
 		cubeMesh2->transform = Transform(vec3(20.0f, 0.0f, 1.0f));
 		cubeMesh2->transform.SetParent(&cubeMesh->transform);
 		cubeMesh2->generation = 0;
+		cubeMesh2->uniqueId = Identifier::GetNewId(cubeMesh2);
 
 		meshCount++;
 
@@ -259,6 +352,7 @@ namespace C3D
 		cubeMesh3->transform = Transform(vec3(5.0f, 0.0f, 1.0f));
 		cubeMesh3->transform.SetParent(&cubeMesh2->transform);
 		cubeMesh3->generation = 0;
+		cubeMesh3->uniqueId = Identifier::GetNewId(cubeMesh3);
 
 		meshCount++;
 
@@ -267,10 +361,12 @@ namespace C3D
 
 		carMesh = &m_meshes[meshCount];
 		carMesh->transform = Transform({ 15.0f, 0.0f, 1.0f });
+		carMesh->uniqueId = Identifier::GetNewId(carMesh);
 		meshCount++;
 
 		sponzaMesh = &m_meshes[meshCount];
 		sponzaMesh->transform = Transform({ 15.0f, 0.0f, 1.0f }, mat4(1.0f), { 0.05f, 0.05f, 0.05f });
+		sponzaMesh->uniqueId = Identifier::GetNewId(sponzaMesh);
 
 		meshCount++;
 
@@ -315,6 +411,7 @@ namespace C3D
 		uiConfig.indices.PushBack(0);
 		uiConfig.indices.PushBack(1);
 
+		m_uiMeshes[0].uniqueId = Identifier::GetNewId(&m_uiMeshes[0]);
 		m_uiMeshes[0].geometryCount = 1;
 		m_uiMeshes[0].geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 		m_uiMeshes[0].geometries[0] = Geometric.AcquireFromConfig(uiConfig, true);
@@ -360,8 +457,9 @@ namespace C3D
 			MeshPacketData worldMeshData = {};
 			worldMeshData.meshes.Reserve(10);
 
-			MeshPacketData uiMeshData = {};
-			uiMeshData.meshes.Reserve(10);
+			UIPacketData uiPacketData = {};
+			uiPacketData.meshData.meshes.Reserve(10);
+			uiPacketData.texts.PushBack(&m_testText);
 
 			while (m_state.running)
 			{
@@ -404,23 +502,31 @@ namespace C3D
 					}
 
 					// World
-					if (!Views.BuildPacket(Views.Get("world_opaque"), &worldMeshData, &packet.views[1]))
+					if (!Views.BuildPacket(Views.Get("world"), &worldMeshData, &packet.views[1]))
 					{
 						m_logger.Error("Failed to build packet for view 'world_opaque'.");
 						return;
 					}
 
-					uiMeshData.meshes.Clear();
+					uiPacketData.meshData.meshes.Clear();
 					for (auto& mesh : m_uiMeshes)
 					{
 						if (mesh.generation != INVALID_ID_U8)
 						{
-							uiMeshData.meshes.PushBack(&mesh);
+							uiPacketData.meshData.meshes.PushBack(&mesh);
 						}
 					}
 
+					const auto cam = Cam.GetDefault();
+					const auto pos = cam->GetPosition();
+					const auto rot = cam->GetEulerRotation();
+
+					char buffer[256]{};
+					sprintf_s(buffer, "Camera:\nPosition = (%.3f, %.3f, %.3f)\nRotation = (%.3f, %.3f, %.3f)", pos.x, pos.y, pos.z, RadToDeg(rot.x), RadToDeg(rot.y), RadToDeg(rot.z));
+					uiPacketData.texts[0]->SetText(buffer);
+
 					// Ui
-					if (!Views.BuildPacket(Views.Get("ui"), &uiMeshData, &packet.views[2]))
+					if (!Views.BuildPacket(Views.Get("ui"), &uiPacketData, &packet.views[2]))
 					{
 						m_logger.Error("Failed to build packet for view 'ui'.");
 						return;
@@ -525,9 +631,12 @@ namespace C3D
 		}
 
 		Renderer.ReleaseTextureMapResources(&m_skybox.cubeMap);
+
+		m_testText.Destroy();
 		// TEMP END
 
 		Services::Shutdown();
+		Identifier::Destroy();
 
 		SDL_DestroyWindow(m_window);
 
@@ -613,7 +722,9 @@ namespace C3D
 				m_state.height = height;
 
 				OnResize(width, height);
-				Services::GetRenderer().OnResize(width, height);
+				Renderer.OnResize(width, height);
+
+				m_testText.SetPosition({ 10, height - 80, 0 });
 			}
 		}
 
@@ -713,6 +824,16 @@ namespace C3D
 		{
 			const auto key = context.data.u16[0];
 			Logger::Debug("Key Released: {}", static_cast<char>(key));
+		}
+		return false;
+	}
+
+	bool Application::OnEvent(u16 code, void* sender, EventContext context)
+	{
+		if (code == SystemEventCode::ObjectHoverIdChanged)
+		{
+			m_hoveredObjectId = context.data.u32[0];
+			return true;
 		}
 		return false;
 	}

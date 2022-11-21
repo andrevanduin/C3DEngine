@@ -1,6 +1,7 @@
 
 #pragma once
 #include "defines.h"
+#include "containers/array.h"
 
 #include "systems/system.h"
 #include "memory/dynamic_allocator.h"
@@ -16,6 +17,7 @@ namespace C3D
 		Array,
 		DynamicArray,
 		HashTable,
+		HashMap,
 		RingQueue,
 		Bst,
 		String,
@@ -54,12 +56,12 @@ namespace C3D
 	{
 		u64 totalAllocated;
 		u64 allocCount;
-		MemoryAllocation taggedAllocations[static_cast<u8>(MemoryType::MaxType)];
+		Array<MemoryAllocation, static_cast<u64>(MemoryType::MaxType)> taggedAllocations;
 	};
 
 	struct MemorySystemConfig
 	{
-		u64 totalAllocSize;
+		u64 totalAllocSize = 0;
 		bool excludeFromStats = false;
 	};
 
@@ -115,7 +117,7 @@ namespace C3D
 
 		static void* Set(void* dest, i32 value, u64 size);
 
-		[[nodiscard]] const MemoryAllocation* GetTaggedAllocations() const;
+		[[nodiscard]] Array<MemoryAllocation, static_cast<u64>(MemoryType::MaxType)> GetTaggedAllocations() const;
 
 		[[nodiscard]] u64 GetAllocCount() const;
 		[[nodiscard]] u64 GetMemoryUsage(MemoryType type) const;

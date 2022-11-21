@@ -16,6 +16,7 @@ namespace C3D
 	{
 	public:
 		DynamicArray();
+
 		DynamicArray(const DynamicArray<T>& other);
 		DynamicArray(DynamicArray<T>&& other) noexcept;
 
@@ -30,8 +31,9 @@ namespace C3D
 		 */
 		explicit DynamicArray(u64 initialCapacity);
 
+		DynamicArray(std::initializer_list<T> list);
 		DynamicArray(const T* elements, u64 count);
-
+		
 		/*
 		 * @brief Reserves enough memory for the provided initial capacity.
 		 * The array will still have the original size and no elements will be created or added
@@ -110,6 +112,7 @@ namespace C3D
 
 	template <class T>
 	DynamicArray<T>::DynamicArray(const DynamicArray<T>& other)
+		: m_capacity(0), m_size(0), m_elements(nullptr)
 	{
 		Copy(other);
 	}
@@ -164,6 +167,12 @@ namespace C3D
 	}
 
 	template <class T>
+	DynamicArray<T>::DynamicArray(std::initializer_list<T> list)
+	{
+		Copy(list.begin(), list.size());
+	}
+
+	template <class T>
 	DynamicArray<T>::DynamicArray(const T* elements, const u64 count)
 	{
 		Copy(elements, count);
@@ -181,11 +190,11 @@ namespace C3D
 		if (m_capacity >= initialCapacity)
 		{
 			// Reserve is not needed since our capacity is already as large or larger
-			Logger::Trace("[DYNAMIC_ARRAY] - Reserve() - Was called with initialCapacity <= currentCapacity. Doing nothing");
+			//Logger::Trace("[DYNAMIC_ARRAY] - Reserve() - Was called with initialCapacity <= currentCapacity. Doing nothing");
 			return true;
 		}
 
-		Logger::Trace("[DYNAMIC_ARRAY] - Reserve({})", initialCapacity);
+		//Logger::Trace("[DYNAMIC_ARRAY] - Reserve({})", initialCapacity);
 
 		// We allocate enough memory for the new capacity
 		T* newElements = Memory.Allocate<T>(initialCapacity, MemoryType::DynamicArray);

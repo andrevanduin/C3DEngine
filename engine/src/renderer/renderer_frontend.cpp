@@ -5,27 +5,21 @@
 #include "core/memory.h"
 #include "core/application.h"
 
-#include "math/c3d_math.h"
-
 #include "renderer/vulkan/renderer_vulkan.h"
-#include "resources/resource_types.h"
 #include "resources/shader.h"
 
 #include "services/services.h"
 
-#include "core/events/event.h"
 #include "platform/platform.h"
-#include "resources/loaders/shader_loader.h"
 #include "systems/resource_system.h"
-#include "systems/shader_system.h"
 #include "systems/render_view_system.h"
 
 namespace C3D
 {
-	// TODO: Obtain ambient color from scene instead of hardcoding it here
+	// TODO: Obtain ambient color from scene instead of hard-coding it here
 	RenderSystem::RenderSystem()
-		: m_logger("RENDERER"), m_materialShaderId(0), m_uiShaderId(0), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
-		  m_worldRenderPass(nullptr), m_uiRenderPass(nullptr), m_resizing(false), m_framesSinceResize(0)
+		: m_logger("RENDERER"), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
+		  m_resizing(false), m_framesSinceResize(0)
 	{}
 
 	bool RenderSystem::Init(const Application* application)
@@ -41,122 +35,13 @@ namespace C3D
 
 		RendererBackendConfig backendConfig{};
 		backendConfig.applicationName = "TestEnv";
-		backendConfig.frontend = this;
-		backendConfig.renderPassCount = 3;
 		backendConfig.window = application->GetWindow();
-
-		constexpr auto skyboxRenderPassName = "RenderPass.Builtin.Skybox";
-		constexpr auto worldRenderPassName = "RenderPass.Builtin.World";
-		constexpr auto uiRenderPassName = "RenderPass.Builtin.UI";
-		
-		RenderPassConfig passConfigs[3];
-		passConfigs[0].name = skyboxRenderPassName;
-		passConfigs[0].previousName = nullptr;
-		passConfigs[0].nextName = worldRenderPassName;
-		passConfigs[0].renderArea = { 0, 0, 1280, 720 };
-		passConfigs[0].clearColor = { 0.0f, 0.0f, 0.2f, 1.0f };
-		passConfigs[0].clearFlags = ClearColor;
-
-		passConfigs[1].name = worldRenderPassName;
-		passConfigs[1].previousName = skyboxRenderPassName;
-		passConfigs[1].nextName = uiRenderPassName;
-		passConfigs[1].renderArea = { 0, 0, 1280, 720 };
-		passConfigs[1].clearColor = { 0.0f, 0.0f, 0.2f, 1.0f };
-		passConfigs[1].clearFlags = ClearDepth | ClearStencil;
-
-		passConfigs[2].name = uiRenderPassName;
-		passConfigs[2].previousName = worldRenderPassName;
-		passConfigs[2].nextName = nullptr;
-		passConfigs[2].renderArea = { 0, 0, 1280, 720 };
-		passConfigs[2].clearColor = { 0.0f, 0.0f, 0.2f, 1.0f };
-		passConfigs[2].clearFlags = ClearNone;
-
-		backendConfig.passConfigs = passConfigs;
 
 		if (!m_backend->Init(backendConfig, &m_windowRenderTargetCount))
 		{
 			m_logger.Error("Init() - Failed to Initialize Renderer Backend.");
 			return false;
 		}
-
-		// TODO: We will know how to get these when we define views.
-		m_skyBoxRenderPass = m_backend->GetRenderPass(skyboxRenderPassName);
-		m_skyBoxRenderPass->renderTargetCount = m_windowRenderTargetCount;
-		m_skyBoxRenderPass->targets = Memory.Allocate<RenderTarget>(m_windowRenderTargetCount, MemoryType::Array);
-
-		m_worldRenderPass = m_backend->GetRenderPass(worldRenderPassName);
-		m_worldRenderPass->renderTargetCount = m_windowRenderTargetCount;
-		m_worldRenderPass->targets = Memory.Allocate<RenderTarget>(m_windowRenderTargetCount, MemoryType::Array);
-
-		m_uiRenderPass = m_backend->GetRenderPass(uiRenderPassName);
-		m_uiRenderPass->renderTargetCount = m_windowRenderTargetCount;
-		m_uiRenderPass->targets = Memory.Allocate<RenderTarget>(m_windowRenderTargetCount, MemoryType::Array);
-
-		RegenerateRenderTargets();
-
-		// Update the dimensions for our RenderPasses
-		m_skyBoxRenderPass->renderArea = { 0, 0, m_frameBufferWidth, m_frameBufferHeight };
-		m_worldRenderPass->renderArea = { 0, 0, m_frameBufferWidth, m_frameBufferHeight };
-		m_uiRenderPass->renderArea = { 0, 0, m_frameBufferWidth, m_frameBufferHeight };
-
-		// Shaders
-		ShaderResource configResource{};
-		// Get shader resources for skybox shader
-		if (!Resources.Load(BUILTIN_SHADER_NAME_SKY_BOX, &configResource))
-		{
-			m_logger.Error("Init() - Failed to load builtin skybox shader config resource.");
-			return false;
-		}
-
-		// Create our skybox shader
-		if (!Shaders.Create(configResource.config))
-		{
-			m_logger.Error("Init() - Failed to create builtin skybox shader.");
-			return false;
-		}
-
-		// Unload resources for skybox shader config
-		Resources.Unload(&configResource);
-		// Obtain the shader id belonging to our skybox shader
-		m_skyBoxShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_SKY_BOX);
-
-		// Get shader resources for material shader
-		if (!Resources.Load(BUILTIN_SHADER_NAME_MATERIAL, &configResource))
-		{
-			m_logger.Error("Init() - Failed to load builtin material shader config resource.");
-			return false;
-		}
-
-		// Create our material shader
-		if (!Shaders.Create(configResource.config))
-		{
-			m_logger.Error("Init() - Failed to create builtin material shader.");
-			return false;
-		}
-
-		// Unload resources for material shader config
-		Resources.Unload(&configResource);
-		// Obtain the shader id belonging to our material shader
-		m_materialShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_MATERIAL);
-
-		// Get shader resources for ui shader
-		if (!Resources.Load(BUILTIN_SHADER_NAME_UI, &configResource))
-		{
-			m_logger.Error("Init() - Failed to load builtin ui shader config resource.");
-			return false;
-		}
-
-		// Create our ui shader
-		if (!Shaders.Create(configResource.config))
-		{
-			m_logger.Error("Init() - Failed to create builtin material shader.");
-			return false;
-		}
-
-		// Unload resources for ui shader config
-		Resources.Unload(&configResource);
-		// Obtain the shader if belonging to our ui shader
-		m_uiShaderId = Shaders.GetId(BUILTIN_SHADER_NAME_UI);
 
 		m_logger.Info("Initialized Vulkan Renderer Backend");
 		return true;
@@ -165,13 +50,6 @@ namespace C3D
 	void RenderSystem::Shutdown()
 	{
 		m_logger.Info("Shutting Down");
-
-		for (u8 i = 0; i < m_windowRenderTargetCount; i++)
-		{
-			m_backend->DestroyRenderTarget(&m_skyBoxRenderPass->targets[i], true);
-			m_backend->DestroyRenderTarget(&m_worldRenderPass->targets[i], true);
-			m_backend->DestroyRenderTarget(&m_uiRenderPass->targets[i], true);
-		}
 
 		m_backend->Shutdown();
 		DestroyBackend();
@@ -195,6 +73,7 @@ namespace C3D
 
 			if (m_framesSinceResize >= 30)
 			{
+				// Notify our views of the resize
 				Views.OnWindowResize(m_frameBufferWidth, m_frameBufferHeight);
 				m_backend->OnResize(m_frameBufferWidth, m_frameBufferHeight);
 
@@ -235,24 +114,54 @@ namespace C3D
 		return true;
 	}
 
+	void RenderSystem::SetViewport(const vec4& rect) const
+	{
+		m_backend->SetViewport(rect);
+	}
+
+	void RenderSystem::ResetViewport() const
+	{
+		m_backend->ResetViewport();
+	}
+
+	void RenderSystem::SetScissor(const vec4& rect) const
+	{
+		m_backend->SetScissor(rect);
+	}
+
+	void RenderSystem::ResetScissor() const
+	{
+		m_backend->ResetScissor();
+	}
+
 	void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const
 	{
-		return m_backend->CreateTexture(pixels, texture);
+		m_backend->CreateTexture(pixels, texture);
 	}
 
 	void RenderSystem::CreateWritableTexture(Texture* texture) const
 	{
-		return m_backend->CreateWritableTexture(texture);
+		m_backend->CreateWritableTexture(texture);
 	}
 
 	void RenderSystem::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight) const
 	{
-		return m_backend->ResizeTexture(texture, newWidth, newHeight);
+		m_backend->ResizeTexture(texture, newWidth, newHeight);
 	}
 
 	void RenderSystem::WriteDataToTexture(Texture* texture, const u32 offset, const u32 size, const u8* pixels) const
 	{
-		return m_backend->WriteDataToTexture(texture, offset, size, pixels);
+		m_backend->WriteDataToTexture(texture, offset, size, pixels);
+	}
+
+	void RenderSystem::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory) const
+	{
+		m_backend->ReadDataFromTexture(texture, offset, size, outMemory);
+	}
+
+	void RenderSystem::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba) const
+	{
+		m_backend->ReadPixelFromTexture(texture, x, y, outRgba);
 	}
 
 	bool RenderSystem::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
@@ -274,11 +183,6 @@ namespace C3D
 	void RenderSystem::DrawGeometry(const GeometryRenderData& data) const
 	{
 		return m_backend->DrawGeometry(data);
-	}
-
-	RenderPass* RenderSystem::GetRenderPass(const char* name) const
-	{
-		return m_backend->GetRenderPass(name);
 	}
 
 	bool RenderSystem::BeginRenderPass(RenderPass* pass, RenderTarget* target) const
@@ -348,7 +252,7 @@ namespace C3D
 
 	void RenderSystem::ReleaseTextureMapResources(TextureMap* map) const
 	{
-		return m_backend->ReleaseTextureMapResources(map);
+		m_backend->ReleaseTextureMapResources(map);
 	}
 
 	bool RenderSystem::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const
@@ -356,14 +260,53 @@ namespace C3D
 		return m_backend->SetUniform(shader, uniform, value);
 	}
 
-	void RenderSystem::CreateRenderTarget(const u8 attachmentCount, Texture** attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget) const
+	void RenderSystem::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget) const
 	{
-		return m_backend->CreateRenderTarget(attachmentCount, attachments, pass, width, height, outTarget);
+		m_backend->CreateRenderTarget(attachmentCount, attachments, pass, width, height, outTarget);
 	}
 
 	void RenderSystem::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory) const
 	{
-		return m_backend->DestroyRenderTarget(target, freeInternalMemory);
+		m_backend->DestroyRenderTarget(target, freeInternalMemory);
+		if (freeInternalMemory)
+		{
+			Memory.Zero(target, sizeof(RenderTarget));
+		}
+	}
+
+	RenderPass* RenderSystem::CreateRenderPass(const RenderPassConfig& config) const
+	{
+		return m_backend->CreateRenderPass(config);
+	}
+
+	bool RenderSystem::DestroyRenderPass(RenderPass* pass) const
+	{
+		// Destroy this pass's render targets first
+		for (u8 i = 0; i < pass->renderTargetCount; i++)
+		{
+			DestroyRenderTarget(&pass->targets[i], true);
+		}
+		return m_backend->DestroyRenderPass(pass);
+	}
+
+	Texture* RenderSystem::GetWindowAttachment(const u8 index) const
+	{
+		return m_backend->GetWindowAttachment(index);
+	}
+
+	Texture* RenderSystem::GetDepthAttachment(const u8 index) const
+	{
+		return m_backend->GetDepthAttachment(index);
+	}
+
+	u8 RenderSystem::GetWindowAttachmentIndex() const
+	{
+		return m_backend->GetWindowAttachmentIndex();
+	}
+
+	u8 RenderSystem::GetWindowAttachmentCount() const
+	{
+		return m_backend->GetWindowAttachmentCount();
 	}
 
 	RenderBuffer* RenderSystem::CreateRenderBuffer(const RenderBufferType type, const u64 totalSize, const bool useFreelist) const
@@ -374,32 +317,6 @@ namespace C3D
 	bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const
 	{
 		return m_backend->DestroyRenderBuffer(buffer);
-	}
-
-	void RenderSystem::RegenerateRenderTargets() const
-	{
-		// Create render targets of each. TODO: Should be configurable
-		for (u8 i = 0; i < m_windowRenderTargetCount; i++)
-		{
-			m_backend->DestroyRenderTarget(&m_skyBoxRenderPass->targets[i], false);
-			m_backend->DestroyRenderTarget(&m_worldRenderPass->targets[i], false);
-			m_backend->DestroyRenderTarget(&m_uiRenderPass->targets[i], false);
-
-			Texture* windowTargetTexture = m_backend->GetWindowAttachment(i);
-			Texture* depthTargetTexture = m_backend->GetDepthAttachment();
-
-			// Skybox render targets
-			Texture* skyboxAttachments[1] = { windowTargetTexture };
-			m_backend->CreateRenderTarget(1, skyboxAttachments, m_skyBoxRenderPass, m_frameBufferWidth, m_frameBufferHeight, &m_skyBoxRenderPass->targets[i]);
-
-			// World render targets
-			Texture* attachments[2] = { windowTargetTexture, depthTargetTexture };
-			m_backend->CreateRenderTarget(2, attachments, m_worldRenderPass, m_frameBufferWidth, m_frameBufferHeight, &m_worldRenderPass->targets[i]);
-
-			// UI render targets
-			Texture* uiAttachments[1] = { windowTargetTexture };
-			m_backend->CreateRenderTarget(1, uiAttachments, m_uiRenderPass, m_frameBufferWidth, m_frameBufferHeight, &m_uiRenderPass->targets[i]);
-		}
 	}
 
 	bool RenderSystem::IsMultiThreaded() const

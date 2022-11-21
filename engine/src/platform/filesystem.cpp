@@ -71,12 +71,18 @@ namespace C3D
 
 	bool File::ReadLine(String& line, const char delimiter)
 	{
-		char c;
+		// First we empty out our provided line
 		line.Clear();
-		while (m_file.get(c) && c != '\n')
+		// Get the very first character
+		char c = static_cast<char>(m_file.get());
+		// If it's the end of the file character we just return that we are done
+		if (c == EOF) return false;
+		// Otherwise we need to add it to our line
+		line.Append(c);
+		// Then we keep reading characters until we find our delimiter character or EOF
+		while (m_file.get(c) && c != delimiter && c != EOF)
 		{
 			line.Append(c);
-			if (c == delimiter) break;
 		}
 		return true;
 	}

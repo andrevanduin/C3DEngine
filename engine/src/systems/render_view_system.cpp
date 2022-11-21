@@ -6,6 +6,7 @@
 #include "renderer/views/render_view_ui.h"
 #include "renderer/views/render_view_world.h"
 #include "renderer/views/render_view_skybox.h"
+#include "renderer/vulkan/vulkan_renderpass.h"
 
 namespace C3D
 {
@@ -106,15 +107,16 @@ namespace C3D
 			return false;
 		}
 
-		view->passes.Resize(config.passCount);
-		for (size_t i = 0; i < view->passes.Size(); i++)
+		// Initialize passes for the view
+		for (u8 i = 0; i < config.passCount; i++)
 		{
-			view->passes[i] = Renderer.GetRenderPass(config.passes[i].name);
-			if (!view->passes[i])
+			const auto pass = Renderer.CreateRenderPass(config.passes[i]);
+			if (!pass)
 			{
-				m_logger.Fatal("Create() - RenderPass: '{}' could not be found.", config.passes[i].name);
+				m_logger.Error("Create() - RenderPass: '{}' could not be created.", config.passes[i].name);
 				return false;
 			}
+			view->passes.PushBack(pass);
 		}
 
 		// Create our view
@@ -124,6 +126,9 @@ namespace C3D
 			view->OnDestroy(); // Destroy the view to ensure passes memory is freed
 			return false;
 		}
+
+		// Regenerate the render targets for the newly created view
+		RegenerateRenderTargets(view);
 
 		// Update our hashtable
 		m_viewLookup.Set(config.name, &id);
@@ -171,5 +176,52 @@ namespace C3D
 
 		m_logger.Error("OnRender() - Requires a valid pointer to a view and packet.");
 		return false;
+	}
+
+	void RenderViewSystem::RegenerateRenderTargets(RenderView* view) const
+	{
+		// TODO: More configurability
+		for (u32 r = 0; r < view->passes.Size(); r++)
+		{
+			const auto pass = view->passes[r];
+
+			for (u8 i = 0; i < pass->renderTargetCount; i++)
+			{
+				auto& target = pass->targets[i];
+				// Destroy the old target if it exists
+				Renderer.DestroyRenderTarget(&target, false);
+
+				for (u32 a = 0; a < target.attachmentCount; a++)
+				{
+					auto& attachment = target.attachments[a];
+					if (attachment.source == RenderTargetAttachmentSourceDefault)
+					{
+						if (attachment.type == RenderTargetAttachmentTypeColor)
+						{
+							attachment.texture = Renderer.GetWindowAttachment(i);
+						}
+						else if (attachment.type == RenderTargetAttachmentTypeDepth)
+						{
+							attachment.texture = Renderer.GetDepthAttachment(i);
+						}
+						else
+						{
+							m_logger.Fatal("RegenerateRenderTargets() -  attachment type: {}", attachment.type);
+						}
+					}
+					else if (attachment.source == RenderTargetAttachmentSourceView)
+					{
+						if (!view->RegenerateAttachmentTarget(r, &attachment))
+						{
+							m_logger.Error("RegenerateRenderTargets() - View failed to regenerate attachment target for attachment type: {}", attachment.type);
+						}
+					}
+				}
+
+				// Create the render target
+				Renderer.CreateRenderTarget(target.attachmentCount, target.attachments, pass, target.attachments[0].texture->width, 
+					target.attachments[0].texture->height, &pass->targets[i]);
+			}
+		}
 	}
 }

@@ -49,7 +49,7 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = StringDuplicate(filepath.Data());
+		outResource->fullPath = filepath;
 		outResource->data.type = FontType::Bitmap;
 
 		auto result = false;
@@ -73,7 +73,6 @@ namespace C3D
 		if (!result)
 		{
 			m_logger.Error("Load() - Failed to process bitmap font file: '{}'.", filepath);
-			Memory.Free(outResource->fullPath, filepath.Size() + 1, MemoryType::String);
 			return false;
 		}
 
@@ -87,15 +86,10 @@ namespace C3D
 			resource->data.glyphs.Destroy();
 			resource->data.kernings.Destroy();
 			resource->pages.Destroy();
-
 			resource->loaderId = INVALID_ID;
 
-			if (resource->fullPath)
-			{
-				const u64 length = StringLength(resource->fullPath);
-				Memory.Free(resource->fullPath, sizeof(char) * length + 1, MemoryType::String);
-				resource->fullPath = nullptr;
-			}
+			resource->fullPath.Destroy();
+			resource->name.Destroy();
 		}
 	}
 
@@ -390,7 +384,7 @@ namespace C3D
 			// Get the length of the name
 			file.Read(&pageFilenameLength);
 			// Actually read the name
-			file.Read(page.file, pageFilenameLength);
+			file.Read(page.file, pageFilenameLength + 1);
 			// Ensure '\0' termination
 			page.file[pageFilenameLength] = '\0';
 

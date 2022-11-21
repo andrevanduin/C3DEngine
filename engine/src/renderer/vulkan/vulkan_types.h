@@ -53,13 +53,10 @@ namespace C3D
 		VulkanDevice device;
 		VulkanSwapChain swapChain;
 
-		HashTable<u32> renderPassTable;
-		VulkanRenderPass registeredRenderPasses[VULKAN_MAX_REGISTERED_RENDER_PASSES];
+		DynamicArray<VulkanCommandBuffer> graphicsCommandBuffers;
 
-		std::vector<VulkanCommandBuffer> graphicsCommandBuffers;
-
-		std::vector<VkSemaphore> imageAvailableSemaphores;
-		std::vector<VkSemaphore> queueCompleteSemaphores;
+		DynamicArray<VkSemaphore> imageAvailableSemaphores;
+		DynamicArray<VkSemaphore> queueCompleteSemaphores;
 
 		u32 inFlightFenceCount;
 		VkFence inFlightFences[2];
@@ -74,6 +71,9 @@ namespace C3D
 
 		u64 frameBufferSizeGeneration;
 		u64 frameBufferSizeLastGeneration;
+
+		vec4 viewportRect;
+		vec4 scissorRect;
 
 		/* @brief Render targets used for world rendering. One per frame. */
 		RenderTarget worldRenderTargets[3];
@@ -96,7 +96,5 @@ namespace C3D
 			}
 			return -1;
 		}
-
-		const RenderSystem* frontend;
 	};
 }

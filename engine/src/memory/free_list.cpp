@@ -6,11 +6,11 @@
 
 namespace C3D
 {
-	NewFreeList::NewFreeList()
+	FreeList::FreeList()
 		: m_logger("FREE_LIST"), m_nodes(nullptr), m_head(nullptr), m_totalNodes(0), m_nodesSize(0), m_smallestPossibleAllocation(0), m_totalManagedSize(0)
 	{}
 
-	bool NewFreeList::Create(void* memory, const u64 memorySizeForNodes, const u64 smallestPossibleAllocation, const u64 managedSize)
+	bool FreeList::Create(void* memory, const u64 memorySizeForNodes, const u64 smallestPossibleAllocation, const u64 managedSize)
 	{
 		m_smallestPossibleAllocation = smallestPossibleAllocation;
 		m_totalNodes = memorySizeForNodes / sizeof(Node);
@@ -37,7 +37,7 @@ namespace C3D
 		return true;
 	}
 
-	void NewFreeList::Destroy()
+	void FreeList::Destroy()
 	{
 		// Zero out our nodes
 		Memory.Zero(m_nodes, m_nodesSize);
@@ -45,7 +45,7 @@ namespace C3D
 		// NOTE: We can't free our memory since the user of this class is responsible for the memory we are using.
 	}
 
-	bool NewFreeList::Resize(void* newMemory, const u64 newSize, void** outOldMemory)
+	bool FreeList::Resize(void* newMemory, const u64 newSize, void** outOldMemory)
 	{
 		if (m_totalManagedSize > newSize) return false;
 
@@ -126,7 +126,7 @@ namespace C3D
 		return true;
 	}
 
-	bool NewFreeList::AllocateBlock(const u64 size, u64* outOffset)
+	bool FreeList::AllocateBlock(const u64 size, u64* outOffset)
 	{
 		// Keep track of our current and previous node
 		Node* prev = nullptr;
@@ -174,7 +174,7 @@ namespace C3D
 		throw std::bad_alloc();
 	}
 
-	bool NewFreeList::FreeBlock(const u64 size, const u64 offset)
+	bool FreeList::FreeBlock(const u64 size, const u64 offset)
 	{
 #ifdef _DEBUG
 		if (size == 0)
@@ -201,6 +201,26 @@ namespace C3D
 
 		while (current)
 		{
+			if (current->offset + current->size == offset)
+			{
+				// We can append the new free block to the right of the current block
+				current->size += size;
+
+				// Check if this then connects our current node to the next node
+				if (current->next && AreExactlyAdjacent(current, current->next))
+				{
+					const auto next = current->next;
+
+					// We add the size of the next node to our new node
+					current->size += next->size;
+					// And connect our new node to the next node's next node
+					current->next = next->next;
+					// Then we invalidate the next node
+					next->Invalidate();
+				}
+
+				return true;
+			}
 			if (current->offset > offset)
 			{
 				// Our current node's offset is further into the memory block than where we want to free
@@ -256,7 +276,7 @@ namespace C3D
 		return false;
 	}
 
-	u64 NewFreeList::FreeSpace() const
+	u64 FreeList::FreeSpace() const
 	{
 		u64 free = 0;
 		const Node* current = m_head;
@@ -268,12 +288,12 @@ namespace C3D
 		return free;
 	}
 
-	bool NewFreeList::AreExactlyAdjacent(const Node* first, const Node* second)
+	bool FreeList::AreExactlyAdjacent(const Node* first, const Node* second)
 	{
 		return first->offset + first->size == second->offset;
 	}
 
-	NewFreeList::Node* NewFreeList::GetNode() const
+	FreeList::Node* FreeList::GetNode() const
 	{
 		for (u64 i = 0; i < m_totalNodes; i++)
 		{

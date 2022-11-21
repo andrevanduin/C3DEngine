@@ -54,7 +54,7 @@ namespace C3D
 		bool Write(const T* data, u64 count = 1);
 
 		template<typename T>
-		bool Write(DynamicArray<T> data);
+		bool Write(const DynamicArray<T>& data);
 
 		bool Size(u64* outSize = nullptr);
 
@@ -123,10 +123,10 @@ namespace C3D
 	}
 
 	template <typename T>
-	bool File::Write(DynamicArray<T> data)
+	bool File::Write(const DynamicArray<T>& data)
 	{
 		// Write out the size
-		const auto size = data.Size();
+		const u64 size = data.Size();
 		if (!Write(&size)) return false;
 		// Write out the elements in the array (if there are any)
 		if (size != 0)

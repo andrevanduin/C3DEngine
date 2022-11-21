@@ -32,76 +32,90 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = StringDuplicate(fullPath);
+		outResource->fullPath = fullPath;
 		outResource->config.cullMode = FaceCullMode::Back;
 
-		outResource->config.renderPassName = nullptr;
 		outResource->config.name = nullptr;
 
 		outResource->config.attributes.Reserve(4);
 		outResource->config.uniforms.Reserve(8);
 
-		string line;
+		String line;
 		u32 lineNumber = 1;
 		while (file.ReadLine(line))
 		{
 			// Trim the line
-			Trim(line);
+			line.Trim();
 
 			// Skip Blank lines and comments
-			if (line.empty() || line[0] == '#')
+			if (line.Empty() || line.First() == '#')
 			{
 				lineNumber++;
 				continue;
 			}
 
-			// Split into variable and value
-			// Find the '=' symbol
-			const auto equalIndex = line.find('=');
-			if (equalIndex == string::npos)
+			// Check if we have a '=' symbol
+			if (!line.Contains('='))
 			{
-				m_logger.Warn("Potential formatting issue found in file '': '=' token not found. Skipping line {}.", fullPath, lineNumber);
+				m_logger.Warn("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.", fullPath, lineNumber);
+				lineNumber++;
+				continue;
+			}
+
+			auto parts = line.Split('=');
+			if (parts.Size() != 2)
+			{
+				m_logger.Warn("Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.", fullPath, lineNumber);
 				lineNumber++;
 				continue;
 			}
 
 			// Get the variable name (which is all the characters up to the '=' and trim
-			auto varName = line.substr(0, equalIndex);
-			Trim(varName);
+			auto varName = parts[0];
+			varName.Trim();
 
 			// Get the value (which is all the characters after the '=' and trim
-			auto value = line.substr(equalIndex + 1);
-			Trim(value);
+			auto value = parts[1];
+			value.Trim();
 
-			if (IEquals(varName.data(), "version"))
+			if (varName.IEquals("version"))
 			{
 				// TODO: version
 			}
-			else if (IEquals(varName.data(), "name"))
+			else if (varName.IEquals("name"))
 			{
-				outResource->config.name = StringDuplicate(value.data());
+				outResource->config.name = StringDuplicate(value.Data());
 			}
-			else if (IEquals(varName.data(), "renderPass"))
+			else if (varName.IEquals("renderPass"))
 			{
-				outResource->config.renderPassName = StringDuplicate(value.data());
+				// NOTE: Deprecated so we ignore it from now on
+				//outResource->config.renderPassName = StringDuplicate(value.data());
 			}
-			else if (IEquals(varName.data(), "stages"))
+			else if (varName.IEquals("depthTest"))
+			{
+				outResource->config.depthTest = value.ToBool();
+			}
+			else if (varName.IEquals("depthWrite"))
+			{
+				outResource->config.depthWrite = value.ToBool();
+			}
+			else if (varName.IEquals("stages"))
 			{
 				ParseStages(&outResource->config, value);
 			}
-			else if (IEquals(varName.data(), "stageFiles"))
+			else if (varName.IEquals("stageFiles"))
 			{
 				ParseStageFiles(&outResource->config, value);
 			}
-			else if (IEquals(varName.data(), "cullMode"))
+			else if (varName.IEquals("cullMode"))
 			{
 				ParseCullMode(&outResource->config, value);
 			}
-			else if (IEquals(varName.data(), "attribute"))
+			else if (varName.IEquals("attribute"))
 			{
 				ParseAttribute(&outResource->config, value);
 			}
-			else if (IEquals(varName.data(), "uniform"))
+			else if (varName.IEquals("uniform"))
 			{
 				ParseUniform(&outResource->config, value);
 			}
@@ -123,20 +137,9 @@ namespace C3D
 
 		const auto data = &resource->config;
 
-		for (const auto stageFileName : data->stageFileNames)
-		{
-			const auto count = StringLength(stageFileName) + 1;
-			Memory.Free(stageFileName, count, MemoryType::String);
-		}
-		data->stageFileNames.clear();
-
-		for (const auto stageName : data->stageNames)
-		{
-			const auto count = StringLength(stageName) + 1;
-			Memory.Free(stageName, count, MemoryType::String);
-		}
-		data->stageNames.clear();
-		data->stages.clear();
+		data->stageFileNames.Clear();
+		data->stageNames.Clear();
+		data->stages.Clear();
 
 		// Cleanup attributes
 		for (auto& attribute : data->attributes)
@@ -156,40 +159,43 @@ namespace C3D
 		}
 		data->uniforms.Destroy();
 
-		Memory.Free(data->renderPassName, StringLength(data->renderPassName) + 1, MemoryType::String);
-		data->renderPassName = nullptr;
+		//Memory.Free(data->renderPassName, StringLength(data->renderPassName) + 1, MemoryType::String);
+		//data->renderPassName = nullptr;
 
 		Memory.Free(data->name, StringLength(data->name) + 1, MemoryType::String);
 		data->name = nullptr;
+
+		resource->name.Destroy();
+		resource->fullPath.Destroy();
 	}
 
-	void ResourceLoader<ShaderResource>::ParseStages(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseStages(ShaderConfig* data, const String& value) const
 	{
-		data->stageNames = StringSplit(value, ',');
-		if (!data->stageFileNames.empty() && data->stageNames.size() != data->stageFileNames.size())
+		data->stageNames = value.Split(',');
+		if (!data->stageFileNames.Empty() && data->stageNames.Size() != data->stageFileNames.Size())
 		{
 			// We already found the stage file names and the lengths don't match
 			m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})",
-				data->stageNames.size(), data->stageFileNames.size());
+				data->stageNames.Size(), data->stageFileNames.Size());
 		}
 
-		for (const auto stageName : data->stageNames)
+		for (auto& stageName : data->stageNames)
 		{
-			if (IEquals(stageName, "frag") || IEquals(stageName, "fragment"))
+			if (stageName.IEquals("frag") || stageName.IEquals("fragment"))
 			{
-				data->stages.push_back(ShaderStage::Fragment);
+				data->stages.PushBack(ShaderStage::Fragment);
 			}
-			else if (IEquals(stageName, "vert") || IEquals(stageName, "vertex"))
+			else if (stageName.IEquals("vert") || stageName.IEquals("vertex"))
 			{
-				data->stages.push_back(ShaderStage::Vertex);
+				data->stages.PushBack(ShaderStage::Vertex);
 			}
-			else if (IEquals(stageName, "geom") || IEquals(stageName, "geometry"))
+			else if (stageName.IEquals("geom") || stageName.IEquals("geometry"))
 			{
-				data->stages.push_back(ShaderStage::Geometry);
+				data->stages.PushBack(ShaderStage::Geometry);
 			}
-			else if (IEquals(stageName, "comp") || IEquals(stageName, "compute"))
+			else if (stageName.IEquals("comp") || stageName.IEquals("compute"))
 			{
-				data->stages.push_back(ShaderStage::Compute);
+				data->stages.PushBack(ShaderStage::Compute);
 			}
 			else
 			{
@@ -198,64 +204,64 @@ namespace C3D
 		}
 	}
 
-	void ResourceLoader<ShaderResource>::ParseStageFiles(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseStageFiles(ShaderConfig* data, const String& value) const
 	{
-		data->stageFileNames = StringSplit(value, ',');
-		if (!data->stageNames.empty() && data->stageNames.size() != data->stageFileNames.size())
+		data->stageFileNames = value.Split(',');
+		if (!data->stageNames.Empty() && data->stageNames.Size() != data->stageFileNames.Size())
 		{
 			// We already found the stage names and the lengths don't match
 			m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})",
-				data->stageNames.size(), data->stageFileNames.size());
+				data->stageNames.Size(), data->stageFileNames.Size());
 		}
 	}
 
-	void ResourceLoader<ShaderResource>::ParseAttribute(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseAttribute(ShaderConfig* data, const String& value) const
 	{
-		const auto fields = StringSplit(value, ',');
-		if (fields.size() != 2)
+		const auto fields = value.Split(',');
+		if (fields.Size() != 2)
 		{
 			m_logger.Error("ParseAttribute() - Invalid layout. Attribute field must be 'type,name'. Skipping this line.");
 			return;
 		}
 
 		ShaderAttributeConfig attribute{};
-		if (IEquals(fields[0], "f32")) {
+		if (fields[0].IEquals("f32")) {
 			attribute.type = Attribute_Float32;
 			attribute.size = 4;
 		}
-		else if (IEquals(fields[0], "vec2")) {
+		else if (fields[0].IEquals("vec2")) {
 			attribute.type = Attribute_Float32_2;
 			attribute.size = 8;
 		}
-		else if (IEquals(fields[0], "vec3")) {
+		else if (fields[0].IEquals("vec3")) {
 			attribute.type = Attribute_Float32_3;
 			attribute.size = 12;
 		}
-		else if (IEquals(fields[0], "vec4")) {
+		else if (fields[0].IEquals("vec4")) {
 			attribute.type = Attribute_Float32_4;
 			attribute.size = 16;
 		}
-		else if (IEquals(fields[0], "u8")) {
+		else if (fields[0].IEquals("u8")) {
 			attribute.type = Attribute_UInt8;
 			attribute.size = 1;
 		}
-		else if (IEquals(fields[0], "u16")) {
+		else if (fields[0].IEquals("u16")) {
 			attribute.type = Attribute_UInt16;
 			attribute.size = 2;
 		}
-		else if (IEquals(fields[0], "u32")) {
+		else if (fields[0].IEquals("u32")) {
 			attribute.type = Attribute_UInt32;
 			attribute.size = 4;
 		}
-		else if (IEquals(fields[0], "i8")) {
+		else if (fields[0].IEquals("i8")) {
 			attribute.type = Attribute_Int8;
 			attribute.size = 1;
 		}
-		else if (IEquals(fields[0], "i16")) {
+		else if (fields[0].IEquals("i16")) {
 			attribute.type = Attribute_Int16;
 			attribute.size = 2;
 		}
-		else if (IEquals(fields[0], "i32")) {
+		else if (fields[0].IEquals("i32")) {
 			attribute.type = Attribute_Int32;
 			attribute.size = 4;
 		}
@@ -266,79 +272,67 @@ namespace C3D
 			attribute.size = 4;
 		}
 
-		attribute.nameLength = static_cast<u8>(StringLength(fields[1]));
-		attribute.name = StringDuplicate(fields[1]);
-
-		for (const auto field : fields)
-		{
-			const auto count = StringLength(field) + 1;
-			Memory.Free(field, count, MemoryType::String);
-		}
+		attribute.nameLength = static_cast<u8>(fields[1].Size()) + 1;
+		attribute.name = StringDuplicate(fields[1].Data());
 
 		data->attributes.PushBack(attribute);
 	}
 
-	void ResourceLoader<ShaderResource>::ParseUniform(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseUniform(ShaderConfig* data, const String& value) const
 	{
-		const auto fields = StringSplit(value, ',');
-		if (fields.size() != 3)
+		const auto fields = value.Split(',');
+		if (fields.Size() != 3)
 		{
-			for (const auto field : fields)
-			{
-				const auto count = StringLength(field) + 1;
-				Memory.Free(field, count, MemoryType::String);
-			}
-
 			m_logger.Error("ParseAttribute() - Invalid layout. Uniform field must be 'type,scope,name'. Skipping this line.");
 			return;
 		}
 
 		ShaderUniformConfig uniform{};
-		if (IEquals(fields[0], "f32")) {
+		if (fields[0].IEquals("f32")) {
 			uniform.type = Uniform_Float32;
 			uniform.size = 4;
 		}
-		else if (IEquals(fields[0], "vec2")) {
+		else if (fields[0].IEquals("vec2")) {
 			uniform.type = Uniform_Float32_2;
 			uniform.size = 8;
 		}
-		else if (IEquals(fields[0], "vec3")) {
+		else if (fields[0].IEquals("vec3")) {
 			uniform.type = Uniform_Float32_3;
 			uniform.size = 12;
 		}
-		else if (IEquals(fields[0], "vec4")) {
+		else if (fields[0].IEquals("vec4")) {
 			uniform.type = Uniform_Float32_4;
 			uniform.size = 16;
 		}
-		else if (IEquals(fields[0], "u8")) {
+		else if (fields[0].IEquals("u8")) {
 			uniform.type = Uniform_UInt8;
 			uniform.size = 1;
 		}
-		else if (IEquals(fields[0], "u16")) {
+		else if (fields[0].IEquals("u16")) {
 			uniform.type = Uniform_UInt16;
 			uniform.size = 2;
 		}
-		else if (IEquals(fields[0], "u32")) {
+		else if (fields[0].IEquals("u32")) {
 			uniform.type = Uniform_UInt32;
 			uniform.size = 4;
 		}
-		else if (IEquals(fields[0], "i8")) {
+		else if (fields[0].IEquals("i8")) {
 			uniform.type = Uniform_Int8;
 			uniform.size = 1;
 		}
-		else if (IEquals(fields[0], "i16")) {
+		else if (fields[0].IEquals("i16")) {
 			uniform.type = Uniform_Int16;
 			uniform.size = 2;
 		}
-		else if (IEquals(fields[0], "i32")) {
+		else if (fields[0].IEquals("i32")) {
 			uniform.type = Uniform_Int32;
 			uniform.size = 4;
 		}
-		else if (IEquals(fields[0], "mat4")) {
+		else if (fields[0].IEquals("mat4")) {
 			uniform.type = Uniform_Matrix4;
 			uniform.size = 64;
 		}
-		else if (IEquals(fields[0], "samp") || IEquals(fields[0], "sampler")) {
+		else if (fields[0].IEquals("samp") || fields[0].IEquals("sampler")) {
 			uniform.type = Uniform_Sampler;
 			uniform.size = 0;  // Samplers don't have a size.
 		}
@@ -349,15 +343,15 @@ namespace C3D
 			uniform.size = 4;
 		}
 
-		if (IEquals(fields[1], "global"))
+		if (fields[1].IEquals("global"))
 		{
 			uniform.scope = ShaderScope::Global;
 		}
-		else if (IEquals(fields[1], "instance"))
+		else if (fields[1].IEquals("instance"))
 		{
 			uniform.scope = ShaderScope::Instance;
 		}
-		else if (IEquals(fields[1], "local"))
+		else if (fields[1].IEquals("local"))
 		{
 			uniform.scope = ShaderScope::Local;
 		}
@@ -368,29 +362,23 @@ namespace C3D
 			uniform.scope = ShaderScope::Global;
 		}
 
-		uniform.nameLength = static_cast<u8>(StringLength(fields[2]));
-		uniform.name = StringDuplicate(fields[2]);
-
-		for (const auto field : fields)
-		{
-			const auto count = StringLength(field) + 1;
-			Memory.Free(field, count, MemoryType::String);
-		}
+		uniform.nameLength = static_cast<u8>(StringLength(fields[2].Data()));
+		uniform.name = StringDuplicate(fields[2].Data());
 
 		data->uniforms.PushBack(uniform);
 	}
 
-	void ResourceLoader<ShaderResource>::ParseCullMode(ShaderConfig* data, const string& value) const
+	void ResourceLoader<ShaderResource>::ParseCullMode(ShaderConfig* data, const String& value)
 	{
-		if (IEquals(value.data(), "front"))
+		if (value.IEquals("front"))
 		{
 			data->cullMode = FaceCullMode::Front;
 		}
-		else if (IEquals(value.data(), "front_and_back"))
+		else if (value.IEquals("front_and_back"))
 		{
 			data->cullMode = FaceCullMode::FrontAndBack;
 		}
-		else if (IEquals(value.data(), "none"))
+		else if (value.IEquals("none"))
 		{
 			data->cullMode = FaceCullMode::None;
 		}

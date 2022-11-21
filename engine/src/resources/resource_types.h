@@ -1,6 +1,7 @@
 
 #pragma once
 #include "core/defines.h"
+#include "containers/string.h"
 
 #include "texture.h"
 
@@ -22,6 +23,7 @@ namespace C3D
 		Mesh,
 		Shader,
 		BitmapFont,
+		SystemFont,
 		Custom,
 		MaxValue
 	};
@@ -42,22 +44,15 @@ namespace C3D
 	struct Resource
 	{
 		Resource()
-			: loaderId(INVALID_ID), name(nullptr), fullPath(nullptr)
+			: loaderId(INVALID_ID)
 		{}
 
-		Resource(const Resource& other) noexcept
-			: loaderId(other.loaderId), name(nullptr), fullPath(nullptr)
-		{
-			if (other.name) name = StringDuplicate(other.name);
-			if (other.fullPath) fullPath = StringDuplicate(other.fullPath);
-		}
+		Resource(const Resource& other) noexcept = default;
 
 		Resource(Resource&& other) noexcept
-			: loaderId(other.loaderId), name(other.name), fullPath(other.fullPath)
+			: loaderId(other.loaderId), name(std::move(other.name)), fullPath(std::move(other.fullPath))
 		{
 			other.loaderId = INVALID_ID;
-			other.name = nullptr;
-			other.fullPath = nullptr;
 		}
 
 		Resource& operator=(const Resource& other)
@@ -65,8 +60,8 @@ namespace C3D
 			if (this != &other)
 			{
 				loaderId = other.loaderId;
-				if (other.name) name = StringDuplicate(other.name);
-				if (other.fullPath) fullPath = StringDuplicate(other.fullPath);
+				if (other.name) name = other.name;
+				if (other.fullPath) fullPath = other.fullPath;
 			}
 			return *this;
 		}
@@ -81,23 +76,13 @@ namespace C3D
 
 		~Resource()
 		{
-			if (name)
-			{
-				const auto size = StringLength(name) + 1;
-				Memory.Free(name, size, MemoryType::String);
-				name = nullptr;
-			}
-			if (fullPath)
-			{
-				const auto size = StringLength(fullPath) + 1;
-				Memory.Free(fullPath, size, MemoryType::String);
-				fullPath = nullptr;
-			}
+			name.Destroy();
+			fullPath.Destroy();
 		}
 
 		u32 loaderId;
 
-		char* name;
-		char* fullPath;
+		String name;
+		String fullPath;
 	};
 }

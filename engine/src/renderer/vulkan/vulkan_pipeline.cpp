@@ -6,6 +6,7 @@
 #include "core/logger.h"
 
 #include "renderer/vertex.h"
+#include "resources/shader.h"
 #include "services/services.h"
 
 namespace C3D
@@ -28,23 +29,21 @@ namespace C3D
 		return VK_CULL_MODE_BACK_BIT;
 	}
 
-	bool VulkanPipeline::Create(const VulkanContext* context, const VulkanRenderPass* renderPass, u32 stride, u32 attributeCount, VkVertexInputAttributeDescription* attributes,
-	                            u32 descriptorSetLayoutCount, VkDescriptorSetLayout* descriptorSetLayouts, u32 stageCount, VkPipelineShaderStageCreateInfo* stages,
-	                            VkViewport viewport, VkRect2D scissor, FaceCullMode cullMode, bool isWireFrame, bool depthTestEnabled, u32 pushConstantRangeCount, Range* pushConstantRanges)
+	bool VulkanPipeline::Create(const VulkanContext* context, const VulkanPipelineConfig& config)
 	{
 		VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 		viewportState.viewportCount = 1;
-		viewportState.pViewports = &viewport;
+		viewportState.pViewports = &config.viewport;
 		viewportState.scissorCount = 1;
-		viewportState.pScissors = &scissor;
+		viewportState.pScissors = &config.scissor;
 
 		// Rasterizer
 		VkPipelineRasterizationStateCreateInfo rasterizerCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 		rasterizerCreateInfo.depthClampEnable = VK_FALSE;
 		rasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-		rasterizerCreateInfo.polygonMode = isWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+		rasterizerCreateInfo.polygonMode = config.isWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
 		rasterizerCreateInfo.lineWidth = 1.0f;
-		rasterizerCreateInfo.cullMode = GetVkCullMode(cullMode);
+		rasterizerCreateInfo.cullMode = GetVkCullMode(config.cullMode);
 		rasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizerCreateInfo.depthBiasEnable = VK_FALSE;
 		rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
@@ -62,10 +61,13 @@ namespace C3D
 
 		// Depth and stencil testing
 		VkPipelineDepthStencilStateCreateInfo depthStencil = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-		if (depthTestEnabled)
+		if (config.shaderFlags & ShaderFlagDepthTest)
 		{
 			depthStencil.depthTestEnable = VK_TRUE;
-			depthStencil.depthWriteEnable = VK_TRUE;
+			if (config.shaderFlags & ShaderFlagDepthWrite)
+			{
+				depthStencil.depthWriteEnable = VK_TRUE;
+			}
 			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 			depthStencil.depthBoundsTestEnable = VK_FALSE;
 			depthStencil.stencilTestEnable = VK_FALSE;
@@ -107,15 +109,15 @@ namespace C3D
 		// Vertex Input
 		VkVertexInputBindingDescription bindingDescription;
 		bindingDescription.binding = 0;
-		bindingDescription.stride = stride;
+		bindingDescription.stride = config.stride;
 		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		// Attributes
 		VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
 		vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
 		vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
-		vertexInputCreateInfo.vertexAttributeDescriptionCount = attributeCount;
-		vertexInputCreateInfo.pVertexAttributeDescriptions = attributes;
+		vertexInputCreateInfo.vertexAttributeDescriptionCount = config.attributeCount;
+		vertexInputCreateInfo.pVertexAttributeDescriptions = config.attributes;
 
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
@@ -126,25 +128,25 @@ namespace C3D
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 
 		// Push constants
-		if (pushConstantRangeCount > 0)
+		if (config.pushConstantRangeCount > 0)
 		{
 			// Note: 32 is the max push constant ranges we can ever have because the Vulkan spec only guarantees 128 bytes with 4-byte alignment.
-			if (pushConstantRangeCount > 32)
+			if (config.pushConstantRangeCount > 32)
 			{
-				Logger::Error("[VULKAN_PIPELINE] - Create() Cannot have more than 32 push constant ranges. Passed count: {}", pushConstantRangeCount);
+				Logger::Error("[VULKAN_PIPELINE] - Create() Cannot have more than 32 push constant ranges. Passed count: {}", config.pushConstantRangeCount);
 				return false;
 			}
 
 			VkPushConstantRange ranges[32];
 			Memory.Zero(ranges, sizeof(VkPushConstantRange) * 32);
-			for (u32 i = 0; i < pushConstantRangeCount; i++)
+			for (u32 i = 0; i < config.pushConstantRangeCount; i++)
 			{
 				ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-				ranges[i].offset = static_cast<u32>(pushConstantRanges[i].offset);
-				ranges[i].size = static_cast<u32>(pushConstantRanges[i].size);
+				ranges[i].offset = static_cast<u32>(config.pushConstantRanges[i].offset);
+				ranges[i].size = static_cast<u32>(config.pushConstantRanges[i].size);
 			}
 
-			pipelineLayoutCreateInfo.pushConstantRangeCount = pushConstantRangeCount;
+			pipelineLayoutCreateInfo.pushConstantRangeCount = config.pushConstantRangeCount;
 			pipelineLayoutCreateInfo.pPushConstantRanges = ranges;
 		}
 		else
@@ -154,30 +156,30 @@ namespace C3D
 		}
 
 		// Descriptor set layouts
-		pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayoutCount;
-		pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts;
+		pipelineLayoutCreateInfo.setLayoutCount = config.descriptorSetLayoutCount;
+		pipelineLayoutCreateInfo.pSetLayouts = config.descriptorSetLayouts;
 
 		// Create our pipeline layout
 		VK_CHECK(vkCreatePipelineLayout(context->device.logicalDevice, &pipelineLayoutCreateInfo, context->allocator, &layout));
 
 		// Pipeline create info
 		VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-		pipelineCreateInfo.stageCount = stageCount;
-		pipelineCreateInfo.pStages = stages;
+		pipelineCreateInfo.stageCount = config.stageCount;
+		pipelineCreateInfo.pStages = config.stages;
 		pipelineCreateInfo.pVertexInputState = &vertexInputCreateInfo;
 		pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
 
 		pipelineCreateInfo.pViewportState = &viewportState;
 		pipelineCreateInfo.pRasterizationState = &rasterizerCreateInfo;
 		pipelineCreateInfo.pMultisampleState = &multiSampleCreateInfo;
-		pipelineCreateInfo.pDepthStencilState = depthTestEnabled ? &depthStencil : nullptr;
+		pipelineCreateInfo.pDepthStencilState = (config.shaderFlags & ShaderFlagDepthTest) ? &depthStencil : nullptr;
 		pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
 		pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
 		pipelineCreateInfo.pTessellationState = nullptr;
 
 		pipelineCreateInfo.layout = layout;
 
-		pipelineCreateInfo.renderPass = renderPass->handle;
+		pipelineCreateInfo.renderPass = config.renderPass->handle;
 		pipelineCreateInfo.subpass = 0;
 		pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineCreateInfo.basePipelineIndex = -1;

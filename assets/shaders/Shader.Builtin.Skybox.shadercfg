@@ -5,8 +5,8 @@ name = Shader.Builtin.Skybox
 renderPass = RenderPass.Builtin.Skybox
 stages = vertex, fragment
 stageFiles = shaders/Builtin.SkyboxShader.vert.spv, shaders/Builtin.SkyboxShader.frag.spv
-useInstance = 1
-useLocal = 0
+depthTest  = false
+depthWrite = false
 
 # Attributes: (type, name)
 attribute = vec3, inPosition

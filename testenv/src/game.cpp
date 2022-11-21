@@ -18,8 +18,7 @@
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
 	: Application(config), m_camera(nullptr)
-{
-}
+{}
 
 void TestEnv::OnCreate()
 {

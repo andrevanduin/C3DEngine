@@ -66,14 +66,21 @@ namespace C3D
 	C3D_API f32 RandomF();
 	C3D_API f32 RandomInRangeF(f32 min, f32 max);
 
-	C3D_API C3D_INLINE bool EpsilonEqual(const vec2& a, const vec2& b, const f32 tolerance)
+	C3D_API C3D_INLINE bool EpsilonEqual(const float a, const float b, const f32 tolerance = FLOAT_EPSILON)
+	{
+		if (Abs(a - b) > tolerance) return false;
+		return true;
+	}
+
+	C3D_API C3D_INLINE bool EpsilonEqual(const vec2& a, const vec2& b, const f32 tolerance = FLOAT_EPSILON)
 	{
 		if (Abs(a.x - b.x) > tolerance) return false;
 		if (Abs(a.y - b.y) > tolerance) return false;
 
 		return true;
 	}
-	C3D_API C3D_INLINE bool EpsilonEqual(const vec3& a, const vec3& b, const f32 tolerance)
+
+	C3D_API C3D_INLINE bool EpsilonEqual(const vec3& a, const vec3& b, const f32 tolerance = FLOAT_EPSILON)
 	{
 		if (Abs(a.x - b.x) > tolerance) return false;
 		if (Abs(a.y - b.y) > tolerance) return false;
@@ -81,7 +88,7 @@ namespace C3D
 
 		return true;
 	}
-	C3D_API C3D_INLINE bool EpsilonEqual(const vec4& a, const vec4& b, const f32 tolerance)
+	C3D_API C3D_INLINE bool EpsilonEqual(const vec4& a, const vec4& b, const f32 tolerance = FLOAT_EPSILON)
 	{
 		if (Abs(a.x - b.x) > tolerance) return false;
 		if (Abs(a.y - b.y) > tolerance) return false;
@@ -89,6 +96,35 @@ namespace C3D
 		if (Abs(a.w - b.w) > tolerance) return false;
 
 		return true;
+	}
+
+	C3D_API C3D_INLINE f32 RangeConvert(const f32 value, const f32 oldMin, const f32 oldMax, const f32 newMin, const f32 newMax)
+	{
+		return (value - oldMin) * (newMax - newMin) / (oldMax - oldMin) + newMin;
+	}
+
+	C3D_API C3D_INLINE u32 RgbToU32(const u32 r, const u32 g, const u32 b)
+	{
+		return (r & 0x0FF) << 16 | (g & 0x0FF) << 8 | (b & 0x0FF);
+	}
+
+	C3D_API C3D_INLINE void U32ToRgb(const u32 rgb, u32* outR, u32* outG, u32* outB)
+	{
+		*outR = rgb >> 16 & 0x0FF;
+		*outG = rgb >> 8 & 0x0FF;
+		*outB = rgb & 0x0FF;
+	}
+
+	C3D_API C3D_INLINE vec3 RgbToVec3(const u32 r, const u32 g, const u32 b)
+	{
+		return { static_cast<f32>(r) / 255.0f, static_cast<f32>(g) / 255.0f, static_cast<f32>(b) / 255.0f };
+	}
+
+	C3D_API C3D_INLINE void Vec3ToRgb(const vec3& v, u32* outR, u32* outG, u32* outB)
+	{
+		*outR = static_cast<u32>(v.r) * 255;
+		*outG = static_cast<u32>(v.g) * 255;
+		*outB = static_cast<u32>(v.b) * 255;
 	}
 }
 

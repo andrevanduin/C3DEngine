@@ -2,6 +2,7 @@
 #pragma once
 #include "core/defines.h"
 #include "math/math_types.h"
+#include "render_target.h"
 
 namespace C3D
 {
@@ -10,39 +11,42 @@ namespace C3D
 	struct RenderPassConfig
 	{
 		const char* name;
-		const char* previousName;
-		const char* nextName;
+		f32 depth;
+		u32 stencil;
 
 		vec4 renderArea;
 		vec4 clearColor;
 
 		u8 clearFlags;
+
+		u8 renderTargetCount;
+		RenderTargetConfig target;
 	};
 
 	enum RenderPassClearFlags : u8
 	{
 		ClearNone = 0x0,
-		ClearColor = 0x1,
-		ClearDepth = 0x2,
-		ClearStencil = 0x4
+		ClearColorBuffer = 0x1,
+		ClearDepthBuffer = 0x2,
+		ClearStencilBuffer = 0x4
 	};
 
 	class RenderPass
 	{
 	public:
-		RenderPass()
-			: id(INVALID_ID_U16), renderArea(0), renderTargetCount(0), targets(nullptr),
-			  m_hasPrevPass(false), m_hasNextPass(false), m_clearFlags(0), m_clearColor(0)
-		{}
+		RenderPass();
+		RenderPass(const RenderPassConfig& config);
 
-		explicit RenderPass(const u16 id, const RenderPassConfig& config)
-			: id(id), renderArea(config.renderArea), renderTargetCount(0), targets(nullptr),
-			  m_hasPrevPass(config.previousName != nullptr), m_hasNextPass(config.nextName != nullptr),
-		      m_clearFlags(config.clearFlags), m_clearColor(config.clearColor)
-		{}
+		RenderPass(const RenderPass&) = delete;
+		RenderPass(RenderPass&&) = delete;
 
-		virtual void Create(f32 depth, u32 stencil) = 0;
-		virtual void Destroy() = 0;
+		RenderPass& operator=(const RenderPass&) = delete;
+		RenderPass& operator=(RenderPass&& other) noexcept;
+
+		virtual ~RenderPass() = default;
+
+		virtual bool Create(const RenderPassConfig& config) = 0;
+		virtual void Destroy();
 
 		u16 id;
 
@@ -51,8 +55,6 @@ namespace C3D
 		RenderTarget* targets;
 
 	protected:
-		bool m_hasPrevPass, m_hasNextPass;
-
 		u8 m_clearFlags;
 		vec4 m_clearColor;
 	};

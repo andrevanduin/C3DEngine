@@ -13,6 +13,12 @@ namespace C3D
 		RingQueue();
 		explicit RingQueue(u64 initialCapacity);
 
+		RingQueue(const RingQueue&) = delete;
+		RingQueue(RingQueue&&) = delete;
+
+		RingQueue& operator=(const RingQueue&) = delete;
+		RingQueue& operator=(RingQueue&&) = delete;
+
 		~RingQueue();
 
 		void Create(u64 initialCapacity);
@@ -39,7 +45,7 @@ namespace C3D
 		T* m_elements;
 		/* @brief The amount of elements currently contained in this RingQueue. */
 		u64 m_count;
-		/* @brief The amount of elements this RinQueue can store in total. */
+		/* @brief The amount of elements this RingQueue can store in total. */
 		u64 m_capacity;
 		/* @brief The index into the list where the head is currently. */
 		u64 m_head;

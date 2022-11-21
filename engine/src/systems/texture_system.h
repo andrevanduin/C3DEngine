@@ -55,11 +55,12 @@ namespace C3D
 
 		void Release(const char* name);
 
-		Texture* WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency, bool isWritable, bool registerTexture, void* internalData);
+		void WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency, bool isWritable, bool registerTexture, void* internalData, Texture* outTexture);
 
 		static bool SetInternal(Texture* t, void* internalData);
 
 		bool Resize(Texture* t, u32 width, u32 height, bool regenerateInternalData) const;
+		static bool WriteData(Texture* t, u32 offset, u32 size, const u8* data);
 
 		Texture* GetDefault();
 		Texture* GetDefaultDiffuse();

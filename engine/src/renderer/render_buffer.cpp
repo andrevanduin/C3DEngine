@@ -21,7 +21,7 @@ namespace C3D
 		if (useFreelist)
 		{
 			// Get the memory requirements for our freelist
-			m_freeListMemoryRequirement = NewFreeList::GetMemoryRequirement(totalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
+			m_freeListMemoryRequirement = FreeList::GetMemoryRequirement(totalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
 			// Allocate enough space for our freelist
 			m_freeListBlock = Memory.Allocate(m_freeListMemoryRequirement, MemoryType::RenderSystem);
 			// Create the freelist
@@ -74,7 +74,7 @@ namespace C3D
 		if (m_freeListMemoryRequirement > 0)
 		{
 			// We are using a freelist so we should resize it first.
-			const u64 newMemoryRequirement = NewFreeList::GetMemoryRequirement(newTotalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
+			const u64 newMemoryRequirement = FreeList::GetMemoryRequirement(newTotalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
 			// Allocate enough space for our freelist
 			void* newMemory = Memory.Allocate(newMemoryRequirement, MemoryType::RenderSystem);
 			// A pointer to our old memory block (which will get populated by the resize method)

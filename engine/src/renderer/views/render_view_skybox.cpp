@@ -1,28 +1,48 @@
-#include <resources/shader.h>
 
 #include "math/c3d_math.h"
 #include "render_view_skybox.h"
 
+#include "core/events/event.h"
 #include "services/services.h"
 
 #include "systems/shader_system.h"
 #include "systems/camera_system.h"
 #include "renderer/renderer_frontend.h"
+#include "resources/resource_types.h"
+#include "resources/loaders/shader_loader.h"
+#include "systems/render_view_system.h"
+#include "systems/resource_system.h"
 
 namespace C3D 
 {
 	RenderViewSkybox::RenderViewSkybox(const u16 _id, const RenderViewConfig& config)
-		: RenderView(_id, config), m_shaderId(INVALID_ID), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f), 
+		: RenderView(_id, config), m_shader(nullptr), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
 		m_projectionMatrix(), m_camera(nullptr), m_projectionLocation(0), m_viewLocation(0), m_cubeMapLocation(0)
 	{}
 
 	bool RenderViewSkybox::OnCreate()
 	{
-		Shader* s = Shaders.Get(m_customShaderName ? m_customShaderName : "Shader.Builtin.Skybox");
-		m_shaderId = s->id;
-		m_projectionLocation = Shaders.GetUniformIndex(s, "projection");
-		m_viewLocation = Shaders.GetUniformIndex(s, "view");
-		m_cubeMapLocation = Shaders.GetUniformIndex(s, "cubeTexture");
+		// Builtin skybox shader
+		const auto shaderName = "Shader.Builtin.Skybox";
+		ShaderResource res;
+		if (!Resources.Load(shaderName, &res))
+		{
+			m_logger.Error("OnCreate() - Failed to load ShaderResource");
+			return false;
+		}
+		// NOTE: Since this view only has 1 pass we assume index 0
+		if (!Shaders.Create(passes[0], res.config))
+		{
+			m_logger.Error("OnCreate() - Failed to create {}", shaderName);
+			return false;
+		}
+
+		Resources.Unload(&res);
+
+		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
+		m_projectionLocation = Shaders.GetUniformIndex(m_shader, "projection");
+		m_viewLocation = Shaders.GetUniformIndex(m_shader, "view");
+		m_cubeMapLocation = Shaders.GetUniformIndex(m_shader, "cubeTexture");
 
 		const auto fWidth = static_cast<f32>(m_width);
 		const auto fHeight = static_cast<f32>(m_height);
@@ -33,7 +53,7 @@ namespace C3D
 		return true;
 	}
 
-	void RenderViewSkybox::OnResize(u32 width, u32 height)
+	void RenderViewSkybox::OnResize(const u32 width, const u32 height)
 	{
 		if (width != m_width || height != m_height)
 		{
@@ -43,7 +63,7 @@ namespace C3D
 			const auto aspectRatio = static_cast<f32>(width) / static_cast<f32>(height);
 			m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
 
-			for (auto pass : passes)
+			for (const auto pass : passes)
 			{
 				pass->renderArea = ivec4(0, 0, m_width, m_height);
 			}
@@ -71,19 +91,21 @@ namespace C3D
 
 	bool RenderViewSkybox::OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const
 	{
-		auto skyBoxData = static_cast<SkyboxPacketData*>(packet->extendedData);
+		const auto skyBoxData = static_cast<SkyboxPacketData*>(packet->extendedData);
 
 		for (const auto pass : passes)
 		{
+			const auto shaderId = m_shader->id;
+
 			if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
 			{
 				m_logger.Error("OnRender() - BeginRenderPass failed for pass width id '{}'", pass->id);
 				return false;
 			}
 
-			if (!Shaders.UseById(m_shaderId))
+			if (!Shaders.UseById(shaderId))
 			{
-				m_logger.Error("OnRender() - Failed to use shader with id {}", m_shaderId);
+				m_logger.Error("OnRender() - Failed to use shader with id {}", shaderId);
 				return false;
 			}
 
@@ -96,7 +118,7 @@ namespace C3D
 			// TODO: Change this
 
 			// Global
-			Renderer.ShaderBindGlobals(Shaders.GetById(m_shaderId));
+			Renderer.ShaderBindGlobals(Shaders.GetById(shaderId));
 			if (!Shaders.SetUniformByIndex(m_projectionLocation, &packet->projectionMatrix))
 			{
 				m_logger.Error("Failed to apply projection matrix.");

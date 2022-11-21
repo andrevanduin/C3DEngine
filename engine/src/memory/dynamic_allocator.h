@@ -56,13 +56,13 @@ namespace C3D
 		// The size of usable memory
 		u64 m_memorySize;
 		// The freelist to keep track of all the free blocks of memory
-		NewFreeList m_freeList;
+		FreeList m_freeList;
 		// A pointer to the actual block of memory that this allocator manages
 		char* m_memory;
 	};
 
 	constexpr u64 DynamicAllocator::GetMemoryRequirements(const u64 usableSize)
 	{
-		return NewFreeList::GetMemoryRequirement(usableSize, SMALLEST_POSSIBLE_ALLOCATION) + usableSize;
+		return FreeList::GetMemoryRequirement(usableSize, SMALLEST_POSSIBLE_ALLOCATION) + usableSize;
 	}
 }

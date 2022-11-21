@@ -5,6 +5,7 @@
 
 #include "resources/mesh.h"
 #include "resources/skybox.h"
+#include "resources/ui_text.h"
 
 int main(int argc, char** argv);
 
@@ -19,6 +20,7 @@ namespace C3D
 		string name;
 		i32 x, y;
 		i32 width, height;
+		MemorySystemConfig memorySystemConfig;
 	};
 
 	struct ApplicationState
@@ -68,6 +70,7 @@ namespace C3D
 		// TEMP END
 
 		static bool OnKeyEvent(u16 code, void* sender, EventContext context);
+		bool OnEvent(u16 code, void* sender, EventContext context);
 
 		LoggerInstance m_logger;
 		ApplicationState m_state;
@@ -83,7 +86,10 @@ namespace C3D
 		Mesh* sponzaMesh;
 		bool modelsLoaded = false;
 
+		u32 m_hoveredObjectId;
+
 		Mesh m_uiMeshes[10];
+		UIText m_testText;
 		// TEMP END
 
 		friend int ::main(int argc, char** argv);

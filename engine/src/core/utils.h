@@ -17,6 +17,7 @@ namespace C3D
 			"Array            ",
 			"DynamicArray     ",
 			"HashTable        ",
+			"HashMap          ",
 			"RingQueue        ",
 			"Bst              ",
 			"String           ",
@@ -72,27 +73,24 @@ namespace C3D
 	public:
 		static String GenerateMemoryUsageString(const MemorySystem& memorySystem)
 		{
+			auto taggedAllocations = memorySystem.GetTaggedAllocations();
+			const auto freeSpace = memorySystem.GetFreeSpace();
+			const auto totalSpace = memorySystem.GetTotalUsableSpace();
+
 			String str;
 			str.Reserve(2000);
-
 			str.Append("System's Dynamic Memory usage:\n");
-
-			auto taggedAllocations = memorySystem.GetTaggedAllocations();
+			
 			for (auto i = 0; i < ToUnderlying(MemoryType::MaxType); i++)
 			{
 				const auto [size, count] = taggedAllocations[i];
 				str.Append(String::FromFormat("  {} - ({:0>3}) {}\n", memoryTypeStrings[i], count, SizeToText(size)));
 			}
 
-			if (memorySystem.IsInitialized())
-			{
-				const auto freeSpace = memorySystem.GetFreeSpace();
-				const auto totalSpace = memorySystem.GetTotalUsableSpace();
-				const auto usedSpace = totalSpace - freeSpace;
-				const auto percentage = static_cast<f32>(usedSpace) / static_cast<f32>(totalSpace) * 100.0f;
+			const auto usedSpace = totalSpace - freeSpace;
+			const auto percentage = static_cast<f32>(usedSpace) / static_cast<f32>(totalSpace) * 100.0f;
 
-				str += String::FromFormat("Using {} out of {} total ({:.3}% used)", SizeToText(usedSpace), SizeToText(totalSpace), percentage);
-			}
+			str += String::FromFormat("Using {} out of {} total ({:.3}% used)", SizeToText(usedSpace), SizeToText(totalSpace), percentage);
 
 			return str;
 		}

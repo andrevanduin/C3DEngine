@@ -29,9 +29,13 @@ namespace C3D
 		bool BeginFrame(f32 deltaTime) override;
 		bool EndFrame(f32 deltaTime) override;
 
+		void SetViewport(const vec4& rect) override;
+		void ResetViewport() override;
+		void SetScissor(const ivec4& rect) override;
+		void ResetScissor() override;
+
 		bool BeginRenderPass(RenderPass* pass, RenderTarget* target) override;
 		bool EndRenderPass(RenderPass* pass) override;
-		RenderPass* GetRenderPass(const char* name) override;
 
 		void DrawGeometry(const GeometryRenderData& data) override;
 
@@ -40,6 +44,9 @@ namespace C3D
 
 		void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels) override;
 		void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) override;
+
+		void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory) override;
+		void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba) override;
 
 		void DestroyTexture(Texture* texture) override;
 
@@ -66,16 +73,20 @@ namespace C3D
 
 		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
 
-		void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) override;
+		void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) override;
 		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) override;
+
+		RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
+		bool DestroyRenderPass(RenderPass* pass) override;
 
 		RenderBuffer* CreateRenderBuffer(RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
 		bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
 		Texture* GetWindowAttachment(u8 index) override;
-		Texture* GetDepthAttachment() override;
+		Texture* GetDepthAttachment(u8 index) override;
 
 		u8 GetWindowAttachmentIndex() override;
+		u8 GetWindowAttachmentCount() override;
 
 		[[nodiscard]] bool IsMultiThreaded() const override;
 	private:

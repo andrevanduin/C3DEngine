@@ -27,7 +27,13 @@ namespace C3D
 
 		m_stats.allocCount = 0;
 		m_stats.totalAllocated = 0;
-		Zero(m_stats.taggedAllocations, sizeof(MemoryAllocation) * ToUnderlying(MemoryType::MaxType));
+
+		// Initialize tagged allocations with zero
+		for (auto& alloc : m_stats.taggedAllocations)
+		{
+			alloc.count = 0;
+			alloc.size = 0;
+		}
 
 		if (!config.excludeFromStats)
 		{
@@ -179,7 +185,7 @@ namespace C3D
 		return Platform::SetMemory(dest, value, size);
 	}
 
-	const MemoryAllocation* MemorySystem::GetTaggedAllocations() const
+	Array<MemoryAllocation, static_cast<u64>(MemoryType::MaxType)> MemorySystem::GetTaggedAllocations() const
 	{
 		return m_stats.taggedAllocations;
 	}

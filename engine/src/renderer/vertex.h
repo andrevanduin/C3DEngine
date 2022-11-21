@@ -30,6 +30,12 @@ namespace C3D
 
 	struct Vertex2D
 	{
+		Vertex2D() = default;
+
+		Vertex2D(const vec2& position, const vec2& texture)
+			: position(position), texture(texture)
+		{}
+
 		vec2 position;
 		vec2 texture;
 	};

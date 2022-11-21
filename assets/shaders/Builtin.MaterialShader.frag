@@ -19,7 +19,7 @@ struct PointLight
 	vec3 position;
 	vec4 color;
 	// Usually 1, make sure denominator never gets smaller than 1
-	float constant;
+	float fConstant;
 	// Reduces light intensity linearly
 	float linear;
 	// Makes the light fall of slower at longer dinstances
@@ -141,7 +141,7 @@ vec4 CalculatePointLight(PointLight light, vec3 normal, vec3 fragPosition, vec3 
 
 	// Calculate attenuation, or light falloff over distance
 	float distance = length(light.position - fragPosition);
-	float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+	float attenuation = 1.0 / (light.fConstant + light.linear * distance + light.quadratic * (distance * distance));
 
 	vec4 ambient = inDto.ambientColor;
 	vec4 diffuse = light.color * diff;

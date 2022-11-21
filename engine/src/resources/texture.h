@@ -33,12 +33,14 @@ namespace C3D
 	enum TextureFlag
 	{
 		None = 0x0,
-		/* @brief Indicates if the texture has transparency */
+		/* @brief Indicates if the texture has transparency. */
 		HasTransparency	= 0x1,
-		/* @brief Indicates if the texture is writable */
+		/* @brief Indicates if the texture is writable. */
 		IsWritable		= 0x2,
-		/* @brief Indicates if the texture was created via wrapping vs traditional creation */
+		/* @brief Indicates if the texture was created via wrapping vs traditional creation. */
 		IsWrapped		= 0x4,
+		/* @brief Indicates if the texture is being used as a depth texture. */
+		IsDepth			= 0x8,
 	};
 
 	enum class FaceCullMode

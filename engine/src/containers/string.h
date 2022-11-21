@@ -43,6 +43,7 @@ namespace C3D
 				m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 
 				m_data = Memory.Allocate<char>(capacity, MemoryType::C3DString);
+				Logger::Trace("[STRING] - Init() with capacity = {}", capacity);
 			}
 			else
 			{
@@ -61,6 +62,7 @@ namespace C3D
 				{
 					// The new capacity is larger than the old so we need to allocate more space
 					const auto newCapacity = static_cast<u64>(std::ceil(static_cast<f64>(requiredSize) * STRING_RESIZE_FACTOR));
+					Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
 
 					// Allocate enough space for the new data
 					const auto newData = Memory.Allocate<char>(newCapacity, MemoryType::C3DString);
@@ -81,6 +83,7 @@ namespace C3D
 				{
 					// Our new capacity is too large for SSO
 					const auto newCapacity = static_cast<u64>(std::ceil(static_cast<f64>(requiredSize) * STRING_RESIZE_FACTOR));
+					Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
 
 					// Allocate enough space for the new capacity
 					m_data = Memory.Allocate<char>(newCapacity, MemoryType::C3DString);
@@ -91,6 +94,16 @@ namespace C3D
 					// Finally we store our capacity since on the stack we weren't using it yet
 					m_sso.capacity = newCapacity;
 				}
+			}
+		}
+
+		void Free()
+		{
+			// We only need to cleanup if we are using the heap
+			if (m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP && m_data)
+			{
+				Memory.Free(m_data, m_sso.capacity, MemoryType::C3DString);
+				m_data = nullptr;
 			}
 		}
 
@@ -316,6 +329,9 @@ namespace C3D
 
 		String& operator=(String&& other) noexcept
 		{
+			// We need to free this string if there is any dynamically allocated memory
+			Free();
+
 			// Copy over the size
 			m_size = other.m_size;
 
@@ -346,12 +362,7 @@ namespace C3D
 
 		~String()
 		{
-			// We only need to cleanup if we are using the heap
-			if (m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP && m_data)
-			{
-				Memory.Free(m_data, m_sso.capacity, MemoryType::C3DString);
-				m_data = nullptr;
-			}
+			Free();
 		}
 
 		/* @brief Reserve enough space in the string to hold the provided capacity. */
@@ -398,6 +409,22 @@ namespace C3D
 		{
 			m_size = 0;
 			m_data[0] = '\0';
+		}
+
+		/* @brief Completely destroy the string and it's contents.
+		 * This sets the size to 0 and frees it's internal memory (if any is allocated).
+		 */
+		void Destroy()
+		{
+			Free();
+
+			// Point our data pointer to the stack memory
+			m_data = m_sso.data;
+			// Set the size to 0 since the string is empty
+			m_size = 0;
+
+			m_sso.data[0] = '\0';
+			m_sso.data[MEMORY_TYPE] = SSO_USE_STACK;
 		}
 
 		/* @brief Builds a string from the format and the provided arguments.
@@ -490,7 +517,7 @@ namespace C3D
 		}
 
 		/* @brief Splits the string at the given delimiter. */
-		[[nodiscard]] DynamicArray<String> Split(const char delimiter, const bool skipEmpty = true) const
+		[[nodiscard]] DynamicArray<String> Split(const char delimiter, const bool trimEntries = true, const bool skipEmpty = true) const
 		{
 			DynamicArray<String> elements;
 			String current;
@@ -500,6 +527,8 @@ namespace C3D
 				{
 					if (!skipEmpty || !current.Empty())
 					{
+						if (trimEntries) current.Trim();
+
 						elements.PushBack(current);
 						current.Clear();
 					}
@@ -510,7 +539,11 @@ namespace C3D
 				}
 			}
 
-			if (!current.Empty()) elements.PushBack(current);
+			if (!current.Empty())
+			{
+				if (trimEntries) current.Trim();
+				elements.PushBack(current);
+			}
 			return elements;
 		}
 
@@ -593,100 +626,225 @@ namespace C3D
 			return m_data[m_size - 1] == c;
 		}
 
-		/* @brief Converts string to an i32. */
+		[[nodiscard]] bool Contains(const char c) const
+		{
+			return std::find(begin(), end(), c) != end();
+		}
+
+		/* @brief Check if const char pointer matches case-sensitive. */
+		[[nodiscard]] bool Equals(const char* other) const
+		{
+			return std::strcmp(m_data, other) == 0;
+		}
+
+		/* @brief Check if const char pointer matches case-insensitive. */
+		[[nodiscard]] bool IEquals(const char* other) const
+		{
+			return _stricmp(m_data, other) == 0;
+		}
+
+		/* @brief Check if another string matches case-sensitive. */
+		[[nodiscard]] bool Equals(const String& other) const
+		{
+			return std::equal(begin(), end(), other.begin(), other.end());
+		}
+
+		/* @brief Check if another string matches case-insensitive. */
+		[[nodiscard]] bool IEquals(const String& other) const
+		{
+			return std::equal(begin(), end(), other.begin(), other.end(), [](const char a, const char b) { return tolower(a) == tolower(b); });
+		}
+
+		/* @brief Returns the utf8 codepoint at the given index.
+		 * Will set advance to the amount of characters that need to be skipped to get the next character
+		 */
+		[[nodiscard]] i32 ToCodepoint(const u64 index, u64& advance) const
+		{
+			const int codepoint = static_cast<u8>(m_data[index]);
+			if (codepoint >= 0 && codepoint < 0x7F)
+			{
+				// Singe-byte character
+				advance = 1;
+				return codepoint;
+			}
+
+			if ((codepoint & 0xE0) == 0xC0)
+			{
+				// Double-byte character
+				advance = 2;
+				return ((codepoint & 0b00011111) << 6) + 
+					m_data[index + 1] & 0b00111111;
+			}
+
+			if ((codepoint & 0xF0) == 0xE0)
+			{
+				// Triple-byte character
+				advance = 3;
+				return ((codepoint & 0b00001111) << 12) +
+					((m_data[index + 1] & 0b00111111) << 6) +
+					(m_data[index + 2] & 0b00111111);
+			}
+
+			if ((codepoint & 0xF8) == 0xF0)
+			{
+				// Four-byte character
+				advance = 4;
+				return ((codepoint & 0b00000111) << 18) +
+					((m_data[index + 1] & 0b00111111) << 12) +
+					((m_data[index + 2] & 0b00111111) << 6) +
+					(m_data[index + 3] & 0b00111111);
+			}
+
+			Logger::Error("[STRING] - ToCodepoint() - Invalid 5 or 6-byte character in string.");
+			advance = 1;
+			return -1;
+		}
+
+		/* @brief Converts string to an i32 in the provided base. */
 		[[nodiscard]] i32 ToI32(const i32 base = 10) const
 		{
 			return std::strtol(m_data, nullptr, base);
 		}
 
-		/* @brief Converts string to an u32. */
+		/* @brief Converts string to an u32 in the provided base. */
 		[[nodiscard]] u32 ToU32(const i32 base = 10) const
 		{
 			return std::strtoul(m_data, nullptr, base);
 		}
 
-		/* @brief Converts string to an i16. */
+		/* @brief Converts string to an i16 in the provided base. */
 		[[nodiscard]] i16 ToI16(const i32 base = 10) const
 		{
 			return static_cast<i16>(std::strtol(m_data, nullptr, base));
 		}
 
-		/* @brief Converts string to an u16. */
+		/* @brief Converts string to an u16 in the provided base. */
 		[[nodiscard]] u16 ToU16(const i32 base = 10) const
 		{
 			return static_cast<u16>(std::strtoul(m_data, nullptr, base));
 		}
 
-		/* @brief Converts string to an i8. */
+		/* @brief Converts string to an i8 in the provided base. */
 		[[nodiscard]] i8 ToI8(const i32 base = 10) const
 		{
 			return static_cast<i8>(std::strtol(m_data, nullptr, base));
 		}
 
-		/* @brief Converts string to an u8. */
+		/* @brief Converts string to an u8 in the provided base. */
 		[[nodiscard]] u8 ToU8(const i32 base = 10) const
 		{
 			return static_cast<u8>(std::strtoul(m_data, nullptr, base));
 		}
 
+		[[nodiscard]] bool ToBool() const
+		{
+			if (IEquals("1") || IEquals("true")) return true;
+			return false;
+		}
+
+		/* @brief Gets the number of characters currently in the string (excluding the null-terminator). */
 		[[nodiscard]] u64 Size() const { return m_size; }
+
+		/* @brief Get the size of the string while keeping UTF8 multi-byte characters into account.
+		 * Warning does not support 5 or 6-byte characters!
+		 */
+		[[nodiscard]] u64 SizeUtf8() const
+		{
+			u64 size = 0;
+			for (u64 i = 0; i < m_size; i++)
+			{
+				if (m_data[i] >= 0 && m_data[i] < 127) size++;	// 1-byte character
+				else if ((m_data[i] & 0xE0) == 0xC0) size += 2;	// 2-byte character
+				else if ((m_data[i] & 0xF0) == 0xE0) size += 3; // 3-byte character
+				else if ((m_data[i] & 0xF8) == 0xF0) size += 4; // 4-byte character
+				else
+				{
+					Logger::Error("[STRING] - SizeUtf8() - Invalid 5 or 6-byte character in string.");
+					return 0;
+				}
+			}
+			return size;
+		}
+
+		/* @brief Gets the number of characters currently in the string (excluding the null-terminator). */
 		[[nodiscard]] u64 Length() const { return m_size; }
+
+		/* @brief Checks if the string is currently empty. */
 		[[nodiscard]] bool Empty() const { return m_size == 0;  }
 
+		/* @brief Returns a pointer to the internal character array. */
 		[[nodiscard]] const char* Data() const { return m_data; }
 
+		/* @brief Returns an iterator pointing to the start of the character array. */
 		[[nodiscard]] char* begin() const { return m_data; }
+
+		/* @brief Returns an iterator pointing to the element right after the last character in the character array. */
 		[[nodiscard]] char* end() const	{ return m_data + m_size; }
 
+		/* @brief Returns the first char in the string by reference. */
 		[[nodiscard]] char& First() const { return m_data[0]; }
+
+		/* @brief Returns the last char in the string by reference. */
 		[[nodiscard]] char& Last() const { return m_data[m_size - 1]; }
 
 		explicit operator const char* () const { return m_data; }
 
+		/* @brief Returns the char at the provided index by reference. */
 		char& operator[](const u64 index) const { return m_data[index]; }
 
+		/* @brief Returns the char at the provided index by reference.
+		 * Performs bounds checking internally. 
+		 */
 		[[nodiscard]] char& At(const u64 index) const
 		{
 			assert(index < m_size);
 			return m_data[index];
 		}
 
+		/* @brief Checks if the string is empty. Will return true if the string is empty and false otherwise. */
 		bool operator! () const
 		{
 			return m_size == 0;
 		}
 
+		/* @brief Checks if the string is empty. Will return false if the string is empty and true otherwise. */
 		explicit operator bool () const
 		{
 			return m_size != 0;
 		}
 
+		/* @brief Operator overload for comparing with a const char pointer. */
 		bool operator== (const char* other) const
 		{
 			return std::strcmp(m_data, other) == 0;
 		}
 
+		/* @brief Operator overload for comparing with another string. */
 		bool operator== (const String& other) const
 		{
 			return std::equal(begin(), end(), other.begin(), other.end());
 		}
 
+		/* @brief Operator overload for inequality with a const char pointer. */
 		bool operator!= (const char* other) const
 		{
 			return std::strcmp(m_data, other) != 0;
 		}
 
+		/* @brief Operator overload for inequality with another string. */
 		bool operator!= (const String& other) const
 		{
 			return !std::equal(begin(), end(), other.begin(), other.end());
 		}
 
+		/* @brief Operator overload for appending another string to this string. */
 		String& operator+= (const String& other)
 		{
 			Append(other);
 			return *this;
 		}
 
+		/* @brief Operator overload for appending const char* to this string. */
 		String& operator+= (const char* other)
 		{
 			Append(other);
@@ -735,7 +893,7 @@ namespace C3D
 
 		// Copy the contents from the left to the start
 		std::memcpy(s.m_data, left.m_data, left.m_size);
-		// Copy the contents from the right to right after 
+		// Copy the contents from the right to right after the left part
 		std::memcpy(s.m_data + left.m_size, right.m_data, right.m_size);
 
 		return s;
@@ -817,11 +975,26 @@ template<>
 struct fmt::formatter<C3D::String>
 {
 	template<typename ParseContext>
-	constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+	static constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
 
 	template<typename FormatContext>
 	auto format(C3D::String const& str, FormatContext& ctx)
 	{
 		return fmt::format_to(ctx.out(), "{}", str.Data());
+	}
+};
+
+template <>
+struct std::hash<C3D::String>
+{
+	size_t operator() (const C3D::String& key) const noexcept
+	{
+		size_t hash = 0;
+		for (const auto c : key)
+		{
+			hash ^= static_cast<size_t>(c);
+			hash *= std::_FNV_prime;
+		}
+		return hash;
 	}
 };

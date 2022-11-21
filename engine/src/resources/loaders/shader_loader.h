@@ -23,12 +23,12 @@ namespace C3D
 		void Unload(ShaderResource* resource) const;
 
 	private:
-		void ParseStages(ShaderConfig* data, const string& value) const;
-		void ParseStageFiles(ShaderConfig* data, const string& value) const;
+		void ParseStages(ShaderConfig* data, const String& value) const;
+		void ParseStageFiles(ShaderConfig* data, const String& value) const;
 
-		void ParseAttribute(ShaderConfig* data, const string& value) const;
-		void ParseUniform(ShaderConfig* data, const string& value) const;
+		void ParseAttribute(ShaderConfig* data, const String& value) const;
+		void ParseUniform(ShaderConfig* data, const String& value) const;
 
-		void ParseCullMode(ShaderConfig* data, const string& value) const;
+		static void ParseCullMode(ShaderConfig* data, const String& value);
 	};
 }
