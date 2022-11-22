@@ -15,6 +15,8 @@
 #include "core/application.h"
 #include "core/c3d_string.h"
 #include "core/memory.h"
+#include "core/events/event.h"
+#include "core/events/event_context.h"
 #include "renderer/renderer_frontend.h"
 
 #include "resources/texture.h"
@@ -199,7 +201,7 @@ namespace C3D
 		m_context = nullptr;
 #endif
 
-		m_context.frontend = config.frontend;
+		// Just set some basic default values. They will be overridden anyway.
 		m_context.frameBufferWidth = 1280;
 		m_context.frameBufferHeight = 720;
 
@@ -247,61 +249,11 @@ namespace C3D
 		// Save the number of images we have as a the number of render targets required
 		*outWindowRenderTargetCount = static_cast<u8>(m_context.swapChain.imageCount);
 
-		// Invalidate all render passes
-		for (auto& pass : m_context.registeredRenderPasses)
-		{
-			pass.id = INVALID_ID_U16;
-		}
-		// Fill the hashtable with invalid values
-		m_context.renderPassTable.Create(VULKAN_MAX_REGISTERED_RENDER_PASSES);
-		m_context.renderPassTable.Fill(INVALID_ID);
-
-		// RenderPasses TODO: Move to a function
-		for (u32 i = 0; i < config.renderPassCount; i++)
-		{
-			const auto passConfig = config.passConfigs[i];
-
-			// Ensure there are no collisions with the name
-			u32 id = m_context.renderPassTable.Get(passConfig.name);
-			if (id != INVALID_ID)
-			{
-				m_logger.Error("Init() - Collision with RenderPass named '{}'. Initialization failed.", passConfig.name);
-				return false;
-			}
-
-			// Get a new id for the renderPass
-			for (u32 j = 0; j < VULKAN_MAX_REGISTERED_RENDER_PASSES; j++)
-			{
-				if (m_context.registeredRenderPasses[j].id == INVALID_ID_U16)
-				{
-					m_context.registeredRenderPasses[j].id = j;
-					id = j;
-					break;
-				}
-			}
-
-			// Verify that we found a valid id
-			if (id == INVALID_ID)
-			{
-				m_logger.Error("Init() - No space was found for a new RenderPass: '{}'. Increase VULKAN_MAX_REGISTERED_RENDER_PASSES.", passConfig.name);
-				return false;
-			}
-
-			// Setup pass
-			m_context.registeredRenderPasses[id] = VulkanRenderPass(&m_context, static_cast<u16>(id), passConfig);
-			m_context.registeredRenderPasses[id].Create(1.0f, 0);
-
-			// Save the id as an entry in our hash table
-			m_context.renderPassTable.Set(passConfig.name, &id);
-
-			m_logger.Info("Init() - Successfully created RenderPass '{}'", passConfig.name);
-		}
-
 		CreateCommandBuffers();
 		m_logger.Info("Init() - Command Buffers Initialized");
 
-		m_context.imageAvailableSemaphores.resize(m_context.swapChain.maxFramesInFlight);
-		m_context.queueCompleteSemaphores.resize(m_context.swapChain.maxFramesInFlight);
+		m_context.imageAvailableSemaphores.Resize(m_context.swapChain.maxFramesInFlight);
+		m_context.queueCompleteSemaphores.Resize(m_context.swapChain.maxFramesInFlight);
 
 		m_logger.Info("Init() - Creating Semaphores and Fences");
 		for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
@@ -373,21 +325,11 @@ namespace C3D
 			}
 			vkDestroyFence(m_context.device.logicalDevice, m_context.inFlightFences[i], m_context.allocator);
 		}
-		m_context.imageAvailableSemaphores.clear();
-		m_context.queueCompleteSemaphores.clear();
+		m_context.imageAvailableSemaphores.Clear();
+		m_context.queueCompleteSemaphores.Clear();
 
 		vkDestroyCommandPool(m_context.device.logicalDevice, m_context.device.graphicsCommandPool, m_context.allocator);
-		m_context.graphicsCommandBuffers.clear();
-
-		m_logger.Info("Destroying RenderPasses");
-		for (auto& pass : m_context.registeredRenderPasses)
-		{
-			if (pass.id != INVALID_ID_U16)
-			{
-				pass.Destroy();
-			}
-		}
-		m_context.renderPassTable.Destroy();
+		m_context.graphicsCommandBuffers.Clear();
 
 		m_logger.Info("Destroying SwapChain");
 		m_context.swapChain.Destroy(&m_context);
@@ -486,21 +428,11 @@ namespace C3D
 		commandBuffer->Begin(false, false, false);
 
 		// Dynamic state
-		VkViewport viewport;
-		viewport.x = 0.0f;
-		viewport.y = static_cast<f32>(m_context.frameBufferHeight);
-		viewport.width = static_cast<f32>(m_context.frameBufferWidth);
-		viewport.height = -static_cast<f32>(m_context.frameBufferHeight);
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
+		m_context.viewportRect = { 0.0f, static_cast<f32>(m_context.frameBufferHeight), static_cast<f32>(m_context.frameBufferWidth), -static_cast<f32>(m_context.frameBufferHeight) };
+		SetViewport(m_context.viewportRect);
 
-		VkRect2D scissor;
-		scissor.offset.x = scissor.offset.y = 0;
-		scissor.extent.width = m_context.frameBufferWidth;
-		scissor.extent.height = m_context.frameBufferHeight;
-
-		vkCmdSetViewport(commandBuffer->handle, 0, 1, &viewport);
-		vkCmdSetScissor(commandBuffer->handle, 0, 1, &scissor);
+		m_context.scissorRect = { 0, 0, m_context.frameBufferWidth, m_context.frameBufferHeight };
+		SetScissor(m_context.scissorRect);
 
 		return true;
 	}
@@ -561,37 +493,51 @@ namespace C3D
 		return true;
 	}
 
-	RenderPass* RendererVulkan::GetRenderPass(const char* name)
+	void RendererVulkan::SetViewport(const vec4& rect)
 	{
-		if (!name || name[0] == '\0')
-		{
-			m_logger.Error("GetRenderPass() - Requires a name. Nullptr will be returned");
-			return nullptr;
-		}
-		const u32 id = m_context.renderPassTable.Get(name);
-		if (id == INVALID_ID)
-		{
-			m_logger.Warn("GetRenderPass() - There is not registered RenderPass with name: '{}'", name);
-			return nullptr;
-		}
-		return &m_context.registeredRenderPasses[id];
+		VkViewport viewport;
+		viewport.x = rect.x;
+		viewport.y = rect.y;
+		viewport.width = rect.z;
+		viewport.height = rect.w;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		const auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+		vkCmdSetViewport(commandBuffer.handle, 0, 1, &viewport);
 	}
 
-	void RendererVulkan::CreateRenderTarget(const u8 attachmentCount, Texture** attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget)
+	void RendererVulkan::ResetViewport()
+	{
+		// Just set viewport to our currently stored rect
+		SetViewport(m_context.viewportRect);
+	}
+
+	void RendererVulkan::SetScissor(const ivec4& rect)
+	{
+		VkRect2D scissor;
+		scissor.offset.x = rect.x;
+		scissor.offset.y = rect.y;
+		scissor.extent.width = rect.z;
+		scissor.extent.height = rect.w;
+
+		const auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+		vkCmdSetScissor(commandBuffer.handle, 0, 1, &scissor);
+	}
+
+	void RendererVulkan::ResetScissor()
+	{
+		SetScissor(m_context.scissorRect);
+	}
+
+	void RendererVulkan::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget)
 	{
 		VkImageView attachmentViews[32];
 		for (u32 i = 0; i < attachmentCount; i++)
 		{
-			attachmentViews[i] = static_cast<VulkanImage*>(attachments[i]->internalData)->view;
+			attachmentViews[i] = static_cast<VulkanImage*>(attachments[i].texture->internalData)->view;
 		}
-
-		// Take a copy of the attachments and count
-		outTarget->attachmentCount = attachmentCount;
-		if (!outTarget->attachments)
-		{
-			outTarget->attachments = Memory.Allocate<Texture*>(attachmentCount, MemoryType::Array);
-		}
-		Memory.Copy(outTarget->attachments, attachments, sizeof(Texture*) * attachmentCount);
+		Memory.Copy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
 
 		// Setup our frameBuffer creation
 		VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
@@ -613,17 +559,35 @@ namespace C3D
 			target->internalFrameBuffer = nullptr;
 			if (freeInternalMemory)
 			{
-				Memory.Free(target->attachments, sizeof(Texture*) * target->attachmentCount, MemoryType::Array);
+				Memory.Free(target->attachments, sizeof(RenderTargetAttachment) * target->attachmentCount, MemoryType::Array);
 				target->attachmentCount = 0;
 				target->attachments = nullptr;
 			}
 		}
 	}
 
+	RenderPass* RendererVulkan::CreateRenderPass(const RenderPassConfig& config)
+	{
+		const auto pass = Memory.New<VulkanRenderPass>(MemoryType::RenderSystem, &m_context, config);
+		if (!pass->Create(config))
+		{
+			m_logger.Error("CreateRenderPass() - Failed to create RenderPass: '{}'.", config.name);
+			return nullptr;
+		}
+		return pass;
+	}
+
+	bool RendererVulkan::DestroyRenderPass(RenderPass* pass)
+	{
+		pass->Destroy();
+		Memory.FreeAligned(pass, sizeof(VulkanRenderPass), MemoryType::RenderSystem);
+		return true;
+	}
+
 	RenderBuffer* RendererVulkan::CreateRenderBuffer(const RenderBufferType bufferType, const u64 totalSize, const bool useFreelist)
 	{
 		const auto buffer = Memory.New<VulkanBuffer>(MemoryType::RenderSystem, &m_context);
-		buffer->Create(bufferType, totalSize, useFreelist);
+		if (!buffer->Create(bufferType, totalSize, useFreelist)) return nullptr;
 		return buffer;
 	}
 
@@ -641,17 +605,27 @@ namespace C3D
 			m_logger.Fatal("GetWindowAttachment() - Attempting to get attachment index that is out of range: '{}'. Attachment count is: '{}'", index, m_context.swapChain.imageCount);
 			return nullptr;
 		}
-		return m_context.swapChain.renderTextures[index];
+		return &m_context.swapChain.renderTextures[index];
 	}
 
-	Texture* RendererVulkan::GetDepthAttachment()
+	Texture* RendererVulkan::GetDepthAttachment(u8 index)
 	{
-		return m_context.swapChain.depthTexture;
+		if (index >= m_context.swapChain.imageCount)
+		{
+			m_logger.Fatal("GetDepthAttachment() - Attempting to get attachment index that is out of range: '{}'. Attachment count is: '{}'", index, m_context.swapChain.imageCount);
+			return nullptr;
+		}
+		return &m_context.swapChain.depthTextures[index];
 	}
 
 	u8 RendererVulkan::GetWindowAttachmentIndex()
 	{
 		return static_cast<u8>(m_context.imageIndex);
+	}
+
+	u8 RendererVulkan::GetWindowAttachmentCount()
+	{
+		return static_cast<u8>(m_context.swapChain.imageCount);
 	}
 
 	bool RendererVulkan::IsMultiThreaded() const
@@ -739,11 +713,25 @@ namespace C3D
 		texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
 
-		const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
-		// TODO: Lot's of assumptions here
-		image->Create(&m_context, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL, 
-			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
+		VkFormat imageFormat;
+		VkImageUsageFlagBits usage;
+		VkImageAspectFlagBits aspect;
+
+		if (texture->flags & TextureFlag::IsDepth)
+		{
+			usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+			imageFormat = m_context.device.depthFormat;
+		}
+		else
+		{
+			usage  = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+			aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+		}
+
+		image->Create(&m_context, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+			usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, aspect);
 
 		texture->generation++;
 	}
@@ -799,6 +787,90 @@ namespace C3D
 
 			texture->generation++;
 		}
+	}
+
+	void RendererVulkan::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory)
+	{
+		const auto image = static_cast<VulkanImage*>(texture->internalData);
+		const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+
+		// Create a staging buffer and load data into it
+		VulkanBuffer staging(&m_context);
+		if (!staging.Create(RenderBufferType::Read, size, false))
+		{
+			m_logger.Error("ReadDataFromTexture() - Failed to create staging buffer.");
+			return;
+		}
+
+		staging.Bind(0);
+
+		VulkanCommandBuffer tempBuffer;
+		VkCommandPool pool = m_context.device.graphicsCommandPool;
+		VkQueue queue = m_context.device.graphicsQueue;
+
+		tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
+
+		// Transition the layout from whatever it is currently to optimal for handing out data
+		image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+		// Copy the data to the buffer
+		image->CopyToBuffer(texture->type, staging.handle, &tempBuffer);
+
+		// Transition from optimal for data reading to shader-read-only optimal layout
+		image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		tempBuffer.EndSingleUse(&m_context, pool, queue);
+
+		if (!staging.Read(offset, size, outMemory))
+		{
+			m_logger.Error("ReadDataFromTexture() - Failed to read from staging buffer.");
+		}
+
+		staging.Unbind();
+		staging.Destroy();
+	}
+
+	void RendererVulkan::ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba)
+	{
+		const auto image = static_cast<VulkanImage*>(texture->internalData);
+		const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+		// RGBA is 4 * sizeof a unsigned 8bit integer
+		constexpr auto size = sizeof(u8) * 4;
+
+		// Create a staging buffer and load data into it
+		VulkanBuffer staging(&m_context);
+		if (!staging.Create(RenderBufferType::Read, size, false))
+		{
+			m_logger.Error("ReadDataFromTexture() - Failed to create staging buffer.");
+			return;
+		}
+
+		staging.Bind(0);
+
+		VulkanCommandBuffer tempBuffer;
+		VkCommandPool pool = m_context.device.graphicsCommandPool;
+		VkQueue queue = m_context.device.graphicsQueue;
+
+		tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
+
+		// Transition the layout from whatever it is currently to optimal for handing out data
+		image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+		// Copy the data to the buffer
+		image->CopyPixelToBuffer(texture->type, staging.handle, x, y, &tempBuffer);
+
+		// Transition from optimal for data reading to shader-read-only optimal layout
+		image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		tempBuffer.EndSingleUse(&m_context, pool, queue);
+
+		if (!staging.Read(0, size, reinterpret_cast<void**>(outRgba)))
+		{
+			m_logger.Error("ReadDataFromTexture() - Failed to read from staging buffer.");
+		}
+
+		staging.Unbind();
+		staging.Destroy();
 	}
 
 	void RendererVulkan::DestroyTexture(Texture* texture)
@@ -947,7 +1019,7 @@ namespace C3D
 
 		// Translate stages
 		VkShaderStageFlags vulkanStages[VULKAN_SHADER_MAX_STAGES]{};
-		for (auto i = 0; i < config.stages.size(); i++)
+		for (u32 i = 0; i < config.stages.Size(); i++)
 		{
 			switch (config.stages[i]) {
 				case ShaderStage::Fragment:
@@ -976,7 +1048,7 @@ namespace C3D
 		vulkanShader->config.maxDescriptorSetCount = maxDescriptorAllocateCount;
 
 		vulkanShader->config.stageCount = 0;
-		for (u32 i = 0; i < config.stageFileNames.size(); i++)
+		for (u32 i = 0; i < config.stageFileNames.Size(); i++)
 		{
 			// Make sure we have enough room left for this stage
 			if (vulkanShader->config.stageCount + 1 > VULKAN_SHADER_MAX_STAGES)
@@ -1003,7 +1075,7 @@ namespace C3D
 			// Set the stage and increment the stage count
 			const auto stageIndex = vulkanShader->config.stageCount;
 			vulkanShader->config.stages[stageIndex].stage = stageFlag;
-			StringNCopy(vulkanShader->config.stages[stageIndex].fileName, config.stageFileNames[i], VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH);
+			StringNCopy(vulkanShader->config.stages[stageIndex].fileName, config.stageFileNames[i].Data(), VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH);
 			vulkanShader->config.stageCount++;
 		}
 
@@ -1267,14 +1339,24 @@ namespace C3D
 			stageCreateInfos[i] = vulkanShader->stages[i].shaderStageCreateInfo;
 		}
 
-		const bool pipelineCreateResult = vulkanShader->pipeline.Create(
-			&m_context, vulkanShader->renderPass,
-			shader->attributeStride, static_cast<u32>(shader->attributes.Size()), vulkanShader->config.attributes,
-			vulkanShader->config.descriptorSetCount, vulkanShader->descriptorSetLayouts,
-			vulkanShader->config.stageCount, stageCreateInfos, viewport, scissor, vulkanShader->config.cullMode, false, true, 
-			shader->pushConstantRangeCount, shader->pushConstantRanges
-		);
+		VulkanPipelineConfig config = {};
+		config.renderPass = vulkanShader->renderPass;
+		config.stride = shader->attributeStride;
+		config.attributeCount = static_cast<u32>(shader->attributes.Size());
+		config.attributes = vulkanShader->config.attributes;
+		config.descriptorSetLayoutCount = vulkanShader->config.descriptorSetCount;
+		config.descriptorSetLayouts = vulkanShader->descriptorSetLayouts;
+		config.stageCount = vulkanShader->config.stageCount;
+		config.stages = stageCreateInfos;
+		config.viewport = viewport;
+		config.scissor = scissor;
+		config.cullMode = vulkanShader->config.cullMode;
+		config.isWireFrame = false;
+		config.shaderFlags = shader->flags;
+		config.pushConstantRangeCount = shader->pushConstantRangeCount;
+		config.pushConstantRanges = shader->pushConstantRanges;
 
+		const bool pipelineCreateResult = vulkanShader->pipeline.Create(&m_context, config);
 		if (!pipelineCreateResult)
 		{
 			m_logger.Error("InitializeShader() - Failed to load graphics pipeline.");
@@ -1566,17 +1648,21 @@ namespace C3D
 		}
 
 		VulkanShaderInstanceState* instanceState = &internal->instanceStates[*outInstanceId];
-		auto samplerBindingIndex = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].samplerBindingIndex;
+		const auto samplerBindingIndex = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].samplerBindingIndex;
 		const u32 instanceTextureCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindings[samplerBindingIndex].descriptorCount;
-		// Wipe out the memory for the entire array, even if it isn't all used.
-		instanceState->instanceTextureMaps = Memory.Allocate<TextureMap*>(shader->instanceTextureCount, MemoryType::Array);
-		Texture* defaultTexture = Textures.GetDefault();
-		// Set all the texture pointers to default until assigned
-		for (u32 i = 0; i < instanceTextureCount; i++)
+		// Only setup if the shader actually requires it
+		if (shader->instanceTextureCount > 0)
 		{
-			instanceState->instanceTextureMaps[i] = maps[i];
-			// Set the texture to the default texture if it does not exist
-			if (!instanceState->instanceTextureMaps[i]->texture) instanceState->instanceTextureMaps[i]->texture = defaultTexture;
+			// Wipe out the memory for the entire array, even if it isn't all used.
+			instanceState->instanceTextureMaps = Memory.Allocate<TextureMap*>(shader->instanceTextureCount, MemoryType::Array);
+			Texture* defaultTexture = Textures.GetDefault();
+			// Set all the texture pointers to default until assigned
+			for (u32 i = 0; i < instanceTextureCount; i++)
+			{
+				instanceState->instanceTextureMaps[i] = maps[i];
+				// Set the texture to the default texture if it does not exist
+				if (!instanceState->instanceTextureMaps[i]->texture) instanceState->instanceTextureMaps[i]->texture = defaultTexture;
+			}
 		}
 
 		// Allocate some space in the UBO - by the stride, not the size
@@ -1739,9 +1825,9 @@ namespace C3D
 
 	void RendererVulkan::CreateCommandBuffers()
 	{
-		if (m_context.graphicsCommandBuffers.empty())
+		if (m_context.graphicsCommandBuffers.Empty())
 		{
-			m_context.graphicsCommandBuffers.resize(m_context.swapChain.imageCount);
+			m_context.graphicsCommandBuffers.Resize(m_context.swapChain.imageCount);
 		}
 
 		for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
@@ -1796,7 +1882,7 @@ namespace C3D
 		}
 
 		// Tell the renderer that a refresh is required
-		m_context.frontend->RegenerateRenderTargets();
+		Event.Fire(SystemEventCode::DefaultRenderTargetRefreshRequired, nullptr, {});
 
 		CreateCommandBuffers();
 

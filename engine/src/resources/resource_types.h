@@ -1,8 +1,8 @@
 
 #pragma once
 #include "core/defines.h"
+#include "containers/string.h"
 
-#include "material.h"
 #include "texture.h"
 
 #include "services/services.h"
@@ -10,6 +10,8 @@
 
 namespace C3D
 {
+	constexpr auto BINARY_RESOURCE_FILE_MAGIC_NUMBER = 0xC3DC3D;
+
 	// Pre-defined resource types
 	enum class ResourceType : u8
 	{
@@ -20,29 +22,37 @@ namespace C3D
 		Material,
 		Mesh,
 		Shader,
+		BitmapFont,
+		SystemFont,
 		Custom,
 		MaxValue
+	};
+
+	/* @brief The header for our proprietary resource files. */
+	struct ResourceHeader
+	{
+		/* @brief A magic number indicating this file is a C3D binary file. */
+		u32 magicNumber;
+		/* @brief The type of this resource, maps to our ResourceType enum. */
+		u8 resourceType;
+		/* @brief The format version the resource file uses. */
+		u8 version;
+		/* @brief Some reserved space for future header data. */
+		u16 reserved;
 	};
 
 	struct Resource
 	{
 		Resource()
-			: loaderId(INVALID_ID), name(nullptr), fullPath(nullptr)
+			: loaderId(INVALID_ID)
 		{}
 
-		Resource(const Resource& other) noexcept
-			: loaderId(other.loaderId), name(nullptr), fullPath(nullptr)
-		{
-			if (other.name) name = StringDuplicate(other.name);
-			if (other.fullPath) fullPath = StringDuplicate(other.fullPath);
-		}
+		Resource(const Resource& other) noexcept = default;
 
 		Resource(Resource&& other) noexcept
-			: loaderId(other.loaderId), name(other.name), fullPath(other.fullPath)
+			: loaderId(other.loaderId), name(std::move(other.name)), fullPath(std::move(other.fullPath))
 		{
 			other.loaderId = INVALID_ID;
-			other.name = nullptr;
-			other.fullPath = nullptr;
 		}
 
 		Resource& operator=(const Resource& other)
@@ -50,8 +60,8 @@ namespace C3D
 			if (this != &other)
 			{
 				loaderId = other.loaderId;
-				if (other.name) name = StringDuplicate(other.name);
-				if (other.fullPath) fullPath = StringDuplicate(other.fullPath);
+				if (other.name) name = other.name;
+				if (other.fullPath) fullPath = other.fullPath;
 			}
 			return *this;
 		}
@@ -66,23 +76,13 @@ namespace C3D
 
 		~Resource()
 		{
-			if (name)
-			{
-				const auto size = StringLength(name) + 1;
-				Memory.Free(name, size, MemoryType::String);
-				name = nullptr;
-			}
-			if (fullPath)
-			{
-				const auto size = StringLength(fullPath) + 1;
-				Memory.Free(fullPath, size, MemoryType::String);
-				fullPath = nullptr;
-			}
+			name.Destroy();
+			fullPath.Destroy();
 		}
 
 		u32 loaderId;
 
-		char* name;
-		char* fullPath;
+		String name;
+		String fullPath;
 	};
 }

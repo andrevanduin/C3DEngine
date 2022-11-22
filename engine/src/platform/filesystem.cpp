@@ -2,13 +2,13 @@
 #include "filesystem.h"
 
 #include "core/logger.h"
-#include "core/memory.h"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
 
+#include "containers/string.h"
 #include "core/c3d_string.h"
 
 namespace C3D
@@ -22,13 +22,13 @@ namespace C3D
 		Close();
 	}
 
-	bool File::Exists(const string& path)
+	bool File::Exists(const String& path)
 	{
-		const fs::path f{ path };
+		const fs::path f{ path.Data() };
 		return exists(f);
 	}
 
-	bool File::Open(const string& path, const u8 mode)
+	bool File::Open(const String& path, const u8 mode)
 	{
 		isValid = false;
 
@@ -38,7 +38,7 @@ namespace C3D
 		if (mode & FileModeWrite)	openMode |= std::ios::out;
 		if (mode & FileModeBinary)	openMode |= std::ios::binary;
 
-		m_file.open(path, openMode);
+		m_file.open(path.Data(), openMode);
 
 		isValid = m_file.is_open();
 		currentPath = path;
@@ -69,7 +69,25 @@ namespace C3D
 		return true;
 	}
 
-	bool File::WriteLine(const string& line)
+	bool File::ReadLine(String& line, const char delimiter)
+	{
+		// First we empty out our provided line
+		line.Clear();
+		// Get the very first character
+		char c = static_cast<char>(m_file.get());
+		// If it's the end of the file character we just return that we are done
+		if (c == EOF) return false;
+		// Otherwise we need to add it to our line
+		line.Append(c);
+		// Then we keep reading characters until we find our delimiter character or EOF
+		while (m_file.get(c) && c != delimiter && c != EOF)
+		{
+			line.Append(c);
+		}
+		return true;
+	}
+
+	bool File::WriteLine(const String& line)
 	{
 		if (!isValid) return false;
 		m_file << line << "\n";
@@ -133,7 +151,7 @@ namespace C3D
 		if (!isValid) return false;
 
 		// Get the file size
-		const auto s = std::filesystem::file_size(currentPath);
+		const auto s = std::filesystem::file_size(currentPath.Data());
 		// Store it internally
 		m_size = s;
 		// Save off the size to the outPtr if it is valid

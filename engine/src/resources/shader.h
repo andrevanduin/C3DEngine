@@ -2,6 +2,7 @@
 #pragma once
 #include "containers/hash_table.h"
 #include "containers/dynamic_array.h"
+#include "containers/string.h"
 
 #include "renderer/renderer_types.h"
 
@@ -61,12 +62,16 @@ namespace C3D
 		DynamicArray<ShaderAttributeConfig> attributes;
 		DynamicArray<ShaderUniformConfig> uniforms;
 
-		char* renderPassName;
+		DynamicArray<ShaderStage> stages;
 
-		std::vector<ShaderStage> stages;
+		DynamicArray<String> stageNames;
+		DynamicArray<String> stageFileNames;
 
-		std::vector<char*> stageNames;
-		std::vector<char*> stageFileNames;
+		// TODO: Convert these bools to flags to save space
+		/* @brief Indicates if depth testing should be done by this shader. */
+		bool depthTest;
+		/* @brief Indicates if depth writing should be done by this shader (this is ignored if depthTest = false). */
+		bool depthWrite;
 	};
 
 	enum class ShaderState : u8
@@ -92,10 +97,20 @@ namespace C3D
 		u32 size;
 	};
 
+	enum ShaderFlags
+	{
+		ShaderFlagNone			= 0x0,
+		ShaderFlagDepthTest		= 0x1,
+		ShaderFlagDepthWrite	= 0x2,
+	};
+	typedef u32 ShaderFlagBits;
+
 	struct Shader
 	{
 		u32 id;
 		char* name;
+
+		ShaderFlagBits flags;
 
 		u64 requiredUboAlignment;
 		u64 globalUboSize;

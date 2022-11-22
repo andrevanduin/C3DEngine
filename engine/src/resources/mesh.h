@@ -9,11 +9,12 @@ namespace C3D
 	class Mesh
 	{
 	public:
-		Mesh() : generation(INVALID_ID_U8), geometryCount(0), geometries(nullptr) {}
+		Mesh() : uniqueId(INVALID_ID), generation(INVALID_ID_U8), geometryCount(0), geometries(nullptr) {}
 
 		bool LoadFromResource(const char* resourceName);
 		void Unload();
 
+		u32 uniqueId;
 		u8 generation;
 
 		u16 geometryCount;

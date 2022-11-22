@@ -11,8 +11,7 @@
 #include "resources/loaders/mesh_loader.h"
 #include "resources/loaders/shader_loader.h"
 #include "resources/loaders/text_loader.h"
-
-#include "services/services.h"
+#include "resources/loaders/bitmap_font_loader.h"
 
 namespace C3D
 {
@@ -26,6 +25,8 @@ namespace C3D
 		m_loaderTypes[ToUnderlying(ResourceType::Material)]		= "Material";
 		m_loaderTypes[ToUnderlying(ResourceType::Mesh)]			= "StaticMesh";
 		m_loaderTypes[ToUnderlying(ResourceType::Shader)]		= "Shader";
+		m_loaderTypes[ToUnderlying(ResourceType::BitmapFont)]	= "BitmapFont";
+		m_loaderTypes[ToUnderlying(ResourceType::SystemFont)]   = "SystemFont";
 		m_loaderTypes[ToUnderlying(ResourceType::Custom)]		= "Custom";
 	}
 
@@ -45,7 +46,7 @@ namespace C3D
 		IResourceLoader* loaders[] =
 		{
 			new ResourceLoader<TextResource>(), new ResourceLoader<BinaryResource>(), new ResourceLoader<ImageResource>(), new ResourceLoader<MaterialResource>(),
-			new ResourceLoader<ShaderResource>(), new ResourceLoader<MeshResource>()
+			new ResourceLoader<ShaderResource>(), new ResourceLoader<MeshResource>(), new ResourceLoader<BitmapFontResource>()
 		};
 
 		for (const auto loader : loaders)

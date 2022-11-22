@@ -5,6 +5,7 @@
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
+#include "resources/material.h"
 #include "services/services.h"
 
 #include "systems/resource_system.h"
@@ -34,7 +35,7 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = StringDuplicate(fullPath);
+		outResource->fullPath = fullPath;
 		outResource->config.autoRelease = true;
 		outResource->config.diffuseColor = vec4(1); // Default white
 		outResource->config.diffuseMapName[0] = 0;
@@ -121,7 +122,7 @@ namespace C3D
 
 		file.Close();
 
-		outResource->name = StringDuplicate(name);
+		outResource->name = name;
 		return true;
 	}
 
@@ -133,5 +134,8 @@ namespace C3D
 			Memory.Free(resource->config.shaderName, count, MemoryType::String);
 			resource->config.shaderName = nullptr;
 		}
+
+		resource->fullPath.Destroy();
+		resource->name.Destroy();
 	}
 }

@@ -9,18 +9,37 @@
 #include "systems/material_system.h"
 #include "systems/shader_system.h"
 #include "resources/mesh.h"
+#include "resources/loaders/shader_loader.h"
+#include "systems/render_view_system.h"
+#include "systems/resource_system.h"
 
 namespace C3D
 {
-	RenderViewWorld::RenderViewWorld(const u16 _id, const RenderViewConfig& config) // TODO: Set from configuration
-		: RenderView(_id, config), m_shaderId(INVALID_ID), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
-		m_projectionMatrix(), m_camera(nullptr), m_ambientColor(), m_renderMode(0)
-	{
-	}
+	RenderViewWorld::RenderViewWorld(const RenderViewConfig& config) // TODO: Set from configuration
+		: RenderView(ToUnderlying(RenderViewKnownType::World), config), m_shader(nullptr), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
+			m_projectionMatrix(), m_camera(nullptr), m_ambientColor(), m_renderMode(0)
+	{}
 
 	bool RenderViewWorld::OnCreate()
 	{
-		m_shaderId = Shaders.GetId(m_customShaderName ? m_customShaderName : "Shader.Builtin.Material");
+		// Builtin skybox shader
+		const auto shaderName = "Shader.Builtin.Material";
+		ShaderResource res;
+		if (!Resources.Load(shaderName, &res))
+		{
+			m_logger.Error("OnCreate() - Failed to load ShaderResource");
+			return false;
+		}
+		// NOTE: Since this view only has 1 pass we assume index 0
+		if (!Shaders.Create(passes[0], res.config))
+		{
+			m_logger.Error("OnCreate() - Failed to create {}", shaderName);
+			return false;
+		}
+
+		Resources.Unload(&res);
+
+		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
 
 		const auto fWidth = static_cast<f32>(m_width);
 		const auto fHeight = static_cast<f32>(m_height);
@@ -43,8 +62,8 @@ namespace C3D
 
 	void RenderViewWorld::OnDestroy()
 	{
-		Event.UnRegister(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderViewWorld::OnEvent));
 		RenderView::OnDestroy();
+		Event.UnRegister(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderViewWorld::OnEvent));
 	}
 
 	void RenderViewWorld::OnResize(const u32 width, const u32 height)
@@ -130,24 +149,26 @@ namespace C3D
 
 	bool RenderViewWorld::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex) const
 	{
-		for (auto pass : passes)
+		for (auto& pass : passes)
 		{
+			const auto shaderId = m_shader->id;
+
 			if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
 			{
 				m_logger.Error("OnRender() - BeginRenderPass failed for pass width id '{}'", pass->id);
 				return false;
 			}
 
-			if (!Shaders.UseById(m_shaderId))
+			if (!Shaders.UseById(shaderId))
 			{
-				m_logger.Error("OnRender() - Failed to use shader with id {}", m_shaderId);
+				m_logger.Error("OnRender() - Failed to use shader with id {}", shaderId);
 				return false;
 			}
 
 			// TODO: Generic way to request data such as ambient color (which should come from a scene)
-			if (!Materials.ApplyGlobal(m_shaderId, frameNumber, &packet->projectionMatrix, &packet->viewMatrix, &packet->ambientColor, &packet->viewPosition, m_renderMode))
+			if (!Materials.ApplyGlobal(shaderId, frameNumber, &packet->projectionMatrix, &packet->viewMatrix, &packet->ambientColor, &packet->viewPosition, m_renderMode))
 			{
-				m_logger.Error("OnRender() - Failed to apply globals for shader with id {}", m_shaderId);
+				m_logger.Error("OnRender() - Failed to apply globals for shader with id {}", shaderId);
 				return false;
 			}
 
@@ -182,22 +203,23 @@ namespace C3D
 
 	bool RenderViewWorld::OnEvent(const u16 code, void* sender, const EventContext context)
 	{
-		if (code != SetRenderMode) return false;
-
-		switch (const i32 mode = context.data.i32[0])
+		if (code == SystemEventCode::SetRenderMode)
 		{
-		case RendererViewMode::Default:
-			m_logger.Debug("Renderer mode set to default");
-			m_renderMode = RendererViewMode::Default;
-			break;
-		case RendererViewMode::Lighting:
-			m_logger.Debug("Renderer mode set to lighting");
-			m_renderMode = RendererViewMode::Lighting;
-			break;
-		case RendererViewMode::Normals:
-			m_logger.Debug("Renderer mode set to normals");
-			m_renderMode = RendererViewMode::Normals;
-			break;
+			switch (const i32 mode = context.data.i32[0])
+			{
+				case RendererViewMode::Default:
+					m_logger.Debug("Renderer mode set to default");
+					m_renderMode = RendererViewMode::Default;
+					break;
+				case RendererViewMode::Lighting:
+					m_logger.Debug("Renderer mode set to lighting");
+					m_renderMode = RendererViewMode::Lighting;
+					break;
+				case RendererViewMode::Normals:
+					m_logger.Debug("Renderer mode set to normals");
+					m_renderMode = RendererViewMode::Normals;
+					break;
+			}
 		}
 
 		return false;

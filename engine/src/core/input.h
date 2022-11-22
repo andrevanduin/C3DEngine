@@ -5,6 +5,7 @@
 
 #include "defines.h"
 #include "logger.h"
+#include "math/math_types.h"
 
 namespace C3D
 {
@@ -322,8 +323,8 @@ namespace C3D
         C3D_API [[nodiscard]] bool WasButtonDown(Buttons button) const;
         C3D_API [[nodiscard]] bool WasButtonUp(Buttons button) const;
 
-        C3D_API void GetMousePosition(i16* x, i16* y);
-        C3D_API void GetPreviousMousePosition(i16* x, i16* y);
+        C3D_API ivec2 GetMousePosition();
+        C3D_API ivec2 GetPreviousMousePosition();
 	private:
         LoggerInstance m_logger;
 

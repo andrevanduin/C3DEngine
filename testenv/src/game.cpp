@@ -2,23 +2,23 @@
 #include "game.h"
 
 #include <core/memory.h>
-#include "core/logger.h"
-#include "containers/string.h"
+#include <core/logger.h>
 
 #include <services/services.h>
 #include <systems/camera_system.h>
 
 #include <glm/gtx/matrix_decompose.hpp>
 
-#include "core/input.h"
-#include "core/events/event.h"
-#include "core/events/event_context.h"
-#include "renderer/renderer_types.h"
+#include <core/input.h>
+#include <core/events/event.h>
+#include <core/events/event_context.h>
+#include <renderer/renderer_types.h>
+
+#include "core/utils.h"
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
 	: Application(config), m_camera(nullptr)
-{
-}
+{}
 
 void TestEnv::OnCreate()
 {
@@ -36,7 +36,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	{
 		C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
 
-		const auto memStr = Memory.GetMemoryUsageString();
+		const auto memStr = C3D::Utils::GenerateMemoryUsageString(Memory);
 		C3D::Logger::Debug(memStr.Data());
 	}
 

@@ -9,10 +9,16 @@ namespace C3D
 	{
 	public:
 		explicit System(const std::string& name) : m_logger(name), m_config{} {}
+		System(const System&) = delete;
+		System(System&&) = delete;
+
+		System& operator=(const System&) = delete;
+		System& operator=(System&&) = delete;
+
 		virtual ~System() = default;
 
-		virtual bool Init(const T& config) = 0;
-		virtual void Shutdown() = 0;
+		virtual bool Init(const T& config) { return false; }
+		virtual void Shutdown() {}
 
 	protected:
 		LoggerInstance m_logger;

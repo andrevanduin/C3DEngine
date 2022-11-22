@@ -32,6 +32,8 @@ namespace C3D
 			m_shaders[i].id = INVALID_ID;
 			m_shaders[i].frameNumber = INVALID_ID_U64;
 		}
+
+		m_nameToIdMap.Create(config.maxShaderCount);
 		return true;
 	}
 
@@ -44,11 +46,11 @@ namespace C3D
 				ShaderDestroy(&m_shaders[i]);
 			}
 		}
-		m_nameToIdMap.clear();
+		m_nameToIdMap.Destroy();
 		Memory.Free(m_shaders, m_config.maxShaderCount * sizeof(Shader), MemoryType::Shader);
 	}
 
-	bool ShaderSystem::Create(const ShaderConfig& config)
+	bool ShaderSystem::Create(RenderPass* pass, const ShaderConfig& config)
 	{
 		// Grab a new id for this shader
 		const u32 id = GetNewShaderId();
@@ -85,11 +87,15 @@ namespace C3D
 		shader->pushConstantStride = 128; 
 		shader->pushConstantSize = 0;
 
-		RenderPass* pass = Renderer.GetRenderPass(config.renderPassName);
-		if (!pass)
+		// Process flags
+		shader->flags = 0;
+		if (config.depthTest)
 		{
-			m_logger.Error("Create() - Unable to find RenderPass '{}' for shader: '{}'", config.renderPassName, config.name);
-			return false;
+			shader->flags |= ShaderFlagDepthTest;
+		}
+		if (config.depthWrite)
+		{
+			shader->flags |= ShaderFlagDepthWrite;
 		}
 
 		if (!Renderer.CreateShader(shader, config, pass))
@@ -128,19 +134,18 @@ namespace C3D
 		}
 
 		// Store the shader id in our hashtable
-		m_nameToIdMap[config.name] = shader->id;
+		m_nameToIdMap.Set(config.name, shader->id);
 		return true;
 	}
 
 	u32 ShaderSystem::GetId(const char* name)
 	{
-		const auto result = m_nameToIdMap.find(name);
-		if (result == m_nameToIdMap.end())
+		if (!m_nameToIdMap.Has(name))
 		{
 			m_logger.Error("GetId() - There is no shader registered with name: '{}'", name);
 			return INVALID_ID;
 		}
-		return result->second;
+		return m_nameToIdMap.Get(name);
 	}
 
 	Shader* ShaderSystem::Get(const char* name)

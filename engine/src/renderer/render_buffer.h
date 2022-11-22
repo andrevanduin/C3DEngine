@@ -63,7 +63,7 @@ namespace C3D
 		LoggerInstance m_logger;
 
 		u64 m_freeListMemoryRequirement;
-		NewFreeList m_freeList;
+		FreeList m_freeList;
 		void* m_freeListBlock;
 	};
 }

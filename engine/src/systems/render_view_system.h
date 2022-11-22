@@ -1,6 +1,7 @@
 
 #pragma once
 #include "system.h"
+#include "containers/hash_map.h"
 #include "containers/hash_table.h"
 
 #include "renderer/render_view.h"
@@ -29,8 +30,9 @@ namespace C3D
 		bool BuildPacket(RenderView* view, void* data, RenderViewPacket* outPacket) const;
 		bool OnRender(const RenderView* view, const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const;
 
+		void RegenerateRenderTargets(RenderView* view) const;
+
 	private:
-		HashTable<u16> m_viewLookup;
-		RenderView** m_registeredViews;
+		HashMap<String, RenderView*> m_registeredViews;
 	};
 }

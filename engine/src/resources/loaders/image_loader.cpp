@@ -53,8 +53,8 @@ namespace C3D
 		}
 
 		// Take a copy of the resource path and name
-		outResource->fullPath = StringDuplicate(fullPath);
-		outResource->name = StringDuplicate(name);
+		outResource->fullPath = fullPath;
+		outResource->name = name;
 
 		if (!found)
 		{
@@ -120,18 +120,7 @@ namespace C3D
 		// Free the pixel data loaded in by STBI
 		stbi_image_free(resource->data.pixels);
 
-		if (resource->fullPath)
-		{
-			const auto size = StringLength(resource->fullPath) + 1;
-			Memory.Free(resource->fullPath, size, MemoryType::String);
-			resource->fullPath = nullptr;
-		}
-
-		if (resource->name)
-		{
-			const auto size = StringLength(resource->name) + 1;
-			Memory.Free(resource->name, size, MemoryType::String);
-			resource->name = nullptr;
-		}
+		resource->fullPath.Destroy();
+		resource->name.Destroy();
 	}
 }

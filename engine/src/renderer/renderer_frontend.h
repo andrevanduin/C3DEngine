@@ -30,11 +30,20 @@ namespace C3D
 
 		bool DrawFrame(const RenderPacket* packet);
 
+		void SetViewport(const vec4& rect) const;
+		void ResetViewport() const;
+
+		void SetScissor(const vec4& rect) const;
+		void ResetScissor() const;
+
 		void CreateTexture(const u8* pixels, Texture* texture) const;
 		void CreateWritableTexture(Texture* texture) const;
 
 		void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) const;
 		void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels) const;
+
+		void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory) const;
+		void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba) const;
 
 		void DestroyTexture(Texture* texture) const;
 
@@ -42,7 +51,6 @@ namespace C3D
 		void DestroyGeometry(Geometry* geometry) const;
 		void DrawGeometry(const GeometryRenderData& data) const;
 
-		RenderPass* GetRenderPass(const char* name) const;
 		bool BeginRenderPass(RenderPass* pass, RenderTarget* target) const;
 		bool EndRenderPass(RenderPass* pass) const;
 
@@ -67,13 +75,20 @@ namespace C3D
 
 		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const;
 
-		void CreateRenderTarget(u8 attachmentCount, Texture** attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) const;
+		void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) const;
 		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) const;
+
+		[[nodiscard]] RenderPass* CreateRenderPass(const RenderPassConfig& config) const;
+		bool DestroyRenderPass(RenderPass* pass) const;
+
+		[[nodiscard]] Texture* GetWindowAttachment(u8 index) const;
+		[[nodiscard]] Texture* GetDepthAttachment(u8 index) const;
+
+		[[nodiscard]] u8 GetWindowAttachmentIndex() const;
+		[[nodiscard]] u8 GetWindowAttachmentCount() const;
 
 		[[nodiscard]] RenderBuffer* CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist) const;
 		bool DestroyRenderBuffer(RenderBuffer* buffer) const;
-
-		void RegenerateRenderTargets() const;
 
 		[[nodiscard]] bool IsMultiThreaded() const;
 
@@ -83,14 +98,8 @@ namespace C3D
 
 		LoggerInstance m_logger;
 
-		u32 m_materialShaderId, m_uiShaderId, m_skyBoxShaderId;
-
 		u8 m_windowRenderTargetCount;
 		u32 m_frameBufferWidth, m_frameBufferHeight;
-
-		RenderPass* m_worldRenderPass;
-		RenderPass* m_uiRenderPass;
-		RenderPass* m_skyBoxRenderPass;
 
 		bool m_resizing;
 		u8 m_framesSinceResize;

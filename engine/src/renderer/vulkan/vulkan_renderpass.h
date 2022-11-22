@@ -15,16 +15,13 @@ namespace C3D
 		Ready, Recording, InRenderPass, RecordingEnded, Submitted, NotAllocated
 	};
 
-	constexpr auto VULKAN_MAX_REGISTERED_RENDER_PASSES = 64;
-
-	class VulkanRenderPass : public RenderPass
+	class VulkanRenderPass final : public RenderPass
 	{
 	public:
 		VulkanRenderPass();
+		VulkanRenderPass(VulkanContext* context, const RenderPassConfig& config);
 
-		VulkanRenderPass(VulkanContext* context, u16 _id, const RenderPassConfig& config);
-
-		void Create(f32 depth, u32 stencil) override;
+		bool Create(const RenderPassConfig& config) override;
 
 		void Destroy() override;
 

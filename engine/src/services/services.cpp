@@ -5,6 +5,7 @@
 #include "core/input.h"
 #include "core/events/event.h"
 #include "core/logger.h"
+#include "core/utils.h"
 
 #include "renderer/renderer_frontend.h"
 
@@ -14,6 +15,7 @@
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
 #include "systems/camera_system.h"
+#include "systems/font_system.h"
 #include "systems/render_view_system.h"
 #include "systems/jobs/job_system.h"
 
@@ -35,18 +37,12 @@ namespace C3D
 	CameraSystem*		Services::m_pCameraSystem	= nullptr;
 	RenderViewSystem*	Services::m_pViewSystem		= nullptr;
 	JobSystem*			Services::m_pJobSystem		= nullptr;
+	FontSystem*			Services::m_pFontSystem		= nullptr;
 
-	bool Services::Init(const Application* application, const MemorySystemConfig& memorySystemConfig, const JobSystemConfig& jobSystemConfig, 
+	bool Services::Init(const Application* application, const JobSystemConfig& jobSystemConfig, 
 						const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, 
-						const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig, const CameraSystemConfig& cameraSystemConfig, 
-						const RenderViewSystemConfig& viewSystemConfig)
+						const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& viewSystemConfig, const FontSystemConfig& fontSystemConfig)
 	{
-		m_pMemorySystem = new MemorySystem();
-		if (!m_pMemorySystem->Init(memorySystemConfig))
-		{
-			m_logger.Fatal("MemorySystem failed to be Initialized");
-		}
-
 		// 64 mb of total space for all our systems
 		constexpr u64 systemsAllocatorTotalSize = static_cast<u64>(64) * 1024 * 1024;
 		m_allocator.Create(systemsAllocatorTotalSize);
@@ -100,20 +96,6 @@ namespace C3D
 			m_logger.Fatal("TextureSystem failed to be Initialized.");
 		}
 
-		// Material System
-		m_pMaterialSystem = m_allocator.New<MaterialSystem>();
-		if (!m_pMaterialSystem->Init(materialSystemConfig))
-		{
-			m_logger.Fatal("Material System failed to be Initialized.");
-		}
-
-		// Geometry System
-		m_pGeometrySystem = m_allocator.New<GeometrySystem>();
-		if (!m_pGeometrySystem->Init(geometrySystemConfig))
-		{
-			m_logger.Fatal("GeometrySystem failed to be Initialized.");
-		}
-
 		// Camera System
 		m_pCameraSystem = m_allocator.New<CameraSystem>();
 		if (!m_pCameraSystem->Init(cameraSystemConfig))
@@ -126,6 +108,13 @@ namespace C3D
 		if (!m_pViewSystem->Init(viewSystemConfig))
 		{
 			m_logger.Fatal("ViewSystem failed to be Initialized.");
+		}
+
+		// Font System
+		m_pFontSystem = m_allocator.New<FontSystem>();
+		if (!m_pFontSystem->Init(fontSystemConfig))
+		{
+			m_logger.Fatal("FontSystem failed to be Initialized.");
 		}
 
 		return true;
@@ -141,10 +130,35 @@ namespace C3D
 		return true;
 	}
 
+	bool Services::InitMaterialSystem(const MaterialSystemConfig& config)
+	{
+		// Material System
+		m_pMaterialSystem = m_allocator.New<MaterialSystem>();
+		if (!m_pMaterialSystem->Init(config))
+		{
+			m_logger.Fatal("Material System failed to be Initialized.");
+		}
+
+		return true;
+	}
+
+	bool Services::InitGeometrySystem(const GeometrySystemConfig& config)
+	{
+		// Geometry System
+		m_pGeometrySystem = m_allocator.New<GeometrySystem>();
+		if (!m_pGeometrySystem->Init(config))
+		{
+			m_logger.Fatal("GeometrySystem failed to be Initialized.");
+		}
+
+		return true;
+	}
+
 	void Services::Shutdown()
 	{
 		m_logger.Info("Shutting down all services");
 
+		m_pFontSystem->Shutdown();
 		m_pViewSystem->Shutdown();
 		m_pCameraSystem->Shutdown();
 		m_pGeometrySystem->Shutdown();
@@ -160,6 +174,8 @@ namespace C3D
 		m_logger.Info("Destroying Linear Allocator");
 		m_allocator.Destroy();
 
+		const auto str = Utils::GenerateMemoryUsageString(*m_pMemorySystem);
+		m_logger.Info(str.Data());
 		m_logger.Info("Shutdown finished");
 	}
 }

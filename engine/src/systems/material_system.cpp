@@ -147,7 +147,7 @@ namespace C3D
 			// Get the uniform indices
 			Shader* shader = Shaders.GetById(mat->shaderId);
 			// Save locations to known types for quick lookups
-			if (m_materialShaderId == INVALID_ID && Equals(config.shaderName, BUILTIN_SHADER_NAME_MATERIAL))
+			if (m_materialShaderId == INVALID_ID && Equals(config.shaderName, "Shader.Builtin.Material"))
 			{
 				m_materialShaderId = shader->id;
 				m_materialLocations.projection = Shaders.GetUniformIndex(shader, "projection");
@@ -162,7 +162,7 @@ namespace C3D
 				m_materialLocations.model = Shaders.GetUniformIndex(shader, "model");
 				m_materialLocations.renderMode = Shaders.GetUniformIndex(shader, "mode");
 			}
-			else if (m_uiShaderId == INVALID_ID && Equals(config.shaderName, BUILTIN_SHADER_NAME_UI))
+			else if (m_uiShaderId == INVALID_ID && Equals(config.shaderName, "Shader.Builtin.UI"))
 			{
 				m_uiShaderId = shader->id;
 				m_uiLocations.projection = Shaders.GetUniformIndex(shader, "projection");
@@ -348,7 +348,7 @@ namespace C3D
 
 		TextureMap* maps[3] = { &m_defaultMaterial.diffuseMap, &m_defaultMaterial.specularMap, &m_defaultMaterial.normalMap };
 
-		Shader* shader = Shaders.Get(BUILTIN_SHADER_NAME_MATERIAL);
+		Shader* shader = Shaders.Get("Shader.Builtin.Material");
 		if (!Renderer.AcquireShaderInstanceResources(shader, maps, &m_defaultMaterial.internalId))
 		{
 			m_logger.Error("Failed to acquire renderer resources for the default material");

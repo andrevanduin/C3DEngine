@@ -5,7 +5,7 @@
 
 namespace C3D
 {
-	class NewFreeList
+	class FreeList
 	{
 		struct Node
 		{
@@ -22,7 +22,7 @@ namespace C3D
 		};
 
 	public:
-		NewFreeList();
+		FreeList();
 
 		bool Create(void* memory, u64 memorySizeForNodes, u64 smallestPossibleAllocation, u64 managedSize);
 		void Destroy();
@@ -57,7 +57,7 @@ namespace C3D
 		u64 m_totalManagedSize;
 	};
 
-	constexpr u64 NewFreeList::GetMemoryRequirement(const u64 usableSize, const u64 smallestPossibleAllocation)
+	constexpr u64 FreeList::GetMemoryRequirement(const u64 usableSize, const u64 smallestPossibleAllocation)
 	{
 		auto elementCount = usableSize / (smallestPossibleAllocation * sizeof(Node));
 		if (elementCount < 20) elementCount = 20;

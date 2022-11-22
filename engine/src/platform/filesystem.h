@@ -1,6 +1,7 @@
 
 #pragma once
 #include "core/defines.h"
+#include "containers/string.h"
 
 #include <fstream>
 
@@ -17,22 +18,32 @@ namespace C3D
 	{
 	public:
 		File();
+		File(const File& other) = delete;
+		File(File&& other) = delete;
+
+		File& operator=(const File& other) = delete;
+		File& operator=(File&& other) = delete;
+
 		~File();
 
-		static [[nodiscard]] bool Exists(const string& path);
+		static [[nodiscard]] bool Exists(const String& path);
 
-		bool Open(const string& path, u8 mode);
+		bool Open(const String& path, u8 mode);
 
 		bool Close();
 
 		bool ReadLine(string& line);
+		bool ReadLine(String& line, char delimiter = '\n');
 
-		bool WriteLine(const string& line);
+		bool WriteLine(const String& line);
 
 		bool Read(u64 dataSize, void* outData, u64* outBytesRead);
 
 		template<typename T>
 		bool Read(T* data, u64 count = 1);
+
+		template<typename T>
+		bool Read(DynamicArray<T>& data);
 
 		bool ReadAll(char* outBytes, u64* outBytesRead);
 
@@ -42,6 +53,9 @@ namespace C3D
 		template<typename T>
 		bool Write(const T* data, u64 count = 1);
 
+		template<typename T>
+		bool Write(const DynamicArray<T>& data);
+
 		bool Size(u64* outSize = nullptr);
 
 		[[nodiscard]] u64 GetSize() const { return m_size; }
@@ -50,7 +64,7 @@ namespace C3D
 		u64 bytesWritten;
 		u64 bytesRead;
 
-		std::string currentPath;
+		String currentPath;
 	private:
 		u64 m_size;
 		std::fstream m_file;
@@ -59,6 +73,9 @@ namespace C3D
 	template <typename T>
 	bool File::Read(T* data, const u64 count)
 	{
+		static_assert(!std::is_pointer_v<T>, "T must not be a pointer.");
+		static_assert(!std::is_array_v<T>, "T must not be an array. Pass a pointer to the first element instead.");
+
 		if (!isValid) return false;
 
 		m_file.read(reinterpret_cast<char*>(data), static_cast<std::streamsize>(sizeof(T) * count));
@@ -67,8 +84,28 @@ namespace C3D
 	}
 
 	template <typename T>
+	bool File::Read(DynamicArray<T>& data)
+	{
+		static_assert(std::is_pod_v<T>, "This method can only be used with simple types.");
+
+		u64 size;
+		if (!Read(&size)) return false;
+
+		// No need to keep reading if this is 0
+		if (size == 0) return true;
+
+		data.Resize(size);
+		if (!Read(data.GetData(), size)) return false;
+			
+		return true;
+	}
+
+	template <typename T>
 	bool File::Write(const T* data, const u64 count)
 	{
+		static_assert(!std::is_pointer_v<T>, "T must not be a pointer.");
+		static_assert(!std::is_array_v<T>, "T must not be an array. Pass a pointer to the first element instead.");
+
 		if (!isValid) return false;
 
 		// Get the position of the cursor at the start
@@ -82,6 +119,20 @@ namespace C3D
 		// The total bytes written will be equal to the current cursor position - the starting cursor position
 		bytesWritten += after - before;
 
+		return true;
+	}
+
+	template <typename T>
+	bool File::Write(const DynamicArray<T>& data)
+	{
+		// Write out the size
+		const u64 size = data.Size();
+		if (!Write(&size)) return false;
+		// Write out the elements in the array (if there are any)
+		if (size != 0)
+		{
+			if (!Write(data.GetData(), size)) return false;
+		}
 		return true;
 	}
 

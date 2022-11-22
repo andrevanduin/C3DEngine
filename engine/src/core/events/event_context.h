@@ -46,6 +46,9 @@ namespace C3D
 		Debug3 = 0x13,
 		Debug4 = 0x14,
 
+		ObjectHoverIdChanged = 0x15,
+		DefaultRenderTargetRefreshRequired = 0x16,
+
 		MaxCode = 0xFF
 	};
 }

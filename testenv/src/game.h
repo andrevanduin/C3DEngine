@@ -7,10 +7,10 @@ namespace C3D
 	class Camera;
 }
 
-class TestEnv : public C3D::Application
+class TestEnv final : public C3D::Application
 {
 public:
-	TestEnv(const C3D::ApplicationConfig& config);
+	explicit TestEnv(const C3D::ApplicationConfig& config);
 
 	void OnCreate() override;
 

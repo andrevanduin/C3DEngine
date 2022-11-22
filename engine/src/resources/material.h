@@ -46,7 +46,7 @@ namespace C3D
 		char name[MATERIAL_NAME_MAX_LENGTH];
 		/* @brief Name of the shader associated with this material. */
 		char* shaderName;
-		/* @brief Indicates if this material should automatically be release when no references to it remain. */
+		/* @brief Indicates if this material should automatically be released when no references to it remain. */
 		bool autoRelease;
 		/* @brief The diffuse color of the material. */
 		vec4 diffuseColor;

@@ -16,6 +16,7 @@ namespace C3D
 	{
 	public:
 		DynamicArray();
+
 		DynamicArray(const DynamicArray<T>& other);
 		DynamicArray(DynamicArray<T>&& other) noexcept;
 
@@ -30,8 +31,9 @@ namespace C3D
 		 */
 		explicit DynamicArray(u64 initialCapacity);
 
+		DynamicArray(std::initializer_list<T> list);
 		DynamicArray(const T* elements, u64 count);
-
+		
 		/*
 		 * @brief Reserves enough memory for the provided initial capacity.
 		 * The array will still have the original size and no elements will be created or added
@@ -110,6 +112,7 @@ namespace C3D
 
 	template <class T>
 	DynamicArray<T>::DynamicArray(const DynamicArray<T>& other)
+		: m_capacity(0), m_size(0), m_elements(nullptr)
 	{
 		Copy(other);
 	}
@@ -164,6 +167,12 @@ namespace C3D
 	}
 
 	template <class T>
+	DynamicArray<T>::DynamicArray(std::initializer_list<T> list)
+	{
+		Copy(list.begin(), list.size());
+	}
+
+	template <class T>
 	DynamicArray<T>::DynamicArray(const T* elements, const u64 count)
 	{
 		Copy(elements, count);
@@ -181,11 +190,11 @@ namespace C3D
 		if (m_capacity >= initialCapacity)
 		{
 			// Reserve is not needed since our capacity is already as large or larger
-			Logger::Trace("[DYNAMIC_ARRAY] - Reserve() - Was called with initialCapacity <= currentCapacity. Doing nothing");
+			//Logger::Trace("[DYNAMIC_ARRAY] - Reserve() - Was called with initialCapacity <= currentCapacity. Doing nothing");
 			return true;
 		}
 
-		Logger::Trace("[DYNAMIC_ARRAY] - Reserve({})", initialCapacity);
+		//Logger::Trace("[DYNAMIC_ARRAY] - Reserve({})", initialCapacity);
 
 		// We allocate enough memory for the new capacity
 		T* newElements = Memory.Allocate<T>(initialCapacity, MemoryType::DynamicArray);
@@ -197,7 +206,13 @@ namespace C3D
 			if (m_size != 0)
 			{
 				// We have elements in our array already which we need to copy over
-				Memory.Copy(newElements, m_elements, m_size * sizeof(T));
+				// NOTE: We may not use std::memcpy here since we don't know the type of T
+				// And T could have an arbitrarily complex copy constructor
+				for (u64 i = 0; i < m_size; i++)
+				{
+					newElements[i] = m_elements[i];
+				}
+
 				newSize = m_size;
 			}
 
@@ -334,7 +349,11 @@ namespace C3D
 		// We allocate enough memory for the provided count
 		m_elements = Memory.Allocate<T>(count, MemoryType::DynamicArray);
 		// Then we copy over the elements from the provided pointer into our newly allocated memory
-		Memory.Copy(m_elements, elements, sizeof(T) * count);
+		// Note: Again we may not use std::memcpy here since T could have an arbitrarily complex copy constructor
+		for (u64 i = 0; i < count; i++)
+		{
+			m_elements[i] = elements[i];
+		}
 
 		m_size = count;
 		m_capacity = count;
@@ -391,7 +410,11 @@ namespace C3D
 		if (m_elements && m_size > 0)
 		{
 			// Copy over old elements to the newly allocated block of memory
-			Memory.Copy(newElements, m_elements, m_size * sizeof(T));
+			// Note: we may not use std::memcpy here since T could have an arbitrarily complex copy constructor
+			for (u64 i = 0; i < m_size; i++)
+			{
+				newElements[i] = m_elements[i];
+			}
 			newSize = m_size;
 
 			// Free the old memory if it exists

@@ -1,14 +1,16 @@
 
 #pragma once
+#include "core/events/event_context.h"
 #include "renderer/render_view.h"
 #include "renderer/camera.h"
+#include "resources/shader.h"
 
 namespace C3D 
 {
 	class RenderViewSkybox final : public RenderView
 	{
 	public:
-		RenderViewSkybox(u16 _id, const RenderViewConfig& config);
+		explicit RenderViewSkybox(const RenderViewConfig& config);
 
 		bool OnCreate() override;
 
@@ -17,9 +19,9 @@ namespace C3D
 		bool OnBuildPacket(void* data, RenderViewPacket* outPacket) override;
 
 		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const override;
-
+		
 	private:
-		u32 m_shaderId;
+		Shader* m_shader;
 
 		f32 m_fov;
 		f32 m_nearClip;

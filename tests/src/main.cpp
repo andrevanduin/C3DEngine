@@ -7,6 +7,7 @@
 #include "memory/linear_allocator_tests.h"
 #include "memory/dynamic_allocator_tests.h"
 #include "containers/hash_table_tests.h"
+#include "containers/hash_map_tests.h"
 #include "containers/dynamic_array_tests.h"
 #include "containers/ring_queue_tests.h"
 #include "containers/string_tests.h"
@@ -26,6 +27,7 @@ int main(int argc, char** argv)
 
 	Array::RegisterTests(&manager);
 	HashTable::RegisterTests(&manager);
+	HashMap::RegisterTests(&manager);
 	RingQueue::RegisterTests(&manager);
 	LinearAllocator::RegisterTests(&manager);
 	DynamicAllocator::RegisterTests(&manager);

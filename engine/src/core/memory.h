@@ -1,6 +1,8 @@
 
 #pragma once
 #include "defines.h"
+#include "containers/array.h"
+
 #include "systems/system.h"
 #include "memory/dynamic_allocator.h"
 
@@ -15,6 +17,7 @@ namespace C3D
 		Array,
 		DynamicArray,
 		HashTable,
+		HashMap,
 		RingQueue,
 		Bst,
 		String,
@@ -38,7 +41,9 @@ namespace C3D
 		Direct3D,
 		OpenGL,
 		GpuLocal,
-		MaxType
+		BitmapFont,
+		SystemFont,
+		MaxType,
 	};
 
 	struct MemoryAllocation
@@ -51,18 +56,16 @@ namespace C3D
 	{
 		u64 totalAllocated;
 		u64 allocCount;
-		MemoryAllocation taggedAllocations[static_cast<u8>(MemoryType::MaxType)];
+		Array<MemoryAllocation, static_cast<u64>(MemoryType::MaxType)> taggedAllocations;
 	};
 
 	struct MemorySystemConfig
 	{
-		u64 totalAllocSize;
+		u64 totalAllocSize = 0;
 		bool excludeFromStats = false;
 	};
 
-	class String;
-
-	class C3D_API MemorySystem : public System<MemorySystemConfig>
+	class C3D_API MemorySystem final : public System<MemorySystemConfig>
 	{
 	public:
 		MemorySystem();
@@ -114,11 +117,16 @@ namespace C3D
 
 		static void* Set(void* dest, i32 value, u64 size);
 
-		String GetMemoryUsageString();
+		[[nodiscard]] Array<MemoryAllocation, static_cast<u64>(MemoryType::MaxType)> GetTaggedAllocations() const;
 
 		[[nodiscard]] u64 GetAllocCount() const;
 		[[nodiscard]] u64 GetMemoryUsage(MemoryType type) const;
+
 		[[nodiscard]] u64 GetFreeSpace() const;
+		[[nodiscard]] u64 GetTotalUsableSpace() const;
+
+		[[nodiscard]] bool IsInitialized() const;
+
 	private:
 		void* m_memory;
 

@@ -60,10 +60,10 @@ namespace C3D
 			return false;
 		}
 
-		// Duplicate the path to the file
-		outResource->fullPath = StringDuplicate(fullPath);
-		// Duplicate the name of the resource
-		outResource->name = StringDuplicate(name);
+		// Copy the path to the file
+		outResource->fullPath = fullPath;
+		// Copy the name of the resource
+		outResource->name = name;
 		// The resource data is just a dynamic array of configs
 		outResource->geometryConfigs.Reserve(8);
 
@@ -98,6 +98,8 @@ namespace C3D
 	void ResourceLoader<MeshResource>::Unload(MeshResource* resource)
 	{
 		resource->geometryConfigs.Destroy();
+		resource->name.Destroy();
+		resource->fullPath.Destroy();
 	}
 
 	bool ResourceLoader<MeshResource>::ImportObjFile(File& file, const char* outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const
@@ -469,7 +471,8 @@ namespace C3D
 			}
 		}
 
-		currentConfig.shaderName = StringDuplicate(BUILTIN_SHADER_NAME_MATERIAL);
+		// LEAK: Does this ever get cleaned up?
+		currentConfig.shaderName = StringDuplicate("Builtin.Shader.Material");
 		if (currentConfig.shininess == 0.0f) currentConfig.shininess = 8.0f;
 
 		if (!WriteMtFile(mtlFilePath, &currentConfig))
@@ -542,7 +545,7 @@ namespace C3D
 			// It's a material name
 
 			// NOTE: Hardcoded default material shader name because all objects imported this way will be treated the same
-			config.shaderName = StringDuplicate(BUILTIN_SHADER_NAME_MATERIAL);
+			config.shaderName = StringDuplicate("Builtin.Shader.Material");
 			// NOTE: Shininess of 0 will cause problems so use a default if not provided
 			if (config.shininess == 0.0f) config.shininess = 8.0f;
 

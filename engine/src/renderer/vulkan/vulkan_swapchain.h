@@ -1,7 +1,5 @@
 
 #pragma once
-#include <vulkan/vulkan.h>
-
 #include "vulkan_image.h"
 #include "renderer/renderer_types.h"
 #include "resources/texture.h"
@@ -32,10 +30,10 @@ namespace C3D
 
 		u8 maxFramesInFlight;
 
-		Texture** renderTextures;
+		Texture* renderTextures;
 
-		/* @brief The depth texture. */
-		Texture* depthTexture;
+		/* @brief An array of depth texture. */
+		Texture* depthTextures;
 		/* @brief Render targets used for on-screen rendering, one per frame. */
 		RenderTarget renderTargets[3];
 	private:

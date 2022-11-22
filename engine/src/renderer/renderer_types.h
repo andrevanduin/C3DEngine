@@ -11,10 +11,6 @@
 
 namespace C3D
 {
-	constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
-	constexpr auto BUILTIN_SHADER_NAME_UI		= "Shader.Builtin.UI";
-	constexpr auto BUILTIN_SHADER_NAME_SKY_BOX	= "Shader.Builtin.Skybox";
-
 	enum class RendererBackendType
 	{
 		Vulkan,
@@ -35,25 +31,14 @@ namespace C3D
 		DynamicArray<RenderViewPacket> views;
 	};
 
-	struct RenderTarget
-	{
-		bool syncToWindowSize;
-
-		u8 attachmentCount;
-		Texture** attachments;
-
-		void* internalFrameBuffer;
-	};
-
 	struct RendererBackendConfig
 	{
 		const char* applicationName;
 		u32 applicationVersion;
 
-		u16 renderPassCount;
-
-		RenderPassConfig* passConfigs;
-		RenderSystem* frontend;
+		//u16 renderPassCount;
+		//RenderPassConfig* passConfigs;
+		//RenderSystem* frontend;
 
 		SDL_Window* window;
 	};
