@@ -17,7 +17,7 @@ namespace C3D
 	class RenderViewWorld final : public RenderView
 	{
 	public:
-		RenderViewWorld(u16 _id, const RenderViewConfig& config);
+		explicit RenderViewWorld(const RenderViewConfig& config);
 
 		bool OnCreate() override;
 		void OnDestroy() override;

@@ -10,7 +10,7 @@ namespace C3D
 	class RenderViewSkybox final : public RenderView
 	{
 	public:
-		RenderViewSkybox(u16 _id, const RenderViewConfig& config);
+		explicit RenderViewSkybox(const RenderViewConfig& config);
 
 		bool OnCreate() override;
 

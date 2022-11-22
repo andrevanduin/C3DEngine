@@ -15,8 +15,8 @@
 
 namespace C3D
 {
-	RenderViewWorld::RenderViewWorld(const u16 _id, const RenderViewConfig& config) // TODO: Set from configuration
-		: RenderView(_id, config), m_shader(nullptr), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
+	RenderViewWorld::RenderViewWorld(const RenderViewConfig& config) // TODO: Set from configuration
+		: RenderView(ToUnderlying(RenderViewKnownType::World), config), m_shader(nullptr), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
 			m_projectionMatrix(), m_camera(nullptr), m_ambientColor(), m_renderMode(0)
 	{}
 

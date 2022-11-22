@@ -43,7 +43,7 @@ namespace C3D
 				m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 
 				m_data = Memory.Allocate<char>(capacity, MemoryType::C3DString);
-				Logger::Trace("[STRING] - Init() with capacity = {}", capacity);
+				//Logger::Trace("[STRING] - Init() with capacity = {}", capacity);
 			}
 			else
 			{

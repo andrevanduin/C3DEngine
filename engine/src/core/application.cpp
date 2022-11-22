@@ -21,7 +21,6 @@
 #include "identifier.h"
 #include "utils.h"
 #include "renderer/renderer_frontend.h"
-#include "resources/loaders/bitmap_font_loader.h"
 #include "systems/geometry_system.h"
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
@@ -35,7 +34,7 @@
 namespace C3D
 {
 	Application::Application(const ApplicationConfig& config)
-		: m_logger("APPLICATION"), m_meshes{}, m_uiMeshes{}
+		: m_logger("APPLICATION"), m_meshes{}, m_hoveredObjectId(0), m_uiMeshes{}
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice");
 		
@@ -521,8 +520,19 @@ namespace C3D
 					const auto pos = cam->GetPosition();
 					const auto rot = cam->GetEulerRotation();
 
+					const auto mouse = Input.GetMousePosition();
+					// Convert to NDC
+					const auto mouseNdcX = RangeConvert(static_cast<f32>(mouse.x), 0.0f, static_cast<f32>(m_state.width), -1.0f, 1.0f);
+					const auto mouseNdcY = RangeConvert(static_cast<f32>(mouse.y), 0.0f, static_cast<f32>(m_state.height), -1.0f, 1.0f);
+
+					const auto leftButton = Input.IsButtonDown(Buttons::ButtonLeft);
+					const auto middleButton = Input.IsButtonDown(Buttons::ButtonMiddle);
+					const auto rightButton = Input.IsButtonDown(Buttons::ButtonRight);
+
 					char buffer[256]{};
-					sprintf_s(buffer, "Camera:\nPosition = (%.3f, %.3f, %.3f)\nRotation = (%.3f, %.3f, %.3f)", pos.x, pos.y, pos.z, RadToDeg(rot.x), RadToDeg(rot.y), RadToDeg(rot.z));
+					sprintf_s(buffer, "Cam: Pos(%.3f, %.3f, %.3f) Rot(%.3f, %.3f, %.3f)\nMouse: Pos(%.2f, %.2f) Buttons(%d, %d, %d) Hovered: %d", 
+						pos.x, pos.y, pos.z, RadToDeg(rot.x), RadToDeg(rot.y), RadToDeg(rot.z), mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, m_hoveredObjectId);
+
 					uiPacketData.texts[0]->SetText(buffer);
 
 					// Ui

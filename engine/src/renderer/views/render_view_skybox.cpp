@@ -15,8 +15,8 @@
 
 namespace C3D 
 {
-	RenderViewSkybox::RenderViewSkybox(const u16 _id, const RenderViewConfig& config)
-		: RenderView(_id, config), m_shader(nullptr), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
+	RenderViewSkybox::RenderViewSkybox(const RenderViewConfig& config)
+		: RenderView(ToUnderlying(RenderViewKnownType::Skybox), config), m_shader(nullptr), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
 		m_projectionMatrix(), m_camera(nullptr), m_projectionLocation(0), m_viewLocation(0), m_cubeMapLocation(0)
 	{}
 

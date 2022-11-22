@@ -9,7 +9,7 @@ namespace C3D
 	class RenderViewUi final : public RenderView
 	{
 	public:
-		RenderViewUi(u16 _id, const RenderViewConfig& config);
+		explicit RenderViewUi(const RenderViewConfig& config);
 
 		bool OnCreate() override;
 

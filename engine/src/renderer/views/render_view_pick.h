@@ -28,7 +28,7 @@ namespace C3D
 	class RenderViewPick final : public RenderView
 	{
 	public:
-		RenderViewPick(u16 _id, const RenderViewConfig& config);
+		explicit RenderViewPick(const RenderViewConfig& config);
 
 		bool OnCreate() override;
 		void OnDestroy() override;

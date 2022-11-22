@@ -2,6 +2,7 @@
 #pragma once
 #include "core/defines.h"
 #include "containers/dynamic_array.h"
+#include "containers/string.h"
 #include "core/events/event_context.h"
 #include "math/math_types.h"
 #include "renderer/renderpass.h"
@@ -38,9 +39,9 @@ namespace C3D
 	struct RenderViewConfig
 	{
 		// @brief The name of the view.
-		const char* name;
-		// @brief The name of the custom shader used by this view. Nullptr if not used.
-		const char* customShaderName;
+		String name;
+		// @brief The name of the custom shader used by this view. Empty if not used.
+		String customShaderName;
 		// @brief The width of this view. Set to 0 for 100% width.
 		u16 width;
 		// @brief The height of this view. Set to 0 for 100% height.
@@ -62,7 +63,7 @@ namespace C3D
 	class RenderView
 	{
 	public:
-		explicit RenderView(u16 id, const RenderViewConfig& config);
+		RenderView(u16 _id, const RenderViewConfig& config);
 
 		RenderView(const RenderView&) = delete;
 		RenderView(RenderView&&) = delete;
@@ -83,7 +84,7 @@ namespace C3D
 		virtual bool RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment);
 
 		u16 id;
-		char* name;
+		String name;
 
 		RenderViewKnownType type;
 		DynamicArray<RenderPass*> passes;

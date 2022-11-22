@@ -172,27 +172,21 @@ namespace C3D
 		return !m_state.mousePrevious.buttons[button];
 	}
 
-	void InputSystem::GetMousePosition(i16* x, i16* y)
+	ivec2 InputSystem::GetMousePosition()
 	{
 		if (!m_initialized)
 		{
-			*x = 0;
-			*y = 0;
-			return;
+			return ivec2(0);
 		}
-		*x = m_state.mouseCurrent.x;
-		*y = m_state.mouseCurrent.y;
+		return { m_state.mouseCurrent.x, m_state.mouseCurrent.y };
 	}
 
-	void InputSystem::GetPreviousMousePosition(i16* x, i16* y)
+	ivec2 InputSystem::GetPreviousMousePosition()
 	{
 		if (!m_initialized)
 		{
-			*x = 0;
-			*y = 0;
-			return;
+			return ivec2(0);
 		}
-		*x = m_state.mousePrevious.x;
-		*y = m_state.mousePrevious.y;
+		return { m_state.mousePrevious.x, m_state.mousePrevious.y };
 	}
 }

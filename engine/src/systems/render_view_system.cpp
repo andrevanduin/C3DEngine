@@ -2,6 +2,7 @@
 #include "render_view_system.h"
 
 #include "renderer/renderer_frontend.h"
+#include "renderer/views/render_view_pick.h"
 
 #include "renderer/views/render_view_ui.h"
 #include "renderer/views/render_view_world.h"
@@ -11,7 +12,7 @@
 namespace C3D
 {
 	RenderViewSystem::RenderViewSystem()
-		: System("RENDER_VIEW_SYSTEM"), m_registeredViews(nullptr)
+		: System("RENDER_VIEW_SYSTEM")
 	{
 	}
 
@@ -24,10 +25,7 @@ namespace C3D
 		}
 
 		m_config = config;
-		m_viewLookup.Create(config.maxViewCount);
-		m_viewLookup.Fill(INVALID_ID_U16);
-
-		m_registeredViews = Memory.Allocate<RenderView*>(config.maxViewCount, MemoryType::RenderSystem);
+		m_registeredViews.Create(config.maxViewCount);
 
 		return true;
 	}
@@ -35,18 +33,12 @@ namespace C3D
 	void RenderViewSystem::Shutdown()
 	{
 		// Free all our views
-		for (u16 i = 0; i < m_config.maxViewCount; i++)
+		for (const auto view : m_registeredViews)
 		{
-			if (m_registeredViews[i])
-			{
-				m_registeredViews[i]->OnDestroy();
-				delete m_registeredViews[i];
-			}
+			view->OnDestroy();
+			delete view;
 		}
-
-		// Free the array holding pointers to the views
-		Memory.Free(m_registeredViews, sizeof(RenderView*) * m_config.maxViewCount, MemoryType::RenderSystem);
-		m_viewLookup.Destroy();
+		m_registeredViews.Destroy();
 	}
 
 	bool RenderViewSystem::Create(const RenderViewConfig& config)
@@ -57,50 +49,35 @@ namespace C3D
 			return false;
 		}
 
-		if (!config.name || StringLength(config.name) == 0)
+		if (config.name.Empty())
 		{
 			m_logger.Error("Create() - Config must have a valid name.");
 			return false;
 		}
 
-		u16 id = m_viewLookup.Get(config.name);
-		if (id != INVALID_ID_U16)
+		if (m_registeredViews.Has(config.name))
 		{
 			m_logger.Error("Create() - A view named '{}' already exists. A new one will not be created.", config.name);
 			return false;
 		}
 
-		// Find a new id
-		for (u16 i = 0; i < m_config.maxViewCount; i++)
-		{
-			if (!m_registeredViews[i])
-			{
-				id = i;
-				break;
-			}
-		}
-
-		// Check if we found a valid entry for our view
-		if (id == INVALID_ID_U16)
-		{
-			m_logger.Error("Create() - No available space for a new view. Change system config to allow more views.");
-			return false;
-		}
-
+		RenderView* view = nullptr;
 		switch (config.type)
 		{
 			case RenderViewKnownType::World:
-				m_registeredViews[id] = new RenderViewWorld(id, config);
+				view = new RenderViewWorld(config);
 				break;
 			case RenderViewKnownType::UI:
-				m_registeredViews[id] = new RenderViewUi(id, config);
+				view = new RenderViewUi(config);
 				break;
 			case RenderViewKnownType::Skybox:
-				m_registeredViews[id] = new RenderViewSkybox(id, config);
+				view = new RenderViewSkybox(config);
+				break;
+			case RenderViewKnownType::Pick:
+				view = new RenderViewPick(config);
 				break;
 		}
 
-		RenderView* view = m_registeredViews[id];
 		if (!view)
 		{
 			m_logger.Error("Create() - View was nullptr.");
@@ -131,29 +108,26 @@ namespace C3D
 		RegenerateRenderTargets(view);
 
 		// Update our hashtable
-		m_viewLookup.Set(config.name, &id);
+		m_registeredViews.Set(config.name, view);
 		return true;
 	}
 
 	void RenderViewSystem::OnWindowResize(const u32 width, const u32 height) const
 	{
-		for (u16 i = 0; i < m_config.maxViewCount; i++)
+		for (const auto view : m_registeredViews)
 		{
-			if (m_registeredViews[i] && m_registeredViews[i]->id != INVALID_ID_U16)
-			{
-				m_registeredViews[i]->OnResize(width, height);
-			}
+			view->OnResize(width, height);
 		}
 	}
 
 	RenderView* RenderViewSystem::Get(const char* name)
 	{
-		if (const u16 id = m_viewLookup.Get(name); id != INVALID_ID_U16)
+		if (!m_registeredViews.Has(name))
 		{
-			return m_registeredViews[id];
+			m_logger.Warn("Get() - Failed to find view named: '{}'.", name);
+			return nullptr;
 		}
-		m_logger.Warn("Get() - Failed to find view named: '{}'.", name);
-		return nullptr;
+		return m_registeredViews.Get(name);
 	}
 
 	bool RenderViewSystem::BuildPacket(RenderView* view, void* data, RenderViewPacket* outPacket) const

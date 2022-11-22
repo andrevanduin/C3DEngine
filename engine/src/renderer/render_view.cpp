@@ -1,17 +1,16 @@
 
 #include "render_view.h"
 
+#include "renderer_frontend.h"
 #include "core/events/event.h"
 #include "core/events/event_callback.h"
 #include "systems/render_view_system.h"
 
 namespace C3D
 {
-	RenderView::RenderView(const u16 id, const RenderViewConfig& config)
-		: id(id), name(nullptr), type(), m_width(config.width), m_height(config.height), m_customShaderName(nullptr), m_logger(config.name)
+	RenderView::RenderView(const u16 _id, const RenderViewConfig& config)
+		: id(_id), name(config.name), type(), m_width(config.width), m_height(config.height), m_customShaderName(nullptr), m_logger(config.name.Data())
 	{
-		name = StringDuplicate(config.name);
-
 		if (!Event.Register(SystemEventCode::DefaultRenderTargetRefreshRequired, new EventCallback(this, &RenderView::OnRenderTargetRefreshRequired)))
 		{
 			m_logger.Fatal("Constructor() - Unable to register for OnRenderTargetRefreshRequired event.");
@@ -20,9 +19,11 @@ namespace C3D
 
 	void RenderView::OnDestroy()
 	{
-		const auto length = StringLength(name) + 1;
-		Memory.Free(name, length, MemoryType::String);
 		Event.UnRegister(SystemEventCode::DefaultRenderTargetRefreshRequired, new EventCallback(this, &RenderView::OnRenderTargetRefreshRequired));
+		for (const auto pass : passes)
+		{
+			Renderer.DestroyRenderPass(pass);
+		}
 	}
 
 	bool RenderView::RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment)

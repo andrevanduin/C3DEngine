@@ -16,11 +16,10 @@
 
 namespace C3D
 {
-	RenderViewUi::RenderViewUi(const u16 _id, const RenderViewConfig& config)
-		: RenderView(_id, config), m_nearClip(-100.0f), m_farClip(100.0f), m_projectionMatrix(1), m_viewMatrix(1),
+	RenderViewUi::RenderViewUi(const RenderViewConfig& config)
+		: RenderView(ToUnderlying(RenderViewKnownType::UI), config), m_nearClip(-100.0f), m_farClip(100.0f), m_projectionMatrix(1), m_viewMatrix(1),
 		  m_shader(nullptr), m_diffuseMapLocation(0), m_diffuseColorLocation(0), m_modelLocation(0)
-	{
-	}
+	{}
 
 	bool RenderViewUi::OnCreate()
 	{

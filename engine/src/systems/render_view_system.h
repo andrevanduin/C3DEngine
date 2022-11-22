@@ -1,6 +1,7 @@
 
 #pragma once
 #include "system.h"
+#include "containers/hash_map.h"
 #include "containers/hash_table.h"
 
 #include "renderer/render_view.h"
@@ -32,7 +33,6 @@ namespace C3D
 		void RegenerateRenderTargets(RenderView* view) const;
 
 	private:
-		HashTable<u16> m_viewLookup;
-		RenderView** m_registeredViews;
+		HashMap<String, RenderView*> m_registeredViews;
 	};
 }

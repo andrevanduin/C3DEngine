@@ -9,8 +9,8 @@
 
 namespace C3D
 {
-	RenderViewPick::RenderViewPick(u16 _id, const RenderViewConfig& config)
-		: RenderView(_id, config), m_uiShaderInfo(), m_worldShaderInfo(), m_instanceCount(0), m_mouseX(0),m_mouseY(0)
+	RenderViewPick::RenderViewPick(const RenderViewConfig& config)
+		: RenderView(ToUnderlying(RenderViewKnownType::Pick), config), m_uiShaderInfo(), m_worldShaderInfo(), m_instanceCount(0), m_mouseX(0),m_mouseY(0)
 	{}
 
 	bool RenderViewPick::OnCreate()
