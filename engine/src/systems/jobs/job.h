@@ -34,101 +34,79 @@ namespace C3D
 		High,
 	};
 
-	template <typename InputType, typename OutputType>
-	class JobInfo
+	class BaseJobInfo
 	{
 	public:
+		BaseJobInfo(JobType type, JobPriority priority);
 
-		JobInfo();
-		JobInfo(JobType type, JobPriority priority);
+		BaseJobInfo(const BaseJobInfo&) = default;
+		BaseJobInfo(BaseJobInfo&&) = default;
 
-		JobInfo(const JobInfo& other);
-		JobInfo(JobInfo&& other) noexcept;
+		BaseJobInfo& operator=(const BaseJobInfo&) = default;
+		BaseJobInfo& operator=(BaseJobInfo&&) = default;
 
-		JobInfo& operator=(const JobInfo& other);
-		JobInfo& operator=(JobInfo&& other) noexcept;
+		virtual ~BaseJobInfo() = default;
 
-		~JobInfo();
-
-		/* @brief Store the input data (Allocates space and makes a copy of your provided data internally).
-		 * This version of the method should be used if you are not expecting result data.
-		 */
-		template <typename InputType>
-		void SetData(const InputType& data);
-
-		/* @brief Store the input data and space for the output data (Allocates space and makes a copy of your provided data internally).
-		 * This version of the method should be used if you are expecting result data.
-		 */
-		template <typename InputType, typename OutputType>
-		void SetData(const InputType& data);
-
-		void Clear();
+		virtual bool CallEntry() = 0;
+		virtual void CallSuccess() = 0;
+		virtual void CallFailure() = 0;
 
 		JobType type;
 		JobPriority priority;
 
 		/* @brief The entry point of the job. Gets called when the job starts. */
-		std::function<bool(void* , void*)> entryPoint;
+		std::function<bool(void*, void*)> entryPoint = nullptr;
 		/* @brief An optional callback for when the job finishes successfully. */
-		std::function<void(void*)> onSuccess;
+		std::function<void(void*)> onSuccess = nullptr;
 		/* @brief An optional callback for when the job finishes unsuccessfully. */
-		std::function<void(void*)> onFailure;
-
-
-
-		/* @brief A pointer to input data. Which gets passed to the entry point.  */
-		void* inputData;
-		/* @brief The size of the optional input data. */
-		u64 inputDataSize;
-
-		/* @brief A pointer to optional result data. Which gets populated after the work is done. */
-		void* resultData;
-		/* @brief The size of the optional result data. */
-		u64 resultDataSize;
-
-	private:
-		void FreeMemory();
+		std::function<void(void*)> onFailure = nullptr;
 	};
 
-	template <typename InputType>
-	void JobInfo::SetData(const InputType& data)
-	{
-		inputDataSize = sizeof(InputType);
-
-		const auto input = Memory.Allocate<InputType>(MemoryType::Job);
-		*input = data;
-		inputData = input;
-
-		resultDataSize = 0;
-		resultData = nullptr;
-	}
-
 	template <typename InputType, typename OutputType>
-	void JobInfo::SetData(const InputType& data)
+	class JobInfo final : public BaseJobInfo
 	{
-		inputDataSize = sizeof(InputType);
+	public:
+		JobInfo() : BaseJobInfo(JobTypeGeneral, JobPriority::Normal) {}
 
-		const auto input = Memory.Allocate<InputType>(MemoryType::Job);
-		*input = data;
-		inputData = input;
+		JobInfo(const JobType type, const JobPriority priority) : BaseJobInfo(type, priority) {}
 
-		resultDataSize = sizeof(OutputType);
-		resultData = Memory.Allocate<OutputType>(MemoryType::Job);
-	}
+		void SetData(const InputType& data)
+		{
+			input = data;
+		}
+
+		bool CallEntry() override
+		{
+			return entryPoint(&input, &output);
+		}
+
+		void CallSuccess() override
+		{
+			onSuccess(&input, &output);
+		}
+
+		void CallFailure() override
+		{
+			onFailure(&input, &output);
+		}
+
+		InputType input;
+		OutputType output;
+	};
 
 	class JobThread
 	{
 	public:
-		JobThread() : index(0), typeMask(0) {}
+		JobThread() : index(0), typeMask(0), m_info(nullptr) {}
 
 		/* @brief Gets a copy of the info. Thread should be locked before calling this! */
-		[[nodiscard]] JobInfo GetInfo() const
+		[[nodiscard]] BaseJobInfo* GetInfo() const
 		{
 			return m_info;
 		}
 
 		/* @brief Sets the thread's info. Thread should be locked before calling this! */
-		void SetInfo(const JobInfo& info)
+		void SetInfo(BaseJobInfo* info)
 		{
 			m_info = info;
 		}
@@ -136,13 +114,13 @@ namespace C3D
 		/* @brief Clears the thread's info. Thread should be locked before calling this! */
 		void ClearInfo()
 		{
-			m_info.Clear();
+			m_info = nullptr;
 		}
 			 
 		/* @brief Checks if the thread currently has any work assigned. Thread should be locked before calling this! */
 		[[nodiscard]] bool IsFree() const
 		{
-			return m_info.entryPoint == nullptr;
+			return m_info == nullptr;
 		}
 
 		u8 index;
@@ -153,33 +131,49 @@ namespace C3D
 		u32 typeMask;
 
 	private:
-		JobInfo m_info;
+		BaseJobInfo* m_info;
 	};
 
-	class JobResultEntry
+	class BaseJobResultEntry
 	{
 	public:
-		JobResultEntry();
-		JobResultEntry(const JobResultEntry& other) = delete;
-		JobResultEntry(JobResultEntry&& other) = delete;
+		BaseJobResultEntry() : id(INVALID_ID_U16) {}
 
-		JobResultEntry& operator=(const JobResultEntry& other);
-		JobResultEntry& operator=(JobResultEntry&& other) = delete;
+		BaseJobResultEntry(const BaseJobResultEntry&) = default;
+		BaseJobResultEntry(BaseJobResultEntry&&) = default;
 
-		~JobResultEntry();
+		BaseJobResultEntry& operator=(const BaseJobResultEntry&) = default;
+		BaseJobResultEntry& operator=(BaseJobResultEntry&&) = default;
 
-		void Clear();
+		virtual ~BaseJobResultEntry() = default;
+
+		void Clear()
+		{
+			id = INVALID_ID_U16;
+			callback = nullptr;
+		}
+
+		virtual void Callback() = 0;
 
 		/* @brief The id the job. */
 		u16 id;
-		/* @brief The result of the work that was done during this job. */
-		void* result;
-		/* @brief The size of the result of the work done during this job. */
-		u64 resultSize;
 		/* @brief The callback that we need to call (onSuccess or onFailure depending on the result) */
-		std::function<void(void*)> callback;
+		std::function<void(void*)> callback = nullptr;
+	};
 
-	private:
-		void Free();
+
+	template <typename ResultType>
+	class JobResultEntry final : public BaseJobResultEntry
+	{
+	public:
+		JobResultEntry() : BaseJobResultEntry() {}
+
+		void Callback() override
+		{
+			callback(&result);
+		}
+
+		/* @brief The result of the work that was done during this job. */
+		ResultType result;
 	};
 }
