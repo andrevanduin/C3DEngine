@@ -3,7 +3,6 @@
 
 #include "core/logger.h"
 #include "core/c3d_string.h"
-#include "core/memory.h"
 
 #include "renderer/renderer_types.h"
 #include "renderer/renderer_frontend.h"
@@ -35,7 +34,7 @@ namespace C3D
 		m_uiShaderId = INVALID_ID;
 
 		// Allocate enough memory for the max number of materials that we will be using
-		m_registeredMaterials = Memory.Allocate<Material>(config.maxMaterialCount, MemoryType::MaterialInstance);
+		m_registeredMaterials = Memory.Allocate<Material>(MemoryType::MaterialInstance, config.maxMaterialCount);
 		// Set the id of all the textures to invalid
 		for (u32 i = 0; i < m_config.maxMaterialCount; i++)
 		{
@@ -74,7 +73,7 @@ namespace C3D
 		DestroyMaterial(&m_defaultMaterial);
 
 		// Free the memory we allocated for all our materials
-		Memory.Free(m_registeredMaterials, sizeof(Material) * m_config.maxMaterialCount, MemoryType::MaterialInstance);
+		Memory.Free(MemoryType::MaterialInstance, m_registeredMaterials);
 		m_registeredMaterials = nullptr;
 
 		// Cleanup our material table
@@ -184,7 +183,7 @@ namespace C3D
 			m_logger.Trace("Material {} already exists. The refCount is now {}", config.name, ref.referenceCount);
 		}
 
-		m_registeredMaterialTable.Set(config.name, &ref);
+		m_registeredMaterialTable.Set(config.name, ref);
 		return &m_registeredMaterials[ref.handle];
 	}
 
@@ -224,7 +223,7 @@ namespace C3D
 			m_logger.Info("Released material {}. The material now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
 		}
 
-		m_registeredMaterialTable.Set(name, &ref);
+		m_registeredMaterialTable.Set(name, ref);
 	}
 
 	Material* MaterialSystem::GetDefault()
@@ -330,7 +329,7 @@ namespace C3D
 
 	bool MaterialSystem::CreateDefaultMaterial()
 	{
-		Memory.Zero(&m_defaultMaterial, sizeof(Material));
+		Platform::Zero(&m_defaultMaterial);
 
 		m_defaultMaterial.id = INVALID_ID;
 		m_defaultMaterial.generation = INVALID_ID;
@@ -362,7 +361,7 @@ namespace C3D
 
 	bool MaterialSystem::LoadMaterial(const MaterialConfig& config, Material* mat) const
 	{
-		Memory.Zero(mat, sizeof(Material));
+		Platform::Zero(mat);
 
 		// Name
 		StringNCopy(mat->name, config.name, MATERIAL_NAME_MAX_LENGTH);
@@ -498,7 +497,7 @@ namespace C3D
 		}
 
 		// Zero out memory and invalidate ids
-		Memory.Zero(mat, sizeof(Material));
+		Platform::Zero(mat);
 		mat->id = INVALID_ID;
 		mat->generation = INVALID_ID;
 		mat->internalId = INVALID_ID;

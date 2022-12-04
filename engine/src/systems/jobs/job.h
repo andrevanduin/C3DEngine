@@ -3,7 +3,8 @@
 #include <thread>
 #include <mutex>
 
-#include "core/memory.h"
+#include "memory/global_memory_system.h"
+#include "platform/platform.h"
 #include "services/services.h"
 
 namespace C3D
@@ -33,6 +34,7 @@ namespace C3D
 		High,
 	};
 
+	template <typename InputType, typename OutputType>
 	class JobInfo
 	{
 	public:
@@ -52,13 +54,13 @@ namespace C3D
 		 * This version of the method should be used if you are not expecting result data.
 		 */
 		template <typename InputType>
-		void SetData(InputType* data);
+		void SetData(const InputType& data);
 
 		/* @brief Store the input data and space for the output data (Allocates space and makes a copy of your provided data internally).
 		 * This version of the method should be used if you are expecting result data.
 		 */
 		template <typename InputType, typename OutputType>
-		void SetData(InputType* data);
+		void SetData(const InputType& data);
 
 		void Clear();
 
@@ -71,6 +73,8 @@ namespace C3D
 		std::function<void(void*)> onSuccess;
 		/* @brief An optional callback for when the job finishes unsuccessfully. */
 		std::function<void(void*)> onFailure;
+
+
 
 		/* @brief A pointer to input data. Which gets passed to the entry point.  */
 		void* inputData;
@@ -87,21 +91,26 @@ namespace C3D
 	};
 
 	template <typename InputType>
-	void JobInfo::SetData(InputType* data)
+	void JobInfo::SetData(const InputType& data)
 	{
 		inputDataSize = sizeof(InputType);
-		inputData = Memory.Allocate<InputType>(MemoryType::Job);
-		Memory.Copy(inputData, data, inputDataSize);
+
+		const auto input = Memory.Allocate<InputType>(MemoryType::Job);
+		*input = data;
+		inputData = input;
 
 		resultDataSize = 0;
+		resultData = nullptr;
 	}
 
 	template <typename InputType, typename OutputType>
-	void JobInfo::SetData(InputType* data)
+	void JobInfo::SetData(const InputType& data)
 	{
 		inputDataSize = sizeof(InputType);
-		inputData = Memory.Allocate<InputType>(MemoryType::Job);
-		Memory.Copy(inputData, data, inputDataSize);
+
+		const auto input = Memory.Allocate<InputType>(MemoryType::Job);
+		*input = data;
+		inputData = input;
 
 		resultDataSize = sizeof(OutputType);
 		resultData = Memory.Allocate<OutputType>(MemoryType::Job);

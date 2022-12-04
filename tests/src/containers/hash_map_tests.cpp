@@ -12,11 +12,11 @@ u8 HashMapShouldCreateAndDestroy()
 	C3D::HashMap<C3D::String, u32> hashMap;
 	hashMap.Create(128);
 
-	ExpectShouldBe(128 * sizeof(u32) + 128 * sizeof(u32), Memory.GetMemoryUsage(C3D::MemoryType::HashMap));
+	ExpectShouldBe(128 * sizeof(u32) + 128 * sizeof(u32), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::HashMap));
 
 	hashMap.Destroy();
 
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::HashMap));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashMap));
 	return true;
 }
 

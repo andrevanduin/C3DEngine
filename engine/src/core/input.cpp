@@ -3,8 +3,7 @@
 
 #include "events/event.h"
 #include "logger.h"
-
-#include "core/memory.h"
+#include "platform/platform.h"
 #include "services/services.h"
 
 namespace C3D
@@ -29,8 +28,8 @@ namespace C3D
 	{
 		if (!m_initialized) return;
 
-		Memory.Copy(&m_state.keyboardPrevious, &m_state.keyboardCurrent, sizeof KeyBoardState);
-		Memory.Copy(&m_state.mousePrevious, &m_state.mouseCurrent, sizeof MouseState);
+		Platform::Copy(&m_state.keyboardPrevious, &m_state.keyboardCurrent, sizeof KeyBoardState);
+		Platform::Copy(&m_state.mousePrevious, &m_state.mouseCurrent, sizeof MouseState);
 	}
 
 	void InputSystem::ProcessKey(const SDL_Keycode sdlKey, const bool pressed)
@@ -81,7 +80,7 @@ namespace C3D
 			context.data.u16[0] = static_cast<u16>(key);
 			
 			const auto code = pressed ? SystemEventCode::KeyPressed : SystemEventCode::KeyReleased;
-			Services::GetEvent().Fire(static_cast<u16>(code), nullptr, context);
+			Event.Fire(static_cast<u16>(code), nullptr, context);
 		}
 	}
 
@@ -95,7 +94,7 @@ namespace C3D
 			context.data.u16[0] = button;
 
 			const auto code = pressed ? SystemEventCode::ButtonPressed : SystemEventCode::ButtonReleased;
-			Services::GetEvent().Fire(ToUnderlying(code), nullptr, context);
+			Event.Fire(ToUnderlying(code), nullptr, context);
 		}
 	}
 

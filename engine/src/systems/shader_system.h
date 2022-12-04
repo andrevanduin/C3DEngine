@@ -35,7 +35,7 @@ namespace C3D
 		u16 GetUniformIndex(Shader* shader, const char* name) const;
 
 		bool SetUniform(const char* name, const void* value) const;
-		bool SetUniformByIndex(u16 index, const void* value) const;
+		bool SetUniformByIndex(u16 index, const void* value) const;;
 
 		bool SetSampler(const char* name, const Texture* t) const;
 		bool SetSamplerByIndex(u16 index, const Texture* t) const;
@@ -52,16 +52,14 @@ namespace C3D
 		bool AddSampler(Shader* shader, const ShaderUniformConfig* config);
 
 		bool AddUniform(Shader* shader, const ShaderUniformConfig* config);
-		bool AddUniform(Shader* shader, const char* name, u16 size, ShaderUniformType type, ShaderScope scope, u16 setLocation, bool isSampler);
+		bool AddUniform(Shader* shader, const String& name, u16 size, ShaderUniformType type, ShaderScope scope, u16 setLocation, bool isSampler);
 
 		static void ShaderDestroy(Shader* shader);
 
 		bool UniformAddStateIsValid(const Shader* shader) const;
-		bool UniformNameIsValid(Shader* shader, const char* name) const;
-
-		HashMap<const char*, u32> m_nameToIdMap;
+		bool UniformNameIsValid(Shader* shader, const String& name) const;
 
 		u32 m_currentShaderId;
-		Shader* m_shaders;
+		HashMap<String, Shader> m_shaders;
 	};
 }

@@ -66,21 +66,10 @@ namespace C3D
 		Event.UnRegister(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderViewWorld::OnEvent));
 	}
 
-	void RenderViewWorld::OnResize(const u32 width, const u32 height)
+	void RenderViewWorld::OnResize()
 	{
-		if (width != m_width || height != m_height)
-		{
-			m_width = static_cast<u16>(width);
-			m_height = static_cast<u16>(height);
-
-			const auto aspectRatio = static_cast<f32>(width) / static_cast<f32>(height);
-			m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
-
-			for (const auto pass : passes)
-			{
-				pass->renderArea = ivec4(0, 0, m_width, m_height);
-			}
-		}
+		const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
+		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
 	}
 
 	bool RenderViewWorld::OnBuildPacket(void* data, RenderViewPacket* outPacket)
@@ -147,9 +136,9 @@ namespace C3D
 		return true;
 	}
 
-	bool RenderViewWorld::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex) const
+	bool RenderViewWorld::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex)
 	{
-		for (auto& pass : passes)
+		for (const auto pass : passes)
 		{
 			const auto shaderId = m_shader->id;
 

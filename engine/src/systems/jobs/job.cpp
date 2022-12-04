@@ -22,16 +22,16 @@ namespace C3D
 			u16 alignment = 0;
 			Memory.GetAlignment(other.inputData, &alignment);
 
-			inputData = Memory.AllocateAligned(inputDataSize, alignment, MemoryType::Job);
-			Memory.Copy(inputData, other.inputData, inputDataSize);
+			inputData = Memory.AllocateBlock(MemoryType::Job, inputDataSize, alignment);
+			Platform::Copy(inputData, other.inputData, inputDataSize);
 		}
 		if (resultDataSize)
 		{
 			u16 alignment = 0;
 			Memory.GetAlignment(other.resultData, &alignment);
 
-			resultData = Memory.AllocateAligned(resultDataSize, alignment, MemoryType::Job);
-			Memory.Copy(resultData, other.resultData, resultDataSize);
+			resultData = Memory.AllocateBlock(MemoryType::Job, resultDataSize, alignment);
+			Platform::Copy(resultData, other.resultData, resultDataSize);
 		}
 	}
 
@@ -79,8 +79,8 @@ namespace C3D
 			u16 alignment = 0;
 			Memory.GetAlignment(other.inputData, &alignment);
 
-			inputData = Memory.AllocateAligned(inputDataSize, alignment, MemoryType::Job);
-			Memory.Copy(inputData, other.inputData, inputDataSize);
+			inputData = Memory.AllocateBlock(MemoryType::Job, inputDataSize, alignment);
+			Platform::Copy(inputData, other.inputData, inputDataSize);
 		}
 		// If other has any result data we allocate memory for it and copy
 		if (resultDataSize)
@@ -88,8 +88,8 @@ namespace C3D
 			u16 alignment = 0;
 			Memory.GetAlignment(other.resultData, &alignment);
 
-			resultData = Memory.AllocateAligned(resultDataSize, alignment, MemoryType::Job);
-			Memory.Copy(resultData, other.resultData, resultDataSize);
+			resultData = Memory.AllocateBlock(MemoryType::Job, resultDataSize, alignment);
+			Platform::Copy(resultData, other.resultData, resultDataSize);
 		}
 		return *this;
 	}
@@ -143,13 +143,13 @@ namespace C3D
 	{
 		if (inputData && inputDataSize != 0)
 		{
-			Memory.Free(inputData, inputDataSize, MemoryType::Job);
+			Memory.Free(MemoryType::Job, inputData);
 			inputData = nullptr;
 			inputDataSize = 0;
 		}
 		if (resultData && resultDataSize != 0)
 		{
-			Memory.Free(resultData, resultDataSize, MemoryType::Job);
+			Memory.Free(MemoryType::Job, resultData);
 			resultData = nullptr;
 			resultDataSize = 0;
 		}
@@ -177,8 +177,8 @@ namespace C3D
 			u16 alignment = 0;
 			Memory.GetAlignment(other.result, &alignment);
 
-			result = Memory.AllocateAligned(resultSize, alignment, MemoryType::Job);
-			Memory.Copy(result, other.result, resultSize);
+			result = Memory.AllocateBlock(MemoryType::Job, resultSize, alignment);
+			Platform::Copy(result, other.result, resultSize);
 		}
 
 		return *this;
@@ -200,7 +200,7 @@ namespace C3D
 	{
 		if (result && resultSize)
 		{
-			Memory.Free(result, resultSize, MemoryType::Job);
+			Memory.Free(MemoryType::Job, result);
 			resultSize = 0;
 		}
 	}

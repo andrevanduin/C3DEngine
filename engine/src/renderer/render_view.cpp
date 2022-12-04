@@ -26,6 +26,24 @@ namespace C3D
 		}
 	}
 
+	void RenderView::OnBaseResize(const u32 width, const u32 height)
+	{
+		if (width != m_width || height != m_height)
+		{
+			m_width = static_cast<u16>(width);
+			m_height = static_cast<u16>(height);
+
+			for (const auto pass : passes)
+			{
+				pass->renderArea = ivec4(0, 0, m_width, m_height);
+			}
+
+			OnResize();
+		}
+	}
+
+	void RenderView::OnResize() {}
+
 	bool RenderView::RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment)
 	{
 		return true;

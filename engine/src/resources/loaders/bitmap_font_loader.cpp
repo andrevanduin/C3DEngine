@@ -1,10 +1,10 @@
 
 #include "bitmap_font_loader.h"
 
-#include <sstream>
-
 #include "containers/string.h"
+#include "core/string_utils.h"
 #include "platform/filesystem.h"
+#include "services/services.h"
 #include "systems/resource_system.h"
 
 namespace C3D

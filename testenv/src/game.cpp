@@ -1,8 +1,8 @@
 
 #include "game.h"
 
-#include <core/memory.h>
 #include <core/logger.h>
+#include <core/metrics.h>
 
 #include <services/services.h>
 #include <systems/camera_system.h>
@@ -13,8 +13,6 @@
 #include <core/events/event.h>
 #include <core/events/event_context.h>
 #include <renderer/renderer_types.h>
-
-#include "core/utils.h"
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
 	: Application(config), m_camera(nullptr)
@@ -30,14 +28,12 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 {
 	static u64 allocCount = 0;
 	const u64 prevAllocCount = allocCount;
-	allocCount = Memory.GetAllocCount();
+	allocCount = Metrics.GetAllocCount();
 
 	if (Input.IsKeyUp(C3D::KeyM) && Input.WasKeyDown('m'))
 	{
 		C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
-
-		const auto memStr = C3D::Utils::GenerateMemoryUsageString(Memory);
-		C3D::Logger::Debug(memStr.Data());
+		Metrics.PrintMemoryUsage();
 	}
 
 	if (Input.IsKeyUp('p') && Input.WasKeyDown('p'))

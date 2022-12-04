@@ -156,8 +156,8 @@ namespace C3D
 			u16 alignment = 0;
 			Memory.GetAlignment(data, &alignment);
 
-			entry.result = Memory.AllocateAligned(entry.resultSize, alignment, MemoryType::Job);
-			Memory.Copy(entry.result, data, dataSize);
+			entry.result = Memory.AllocateBlock(MemoryType::Job, entry.resultSize, alignment);
+			Platform::Copy(entry.result, data, dataSize);
 		}
 		else
 		{

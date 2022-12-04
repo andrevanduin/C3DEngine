@@ -22,11 +22,11 @@ namespace C3D
 		bool OnCreate() override;
 		void OnDestroy() override;
 
-		void OnResize(u32 width, u32 height) override;
+		void OnResize() override;
 
 		bool OnBuildPacket(void* data, RenderViewPacket* outPacket) override;
 
-		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const override;
+		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) override;
 		
 	private:
 		bool OnEvent(u16 code, void* sender, EventContext context);

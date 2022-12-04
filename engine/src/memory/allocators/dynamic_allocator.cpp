@@ -2,15 +2,14 @@
 #include "dynamic_allocator.h"
 
 #include "core/logger.h"
-#include "core/memory.h"
+#include "platform/platform.h"
 #include "services/services.h"
-
-#include <new>
 
 namespace C3D
 {
 	DynamicAllocator::DynamicAllocator()
-		: m_logger("DYNAMIC_ALLOCATOR"), m_initialized(false), m_totalSize(0), m_memorySize(0), m_memory(nullptr)
+		: BaseAllocator(ToUnderlying(AllocatorType::Dynamic)), m_logger("DYNAMIC_ALLOCATOR"),
+	      m_initialized(false), m_totalSize(0), m_memorySize(0), m_memory(nullptr)
 	{}
 
 	bool DynamicAllocator::Create(void* memory, const u64 totalMemory, const u64 usableMemory)
@@ -30,11 +29,13 @@ namespace C3D
 		m_freeList.Create(memory, freeListMemoryRequirement, SMALLEST_POSSIBLE_ALLOCATION, usableMemory);
 
 		// The second part of the memory will store the actual data that this allocator manages
-		
 		m_memory = static_cast<char*>(memory) + freeListMemoryRequirement;
 
 		m_logger.Trace("Create() - Successfully created DynamicAllocator managing {} bytes. Total memory usage = ({} + {} = {}) (UsableMemory + FreeListMemory = total)",
 			usableMemory, usableMemory, freeListMemoryRequirement, totalMemory);
+
+		// Create a metrics object to track the allocations this allocator does
+		m_id = Metrics.CreateAllocator("DYNAMIC_ALLOCATOR", AllocatorType::Dynamic, usableMemory);
 
 		m_initialized = true;
 		return true;
@@ -44,19 +45,18 @@ namespace C3D
 	{
 		m_freeList.Destroy();
 
-
 		m_totalSize = 0;
 		m_memory = nullptr;
+
+		// Destroy the metrics object associated with this 
+		Metrics.DestroyAllocator(m_id);
 		return true;
 	}
 
-	void* DynamicAllocator::Allocate(const u64 size)
+	void* DynamicAllocator::AllocateBlock(const MemoryType type, u64 size, const u16 alignment)
 	{
-		return AllocateAligned(size, 1);
-	}
+		std::lock_guard allocGuard(m_mutex);
 
-	void* DynamicAllocator::AllocateAligned(u64 size, const u16 alignment)
-	{
 		if (size == 0 || alignment == 0)
 		{
 			m_logger.Error("Allocate() requires a valid size and alignment");
@@ -67,10 +67,10 @@ namespace C3D
 		 *  - The user's requested size
 		 *	- The alignment required for the requested size
 		 *	- The size of the Alloc header
-		 *	- A marker to hold the size for quick and easy lookups
+		 *	- A marker to hold the size for quick and easy lookups`
+		 *
 		 */ 
 		u64 requiredSize = alignment + sizeof(AllocHeader) + sizeof(AllocSizeMarker) + size;
-
 		// Don't perform allocations of more than 4 GibiBytes at the time. 
 		assert(requiredSize < MAX_SINGLE_ALLOC_SIZE);
 
@@ -107,6 +107,10 @@ namespace C3D
 				size, alignment, sizeof(AllocHeader), ALLOC_SIZE_MARKER_SIZE, requiredSize, fmt::ptr(basePtr));
 #endif
 
+#ifdef C3D_DEBUG_MEMORY_USAGE
+			Metrics.Allocate(m_id, type, size, requiredSize);
+#endif
+			Platform::Zero(userDataPtr, size);
 			return userDataPtr;
 		}
 
@@ -117,31 +121,25 @@ namespace C3D
 		throw std::bad_alloc();
 	}
 
-	bool DynamicAllocator::Free(void* block, [[maybe_unused]] const u64 size)
+	void DynamicAllocator::Free(const MemoryType type, void* block)
 	{
-		return FreeAligned(block);
-	}
+		std::lock_guard freeGuard(m_mutex);
 
-	bool DynamicAllocator::FreeAligned(void* block)
-	{
 		if (!block)
 		{
-			m_logger.Error("FreeAligned() - Called with nullptr block.");
-			return false;
+			m_logger.Fatal("FreeAligned() - Called with nullptr block.");
 		}
 
 		if (m_memory == nullptr || m_totalSize == 0)
 		{
 			// Tried to free something from this allocator while it is not managing any memory
-			m_logger.Error("FreeAligned() - Called while dynamic allocator is not managing memory.");
-			return true;
+			m_logger.Fatal("Free() - Called while dynamic allocator is not managing memory.");
 		}
 
 		if (block < m_memory || block > m_memory + m_totalSize)
 		{
 			void* endOfBlock = m_memory + m_totalSize;
-			m_logger.Error("FreeAligned() - Called with block ({}) outside of allocator range ({}) - ({}).", fmt::ptr(block), fmt::ptr(m_memory), fmt::ptr(endOfBlock));
-			return false;
+			m_logger.Fatal("Free() - Called with block ({}) outside of allocator range ({}) - ({}).", fmt::ptr(block), fmt::ptr(m_memory), fmt::ptr(endOfBlock));
 		}
 
 		// The provided address points to the user's data block
@@ -158,15 +156,16 @@ namespace C3D
 		// Then we simply free this memory
 		if (!m_freeList.FreeBlock(requiredSize, offset))
 		{
-			m_logger.Error("FreeAligned() - failed");
-			return false;
+			m_logger.Error("Free() - failed");
 		}
 
 #ifdef C3D_TRACE_ALLOCS
 		m_logger.Trace("FreeAligned() - Freed {} bytes at {}.", requiredSize, fmt::ptr(header->start));
 #endif
 
-		return true;
+#ifdef C3D_DEBUG_MEMORY_USAGE
+		Metrics.Free(m_id, type, *blockSize, requiredSize);
+#endif
 	}
 
 	bool DynamicAllocator::GetSizeAlignment(void* block, u64* outSize, u16* outAlignment)

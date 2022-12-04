@@ -116,7 +116,7 @@ namespace C3D
 	{
 		for (const auto view : m_registeredViews)
 		{
-			view->OnResize(width, height);
+			view->OnBaseResize(width, height);
 		}
 	}
 
@@ -141,7 +141,7 @@ namespace C3D
 		return false;
 	}
 
-	bool RenderViewSystem::OnRender(const RenderView* view, const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex) const
+	bool RenderViewSystem::OnRender(RenderView* view, const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex) const
 	{
 		if (view && packet)
 		{
@@ -168,26 +168,26 @@ namespace C3D
 				for (u32 a = 0; a < target.attachmentCount; a++)
 				{
 					auto& attachment = target.attachments[a];
-					if (attachment.source == RenderTargetAttachmentSourceDefault)
+					if (attachment.source == RenderTargetAttachmentSource::Default)
 					{
-						if (attachment.type == RenderTargetAttachmentTypeColor)
+						if (attachment.type == RenderTargetAttachmentType::Color)
 						{
 							attachment.texture = Renderer.GetWindowAttachment(i);
 						}
-						else if (attachment.type == RenderTargetAttachmentTypeDepth)
+						else if (attachment.type == RenderTargetAttachmentType::Depth)
 						{
 							attachment.texture = Renderer.GetDepthAttachment(i);
 						}
 						else
 						{
-							m_logger.Fatal("RegenerateRenderTargets() -  attachment type: {}", attachment.type);
+							m_logger.Fatal("RegenerateRenderTargets() -  attachment type: {}", ToUnderlying(attachment.type));
 						}
 					}
-					else if (attachment.source == RenderTargetAttachmentSourceView)
+					else if (attachment.source == RenderTargetAttachmentSource::View)
 					{
 						if (!view->RegenerateAttachmentTarget(r, &attachment))
 						{
-							m_logger.Error("RegenerateRenderTargets() - View failed to regenerate attachment target for attachment type: {}", attachment.type);
+							m_logger.Error("RegenerateRenderTargets() - View failed to regenerate attachment target for attachment type: {}", ToUnderlying(attachment.type));
 						}
 					}
 				}

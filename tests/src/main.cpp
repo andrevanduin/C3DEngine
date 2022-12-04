@@ -2,7 +2,6 @@
 #include "test_manager.h"
 #include <core/logger.h>
 
-#include "containers/array.h"
 #include "containers/array_tests.h"
 #include "memory/linear_allocator_tests.h"
 #include "memory/dynamic_allocator_tests.h"
@@ -11,31 +10,31 @@
 #include "containers/dynamic_array_tests.h"
 #include "containers/ring_queue_tests.h"
 #include "containers/string_tests.h"
-
-#include "core/memory.h"
-
-#include "services/services.h"
+#include "memory/global_memory_system.h"
+#include "memory/stack_allocator_tests.h"
 
 int main(int argc, char** argv)
 {
-	constexpr C3D::MemorySystemConfig config{ MebiBytes(64), true };
-
 	C3D::Logger::Init();
-	C3D::Services::InitMemory(config);
-
+	C3D::GlobalMemorySystem::Init({ MebiBytes(64) });
+	
 	TestManager manager;
 
-	Array::RegisterTests(&manager);
-	HashTable::RegisterTests(&manager);
-	HashMap::RegisterTests(&manager);
-	RingQueue::RegisterTests(&manager);
 	LinearAllocator::RegisterTests(&manager);
 	DynamicAllocator::RegisterTests(&manager);
+	StackAllocator::RegisterTests(&manager);
+
+	Array::RegisterTests(&manager);
 	DynamicArray::RegisterTests(&manager);
 	String::RegisterTests(&manager);
 
+	HashTable::RegisterTests(&manager);
+	HashMap::RegisterTests(&manager);
+	RingQueue::RegisterTests(&manager);
+	
 	C3D::Logger::Debug("Starting tests...");
 	manager.RunTests();
 
+	C3D::GlobalMemorySystem::Destroy();
 	return 0;
 }

@@ -57,21 +57,9 @@ namespace C3D
 		return true;
 	}
 
-	void RenderViewUi::OnResize(const u32 width, const u32 height)
+	void RenderViewUi::OnResize()
 	{
-		// Only resize if the width or height changed
-		if (width != m_width || height != m_height)
-		{
-			m_width = static_cast<u16>(width);
-			m_height = static_cast<u16>(height);
-
-			m_projectionMatrix = glm::orthoRH_NO(0.0f, static_cast<f32>(width), static_cast<f32>(height), 0.0f, m_nearClip, m_farClip);
-
-			for (const auto pass : passes)
-			{
-				pass->renderArea = ivec4(0, 0, width, height);
-			}
-		}
+		m_projectionMatrix = glm::orthoRH_NO(0.0f, static_cast<f32>(m_width), static_cast<f32>(m_height), 0.0f, m_nearClip, m_farClip);
 	}
 
 	bool RenderViewUi::OnBuildPacket(void* data, RenderViewPacket* outPacket)
@@ -106,9 +94,9 @@ namespace C3D
 		return true;
 	}
 
-	bool RenderViewUi::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex) const
+	bool RenderViewUi::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex)
 	{
-		for (auto pass : passes)
+		for (const auto pass : passes)
 		{
 			const auto shaderId = m_shader->id;
 

@@ -20,7 +20,7 @@ namespace C3D
 		m_logger.Info("Shutting Down");
 		for (auto& [events] : m_registered)
 		{
-			if (!events.empty()) events.clear();
+			if (!events.Empty()) events.Clear();
 		}
 	}
 
@@ -36,14 +36,14 @@ namespace C3D
 			}
 		}
 
-		events.push_back(onEvent);
+		events.PushBack(onEvent);
 		return true;
 	}
 
 	bool EventSystem::UnRegister(const u16 code, IEventCallback* onEvent)
 	{
 		auto& events = m_registered[code].events;
-		if (events.empty())
+		if (events.Empty())
 		{
 			m_logger.Warn("Tried to UnRegister Event for a code that has no events");
 			return false;
@@ -52,7 +52,7 @@ namespace C3D
 		const auto it = std::find_if(events.begin(), events.end(), [&](IEventCallback* e) { return e->Equals(onEvent); });
 		if (it != events.end())
 		{
-			events.erase(it);
+			events.Erase(it);
 			return true;
 		}
 
@@ -60,10 +60,10 @@ namespace C3D
 		return false;
 	}
 
-	bool EventSystem::Fire(const u16 code, void* sender, const EventContext data)
+	bool EventSystem::Fire(const u16 code, void* sender, const EventContext data) const
 	{
-		auto& events = m_registered[code].events;
-		if (events.empty())
+		const auto& events = m_registered[code].events;
+		if (events.Empty())
 		{
 			return false;
 		}

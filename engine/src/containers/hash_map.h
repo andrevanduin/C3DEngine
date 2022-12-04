@@ -1,8 +1,8 @@
 
 #pragma once
 #include "core/defines.h"
-#include "core/memory.h"
 #include "services/services.h"
+#include "memory/global_memory_system.h"
 
 namespace C3D
 {
@@ -26,7 +26,7 @@ namespace C3D
 				// We start at the element after our current element (which is at m_index)
 				for (auto i = m_index + 1; i < m_map->m_size; i++)
 				{
-					if (m_map->m_elements[i].occupied)
+					if (m_map->m_nodes[i].occupied)
 					{
 						// We found a new element that is occupied so we store it's index as our new m_index
 						m_index = i;
@@ -62,7 +62,7 @@ namespace C3D
 			// Dereference operator
 			Reference operator*() const
 			{
-				return m_map->m_elements[m_index].element;
+				return m_map->m_nodes[m_index].element;
 			}
 
 			// Pre and post-increment operators
@@ -104,7 +104,7 @@ namespace C3D
 		HashMap(const HashMap&) = delete;
 		HashMap(HashMap&&) = delete;
 
-		HashMap& operator=(const HashMap&) = delete;
+		HashMap& operator=(const HashMap& other);
 		HashMap& operator=(HashMap&&) = delete;
 
 		~HashMap();
@@ -114,7 +114,10 @@ namespace C3D
 
 		void Set(const Key& key, const Value& value);
 
+		void Delete(const Key& key);
+
 		Value& Get(const Key& key);
+		Value& GetByIndex(u64 index) const;
 
 		bool Has(const Key& key);
 
@@ -123,17 +126,55 @@ namespace C3D
 		[[nodiscard]] HashMapIterator begin() const;
 		[[nodiscard]] HashMapIterator end() const;
 
+		[[nodiscard]] u64 Size() const	{ return m_size;	}
+		[[nodiscard]] u64 Count() const { return m_count;	}
+
+		[[nodiscard]] u64 GetIndex(const Key& key) const;
 	private:
-		HashMapNode* m_elements;
+		HashMapNode* m_nodes;
 
 		u64 m_size;
+		u64 m_count;
 		HashFunc m_hashCompute;
 	};
 
 	template <class Key, class Value, class HashFunc>
 	HashMap<Key, Value, HashFunc>::HashMap()
-		: m_elements(nullptr), m_size(0)
+		: m_nodes(nullptr), m_size(0), m_count(0)
 	{}
+
+	template <class Key, class Value, class HashFunc>
+	HashMap<Key, Value, HashFunc>& HashMap<Key, Value, HashFunc>::operator=(const HashMap& other)
+	{
+		if (this != &other)
+		{
+			// Allocate enough space for the same amount of nodes as other has
+			m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, other.m_size);
+			// Copy over the values from other
+			m_size = other.m_size;
+			m_count = other.m_count;
+			m_hashCompute = other.m_hashCompute;
+
+			// Invalidate all nodes in our array except if at this location other has an occupied element
+			for (u64 i = 0; i < other.m_size; i++)
+			{
+				const auto otherNode = other.m_nodes[i];
+				if (otherNode.occupied)
+				{
+					// The other node is occupied so we need to copy over this node
+					m_nodes[i].occupied = true;
+					m_nodes[i].element = otherNode.element;
+				}
+				else
+				{
+					// The other node is empty so we don't need to do anything here
+					m_nodes[i].occupied = false;
+				}
+			}
+
+		}
+		return *this;
+	}
 
 	template <class Key, class Value, class HashFunc>
 	HashMap<Key, Value, HashFunc>::~HashMap()
@@ -145,13 +186,13 @@ namespace C3D
 	void HashMap<Key, Value, HashFunc>::Create(const u64 size)
 	{
 		// Allocate enough memory for all the elements and indices pointing to them
-		m_elements = Memory.Allocate<HashMapNode>(size, MemoryType::HashMap);
+		m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, size);
 		m_size = size;
 
 		// Invalidate all entries
 		for (u64 i = 0; i < m_size; i++)
 		{
-			m_elements[i].occupied = false;
+			m_nodes[i].occupied = false;
 		}
 	}
 
@@ -161,16 +202,17 @@ namespace C3D
 		// Call the destructor for all elements
 		for (u64 i = 0; i < m_size; i++)
 		{
-			m_elements[i].element.~Value();
+			m_nodes[i].element.~Value();
 		}
 
 		// If this HashMap is created we free all it's dynamically allocated memory
-		if (m_size > 0 && m_elements)
+		if (m_size > 0 && m_nodes)
 		{
-			Memory.Free(m_elements, sizeof(HashMapNode) * m_size, MemoryType::HashMap);
-			m_elements = nullptr;
+			Memory.Free(MemoryType::HashMap, m_nodes);
+			m_nodes = nullptr;
 
 			m_size = 0;
+			m_count = 0;
 		}
 	}
 
@@ -178,37 +220,76 @@ namespace C3D
 	void HashMap<Key, Value, HashFunc>::Set(const Key& key, const Value& value)
 	{
 		const auto hash = m_hashCompute(key, m_size);
-		m_elements[hash].occupied = true;
-		m_elements[hash].element = value;
+		auto& node = m_nodes[hash];
+
+		// If the slot was not occupied yet we increment the count
+		if (!node.occupied)
+		{
+			m_count++;
+		}
+
+		node.occupied = true;
+		node.element = value;
+	}
+
+	template <class Key, class Value, class HashFunc>
+	void HashMap<Key, Value, HashFunc>::Delete(const Key& key)
+	{
+		const auto hash = m_hashCompute(key, m_size);
+		if (!m_nodes[hash].occupied)
+		{
+			throw std::invalid_argument("Key could not be found");
+		}
+
+		// Set the occupied flag to false
+		m_nodes[hash].occupied = false;
+		// Call the destructor for the element
+		m_nodes[hash].element.~Value();
+		// Zero out the memory
+		Platform::Zero(&m_nodes[hash].element);
+		// Decrement the count to keep track of how many elements we are currently storing
+		m_count--;
 	}
 
 	template <class Key, class Value, class HashFunc>
 	Value& HashMap<Key, Value, HashFunc>::Get(const Key& key)
 	{
 		const auto hash = m_hashCompute(key, m_size);
-		if (!m_elements[hash].occupied)
+		if (!m_nodes[hash].occupied)
 		{
 			throw std::invalid_argument("Key could not be found");
 		}
-		return m_elements[hash].element;
+		return m_nodes[hash].element;
+	}
+
+	template <class Key, class Value, class HashFunc>
+	Value& HashMap<Key, Value, HashFunc>::GetByIndex(const u64 index) const
+	{
+		return m_nodes[index].element;
+	}
+
+	template <class Key, class Value, class HashFunc>
+	u64 HashMap<Key, Value, HashFunc>::GetIndex(const Key& key) const
+	{
+		return m_hashCompute(key, m_size);
 	}
 
 	template <class Key, class Value, class HashFunc>
 	bool HashMap<Key, Value, HashFunc>::Has(const Key& key)
 	{
 		const auto hash = m_hashCompute(key, m_size);
-		return m_elements[hash].occupied;
+		return m_nodes[hash].occupied;
 	}
 
 	template <class Key, class Value, class HashFunc>
 	Value& HashMap<Key, Value, HashFunc>::operator[](const Key& key)
 	{
 		const auto hash = m_hashCompute(key, m_size);
-		if (!m_elements[hash].occupied)
+		if (!m_nodes[hash].occupied)
 		{
 			throw std::invalid_argument("Key could not be found");
 		}
-		return m_elements[hash].element;
+		return m_nodes[hash].element;
 	}
 
 	template <class Key, class Value, class HashFunc>

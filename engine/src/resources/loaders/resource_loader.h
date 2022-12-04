@@ -1,7 +1,6 @@
 
 #pragma once
 #include "core/logger.h"
-#include "core/memory.h"
 #include "resources/resource_types.h"
 
 namespace C3D

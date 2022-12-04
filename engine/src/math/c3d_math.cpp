@@ -39,33 +39,8 @@ namespace C3D
 		return abs(x);
 	}
 
-	i32 Random()
+	f64 Abs(const f64 x)
 	{
-		if (!RAND_SEEDED)
-		{
-			srand(static_cast<u32>(Platform::GetAbsoluteTime()));
-			RAND_SEEDED = true;
-		}
-		return rand();
-	}
-
-	i32 RandomInRange(const i32 min, const i32 max)
-	{
-		if (!RAND_SEEDED)
-		{
-			srand(static_cast<u32>(Platform::GetAbsoluteTime()));
-			RAND_SEEDED = true;
-		}
-		return (rand() % (max - min + 1)) + min;
-	}
-
-	f32 RandomF()
-	{
-		return Random() / static_cast<f32>(RAND_MAX);
-	}
-
-	f32 RandomInRangeF(const f32 min, const f32 max)
-	{
-		return min + (static_cast<f32>(Random()) / (static_cast<f32>(RAND_MAX) / (max - min)));
+		return abs(x);
 	}
 }

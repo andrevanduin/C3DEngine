@@ -27,6 +27,7 @@ namespace C3D
 
 	// Smallest positive number where 1.0 + FLOAT_EPSILON != 0
 	constexpr auto FLOAT_EPSILON = 1.192092896e-07f;
+	constexpr auto FLOAT_EPSILON_F64 = 1.192092896e-07;
 
 	C3D_INLINE bool IsPowerOf2(const u64 value)
 	{
@@ -59,14 +60,15 @@ namespace C3D
 	C3D_API f32 ACos(f32 x);
 	C3D_API f32 Sqrt(f32 x);
 	C3D_API f32 Abs(f32 x);
+	C3D_API f64 Abs(f64 x);
 
-	C3D_API i32 Random();
-	C3D_API i32 RandomInRange(i32 min, i32 max);
+	C3D_API C3D_INLINE bool EpsilonEqual(const f32 a, const f32 b, const f32 tolerance = FLOAT_EPSILON)
+	{
+		if (Abs(a - b) > tolerance) return false;
+		return true;
+	}
 
-	C3D_API f32 RandomF();
-	C3D_API f32 RandomInRangeF(f32 min, f32 max);
-
-	C3D_API C3D_INLINE bool EpsilonEqual(const float a, const float b, const f32 tolerance = FLOAT_EPSILON)
+	C3D_API C3D_INLINE bool EpsilonEqual(const f64 a, const f64 b, const f64 tolerance = FLOAT_EPSILON_F64)
 	{
 		if (Abs(a - b) > tolerance) return false;
 		return true;

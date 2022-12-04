@@ -2,7 +2,6 @@
 #include "vulkan_device.h"
 #include "vulkan_types.h"
 
-#include "core/memory.h"
 #include "core/logger.h"
 #include "services/services.h"
 
@@ -90,6 +89,8 @@ namespace C3D
 			}
 		}
 
+		Metrics.SetAllocatorAvailableSpace(GPU_ALLOCATOR_ID, GibiBytes(gpuMemory));
+
 		m_logger.Info("GPU            - {}", properties.deviceName);
 		m_logger.Info("GPU Memory     - {:.2f}GiB", gpuMemory);
 		m_logger.Info("Driver Version - {}.{}.{}", VK_VERSION_MAJOR(driverVersion), VK_VERSION_MINOR(driverVersion), VK_VERSION_PATCH(driverVersion));
@@ -112,12 +113,12 @@ namespace C3D
 
 		if (swapChainSupport.formats && swapChainSupport.formatCount)
 		{
-			Memory.Free(swapChainSupport.formats, sizeof(VkSurfaceFormatKHR) * swapChainSupport.formatCount, MemoryType::RenderSystem);
+			Memory.Free(MemoryType::RenderSystem, swapChainSupport.formats);
 		}
 
 		if (swapChainSupport.presentModes && swapChainSupport.presentModeCount)
 		{
-			Memory.Free(swapChainSupport.presentModes, sizeof(VkSurfaceFormatKHR) * swapChainSupport.presentModeCount, MemoryType::RenderSystem);
+			Memory.Free(MemoryType::RenderSystem, swapChainSupport.presentModes);
 		}
 	}
 
@@ -131,7 +132,7 @@ namespace C3D
 		{
 			if (!supportInfo->formats)
 			{
-				supportInfo->formats = Memory.Allocate<VkSurfaceFormatKHR>(supportInfo->formatCount, MemoryType::RenderSystem);
+				supportInfo->formats = Memory.Allocate<VkSurfaceFormatKHR>(MemoryType::RenderSystem, supportInfo->formatCount);
 			}
 
 			VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &supportInfo->formatCount, supportInfo->formats))
@@ -143,7 +144,7 @@ namespace C3D
 		{
 			if (!supportInfo->presentModes)
 			{
-				supportInfo->presentModes = Memory.Allocate<VkPresentModeKHR>(supportInfo->presentModeCount, MemoryType::RenderSystem);
+				supportInfo->presentModes = Memory.Allocate<VkPresentModeKHR>(MemoryType::RenderSystem, supportInfo->presentModeCount);
 			}
 
 			VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &supportInfo->presentModeCount, supportInfo->presentModes))

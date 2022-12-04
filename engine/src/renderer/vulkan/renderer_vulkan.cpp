@@ -14,7 +14,6 @@
 #include "core/logger.h"
 #include "core/application.h"
 #include "core/c3d_string.h"
-#include "core/memory.h"
 #include "core/events/event.h"
 #include "core/events/event_context.h"
 #include "renderer/renderer_frontend.h"
@@ -49,7 +48,7 @@ namespace C3D
 		// The spec states that we should return nullptr if size == 0
 		if (size == 0) return nullptr;
 
-		void* result = Memory.AllocateAligned(size, static_cast<u16>(alignment), MemoryType::Vulkan);
+		void* result = Memory.AllocateBlock(MemoryType::Vulkan, size, static_cast<u16>(alignment));
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 		Logger::Trace("[VULKAN_ALLOCATE] - {} (Size = {}B, Alignment = {}).", fmt::ptr(result), size, alignment);
 #endif
@@ -75,7 +74,7 @@ namespace C3D
 		u16 alignment;
 		if (Memory.GetSizeAlignment(memory, &size, &alignment))
 		{
-			Memory.FreeAligned(memory, size, MemoryType::Vulkan);
+			Memory.Free(MemoryType::Vulkan, memory);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 			Logger::Trace("[VULKAN_FREE] - Block at: {} was Freed.", fmt::ptr(memory));
 #endif
@@ -126,11 +125,11 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 			Logger::Trace("[VULKAN_REALLOCATE] - Successfully reallocated to: {}. Copying data.", fmt::ptr(result));
 #endif
-			Memory.Copy(result, original, allocSize);
+			Platform::Copy(result, original, allocSize);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 			Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", fmt::ptr(original));
 #endif
-			Memory.FreeAligned(original, allocSize, MemoryType::Vulkan);
+			Memory.Free(MemoryType::Vulkan, original);
 		}
 		else
 		{
@@ -151,7 +150,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 		Logger::Trace("[VULKAN_EXTERNAL_ALLOCATE] - Allocation of size {}.", size);
 #endif
-		Memory.AllocateReport(size, MemoryType::VulkanExternal);
+		Metrics.Allocate(Memory.GetId(), MemoryType::VulkanExternal, size, size);
 	}
 
 	/*
@@ -163,7 +162,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 		Logger::Trace("[VULKAN_EXTERNAL_FREE] - Free of size {}.", size);
 #endif
-		Memory.FreeReport(size, MemoryType::VulkanExternal);
+		Metrics.Free(Memory.GetId(), MemoryType::VulkanExternal, size, size);
 	}
 
 	bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks)
@@ -352,7 +351,7 @@ namespace C3D
 #if C3D_VULKAN_USE_CUSTOM_ALLOCATOR == 1
 		if (m_context.allocator)
 		{
-			Memory.Free(m_context.allocator, sizeof(VkAllocationCallbacks), MemoryType::RenderSystem);
+			Memory.Free(MemoryType::RenderSystem, m_context.allocator);
 			m_context.allocator = nullptr;
 		}
 #endif
@@ -537,7 +536,7 @@ namespace C3D
 		{
 			attachmentViews[i] = static_cast<VulkanImage*>(attachments[i].texture->internalData)->view;
 		}
-		Memory.Copy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
+		Platform::Copy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
 
 		// Setup our frameBuffer creation
 		VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
@@ -559,7 +558,7 @@ namespace C3D
 			target->internalFrameBuffer = nullptr;
 			if (freeInternalMemory)
 			{
-				Memory.Free(target->attachments, sizeof(RenderTargetAttachment) * target->attachmentCount, MemoryType::Array);
+				Memory.Free(MemoryType::Array, target->attachments);
 				target->attachmentCount = 0;
 				target->attachments = nullptr;
 			}
@@ -580,7 +579,7 @@ namespace C3D
 	bool RendererVulkan::DestroyRenderPass(RenderPass* pass)
 	{
 		pass->Destroy();
-		Memory.FreeAligned(pass, sizeof(VulkanRenderPass), MemoryType::RenderSystem);
+		Memory.Free(MemoryType::RenderSystem, pass);
 		return true;
 	}
 
@@ -594,7 +593,7 @@ namespace C3D
 	bool RendererVulkan::DestroyRenderBuffer(RenderBuffer* buffer)
 	{
 		buffer->Destroy();
-		Memory.FreeAligned(buffer, sizeof(VulkanBuffer), MemoryType::RenderSystem);
+		Memory.Free(MemoryType::RenderSystem, buffer);
 		return true;
 	}
 
@@ -881,11 +880,11 @@ namespace C3D
 		if (data)
 		{
 			data->image.Destroy(&m_context);
-			Memory.Zero(&data->image, sizeof(VulkanImage));
-			Memory.Free(texture->internalData, sizeof(VulkanTextureData), MemoryType::Texture);
+			Platform::Zero(&data->image);
+			Memory.Free(MemoryType::Texture, texture->internalData);
 		}
 		
-		Memory.Zero(texture, sizeof(Texture));
+		Platform::Zero(texture);
 	}
 
 	bool RendererVulkan::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
@@ -1006,7 +1005,7 @@ namespace C3D
 			}
 
 			// Clean up data
-			Memory.Zero(internalData, sizeof(VulkanGeometryData));
+			Platform::Zero(internalData);
 			internalData->id = INVALID_ID;
 			internalData->generation = INVALID_ID;
 		}
@@ -1080,16 +1079,16 @@ namespace C3D
 		}
 
 		// Zero out arrays and counts
-		Memory.Zero(vulkanShader->config.descriptorSets, sizeof(VulkanDescriptorSetConfig) * 2);
+		Platform::Zero(vulkanShader->config.descriptorSets, sizeof(VulkanDescriptorSetConfig) * 2);
 		vulkanShader->config.descriptorSets[0].samplerBindingIndex = INVALID_ID_U8;
 		vulkanShader->config.descriptorSets[1].samplerBindingIndex = INVALID_ID_U8;
 
 		// Zero out attribute arrays
-		Memory.Zero(vulkanShader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VULKAN_SHADER_MAX_ATTRIBUTES);
+		Platform::Zero(vulkanShader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VULKAN_SHADER_MAX_ATTRIBUTES);
 
 		// Get the uniform counts
 		vulkanShader->ZeroOutCounts();
-		for (auto& uniform : config.uniforms)
+		for (const auto& uniform : config.uniforms)
 		{
 			switch (uniform.scope)
 			{
@@ -1228,10 +1227,10 @@ namespace C3D
 			}
 
 			// Destroy the configuration
-			Memory.Zero(&vulkanShader->config, sizeof(VulkanShaderConfig));
+			Platform::Zero(&vulkanShader->config, sizeof(VulkanShaderConfig));
 
 			// Free the api (Vulkan in this case) specific data from the shader
-			Memory.Free(shader->apiSpecificData, sizeof(VulkanShader), MemoryType::Shader);
+			Memory.Free(MemoryType::Shader, shader->apiSpecificData);
 			shader->apiSpecificData = nullptr;
 		}
 	}
@@ -1333,7 +1332,7 @@ namespace C3D
 		scissor.extent.height = m_context.frameBufferHeight;
 
 		VkPipelineShaderStageCreateInfo stageCreateInfos[VULKAN_SHADER_MAX_STAGES];
-		Memory.Zero(stageCreateInfos, sizeof(VkPipelineShaderStageCreateInfo)* VULKAN_SHADER_MAX_STAGES);
+		Platform::Zero(stageCreateInfos, sizeof(VkPipelineShaderStageCreateInfo)* VULKAN_SHADER_MAX_STAGES);
 		for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
 		{
 			stageCreateInfos[i] = vulkanShader->stages[i].shaderStageCreateInfo;
@@ -1494,7 +1493,7 @@ namespace C3D
 		if (needsUpdate)
 		{
 			VkWriteDescriptorSet descriptorWrites[2]; // Always a max of 2 descriptor sets
-			Memory.Zero(descriptorWrites, sizeof(VkWriteDescriptorSet) * 2);
+			Platform::Zero(descriptorWrites, sizeof(VkWriteDescriptorSet) * 2);
 			u32 descriptorCount = 0;
 			u32 descriptorIndex = 0;
 
@@ -1654,7 +1653,7 @@ namespace C3D
 		if (shader->instanceTextureCount > 0)
 		{
 			// Wipe out the memory for the entire array, even if it isn't all used.
-			instanceState->instanceTextureMaps = Memory.Allocate<TextureMap*>(shader->instanceTextureCount, MemoryType::Array);
+			instanceState->instanceTextureMaps = Memory.Allocate<TextureMap*>(MemoryType::Array, shader->instanceTextureCount);
 			Texture* defaultTexture = Textures.GetDefault();
 			// Set all the texture pointers to default until assigned
 			for (u32 i = 0; i < instanceTextureCount; i++)
@@ -1680,7 +1679,7 @@ namespace C3D
 
 		// Each descriptor binding in the set
 		const u32 bindingCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindingCount;
-		Memory.Zero(setState->descriptorStates, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
+		Platform::Zero(setState->descriptorStates, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
 		for (u32 i = 0; i < bindingCount; i++)
 		{
 			for (u32 j = 0; j < 3; j++)
@@ -1729,12 +1728,12 @@ namespace C3D
 		}
 
 		// Destroy descriptor states
-		Memory.Zero(instanceState->descriptorSetState.descriptorStates, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
+		Platform::Zero(instanceState->descriptorSetState.descriptorStates, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
 
 		// Free the memory for the instance texture pointer array
 		if (instanceState->instanceTextureMaps)
 		{
-			Memory.Free(instanceState->instanceTextureMaps, sizeof(TextureMap*) * shader->instanceTextureCount, MemoryType::Array);
+			Memory.Free(MemoryType::Array, instanceState->instanceTextureMaps);
 			instanceState->instanceTextureMaps = nullptr;
 		}
 
@@ -1816,7 +1815,7 @@ namespace C3D
 				// Map the appropriate memory location and copy the data over.
 				auto address = static_cast<u8*>(internal->mappedUniformBufferBlock);
 				address += shader->boundUboOffset + uniform->offset;
-				Memory.Copy(address, value, uniform->size);
+				Platform::Copy(address, value, uniform->size);
 			}
 		}
 

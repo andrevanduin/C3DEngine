@@ -35,8 +35,6 @@ namespace C3D
 		outResource->fullPath = fullPath;
 		outResource->config.cullMode = FaceCullMode::Back;
 
-		outResource->config.name = nullptr;
-
 		outResource->config.attributes.Reserve(4);
 		outResource->config.uniforms.Reserve(8);
 
@@ -84,7 +82,7 @@ namespace C3D
 			}
 			else if (varName.IEquals("name"))
 			{
-				outResource->config.name = StringDuplicate(value.Data());
+				outResource->config.name = value;
 			}
 			else if (varName.IEquals("renderPass"))
 			{
@@ -142,28 +140,15 @@ namespace C3D
 		data->stages.Clear();
 
 		// Cleanup attributes
-		for (auto& attribute : data->attributes)
-		{
-			const auto count = StringLength(attribute.name) + 1;
-			Memory.Free(attribute.name, count, MemoryType::String);
-			attribute.name = nullptr;
-		}
 		data->attributes.Destroy();
 
 		// Cleanup uniforms
-		for (auto& uniform : data->uniforms)
-		{
-			const auto count = StringLength(uniform.name) + 1;
-			Memory.Free(uniform.name, count, MemoryType::String);
-			uniform.name = nullptr;
-		}
 		data->uniforms.Destroy();
 
 		//Memory.Free(data->renderPassName, StringLength(data->renderPassName) + 1, MemoryType::String);
 		//data->renderPassName = nullptr;
 
-		Memory.Free(data->name, StringLength(data->name) + 1, MemoryType::String);
-		data->name = nullptr;
+		data->name.Destroy();
 
 		resource->name.Destroy();
 		resource->fullPath.Destroy();
@@ -271,9 +256,7 @@ namespace C3D
 			attribute.type = Attribute_Float32;
 			attribute.size = 4;
 		}
-
-		attribute.nameLength = static_cast<u8>(fields[1].Size()) + 1;
-		attribute.name = StringDuplicate(fields[1].Data());
+		attribute.name = fields[1];
 
 		data->attributes.PushBack(attribute);
 	}
@@ -362,8 +345,7 @@ namespace C3D
 			uniform.scope = ShaderScope::Global;
 		}
 
-		uniform.nameLength = static_cast<u8>(StringLength(fields[2].Data()));
-		uniform.name = StringDuplicate(fields[2].Data());
+		uniform.name = fields[2];
 
 		data->uniforms.PushBack(uniform);
 	}

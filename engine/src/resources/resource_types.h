@@ -3,11 +3,6 @@
 #include "core/defines.h"
 #include "containers/string.h"
 
-#include "texture.h"
-
-#include "services/services.h"
-#include "core/memory.h"
-
 namespace C3D
 {
 	constexpr auto BINARY_RESOURCE_FILE_MAGIC_NUMBER = 0xC3DC3D;

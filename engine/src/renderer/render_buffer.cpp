@@ -1,7 +1,7 @@
 
 #include "render_buffer.h"
 
-#include "core/memory.h"
+#include "memory/global_memory_system.h"
 #include "services/services.h"
 
 namespace C3D
@@ -23,7 +23,7 @@ namespace C3D
 			// Get the memory requirements for our freelist
 			m_freeListMemoryRequirement = FreeList::GetMemoryRequirement(totalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
 			// Allocate enough space for our freelist
-			m_freeListBlock = Memory.Allocate(m_freeListMemoryRequirement, MemoryType::RenderSystem);
+			m_freeListBlock = Memory.AllocateBlock(MemoryType::RenderSystem, m_freeListMemoryRequirement);
 			// Create the freelist
 			m_freeList.Create(m_freeListBlock, m_freeListMemoryRequirement, SMALLEST_POSSIBLE_FREELIST_ALLOCATION, totalSize);
 		}
@@ -36,7 +36,7 @@ namespace C3D
 		{
 			// We are using a freelist
 			m_freeList.Destroy();
-			Memory.Free(m_freeListBlock, m_freeListMemoryRequirement, MemoryType::RenderSystem);
+			Memory.Free(MemoryType::RenderSystem, m_freeListBlock);
 			m_freeListMemoryRequirement = 0;
 		}
 	}
@@ -76,7 +76,7 @@ namespace C3D
 			// We are using a freelist so we should resize it first.
 			const u64 newMemoryRequirement = FreeList::GetMemoryRequirement(newTotalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
 			// Allocate enough space for our freelist
-			void* newMemory = Memory.Allocate(newMemoryRequirement, MemoryType::RenderSystem);
+			void* newMemory = Memory.AllocateBlock(MemoryType::RenderSystem, newMemoryRequirement);
 			// A pointer to our old memory block (which will get populated by the resize method)
 			void* oldMemory = nullptr;
 			// Resize our freelist
@@ -84,12 +84,12 @@ namespace C3D
 			{
 				// Our resize failed
 				m_logger.Error("Resize() - Failed to resize internal freelist.");
-				Memory.Free(newMemory, newMemoryRequirement, MemoryType::RenderSystem);
+				Memory.Free(MemoryType::RenderSystem, newMemory);
 				return false;
 			}
 
 			// Free our old memory and store our new info
-			Memory.Free(oldMemory, m_freeListMemoryRequirement, MemoryType::RenderSystem);
+			Memory.Free(MemoryType::RenderSystem, oldMemory);
 			m_freeListMemoryRequirement = newMemoryRequirement;
 			m_freeListBlock = newMemory;
 		}

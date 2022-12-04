@@ -46,6 +46,7 @@ namespace C3D
 		bool Read(DynamicArray<T>& data);
 
 		bool ReadAll(char* outBytes, u64* outBytesRead);
+		bool ReadAll(String& outChars);
 
 		// Deprecated
 		bool Write(u64 dataSize, const void* data, u64* outBytesWritten);

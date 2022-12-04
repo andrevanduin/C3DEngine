@@ -3,7 +3,6 @@
 
 #include "core/c3d_string.h"
 #include "core/logger.h"
-#include "core/memory.h"
 #include "math/geometry_utils.h"
 
 #include "systems/material_system.h"
@@ -23,7 +22,7 @@ namespace C3D
 	{
 		m_config = config;
 
-		m_registeredGeometries = Memory.Allocate<GeometryReference>(m_config.maxGeometryCount, MemoryType::Geometry);
+		m_registeredGeometries = Memory.Allocate<GeometryReference>(MemoryType::Geometry, m_config.maxGeometryCount);
 
 		const u32 count = m_config.maxGeometryCount;
 		for (u32 i = 0; i < count; i++)
@@ -45,7 +44,7 @@ namespace C3D
 
 	void GeometrySystem::Shutdown() const
 	{
-		Memory.Free(m_registeredGeometries, sizeof(GeometryReference) * m_config.maxGeometryCount, MemoryType::Geometry);
+		Memory.Free(MemoryType::Geometry, m_registeredGeometries);
 	}
 
 	Geometry* GeometrySystem::AcquireById(const u32 id) const
@@ -379,7 +378,7 @@ namespace C3D
 		// Create default geometry
 		constexpr u32 vertexCount = 4;
 		Vertex3D vertices[vertexCount];
-		Memory.Zero(vertices, sizeof(Vertex3D) * vertexCount);
+		Platform::Zero(vertices, sizeof(Vertex3D) * vertexCount);
 
 		constexpr f32 f = 10.0f;
 
@@ -418,7 +417,7 @@ namespace C3D
 
 		// Create default 2d geometry
 		Vertex2D vertices2d[vertexCount];
-		Memory.Zero(vertices2d, sizeof(Vertex2D) * 4);
+		Platform::Zero(vertices2d, sizeof(Vertex2D) * 4);
 
 		vertices2d[0].position.x = -0.5f * f;
 		vertices2d[0].position.y = -0.5f * f;

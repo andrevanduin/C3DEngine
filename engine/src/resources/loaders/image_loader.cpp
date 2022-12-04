@@ -2,7 +2,6 @@
 #include "image_loader.h"
 
 #include "core/logger.h"
-#include "core/memory.h"
 #include "core/c3d_string.h"
 #include "platform/filesystem.h"
 
@@ -78,7 +77,7 @@ namespace C3D
 		i32 channelCount;
 
 		// Allocate enough space for everything in the file
-		const auto rawData = Memory.Allocate<u8>(fileSize, MemoryType::Texture);
+		const auto rawData = Memory.Allocate<u8>(MemoryType::Texture, fileSize);
 		if (!rawData)
 		{
 			m_logger.Error("Load() - Unable to allocate memory to store raw data for '{}'.", fullPath);
@@ -105,7 +104,7 @@ namespace C3D
 			return false;
 		}
 
-		Memory.Free(rawData, fileSize, MemoryType::Texture);
+		Memory.Free(MemoryType::Texture, rawData);
 		
 		outResource->data.pixels = data;
 		outResource->data.width = width;

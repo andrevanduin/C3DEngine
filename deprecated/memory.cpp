@@ -94,7 +94,7 @@ namespace C3D
 		m_stats.taggedAllocations[t].count++;
 
 		// TODO: Memory alignment
-		void* block = m_allocator.AllocateAligned(size, alignment);
+		void* block = m_allocator.AllocateBlock(size, alignment);
 		Platform::ZeroOutMemory(block, size);
 
 		return block;
@@ -138,10 +138,7 @@ namespace C3D
 		m_stats.taggedAllocations[t].size -= size;
 		m_stats.taggedAllocations[t].count--;
 
-		if (!m_allocator.FreeAligned(block))
-		{
-			m_logger.Fatal("FreeAligned() - Failed to free memory with dynamic allocator.");
-		}
+		m_allocator.Free(block);
 	}
 
 	void MemorySystem::FreeReport(const u64 size, MemoryType type)

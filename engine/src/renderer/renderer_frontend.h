@@ -28,7 +28,7 @@ namespace C3D
 
 		void OnResize(u16 width, u16 height);
 
-		bool DrawFrame(const RenderPacket* packet);
+		bool DrawFrame(RenderPacket* packet);
 
 		void SetViewport(const vec4& rect) const;
 		void ResetViewport() const;

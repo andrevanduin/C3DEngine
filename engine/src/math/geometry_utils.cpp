@@ -1,7 +1,6 @@
 
 #include "geometry_utils.h"
 
-#include "core/memory.h"
 #include "services/services.h"
 #include "math/c3d_math.h"
 
@@ -149,7 +148,7 @@ namespace C3D::GeometryUtils
 		// Store the current vertex count
 		const u64 oldVertexCount = config.vertices.Size();
 		// Allocate enough memory for the worst case where every vertex is unique
-		auto* uniqueVertices = Memory.Allocate<Vertex3D>(oldVertexCount, MemoryType::Array);
+		auto* uniqueVertices = Memory.Allocate<Vertex3D>(MemoryType::Array, oldVertexCount);
 
 		u32 foundCount = 0;
 		for (u32 v = 0; v < oldVertexCount; v++)
@@ -178,7 +177,7 @@ namespace C3D::GeometryUtils
 		// Copy over the unique vertices (resizing the dynamic array to fit the smaller amount)
 		config.vertices.Copy(uniqueVertices, uniqueVertexCount);
 		// Destroy our temporary array
-		Memory.Free(uniqueVertices, sizeof(Vertex3D) * oldVertexCount, MemoryType::Array);
+		Memory.Free(MemoryType::Array, uniqueVertices);
 
 		u64 removedCount = oldVertexCount - uniqueVertexCount;
 		Logger::Debug("GeometryUtils::DeduplicateVertices() - removed {} vertices, Originally: {} | Now: {}", removedCount, oldVertexCount, uniqueVertexCount);

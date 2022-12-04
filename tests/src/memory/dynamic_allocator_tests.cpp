@@ -7,10 +7,10 @@
 #include "../expect.h"
 #include "../util.h"
 
-#include <memory/dynamic_allocator.h>
+#include <memory/allocators/dynamic_allocator.h>
 
 #include <core/defines.h>
-#include <core/memory.h>
+#include <memory/global_memory_system.h>
 
 #include <services/services.h>
 
@@ -30,18 +30,18 @@ u8 DynamicAllocatorShouldCreateAndDestroy()
     constexpr u64 usableMemory = MebiBytes(16);
     constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
 
-    const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
+    const auto memoryBlock = Memory.AllocateBlock(C3D::MemoryType::DynamicAllocator, neededMemory);
 
     C3D::DynamicAllocator allocator;
     allocator.Create(memoryBlock, neededMemory, usableMemory);
 
-    ExpectShouldBe(neededMemory, Memory.GetMemoryUsage(C3D::MemoryType::DynamicAllocator));
+	ExpectShouldBe(neededMemory, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicAllocator));
 
     allocator.Destroy();
 
-    Memory.Free(memoryBlock, neededMemory, C3D::MemoryType::DynamicAllocator);
+    Memory.Free(C3D::MemoryType::DynamicAllocator, memoryBlock);
 
-    ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicAllocator));
+    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicAllocator));
 
     return true;
 }
@@ -70,7 +70,7 @@ bool MakeAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator&
         }
 
         // Keep track of the pointer to our data so we can check it later
-        allocation.dataPtr = static_cast<char*>(allocator.AllocateAligned(allocSize, alignment));
+        allocation.dataPtr = static_cast<char*>(allocator.AllocateBlock(C3D::MemoryType::Test, allocSize, alignment));
         // Also keep track of our alignment so we can verify it later on
         allocation.alignment = alignment;
 
@@ -95,13 +95,22 @@ bool MakeAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator&
     return true;
 }
 
+template <u64 Size>
+void CleanupAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator)
+{
+	for (auto& allocation : data)
+	{
+        allocator.Free(C3D::MemoryType::Test, allocation.dataPtr);
+	}
+}
+
 u8 DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees()
 {
     constexpr u64 amountOfAllocations = 4000;
     constexpr u64 usableMemory = MebiBytes(16);
     constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
 
-    const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
+    const auto memoryBlock = Memory.AllocateBlock(C3D::MemoryType::DynamicAllocator, neededMemory);
 
     Util util;
 
@@ -117,17 +126,17 @@ u8 DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees()
         // Generate a random size for our allocation between 4 bytes and 4 KibiBytes
         const auto allocSize = util.GenerateRandom<u64>(4, KibiBytes(4));
         // Provided an alignment of 1 since we will ignore alignment for this test
-        allocation = allocator.AllocateAligned(allocSize, 1);
+        allocation = allocator.AllocateBlock(C3D::MemoryType::Test, allocSize, 1);
         ExpectShouldNotBe(nullptr, allocation);
     }
 
     for (const auto allocation : allocations)
     {
-        ExpectShouldBe(true, allocator.FreeAligned(allocation));
+        allocator.Free(C3D::MemoryType::Test, allocation);
     }
 
     allocator.Destroy();
-    Memory.Free(memoryBlock, neededMemory, C3D::MemoryType::DynamicAllocator);
+    Memory.Free(C3D::MemoryType::DynamicAllocator, memoryBlock);
 
 	return true;
 }
@@ -159,7 +168,7 @@ u8 DynamicAllocatorShouldHaveNoDataCorruption()
     constexpr u64 usableMemory = MebiBytes(16);
     constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
 
-    const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
+    const auto memoryBlock = Memory.AllocateBlock(C3D::MemoryType::DynamicAllocator, neededMemory);
 
     Util util;
 
@@ -175,8 +184,11 @@ u8 DynamicAllocatorShouldHaveNoDataCorruption()
     // Verify that all our data is still correct
     if (!IsDataCorrect(allocations)) return false;
 
+    // Cleanup our data
+    CleanupAllocations(allocations, allocator);
+
     allocator.Destroy();
-    Memory.Free(memoryBlock, neededMemory, C3D::MemoryType::DynamicAllocator);
+    Memory.Free(C3D::MemoryType::DynamicAllocator, memoryBlock);
 
     return true;
 }
@@ -192,7 +204,7 @@ bool FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllo
         auto& alloc = data[i];
         if (alloc.size != 0)
         {
-            ExpectShouldBe(true, allocator.FreeAligned(alloc.dataPtr));
+            allocator.Free(C3D::MemoryType::Test, alloc.dataPtr);
             alloc.size = 0;
             alloc.dataPtr = nullptr;
             alloc.data = 0;
@@ -208,7 +220,7 @@ u8 DynamicAllocatorShouldHaveNoDataCorruptionWithFrees()
     constexpr u64 usableMemory = MebiBytes(16);
     constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
 
-    const auto memoryBlock = Memory.Allocate(neededMemory, C3D::MemoryType::DynamicAllocator);
+    const auto memoryBlock = Memory.AllocateBlock(C3D::MemoryType::DynamicAllocator, neededMemory);
 
     Util util;
 
@@ -237,14 +249,18 @@ u8 DynamicAllocatorShouldHaveNoDataCorruptionWithFrees()
     // Verify our memory again
     if (!IsDataCorrect(allocations)) return false;
 
+    // Cleanup our data
+    CleanupAllocations(allocations, allocator);
+
     allocator.Destroy();
-    Memory.Free(memoryBlock, neededMemory, C3D::MemoryType::DynamicAllocator);
+    Memory.Free(C3D::MemoryType::DynamicAllocator, memoryBlock);
 
     return true;
 }
 
 void DynamicAllocator::RegisterTests(TestManager* manager)
 {
+    manager->StartType("Dynamic Allocator");
     manager->Register(DynamicAllocatorShouldCreateAndDestroy, "Dynamic Allocator should create and destroy.");
     manager->Register(DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees, "Dynamic Allocator should always allocate and free for lot's of random allocations");
     manager->Register(DynamicAllocatorShouldHaveNoDataCorruption, "Dynamic Allocator should always allocate without data corruption");

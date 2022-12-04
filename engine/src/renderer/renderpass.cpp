@@ -1,6 +1,6 @@
 #include "renderpass.h"
 
-#include "core/memory.h"
+#include "memory/global_memory_system.h"
 #include "services/services.h"
 
 namespace C3D
@@ -12,14 +12,14 @@ namespace C3D
 	RenderPass::RenderPass(const RenderPassConfig& config)
 		: id(INVALID_ID_U16), renderArea(config.renderArea), renderTargetCount(config.renderTargetCount), targets(nullptr), m_clearFlags(config.clearFlags), m_clearColor(config.clearColor)
 	{
-		targets = Memory.Allocate<RenderTarget>(config.renderTargetCount, MemoryType::Array);
+		targets = Memory.Allocate<RenderTarget>(MemoryType::Array, config.renderTargetCount);
 
 		// Copy over config for each target
 		for (u32 t = 0; t < renderTargetCount; t++)
 		{
 			auto& target = targets[t];
 			target.attachmentCount = config.target.attachmentCount;
-			target.attachments = Memory.Allocate<RenderTargetAttachment>(target.attachmentCount, MemoryType::Array);
+			target.attachments = Memory.Allocate<RenderTargetAttachment>(MemoryType::Array, target.attachmentCount);
 
 			// Each attachment for the target
 			for (u32 a = 0; a < target.attachmentCount; a++)
@@ -40,7 +40,7 @@ namespace C3D
 	{
 		if (targets && renderTargetCount > 0)
 		{
-			Memory.Free(targets, renderTargetCount * sizeof(RenderTarget), MemoryType::Array);
+			Memory.Free(MemoryType::Array, targets);
 			targets = nullptr;
 		}
 	}

@@ -6,7 +6,9 @@
 
 #include <containers/dynamic_array.h>
 #include <core/defines.h>
+#include <core/metrics.h>
 
+#include "containers/string.h"
 #include "renderer/vertex.h"
 
 u8 DynamicArrayShouldCreateAndDestroy()
@@ -16,14 +18,14 @@ u8 DynamicArrayShouldCreateAndDestroy()
 	ExpectShouldBe(10, array.Capacity());
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldNotBe(nullptr, (void*)array.GetData());
-	ExpectShouldBe(sizeof(int) * 10, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	array.Destroy();
 
 	ExpectShouldBe(0, array.Capacity());
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldBe(nullptr, (void*)array.GetData());
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	return true;
 }
@@ -36,14 +38,14 @@ u8 DynamicArrayShouldReserve()
 	ExpectShouldBe(10, array.Capacity());
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldNotBe(nullptr, (void*)array.GetData());
-	ExpectShouldBe(sizeof(int) * 10, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	array.Destroy();
 
 	ExpectShouldBe(0, array.Capacity());
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldBe(nullptr, (void*)array.GetData());
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	return true;
 }
@@ -59,7 +61,7 @@ u8 DynamicArrayShouldReserveWithElementsPresent()
 
 	ExpectShouldBe(12, array.Capacity());
 	ExpectShouldBe(2, array.Size());
-	ExpectShouldBe(sizeof(int) * 12, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(sizeof(int) * 12, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	ExpectShouldBe(1, array[0]);
 	ExpectShouldBe(2, array[1]);
@@ -69,7 +71,7 @@ u8 DynamicArrayShouldReserveWithElementsPresent()
 	ExpectShouldBe(0, array.Capacity());
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldBe(nullptr, (void*)array.GetData());
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	return true;
 }
@@ -81,7 +83,7 @@ u8 DynamicArrayShouldResize()
 
 	ExpectShouldBe(10, array.Capacity());
 	ExpectShouldBe(10, array.Size());
-	ExpectShouldBe(sizeof(int) * 10, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	for (int i = 0; i < 10; i++)
 	{
@@ -93,7 +95,7 @@ u8 DynamicArrayShouldResize()
 	ExpectShouldBe(0, array.Capacity());
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldBe(nullptr, (void*)array.GetData());
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	return true;
 }
@@ -104,7 +106,7 @@ u8 DynamicArrayShouldAllocateLargeBlocks()
 
 	ExpectShouldBe(32768, array.Capacity());
 	ExpectShouldBe(0, array.Size());
-	ExpectShouldBe(sizeof(C3D::Vertex3D) * 32768, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(sizeof(C3D::Vertex3D) * 32768, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	constexpr auto element = C3D::Vertex3D{ vec3(0), vec3(0), vec2(1), vec4(1), vec4(4) };
 	array.PushBack(element);
@@ -116,12 +118,11 @@ u8 DynamicArrayShouldAllocateLargeBlocks()
 	ExpectShouldBe(element.tangent, array[0].tangent);
 
 	array.Destroy();
-	array.Destroy();
 
 	ExpectShouldBe(0, array.Capacity());
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldBe(nullptr, (void*)array.GetData());
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	return true;
 }
@@ -132,7 +133,7 @@ u8 DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize()
 
 	ExpectShouldBe(4, array.Capacity());
 	ExpectShouldBe(0, array.Size());
-	ExpectShouldBe(sizeof(C3D::Vertex3D) * 4, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(sizeof(C3D::Vertex3D) * 4, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	constexpr auto element = C3D::Vertex3D{ vec3(0), vec3(0), vec2(1), vec4(1), vec4(4) };
 	array.PushBack(element);
@@ -147,7 +148,7 @@ u8 DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize()
 
 	ExpectShouldBe(32768, array.Capacity());
 	ExpectShouldBe(1, array.Size());
-	ExpectShouldBe(sizeof(C3D::Vertex3D) * 32768, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(sizeof(C3D::Vertex3D) * 32768, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	ExpectShouldBe(element.position, array[0].position);
 	ExpectShouldBe(element.normal, array[0].normal);
@@ -160,7 +161,7 @@ u8 DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize()
 	ExpectShouldBe(0, array.Capacity());
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldBe(nullptr, (void*)array.GetData());
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	return true;
 }
@@ -173,7 +174,7 @@ u8 DynamicArrayShouldIterate()
 	array.PushBack(2);
 
 	int counter = 0;
-	for (auto& item : array)
+	for (auto& elem : array)
 	{
 		counter++;
 	}
@@ -184,25 +185,39 @@ u8 DynamicArrayShouldIterate()
 
 u8 DynamicArrayShouldDestroyWhenLeavingScope()
 {
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 
 	{
-		C3D::DynamicArray<std::string> array;
+		C3D::DynamicArray<C3D::String> array;
 		array.PushBack("Test");
 		array.PushBack("Test2");
 	}
 
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 	return true;
 }
 
 struct TestElement
 {
-	TestElement(int* c)
+	explicit TestElement(int* c)
 	{
 		pCounter = c;
 		*pCounter += 1;
 	}
+
+	TestElement(const TestElement&) = delete;
+	TestElement(TestElement&&) = delete;
+
+	TestElement& operator=(const TestElement& other)
+	{
+		if (this != &other)
+		{
+			pCounter = other.pCounter;
+		}
+		return *this;
+	}
+	
+	TestElement& operator=(TestElement&&) = delete;
 
 	~TestElement()
 	{
@@ -244,6 +259,89 @@ u8 DynamicArrayShouldCallDestructorsOfElementsWhenGoingOutOfScope()
 	return true;
 }
 
+u8 DynamicArrayShouldFindAndErase()
+{
+	C3D::DynamicArray<int> array;
+
+	array.PushBack(5);
+	array.PushBack(6);
+	array.PushBack(7);
+	array.PushBack(8);
+
+	const auto it = std::find(array.begin(), array.end(), 6);
+	array.Erase(it);
+
+	ExpectShouldBe(5, array[0]);
+	ExpectShouldBe(7, array[1]);
+	ExpectShouldBe(8, array[2]);
+
+	return true;
+}
+
+u8 DynamicArrayShouldInsert()
+{
+	C3D::DynamicArray array = { 1, 2, 4, 5 };
+	array.Insert(array.begin() + 2, 3);
+
+	for (u64 i = 0; i < array.Size(); i++)
+	{
+		ExpectShouldBe(i + 1, array[i]);
+	}
+
+	return true;
+}
+
+u8 DynamicArrayShouldInsertRange()
+{
+	C3D::DynamicArray array = { 1, 6 };
+	C3D::DynamicArray range = { 2, 3, 4, 5 };
+
+	array.Insert(array.begin() + 1, range.begin(), range.end());
+
+	for (u64 i = 0; i < array.Size(); i++)
+	{
+		ExpectShouldBe(i + 1, array[i]);
+	}
+
+	return true;
+}
+
+u8 DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled()
+{
+	C3D::DynamicArray array = { 0, 1, 2, 3 };
+	array.Reserve(32);
+
+	for (u64 i = 0; i < array.Size(); i++)
+	{
+		ExpectShouldBe(i, array[i]);
+	}
+
+	return true;
+}
+
+u8 DynamicArrayShouldShrinkCorrectly()
+{
+	C3D::DynamicArray<int> array;
+	// We make sure our capacity is quite high
+	array.Reserve(16);
+	// Then we add elements (but not enough to fill the array)
+	array.PushBack(1);
+	array.PushBack(2);
+	array.PushBack(3);
+	array.PushBack(4);
+
+	ExpectShouldNotBe(array.Size(), array.Capacity());
+	ExpectShouldBe(4, array.Size());
+
+	array.ShrinkToFit();
+
+	// After shrinking our capacity should match our size
+	ExpectShouldBe(array.Size(), array.Capacity());
+	ExpectShouldBe(4, array.Size());
+
+	return true;
+}
+
 void DynamicArray::RegisterTests(TestManager* manager)
 {
 	manager->StartType("DynamicArray");
@@ -257,4 +355,9 @@ void DynamicArray::RegisterTests(TestManager* manager)
 	manager->Register(DynamicArrayShouldDestroyWhenLeavingScope, "Dynamic array should be automatically destroyed and cleaned up after leaving scope");
 	manager->Register(DynamicArrayShouldCallDestructorsOfElementsWhenDestroyed, "Dynamic array should automatically call the destructor of every element when it is destroyed");
 	manager->Register(DynamicArrayShouldCallDestructorsOfElementsWhenGoingOutOfScope, "Dynamic array should automatically call the destructor of every element when it goes out of scope");
+	manager->Register(DynamicArrayShouldFindAndErase, "Dynamic array should erase elements based on iterator and move all elements after it to the left");
+	manager->Register(DynamicArrayShouldInsert, "Dynamic array should insert elements at a random iterator location");
+	manager->Register(DynamicArrayShouldInsertRange, "Dynamic array should insert range of elements at a random iterator location");
+	manager->Register(DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled, "If you call reserve on a dynamic array with elements already present they should be preserved");
+	manager->Register(DynamicArrayShouldShrinkCorrectly, "Dynamic array should shrink correctly");
 }

@@ -20,7 +20,6 @@ namespace C3D
 		string name;
 		i32 x, y;
 		i32 width, height;
-		MemorySystemConfig memorySystemConfig;
 	};
 
 	struct ApplicationState
@@ -41,6 +40,13 @@ namespace C3D
 	{
 	public:
 		explicit Application(const ApplicationConfig& config);
+
+		Application(const Application&) = delete;
+		Application(Application&&) = delete;
+
+		Application& operator=(const Application&) = delete;
+		Application& operator=(Application&&) = delete;
+
 		virtual ~Application();
 
 		void Run();

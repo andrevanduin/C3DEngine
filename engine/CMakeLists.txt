@@ -9,6 +9,8 @@ add_library(C3DEngine SHARED ${C3DEngine_SRC})
 
 add_compile_definitions(C3D_EXPORT)
 add_compile_definitions(C3D_PLATFORM_WINDOWS)
+add_compile_definitions(C3D_DEBUG_MEMORY_USAGE)
+add_compile_definitions(C3D_DEBUG_MALLOC_ALLOCATOR)
 # add_compile_definitions(C3D_TRACE_ALLOCS)
 
 find_package(Vulkan REQUIRED)

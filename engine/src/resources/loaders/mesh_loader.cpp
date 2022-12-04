@@ -113,7 +113,7 @@ namespace C3D
 		char materialFileName[512];
 
 		char name[512];
-		Memory.Zero(name, sizeof(char) * 512);
+		Platform::Zero(name, sizeof(char) * 512);
 
 		u8 currentMaterialNameCount = 0;
 		char materialNames[32][64];
@@ -184,12 +184,12 @@ namespace C3D
 
 						outGeometries.PushBack(newData);
 						groups[i].faces.Destroy();
-						Memory.Zero(materialNames[i], 64);
+						Platform::Zero(materialNames[i], 64);
 					}
 
 					currentMaterialNameCount = 0;
 					groups.Clear();
-					Memory.Zero(name, 512);
+					Platform::Zero(name, 512);
 
 					char t[2];
 					sscanf(line.data(), "%s %s", t, name);
@@ -221,7 +221,7 @@ namespace C3D
 		{
 			// Load up the material file
 			char fullMtlPath[512];
-			Memory.Zero(fullMtlPath, sizeof(char) * 512);
+			Platform::Zero(fullMtlPath, sizeof(char) * 512);
 
 			FileSystem::DirectoryFromPath(fullMtlPath, outCsmFileName);
 			StringAppend(fullMtlPath, fullMtlPath, materialFileName);

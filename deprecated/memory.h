@@ -4,48 +4,10 @@
 #include "containers/array.h"
 
 #include "systems/system.h"
-#include "memory/dynamic_allocator.h"
+#include "memory/allocators/dynamic_allocator.h"
 
 namespace C3D
 {
-	enum class MemoryType : u8
-	{
-		Unknown,
-		DynamicAllocator,
-		LinearAllocator,
-		FreeList,
-		Array,
-		DynamicArray,
-		HashTable,
-		HashMap,
-		RingQueue,
-		Bst,
-		String,
-		C3DString,
-		Application,
-		ResourceLoader,
-		Job,
-		Texture,
-		MaterialInstance,
-		Geometry,
-		RenderSystem,
-		Game,
-		Transform,
-		Entity,
-		EntityNode,
-		Scene,
-		Shader,
-		Resource,
-		Vulkan,
-		VulkanExternal,
-		Direct3D,
-		OpenGL,
-		GpuLocal,
-		BitmapFont,
-		SystemFont,
-		MaxType,
-	};
-
 	struct MemoryAllocation
 	{
 		u64 size;
@@ -157,6 +119,6 @@ namespace C3D
 	T* MemorySystem::Allocate(const u64 count, const MemoryType type)
 	{
 		return static_cast<T*>(AllocateAligned(sizeof(T) * count, alignof(T), type));
-	}
+	}*/
 }
 

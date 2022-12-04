@@ -1,7 +1,6 @@
 
 #include "application.h"
 #include "logger.h"
-#include "memory.h"
 #include "input.h"
 #include "clock.h"
 #include "containers/string.h"
@@ -19,7 +18,6 @@
 //
 
 #include "identifier.h"
-#include "utils.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/geometry_system.h"
 #include "systems/material_system.h"
@@ -37,11 +35,8 @@ namespace C3D
 		: m_logger("APPLICATION"), m_meshes{}, m_hoveredObjectId(0), m_uiMeshes{}
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice");
-		
-		Logger::Init();
-		m_logger.Info("Starting");
 
-		Services::InitMemory(config.memorySystemConfig);
+		m_logger.Info("Starting");
 
 		m_state.name = config.name;
 		m_state.width = config.width;
@@ -125,8 +120,6 @@ namespace C3D
 		fontSystemConfig.maxBitmapFontCount = 101;
 		fontSystemConfig.maxSystemFontCount = 101;
 
-		Identifier::Init();
-
 		Services::Init(this, jobSystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, 
 			cameraSystemConfig, viewSystemConfig, fontSystemConfig);
 
@@ -160,10 +153,10 @@ namespace C3D
 		skyboxPasses[0].stencil = 0;
 
 		RenderTargetAttachmentConfig skyboxTargetAttachment = {};
-		skyboxTargetAttachment.type = RenderTargetAttachmentTypeColor;
-		skyboxTargetAttachment.source = RenderTargetAttachmentSourceDefault;
-		skyboxTargetAttachment.loadOperation = RenderTargetAttachmentLoadOperationDontCare;
-		skyboxTargetAttachment.storeOperation = RenderTargetAttachmentStoreOperationStore;
+		skyboxTargetAttachment.type = RenderTargetAttachmentType::Color;
+		skyboxTargetAttachment.source = RenderTargetAttachmentSource::Default;
+		skyboxTargetAttachment.loadOperation = RenderTargetAttachmentLoadOperation::DontCare;
+		skyboxTargetAttachment.storeOperation = RenderTargetAttachmentStoreOperation::Store;
 		skyboxTargetAttachment.presentAfter = false;
 
 		skyboxPasses[0].target.attachmentCount = 1;
@@ -194,16 +187,16 @@ namespace C3D
 		worldPasses[0].stencil = 0;
 
 		RenderTargetAttachmentConfig worldTargetAttachments[2]{};
-		worldTargetAttachments[0].type = RenderTargetAttachmentTypeColor;
-		worldTargetAttachments[0].source = RenderTargetAttachmentSourceDefault;
-		worldTargetAttachments[0].loadOperation = RenderTargetAttachmentLoadOperationLoad;
-		worldTargetAttachments[0].storeOperation = RenderTargetAttachmentStoreOperationStore;
+		worldTargetAttachments[0].type = RenderTargetAttachmentType::Color;
+		worldTargetAttachments[0].source = RenderTargetAttachmentSource::Default;
+		worldTargetAttachments[0].loadOperation = RenderTargetAttachmentLoadOperation::Load;
+		worldTargetAttachments[0].storeOperation = RenderTargetAttachmentStoreOperation::Store;
 		worldTargetAttachments[0].presentAfter = false;
 
-		worldTargetAttachments[1].type = RenderTargetAttachmentTypeDepth;
-		worldTargetAttachments[1].source = RenderTargetAttachmentSourceDefault;
-		worldTargetAttachments[1].loadOperation = RenderTargetAttachmentLoadOperationDontCare;
-		worldTargetAttachments[1].storeOperation = RenderTargetAttachmentStoreOperationStore;
+		worldTargetAttachments[1].type = RenderTargetAttachmentType::Depth;
+		worldTargetAttachments[1].source = RenderTargetAttachmentSource::Default;
+		worldTargetAttachments[1].loadOperation = RenderTargetAttachmentLoadOperation::DontCare;
+		worldTargetAttachments[1].storeOperation = RenderTargetAttachmentStoreOperation::Store;
 		worldTargetAttachments[1].presentAfter = false;
 
 		worldPasses[0].target.attachmentCount = 2;
@@ -234,10 +227,10 @@ namespace C3D
 		uiPasses[0].stencil = 0;
 
 		RenderTargetAttachmentConfig uiAttachment = {};
-		uiAttachment.type = RenderTargetAttachmentTypeColor;
-		uiAttachment.source = RenderTargetAttachmentSourceDefault;
-		uiAttachment.loadOperation = RenderTargetAttachmentLoadOperationLoad;
-		uiAttachment.storeOperation = RenderTargetAttachmentStoreOperationStore;
+		uiAttachment.type = RenderTargetAttachmentType::Color;
+		uiAttachment.source = RenderTargetAttachmentSource::Default;
+		uiAttachment.loadOperation = RenderTargetAttachmentLoadOperation::Load;
+		uiAttachment.storeOperation = RenderTargetAttachmentStoreOperation::Store;
 		uiAttachment.presentAfter = true;
 
 		uiPasses[0].target.attachmentCount = 1;
@@ -249,6 +242,65 @@ namespace C3D
 		if (!Views.Create(uiViewConfig))
 		{
 			m_logger.Fatal("Failed to create view '{}'.", uiViewConfig.name);
+		}
+
+		RenderViewConfig pickViewConfig = {};
+		pickViewConfig.type = RenderViewKnownType::Pick;
+		pickViewConfig.width = 1280;
+		pickViewConfig.height = 720;
+		pickViewConfig.name = "pick";
+		pickViewConfig.passCount = 2;
+		pickViewConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
+
+		RenderPassConfig pickPasses[2] = {};
+
+		pickPasses[0].name = "RenderPass.Builtin.WorldPick";
+		pickPasses[0].renderArea = { 0, 0, 1280, 720 };
+		pickPasses[0].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // HACK: Clear to white for better visibility (should be 0 since it's invalid id)
+		pickPasses[0].clearFlags = RenderPassClearFlags::ClearColorBuffer | RenderPassClearFlags::ClearDepthBuffer;
+		pickPasses[0].depth = 1.0f;
+		pickPasses[0].stencil = 0;
+
+		RenderTargetAttachmentConfig worldPickTargetAttachments[2];
+		worldPickTargetAttachments[0].type = RenderTargetAttachmentType::Color;
+		worldPickTargetAttachments[0].source = RenderTargetAttachmentSource::View;
+		worldPickTargetAttachments[0].loadOperation = RenderTargetAttachmentLoadOperation::DontCare;
+		worldPickTargetAttachments[0].storeOperation = RenderTargetAttachmentStoreOperation::Store;
+		worldPickTargetAttachments[0].presentAfter = false;
+
+		worldPickTargetAttachments[1].type = RenderTargetAttachmentType::Depth;
+		worldPickTargetAttachments[1].source = RenderTargetAttachmentSource::View;
+		worldPickTargetAttachments[1].loadOperation = RenderTargetAttachmentLoadOperation::DontCare;
+		worldPickTargetAttachments[1].storeOperation = RenderTargetAttachmentStoreOperation::Store;
+		worldPickTargetAttachments[1].presentAfter = false;
+
+		pickPasses[0].target.attachmentCount = 2;
+		pickPasses[0].target.attachments = worldPickTargetAttachments;
+		pickPasses[0].renderTargetCount = 1;
+
+		pickPasses[1].name = "RenderPass.Builtin.UIPick";
+		pickPasses[1].renderArea = { 0, 0, 1280, 720 };
+		pickPasses[1].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+		pickPasses[1].clearFlags = RenderPassClearFlags::ClearNone;
+		pickPasses[1].depth = 1.0f;
+		pickPasses[1].stencil = 0;
+
+		RenderTargetAttachmentConfig uiPickTargetAttachments[1];
+		uiPickTargetAttachments[0].type = RenderTargetAttachmentType::Color;
+		uiPickTargetAttachments[0].source = RenderTargetAttachmentSource::View;
+		uiPickTargetAttachments[0].loadOperation = RenderTargetAttachmentLoadOperation::Load;
+		uiPickTargetAttachments[0].storeOperation = RenderTargetAttachmentStoreOperation::Store;
+		uiPickTargetAttachments[0].presentAfter = false;
+
+		pickPasses[1].target.attachmentCount = 1;
+		pickPasses[1].target.attachments = uiPickTargetAttachments;
+		pickPasses[1].renderTargetCount = 1;
+
+		pickViewConfig.passes = pickPasses;
+
+		if (!Views.Create(pickViewConfig))
+		{
+			m_logger.Fatal("Failed to Create pick view.");
 		}
 
 		// Init material and geometry system since they need the shader created above
@@ -415,6 +467,10 @@ namespace C3D
 		m_uiMeshes[0].geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
 		m_uiMeshes[0].geometries[0] = Geometric.AcquireFromConfig(uiConfig, true);
 		m_uiMeshes[0].generation = 0;
+
+		auto rotation = angleAxis(DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
+		m_uiMeshes[0].transform.Rotate(rotation);
+
 		// TEMP END
 
 		m_state.initialized = true;
@@ -444,11 +500,10 @@ namespace C3D
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 
 		{
-			const auto memStr = Utils::GenerateMemoryUsageString(Memory);
-			m_logger.Info(memStr.Data());
+			Metrics.PrintMemoryUsage();
 
 			RenderPacket packet = {};
-			packet.views.Resize(3); // Ensure enough space for 3 views so we only allocate once
+			packet.views.Resize(4); // Ensure enough space for 3 views so we only allocate once
 
 			SkyboxPacketData skyboxData = {};
 			skyboxData.box = &m_skybox;
@@ -542,6 +597,18 @@ namespace C3D
 						return;
 					}
 
+					PickPacketData pickPacketData = {};
+					pickPacketData.uiMeshData = uiPacketData.meshData;
+					pickPacketData.worldMeshData = worldMeshData;
+					pickPacketData.texts = uiPacketData.texts;
+
+					// Pick
+					if (!Views.BuildPacket(Views.Get("pick"), &pickPacketData, &packet.views[3]))
+					{
+						m_logger.Error("Failed to build packet for view 'pick'");
+						return;
+					}
+
 					if (!Renderer.DrawFrame(&packet))
 					{
 						m_logger.Warn("DrawFrame() failed");
@@ -624,7 +691,7 @@ namespace C3D
 		{
 			if (mesh.generation != INVALID_ID_U8 && mesh.geometries && mesh.geometryCount > 0)
 			{
-				Memory.Free(mesh.geometries, mesh.geometryCount * sizeof(Geometry*), MemoryType::Array);
+				Memory.Free(MemoryType::Array, mesh.geometries);
 				mesh.geometries = nullptr;
 				mesh.geometryCount = 0;
 			}
@@ -634,7 +701,7 @@ namespace C3D
 		{
 			if (mesh.generation != INVALID_ID_U8 && mesh.geometries && mesh.geometryCount > 0)
 			{
-				Memory.Free(mesh.geometries, mesh.geometryCount * sizeof(Geometry*), MemoryType::Array);
+				Memory.Free(MemoryType::Array, mesh.geometries);
 				mesh.geometries = nullptr;
 				mesh.geometryCount = 0;
 			}

@@ -43,7 +43,7 @@ namespace C3D
 		}
 
 		// TODO: should be using an allocator here
-		outResource->data = Memory.Allocate<char>(fileSize, MemoryType::Array);
+		outResource->data = Memory.Allocate<char>(MemoryType::Array, fileSize);
 		outResource->name = name;
 
 		if (!file.ReadAll(outResource->data, &outResource->size))
@@ -59,7 +59,7 @@ namespace C3D
 
 	void ResourceLoader<BinaryResource>::Unload(BinaryResource* resource)
 	{
-		Memory.Free(resource->data, resource->size, MemoryType::Array);
+		Memory.Free(MemoryType::Array, resource->data);
 		resource->data = nullptr;
 
 		resource->name.Destroy();

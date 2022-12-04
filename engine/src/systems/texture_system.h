@@ -5,9 +5,9 @@
 
 #include <array>
 
+#include "system.h"
 #include "containers/hash_table.h"
 #include "core/logger.h"
-#include "resources/resource_types.h"
 #include "resources/loaders/image_loader.h"
 
 namespace C3D
@@ -34,7 +34,11 @@ namespace C3D
 	/* @brief Parameters that you provide for loading a Texture. Will also be used as the result data for the job. */
 	struct TextureLoadParams
 	{
-		char* resourceName;
+		TextureLoadParams()
+			: outTexture(nullptr), currentGeneration(INVALID_ID), imageResource()
+		{}
+
+		String resourceName;
 		Texture* outTexture;
 		Texture tempTexture;
 		u32 currentGeneration;

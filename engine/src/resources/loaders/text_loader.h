@@ -6,18 +6,7 @@ namespace C3D
 {
 	struct TextResource final : Resource
 	{
-		~TextResource()
-		{
-			if (text)
-			{
-				Memory.Free(text, size, MemoryType::Array);
-				text = nullptr;
-				size = 0;
-			}
-		}
-
-		char* text;
-		u64 size;
+		String text;
 	};
 
 	template <>

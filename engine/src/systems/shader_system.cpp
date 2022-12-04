@@ -1,9 +1,6 @@
 
 #include "shader_system.h"
 
-#include "core/c3d_string.h"
-#include "core/memory.h"
-
 #include "services/services.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/texture_system.h"
@@ -11,7 +8,7 @@
 namespace C3D
 {
 	ShaderSystem::ShaderSystem()
-		: System("SHADER_SYSTEM"), m_currentShaderId(0), m_shaders(nullptr)
+		: System("SHADER_SYSTEM"), m_currentShaderId(0)
 	{}
 
 	bool ShaderSystem::Init(const ShaderSystemConfig& config)
@@ -23,94 +20,63 @@ namespace C3D
 		}
 
 		m_config = config;
-		m_shaders = Memory.Allocate<Shader>(m_config.maxShaderCount, MemoryType::Shader);
 		m_currentShaderId = INVALID_ID;
 
-		// Invalidate all shaders
-		for (u32 i = 0; i < m_config.maxShaderCount; i++)
-		{
-			m_shaders[i].id = INVALID_ID;
-			m_shaders[i].frameNumber = INVALID_ID_U64;
-		}
-
-		m_nameToIdMap.Create(config.maxShaderCount);
+		m_shaders.Create(config.maxShaderCount);
 		return true;
 	}
 
 	void ShaderSystem::Shutdown()
 	{
-		for (u32 i = 0; i < m_config.maxShaderCount; i++)
+		for (auto& shader : m_shaders)
 		{
-			if (m_shaders[i].id != INVALID_ID)
-			{
-				ShaderDestroy(&m_shaders[i]);
-			}
+			ShaderDestroy(&shader);
 		}
-		m_nameToIdMap.Destroy();
-		Memory.Free(m_shaders, m_config.maxShaderCount * sizeof(Shader), MemoryType::Shader);
+		m_shaders.Destroy();
 	}
 
 	bool ShaderSystem::Create(RenderPass* pass, const ShaderConfig& config)
 	{
-		// Grab a new id for this shader
-		const u32 id = GetNewShaderId();
-		Shader* shader = &m_shaders[id];
-		shader->id = id;
-		if (shader->id == INVALID_ID)
+		if (m_shaders.Has(config.name))
 		{
-			m_logger.Error("Create() - Unable to find a free slot to create a new shader.");
+			m_logger.Error("Create() - A shader with the name '{}' already exists", config.name);
 			return false;
 		}
 
-		shader->state = ShaderState::NotCreated;
-		shader->name = StringDuplicate(config.name);
-		shader->pushConstantRangeCount = 0;
-		shader->boundInstanceId = INVALID_ID;
-		shader->attributeStride = 0;
+		Shader shader;
+		shader.state = ShaderState::NotCreated;
+		shader.name = config.name;
 
 		// Setup our dynamic arrays
-		shader->globalTextureMaps.Reserve(m_config.maxGlobalTextures + 1);
-		shader->attributes.Reserve(4);
-		shader->uniforms.Reserve(8);
+		shader.globalTextureMaps.Reserve(m_config.maxGlobalTextures + 1);
+		shader.attributes.Reserve(4);
 
-		// Setup HashTable for uniform lookups
-		shader->uniformLookup.Create(1024); // NOTE: Way more than we will ever need but it prevents collisions in our hashtable
-		shader->uniformLookup.Fill(INVALID_ID_U16);
-
-		// A running total of the size of the global uniform buffer object
-		shader->globalUboSize = 0;
-		// A running total of the size of the instance uniform buffer object
-		shader->uboSize = 0;
-
-		// Note: this is hard-coded because the vulkan spec only guarantees a minimum 128bytes stride
-		// The drivers might allocate more but this is not guaranteed on all video cards
-		shader->pushConstantStride = 128; 
-		shader->pushConstantSize = 0;
+		// Setup HashMap for uniform lookups
+		shader.uniforms.Create(1024); // NOTE: Way more than we will ever need but it prevents collisions in our hashtable
 
 		// Process flags
-		shader->flags = 0;
 		if (config.depthTest)
 		{
-			shader->flags |= ShaderFlagDepthTest;
+			shader.flags |= ShaderFlagDepthTest;
 		}
 		if (config.depthWrite)
 		{
-			shader->flags |= ShaderFlagDepthWrite;
+			shader.flags |= ShaderFlagDepthWrite;
 		}
 
-		if (!Renderer.CreateShader(shader, config, pass))
+		if (!Renderer.CreateShader(&shader, config, pass))
 		{
 			m_logger.Error("Create() - Failed to create shader: '{}'", config.name);
 			return false;
 		}
 
 		// Mark shader as created (but not yet initialized)
-		shader->state = ShaderState::Uninitialized;
+		shader.state = ShaderState::Uninitialized;
 
 		// Add attributes
 		for (const auto& attribute : config.attributes)
 		{
-			AddAttribute(shader, &attribute);
+			AddAttribute(&shader, &attribute);
 		}
 
 		// Add Samplers and other uniforms
@@ -118,34 +84,36 @@ namespace C3D
 		{
 			if (uniform.type == Uniform_Sampler)
 			{
-				AddSampler(shader, &uniform);
+				AddSampler(&shader, &uniform);
 			}
 			else
 			{
-				AddUniform(shader, &uniform);
+				AddUniform(&shader, &uniform);
 			}
 		}
 		 
 		// Initialize the Shader
-		if (!Renderer.InitializeShader(shader))
+		if (!Renderer.InitializeShader(&shader))
 		{
 			m_logger.Error("Create() - Initialization failed for shader: '{}'", config.name);
 			return false;
 		}
 
-		// Store the shader id in our hashtable
-		m_nameToIdMap.Set(config.name, shader->id);
+		// The id of the shader will be equal to the index in our HashMap
+		shader.id = static_cast<u32>(m_shaders.GetIndex(config.name));
+		// Store the shader in our hashtable
+		m_shaders.Set(config.name, shader);
 		return true;
 	}
 
 	u32 ShaderSystem::GetId(const char* name)
 	{
-		if (!m_nameToIdMap.Has(name))
+		if (!m_shaders.Has(name))
 		{
 			m_logger.Error("GetId() - There is no shader registered with name: '{}'", name);
 			return INVALID_ID;
 		}
-		return m_nameToIdMap.Get(name);
+		return static_cast<u32>(m_shaders.GetIndex(name));
 	}
 
 	Shader* ShaderSystem::Get(const char* name)
@@ -159,11 +127,7 @@ namespace C3D
 
 	Shader* ShaderSystem::GetById(const u32 shaderId) const
 	{
-		if (shaderId > m_config.maxShaderCount || m_shaders[shaderId].id == INVALID_ID)
-		{
-			return nullptr;
-		}
-		return &m_shaders[shaderId];
+		return &m_shaders.GetByIndex(shaderId);
 	}
 
 	bool ShaderSystem::Use(const char* name)
@@ -202,13 +166,13 @@ namespace C3D
 			return INVALID_ID_U16;
 		}
 
-		const u32 uniformIndex = shader->uniformLookup.Get(name);
-		if (uniformIndex == INVALID_ID_U16)
+		if (!shader->uniforms.Has(name))
 		{
 			m_logger.Error("GetUniformIndex() - Shader '{}' does not a have a registered uniform named '{}'", shader->name, name);
 			return INVALID_ID_U16;
 		}
-		return shader->uniforms[uniformIndex].index;
+
+		return shader->uniforms.GetIndex(name);
 	}
 
 	bool ShaderSystem::SetUniform(const char* name, const void* value) const
@@ -218,7 +182,7 @@ namespace C3D
 			m_logger.Error("SetUniform() - Called with no Shader in use.");
 			return false;
 		}
-		Shader* shader = &m_shaders[m_currentShaderId];
+		Shader* shader = &m_shaders.GetByIndex(m_currentShaderId);
 		const u16 index = GetUniformIndex(shader, name);
 		if (index == INVALID_ID_U16) 
 		{
@@ -230,8 +194,8 @@ namespace C3D
 
 	bool ShaderSystem::SetUniformByIndex(const u16 index, const void* value) const
 	{
-		Shader* shader = &m_shaders[m_currentShaderId];
-		const ShaderUniform* uniform = &shader->uniforms[index];
+		Shader* shader = &m_shaders.GetByIndex(m_currentShaderId);
+		const ShaderUniform* uniform = &shader->uniforms.GetByIndex(index);
 		if (shader->boundScope != uniform->scope)
 		{
 			if (uniform->scope == ShaderScope::Global)
@@ -259,28 +223,19 @@ namespace C3D
 
 	bool ShaderSystem::ApplyGlobal() const
 	{
-		return Renderer.ShaderApplyGlobals(&m_shaders[m_currentShaderId]);
+		return Renderer.ShaderApplyGlobals(&m_shaders.GetByIndex(m_currentShaderId));
 	}
 
 	bool ShaderSystem::ApplyInstance(const bool needsUpdate) const
 	{
-		return Renderer.ShaderApplyInstance(&m_shaders[m_currentShaderId], needsUpdate);
+		return Renderer.ShaderApplyInstance(&m_shaders.GetByIndex(m_currentShaderId), needsUpdate);
 	}
 
 	bool ShaderSystem::BindInstance(const u32 instanceId) const
 	{
-		Shader* shader = &m_shaders[m_currentShaderId];
+		Shader* shader = &m_shaders.GetByIndex(m_currentShaderId);
 		shader->boundInstanceId = instanceId;
 		return Renderer.ShaderBindInstance(shader, instanceId);
-	}
-
-	u32 ShaderSystem::GetNewShaderId() const
-	{
-		for (u16 i = 0; i < m_config.maxShaderCount; i++)
-		{
-			if (m_shaders[i].id == INVALID_ID) return i;
-		}
-		return INVALID_ID;
 	}
 
 	bool ShaderSystem::AddAttribute(Shader* shader, const ShaderAttributeConfig* config) const
@@ -320,7 +275,7 @@ namespace C3D
 
 		// Create and push the attribute
 		ShaderAttribute attribute{};
-		attribute.name = StringDuplicate(config->name);
+		attribute.name = config->name;
 		attribute.size = size;
 		attribute.type = config->type;
 		shader->attributes.PushBack(attribute);
@@ -338,7 +293,7 @@ namespace C3D
 		}
 
 		// Verify the name is valid and unique
-		if (!UniformNameIsValid(shader, config->name) || !UniformAddStateIsValid(shader))
+		if (!UniformNameIsValid(shader, config->name.Data()) || !UniformAddStateIsValid(shader))
 		{
 			return false;
 		}
@@ -385,7 +340,7 @@ namespace C3D
 			shader->instanceTextureCount++;
 		}
 
-		if (!AddUniform(shader, config->name, 0, config->type, config->scope, location, true))
+		if (!AddUniform(shader, config->name.Data(), 0, config->type, config->scope, location, true))
 		{
 			m_logger.Error("AddSampler() - Unable to add sampler uniform.");
 			return false;
@@ -396,16 +351,16 @@ namespace C3D
 
 	bool ShaderSystem::AddUniform(Shader* shader, const ShaderUniformConfig* config)
 	{
-		if (!UniformAddStateIsValid(shader) || !UniformNameIsValid(shader, config->name))
+		if (!UniformAddStateIsValid(shader) || !UniformNameIsValid(shader, config->name.Data()))
 		{
 			return false;
 		}
 		return AddUniform(shader, config->name, config->size, config->type, config->scope, 0, false);
 	}
 
-	bool ShaderSystem::AddUniform(Shader* shader, const char* name, const u16 size, const ShaderUniformType type, ShaderScope scope, const u16 setLocation, const bool isSampler)
+	bool ShaderSystem::AddUniform(Shader* shader, const String& name, const u16 size, const ShaderUniformType type, ShaderScope scope, const u16 setLocation, const bool isSampler)
 	{
-		const u16 uniformCount = static_cast<u16>(shader->uniforms.Size());
+		const u16 uniformCount = static_cast<u16>(shader->uniforms.Count());
 		if (uniformCount + 1 > m_config.maxUniformCount)
 		{
 			m_logger.Error("AddUniform() - A shader can only accept a combined maximum of {} uniforms and sampler at global, instance and local scopes.", m_config.maxUniformCount);
@@ -440,10 +395,8 @@ namespace C3D
 			shader->pushConstantSize += r.size;
 		}
 
-		// Save the uniform name in our lookup table
-		shader->uniformLookup.Set(name, &entry.index);
-		// Add the uniform to our shader
-		shader->uniforms.PushBack(entry);
+		// Save the uniform in the HashMap with the name as it's key
+		shader->uniforms.Set(name, entry);
 
 		if (!isSampler)
 		{
@@ -470,25 +423,18 @@ namespace C3D
 		// Free the global texture maps
 		for (const auto textureMap : shader->globalTextureMaps)
 		{
-			Memory.Free(textureMap, sizeof(TextureMap), MemoryType::RenderSystem);
+			Memory.Free(MemoryType::RenderSystem, textureMap);
 		}
+		// Destroy the global texture maps
 		shader->globalTextureMaps.Destroy();
-
 		// Free the name
-		if (shader->name)
-		{
-			const u64 length = StringLength(shader->name);
-			Memory.Free(shader->name, length + 1, MemoryType::String);
-		}
-		shader->name = nullptr;
+		shader->name.Destroy();
+		// Set the id to invalid so we don't accidentally use this shader after this
 		shader->id = INVALID_ID;
 
-		// Free dynamic arrays for uniforms and attributes
+		// Free the uniforms and attributes
 		shader->uniforms.Destroy();
 		shader->attributes.Destroy();
-
-		// Free the uniform lookup table
-		shader->uniformLookup.Destroy();
 	}
 
 	bool ShaderSystem::UniformAddStateIsValid(const Shader* shader) const
@@ -501,15 +447,14 @@ namespace C3D
 		return true;
 	}
 
-	bool ShaderSystem::UniformNameIsValid(Shader* shader, const char* name) const
+	bool ShaderSystem::UniformNameIsValid(Shader* shader, const String& name) const
 	{
-		if (!name || !StringLength(name))
+		if (!name)
 		{
 			m_logger.Error("Uniform name does not exist or is empty");
 			return false;
 		}
-
-		if (const auto uniformIndex = shader->uniformLookup.Get(name); uniformIndex != INVALID_ID_U16)
+		if (shader->uniforms.Has(name))
 		{
 			m_logger.Error("Shader '{}' already contains a uniform named '{}'", shader->name, name);
 			return false;

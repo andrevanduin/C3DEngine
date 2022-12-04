@@ -76,10 +76,15 @@ namespace C3D
 		virtual bool OnCreate() = 0;
 		virtual void OnDestroy();
 
-		virtual void OnResize(u32 width, u32 height) = 0;
+		/*
+		 * @brief Base method that gets called on resize and performs basic verification, sets the m_width and m_height
+		 * and resizes the view's passes then it calls the OnResize event. You can override this event if you need custom
+		 * behaviour like for example a view that does not automatically resize to the size of the screen.
+		 */
+		virtual void OnBaseResize(u32 width, u32 height);
 
 		virtual bool OnBuildPacket(void* data, RenderViewPacket* outPacket) = 0;
-		virtual bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const = 0;
+		virtual bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) = 0;
 
 		virtual bool RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment);
 
@@ -90,6 +95,9 @@ namespace C3D
 		DynamicArray<RenderPass*> passes;
 	protected:
 		bool OnRenderTargetRefreshRequired(u16 code, void* sender, EventContext context);
+
+		/* @brief Method that gets called by OnBaseResize() where you can put your basic extra OnResize behaviour. */
+		virtual void OnResize();
 
 		u16 m_width;
 		u16 m_height;
@@ -109,7 +117,7 @@ namespace C3D
 	struct RenderViewPacket
 	{
 		// @brief A constant pointer to the view this packet is associated with.
-		const RenderView* view;
+		RenderView* view;
 
 		mat4 viewMatrix;
 		mat4 projectionMatrix;

@@ -43,10 +43,10 @@ namespace C3D
 		}
 
 		// TODO: should be using an allocator here
-		outResource->text = Memory.Allocate<char>(fileSize, MemoryType::Array);
+		outResource->text.Reserve(fileSize);
 		outResource->name = name;
 
-		if (!file.ReadAll(outResource->text, &outResource->size))
+		if (!file.ReadAll(outResource->text))
 		{
 			m_logger.Error("Unable to read text file: '{}'", fullPath);
 			file.Close();
@@ -59,9 +59,7 @@ namespace C3D
 
 	void ResourceLoader<TextResource>::Unload(TextResource* resource)
 	{
-		Memory.Free(resource->text, resource->size, MemoryType::Array);
-		resource->text = nullptr;
-
+		resource->text.Destroy();
 		resource->name.Destroy();
 		resource->fullPath.Destroy();
 	}

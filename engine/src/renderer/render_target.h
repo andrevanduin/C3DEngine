@@ -5,29 +5,29 @@ namespace C3D
 {
 	struct Texture;
 
-	enum RenderTargetAttachmentType : i32
+	enum class RenderTargetAttachmentType : i8
 	{
-		RenderTargetAttachmentTypeColor = 0x01,
-		RenderTargetAttachmentTypeDepth = 0x02,
-		RenderTargetAttachmentTypeStencil = 0x04,
+		Color = 0x01,
+		Depth = 0x02,
+		Stencil = 0x04,
 	};
 
-	enum RenderTargetAttachmentSource : i32
+	enum class RenderTargetAttachmentSource : i8
 	{
-		RenderTargetAttachmentSourceDefault = 0x01,
-		RenderTargetAttachmentSourceView = 0x02,
+		Default = 0x01,
+		View = 0x02,
 	};
 
-	enum RenderTargetAttachmentLoadOperation : i32
+	enum class RenderTargetAttachmentLoadOperation : i8
 	{
-		RenderTargetAttachmentLoadOperationDontCare = 0x0,
-		RenderTargetAttachmentLoadOperationLoad = 0x1,
+		DontCare = 0x0,
+		Load = 0x1,
 	};
 
-	enum RenderTargetAttachmentStoreOperation : i32
+	enum class RenderTargetAttachmentStoreOperation : i8
 	{
-		RenderTargetAttachmentStoreOperationDontCare = 0x0,
-		RenderTargetAttachmentStoreOperationStore = 0x1,
+		DontCare = 0x0,
+		Store = 0x1,
 	};
 
 	struct RenderTargetAttachmentConfig

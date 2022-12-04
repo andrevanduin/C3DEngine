@@ -28,7 +28,7 @@ namespace C3D
 		RenderView* Get(const char* name);
 
 		bool BuildPacket(RenderView* view, void* data, RenderViewPacket* outPacket) const;
-		bool OnRender(const RenderView* view, const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const;
+		bool OnRender(RenderView* view, const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const;
 
 		void RegenerateRenderTargets(RenderView* view) const;
 

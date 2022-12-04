@@ -7,6 +7,7 @@
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 #include "resources/geometry.h"
+#include "services/services.h"
 
 namespace C3D
 {

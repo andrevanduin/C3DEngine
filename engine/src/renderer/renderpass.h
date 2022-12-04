@@ -35,13 +35,13 @@ namespace C3D
 	{
 	public:
 		RenderPass();
-		RenderPass(const RenderPassConfig& config);
+		explicit RenderPass(const RenderPassConfig& config);
 
 		RenderPass(const RenderPass&) = delete;
 		RenderPass(RenderPass&&) = delete;
 
 		RenderPass& operator=(const RenderPass&) = delete;
-		RenderPass& operator=(RenderPass&& other) noexcept;
+		RenderPass& operator=(RenderPass&& other) = delete;
 
 		virtual ~RenderPass() = default;
 

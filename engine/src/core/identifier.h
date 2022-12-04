@@ -8,7 +8,6 @@ namespace C3D
 	class Identifier
 	{
 	public:
-		static void Init();
 		static void Destroy();
 
 		static u32 GetNewId(void* owner);
@@ -16,6 +15,6 @@ namespace C3D
 		static void ReleaseId(u32 id);
 
 	private:
-		static DynamicArray<void*> s_owners;
+		static DynamicArray<void*, MallocAllocator> s_owners;
 	};
 }

@@ -1,8 +1,9 @@
 
 #pragma once
-#include "free_list.h"
+#include "base_allocator.h"
 #include "core/defines.h"
 #include "core/logger.h"
+#include "memory/free_list.h"
 
 namespace C3D
 {
@@ -17,7 +18,7 @@ namespace C3D
 	constexpr auto MAX_SINGLE_ALLOC_SIZE = GibiBytes(4);
 	constexpr auto SMALLEST_POSSIBLE_ALLOCATION = sizeof(AllocHeader) + sizeof(AllocSizeMarker) + 1 + 1;
 		
-	class C3D_API DynamicAllocator
+	class C3D_API DynamicAllocator final : public BaseAllocator
 	{
 	public:
 		DynamicAllocator();
@@ -26,11 +27,9 @@ namespace C3D
 
 		bool Destroy();
 
-		void* Allocate(u64 size);
-		void* AllocateAligned(u64 size, u16 alignment);
+		void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
 
-		bool Free(void* block, u64 size);
-		bool FreeAligned(void* block);
+		void Free(MemoryType type, void* block) override;
 
 		/* @brief Obtains the size and alignment of a given block of memory.
 		 * Will fail if the provided block of memory is invalid.
@@ -59,6 +58,8 @@ namespace C3D
 		FreeList m_freeList;
 		// A pointer to the actual block of memory that this allocator manages
 		char* m_memory;
+		// A mutex to ensure allocations happen in a thread-safe manor
+		std::mutex m_mutex;
 	};
 
 	constexpr u64 DynamicAllocator::GetMemoryRequirements(const u64 usableSize)

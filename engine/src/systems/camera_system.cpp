@@ -2,6 +2,7 @@
 #include "camera_system.h"
 
 #include "core/c3d_string.h"
+#include "memory/global_memory_system.h"
 
 namespace C3D
 {
@@ -23,7 +24,7 @@ namespace C3D
 		m_cameraLookupTable.Fill(INVALID_ID_U16);
 
 		const u16 count = config.maxCameraCount;
-		m_cameras = Memory.Allocate<CameraLookup>(config.maxCameraCount, MemoryType::RenderSystem);
+		m_cameras = Memory.Allocate<CameraLookup>(MemoryType::RenderSystem, config.maxCameraCount);
 
 		for (u16 i = 0; i < count; i++)
 		{
@@ -36,7 +37,7 @@ namespace C3D
 
 	void CameraSystem::Shutdown()
 	{
-		Memory.Free(m_cameras, sizeof(CameraLookup) * m_config.maxCameraCount, MemoryType::RenderSystem);
+		Memory.Free(MemoryType::RenderSystem, m_cameras);
 		m_cameraLookupTable.Destroy();
 	}
 
@@ -68,7 +69,7 @@ namespace C3D
 			m_logger.Trace("Acquire() - Creating new camera: '{}'", name);
 			m_cameras[id].id = id;
 
-			m_cameraLookupTable.Set(name, &id);
+			m_cameraLookupTable.Set(name, id);
 		}
 
 		m_cameras[id].referenceCount++;
@@ -91,7 +92,7 @@ namespace C3D
 			{
 				m_cameras[id].camera.Reset();
 				m_cameras[id].id = INVALID_ID_U16;
-				m_cameraLookupTable.Set(name, &m_cameras[id].id);
+				m_cameraLookupTable.Set(name, m_cameras[id].id);
 			}
 		}
 	}

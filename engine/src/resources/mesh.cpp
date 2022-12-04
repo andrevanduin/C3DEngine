@@ -18,7 +18,7 @@ namespace C3D
 		info.entryPoint = LoadJobEntryPoint;
 		info.onSuccess = LoadJobSuccess;
 		info.onFailure = LoadJobFailure;
-		info.SetData<MeshLoadParams, MeshLoadParams>(&params);
+		info.SetData<MeshLoadParams, MeshLoadParams>(params);
 
 		Jobs.Submit(info);
 		return true;
@@ -31,7 +31,7 @@ namespace C3D
 			Geometric.Release(geometries[i]);
 		}
 
-		Memory.Free(geometries, sizeof(Geometry*) * geometryCount, MemoryType::Array);
+		Memory.Free(MemoryType::Array, geometries);
 		geometries = nullptr;
 		geometryCount = 0;
 		generation = INVALID_ID_U8;
@@ -44,7 +44,7 @@ namespace C3D
 		const bool result = Resources.Load(loadParams->resourceName, &loadParams->meshResource);
 
 		// NOTE: The load params are also used as the result data here, only the meshResource field is populated now.
-		Memory.Copy(resultData, loadParams, sizeof(MeshLoadParams));
+		Platform::Copy(resultData, loadParams, sizeof(MeshLoadParams));
 
 		return result;
 	}
@@ -58,7 +58,7 @@ namespace C3D
 		const auto configCount = configs.Size();
 
 		meshParams->outMesh->geometryCount = static_cast<u16>(configCount);
-		meshParams->outMesh->geometries = Memory.Allocate<Geometry*>(configCount, MemoryType::Array);
+		meshParams->outMesh->geometries = Memory.Allocate<Geometry*>(MemoryType::Array, configCount);
 		for (u64 i = 0; i < configCount; i++)
 		{
 			meshParams->outMesh->geometries[i] = Geometric.AcquireFromConfig(configs[i], true);

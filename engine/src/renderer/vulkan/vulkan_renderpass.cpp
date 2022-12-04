@@ -3,7 +3,6 @@
 #include "vulkan_types.h"
 
 #include "core/logger.h"
-#include "core/memory.h"
 #include "services/services.h"
 
 namespace C3D
@@ -35,12 +34,12 @@ namespace C3D
 			auto& attachmentConfig = config.target.attachments[i];
 
 			VkAttachmentDescription attachmentDescription = {};
-			if (attachmentConfig.type & RenderTargetAttachmentTypeColor)
+			if (attachmentConfig.type == RenderTargetAttachmentType::Color)
 			{
 				// A color attachment
 				auto doClearColor = m_clearFlags & ClearColorBuffer;
 
-				if (attachmentConfig.source == RenderTargetAttachmentSourceDefault)
+				if (attachmentConfig.source == RenderTargetAttachmentSource::Default)
 				{
 					attachmentDescription.format = m_context->swapChain.imageFormat.format;
 				}
@@ -53,14 +52,14 @@ namespace C3D
 				attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 
 				// Determine which load operation to use.
-				if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperationDontCare)
+				if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::DontCare)
 				{
 					attachmentDescription.loadOp = doClearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				}
 				else
 				{
 					// If we are loading, check if we are also clearing. This combination doesn't make sense, so we should warn about it
-					if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperationLoad)
+					if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load)
 					{
 						if (doClearColor)
 						{
@@ -80,17 +79,17 @@ namespace C3D
 				}
 
 				// Determine which store operation to use
-				if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperationDontCare)
+				if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperation::DontCare)
 				{
 					attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 				}
-				else if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperationStore)
+				else if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperation::Store)
 				{
 					attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 				}
 				else
 				{
-					Logger::Fatal("[RENDER_PASS] - Create() - Invalid store operation ({}) set for attachment. Check your configuration.", attachmentConfig.storeOperation);
+					Logger::Fatal("[RENDER_PASS] - Create() - Invalid store operation ({}) set for attachment. Check your configuration.", ToUnderlying(attachmentConfig.storeOperation));
 					return false;
 				}
 
@@ -98,7 +97,7 @@ namespace C3D
 				attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 				// If loading, that means coming from another pass, meaning the format should be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL otherwise it's undefined
-				attachmentDescription.initialLayout = attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperationLoad ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+				attachmentDescription.initialLayout = attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
 
 				// If this is the last pass writing to this attachment, present after should be set to true
 				attachmentDescription.finalLayout = attachmentConfig.presentAfter ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -107,11 +106,11 @@ namespace C3D
 				// Add this attachment description to our array
 				colorAttachmentDescriptions.PushBack(attachmentDescription);
 			}
-			else if (attachmentConfig.type & RenderTargetAttachmentTypeDepth)
+			else if (attachmentConfig.type == RenderTargetAttachmentType::Depth)
 			{
 				// A depth attachment
 				auto doClearDepth = m_clearFlags & RenderPassClearFlags::ClearDepthBuffer;
-				if (attachmentConfig.source == RenderTargetAttachmentSourceDefault)
+				if (attachmentConfig.source == RenderTargetAttachmentSource::Default)
 				{
 					attachmentDescription.format = m_context->device.depthFormat;
 				}
@@ -123,14 +122,14 @@ namespace C3D
 
 				attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 				// Determine which load operation to use
-				if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperationDontCare)
+				if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::DontCare)
 				{
 					attachmentDescription.loadOp = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				}
 				else
 				{
 					// If we are loading, check if we are also clearing. This combination does not make sense so we warn to user.
-					if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperationLoad)
+					if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load)
 					{
 						if (doClearDepth)
 						{
@@ -150,24 +149,24 @@ namespace C3D
 				}
 
 				// Determine the store operation to use.
-				if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperationDontCare)
+				if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperation::DontCare)
 				{
 					attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 				}
-				else if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperationStore)
+				else if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperation::Store)
 				{
 					attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 				}
 				else
 				{
-					Logger::Fatal("[RENDER_PASS] - Create() - Invalid store operation ({}) set for depth attachment. Check your configuration.", attachmentConfig.storeOperation);
+					Logger::Fatal("[RENDER_PASS] - Create() - Invalid store operation ({}) set for depth attachment. Check your configuration.", ToUnderlying(attachmentConfig.storeOperation));
 				}
 
 				// TODO: Configurability for stencil attachments.
 				attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 				attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 				// If coming from a previous pass, should already be VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL. Otherwise undefined.
-				attachmentDescription.initialLayout = attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperationLoad ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+				attachmentDescription.initialLayout = attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
 				// Final layout for depth stencil attachments is always this
 				attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -186,7 +185,7 @@ namespace C3D
 		auto colorAttachmentCount = colorAttachmentDescriptions.Size();
 		if (colorAttachmentCount > 0)
 		{
-			colorAttachmentReferences = Memory.Allocate<VkAttachmentReference>(colorAttachmentCount, MemoryType::Array);
+			colorAttachmentReferences = Memory.Allocate<VkAttachmentReference>(MemoryType::Array, colorAttachmentCount);
 			for (u32 i = 0; i < colorAttachmentCount; i++)
 			{
 				colorAttachmentReferences[i].attachment = attachmentsAdded;
@@ -209,7 +208,7 @@ namespace C3D
 		if (depthAttachmentCount > 0)
 		{
 			assert(depthAttachmentCount == 1);
-			depthAttachmentReferences = Memory.Allocate<VkAttachmentReference>(depthAttachmentCount, MemoryType::Array);
+			depthAttachmentReferences = Memory.Allocate<VkAttachmentReference>(MemoryType::Array, depthAttachmentCount);
 			for (u32 i = 0; i < depthAttachmentCount; i++)
 			{
 				depthAttachmentReferences[i].attachment = attachmentsAdded;
@@ -261,12 +260,12 @@ namespace C3D
 
 		if (colorAttachmentReferences)
 		{
-			Memory.Free(colorAttachmentReferences, sizeof(VkAttachmentReference) * colorAttachmentCount, MemoryType::Array);
+			Memory.Free(MemoryType::Array, colorAttachmentReferences);
 		}
 
 		if (depthAttachmentReferences)
 		{
-			Memory.Free(depthAttachmentReferences, sizeof(VkAttachmentReference)* depthAttachmentCount, MemoryType::Array);
+			Memory.Free(MemoryType::Array, depthAttachmentReferences);
 		}
 
 		Logger::Info("[VULKAN_RENDER_PASS] - RenderPass: '{}' successfully created", config.name);
@@ -298,17 +297,17 @@ namespace C3D
 		beginInfo.pClearValues = nullptr;
 
 		VkClearValue clearValues[2];
-		Memory.Zero(clearValues, sizeof(VkClearValue) * 2);
+		Platform::Zero(clearValues, sizeof(VkClearValue) * 2);
 
 		if (m_clearFlags & ClearColorBuffer)
 		{
-			Memory.Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			Platform::Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
 		}
 		beginInfo.clearValueCount++;
 
 		if (m_clearFlags & ClearDepthBuffer)
 		{
-			Memory.Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			Platform::Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
 			clearValues[beginInfo.clearValueCount].depthStencil.depth = m_depth;
 
 			const bool doClearStencil = m_clearFlags & ClearStencilBuffer;
@@ -319,7 +318,7 @@ namespace C3D
 		{
 			for (u32 i = 0; i < target->attachmentCount; i++)
 			{
-				if (target->attachments[i].type & RenderTargetAttachmentTypeDepth)
+				if (target->attachments[i].type == RenderTargetAttachmentType::Depth)
 				{
 					// If there is a depth attachment, make sure to add the clear count, but don't bother copying the data
 					beginInfo.clearValueCount++;

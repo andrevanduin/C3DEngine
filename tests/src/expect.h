@@ -48,3 +48,14 @@
     }
 
 #define AssertFail(error) C3D::Logger::Error("Asserted failure: {}", (error)); return false;
+
+#define ExpectToThrow(errorMsg, func)                               \
+	try                                                             \
+	{                                                               \
+        func();                                                     \
+        AssertFail("Function should have thrown an exception");     \
+	}                                                               \
+    catch (const std::exception& ex)                                \
+    {                                                               \
+	    ExpectToBeTrue(std::strcmp((errorMsg), ex.what()) == 0)     \
+    }

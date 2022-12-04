@@ -130,8 +130,7 @@ namespace C3D
 	{
 		if (resource->config.shaderName)
 		{
-			const auto count = StringLength(resource->config.shaderName) + 1;
-			Memory.Free(resource->config.shaderName, count, MemoryType::String);
+			Memory.Free(MemoryType::String, resource->config.shaderName);
 			resource->config.shaderName = nullptr;
 		}
 

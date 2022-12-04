@@ -6,19 +6,20 @@
 #include <vector>
 #include <iostream>
 
+#include "containers/string.h"
 #include "services/services.h"
-#include "core/memory.h"
+#include "memory/global_memory_system.h"
 
 u8 StringShouldCreateEmptyWithEmptyCtor()
 {
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::C3DString));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 	{
 		const C3D::String str;
 
 		ExpectShouldBe(0, str.Size());
 		ExpectShouldBe('\0', str[0]);
 	}
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::C3DString));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 	return true;
 }
 
@@ -55,7 +56,7 @@ u8 StringShouldUseSso()
 	for (const auto size : sizes)
 	{
 		C3D::String str(std::string(size, 'a').data());
-		ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::C3DString));
+		ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 	}
 
 	return true;

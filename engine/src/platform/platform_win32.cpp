@@ -27,12 +27,12 @@ namespace C3D
 		std::free(block);
 	}
 
-	void* Platform::ZeroOutMemory(void* block, const u64 size)
+	void* Platform::Zero(void* block, const u64 size)
 	{
 		return std::memset(block, 0, size);
 	}
 
-	void* Platform::CopyOverMemory(void* dest, const void* source, const u64 size)
+	void* Platform::Copy(void* dest, const void* source, const u64 size)
 	{
 		return std::memcpy(dest, source, size);
 	}

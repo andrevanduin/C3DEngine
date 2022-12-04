@@ -1,9 +1,14 @@
 
 #include "render_view_pick.h"
 
+#include "core/uuid.h"
 #include "core/events/event.h"
 #include "math/c3d_math.h"
+#include "renderer/renderer_frontend.h"
+#include "resources/mesh.h"
+#include "resources/ui_text.h"
 #include "resources/loaders/shader_loader.h"
+#include "systems/camera_system.h"
 #include "systems/resource_system.h"
 #include "systems/shader_system.h"
 
@@ -81,8 +86,8 @@ namespace C3D
 
 		m_instanceCount = 0;
 
-		Memory.Zero(&m_colorTargetAttachmentTexture, sizeof(Texture));
-		Memory.Zero(&m_depthTargetAttachmentTexture, sizeof(Texture));
+		Platform::Zero(&m_colorTargetAttachmentTexture);
+		Platform::Zero(&m_depthTargetAttachmentTexture);
 
 		if (!Event.Register(SystemEventCode::MouseMoved, new EventCallback(this, &RenderViewPick::OnMouseMovedEvent)))
 		{
@@ -97,24 +102,355 @@ namespace C3D
 	{
 		RenderView::OnDestroy();
 		Event.UnRegister(SystemEventCode::MouseMoved, new EventCallback(this, &RenderViewPick::OnMouseMovedEvent));
+
+		ReleaseShaderInstances();
+
+		Renderer.DestroyTexture(&m_colorTargetAttachmentTexture);
+		Renderer.DestroyTexture(&m_depthTargetAttachmentTexture);
 	}
 
-	void RenderViewPick::OnResize(u32 width, u32 height)
+	void RenderViewPick::OnResize()
 	{
+		const auto fWidth = static_cast<f32>(m_width);
+		const auto fHeight = static_cast<f32>(m_height);
+		const auto aspect = fWidth / fHeight;
+
+		m_uiShaderInfo.projection = glm::orthoRH_NO(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
+		m_worldShaderInfo.projection = glm::perspectiveRH_NO(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
 	}
 
 	bool RenderViewPick::OnBuildPacket(void* data, RenderViewPacket* outPacket)
 	{
+		if (!data || !outPacket)
+		{
+			m_logger.Warn("OnBuildPacket() - Requires a valid pointer to data and outPacket");
+			return false;
+		}
+
+		const auto packetData = static_cast<PickPacketData*>(data);
+		outPacket->view = this;
+
+		// TODO: Get active camera
+		const auto worldCam = Cam.GetDefault();
+		m_worldShaderInfo.view = worldCam->GetViewMatrix();
+
+		packetData->worldGeometryCount = 0;
+		packetData->uiGeometryCount = 0;
+		outPacket->extendedData = data;
+
+		u32 highestInstanceId = 0;
+		for (const auto mesh : packetData->worldMeshData.meshes)
+		{
+			for (u32 i = 0; i < mesh->geometryCount; i++)
+			{
+				GeometryRenderData renderData{};
+				renderData.geometry = mesh->geometries[i];
+				renderData.model = mesh->transform.GetWorld();
+				renderData.uniqueId = mesh->uniqueId;
+				outPacket->geometries.PushBack(renderData);
+				packetData->worldGeometryCount++;
+			}
+
+			if (mesh->uniqueId > highestInstanceId)
+			{
+				highestInstanceId = mesh->uniqueId;
+			}
+		}
+
+		for (const auto mesh : packetData->uiMeshData.meshes)
+		{
+			for (u32 i = 0; i < mesh->geometryCount; i++)
+			{
+				GeometryRenderData renderData{};
+				renderData.geometry = mesh->geometries[i];
+				renderData.model = mesh->transform.GetWorld();
+				renderData.uniqueId = mesh->uniqueId;
+				outPacket->geometries.PushBack(renderData);
+				packetData->uiGeometryCount++;
+			}
+
+			if (mesh->uniqueId > highestInstanceId)
+			{
+				highestInstanceId = mesh->uniqueId;
+			}
+		}
+
+		for (const auto text : packetData->texts)
+		{
+			if (text->uniqueId > highestInstanceId)
+			{
+				highestInstanceId = text->uniqueId;
+			}
+		}
+
+		// TODO: This needs to take into account the highest id, not the count, because they can skip ids.
+		if (const u32 requiredInstanceCount = highestInstanceId + 1; requiredInstanceCount > m_instanceCount)
+		{
+			const auto diff = requiredInstanceCount - m_instanceCount;
+			for (u32 i = 0; i < diff; i++)
+			{
+				AcquireShaderInstances();
+			}
+		}
+
 		return true;
 	}
 
-	bool RenderViewPick::OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const
+	bool RenderViewPick::OnRender(const RenderViewPacket* packet, u64 frameNumber, const u64 renderTargetIndex)
 	{
+		// We start at the 0-th pass (world)
+		auto pass = passes[0];
+
+		if (renderTargetIndex == 0)
+		{
+			// Reset
+			for (auto& instance : m_instanceUpdated)
+			{
+				instance = false;
+			}
+
+			if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
+			{
+				m_logger.Error("OnRender() - BeginRenderPass() failed for pass: '{}'", pass->id);
+				return false;
+			}
+
+			const auto packetData = static_cast<PickPacketData*>(packet->extendedData);
+
+			u32 currentInstanceId = 0;
+
+			// World
+			if (!Shaders.UseById(m_worldShaderInfo.shader->id))
+			{
+				m_logger.Error("OnRender() - Failed to use world pick shader. Render frame failed.");
+				return false;
+			}
+
+			// Apply globals
+			if (!Shaders.SetUniformByIndex(m_worldShaderInfo.projectionLocation, &m_worldShaderInfo.projection))
+			{
+				m_logger.Error("OnRender() - Failed to apply projection matrix");
+			}
+
+			if (!Shaders.SetUniformByIndex(m_worldShaderInfo.viewLocation, &m_worldShaderInfo.view))
+			{
+				m_logger.Error("OnRender() - Failed to apply view matrix");
+			}
+
+			Shaders.ApplyGlobal();
+
+			// Draw geometries. Start from 0 since world geometries are added first
+			for (u32 i = 0; i < packetData->worldGeometryCount; i++)
+			{
+				auto& geo = packet->geometries[i];
+				currentInstanceId = geo.uniqueId;
+
+				Shaders.BindInstance(currentInstanceId);
+
+				u32 r, g, b;
+				U32ToRgb(geo.uniqueId, &r, &g, &b);
+				vec3 color = RgbToVec3(r, g, b);
+
+				if (!Shaders.SetUniformByIndex(m_worldShaderInfo.idColorLocation, &color))
+				{
+					m_logger.Error("OnRender() - Failed to apply id color uniform.");
+					return false;
+				}
+
+				Shaders.ApplyInstance(!m_instanceUpdated[currentInstanceId]);
+				m_instanceUpdated[currentInstanceId] = true;
+
+				// Apply the locals
+				if (!Shaders.SetUniformByIndex(m_worldShaderInfo.modelLocation, &geo.model))
+				{
+					m_logger.Error("OnRender() - Failed to apply model matrix for world geometry.");
+				}
+
+				// Actually draw the geometry
+				Renderer.DrawGeometry(packet->geometries[i]);
+			}
+
+			if (!Renderer.EndRenderPass(pass))
+			{
+				m_logger.Error("OnRender() - EndRenderPass() failed for pass: '{}'", pass->id);
+				return false;
+			}
+
+			// Second (UI) pass
+			pass = passes[1];
+
+			if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
+			{
+				m_logger.Error("OnRender() - BeginRenderPass() failed for pass: '{}'", pass->id);
+				return false;
+			}
+
+			// UI
+			if (!Shaders.UseById(m_uiShaderInfo.shader->id))
+			{
+				m_logger.Error("OnRender() - Failed to use world pick shader. Render frame failed.");
+				return false;
+			}
+
+			// Apply globals
+			if (!Shaders.SetUniformByIndex(m_uiShaderInfo.projectionLocation, &m_uiShaderInfo.projection))
+			{
+				m_logger.Error("OnRender() - Failed to apply projection matrix");
+			}
+
+			if (!Shaders.SetUniformByIndex(m_uiShaderInfo.viewLocation, &m_uiShaderInfo.view))
+			{
+				m_logger.Error("OnRender() - Failed to apply view matrix");
+			}
+
+			Shaders.ApplyGlobal();
+
+			// Draw our geometries. We start where the world geometries left off.
+			const auto uiCount = packetData->worldGeometryCount + packetData->uiGeometryCount;
+			for (u32 i = packetData->worldGeometryCount; i < packet->geometries.Size(); i++)
+			{
+				auto& geo = packet->geometries[i];
+				currentInstanceId = geo.uniqueId;
+
+				Shaders.BindInstance(currentInstanceId);
+
+				u32 r, g, b;
+				U32ToRgb(geo.uniqueId, &r, &g, &b);
+				vec3 color = RgbToVec3(r, g, b);
+
+				if (!Shaders.SetUniformByIndex(m_uiShaderInfo.idColorLocation, &color))
+				{
+					m_logger.Error("OnRender() - Failed to apply id color uniform.");
+					return false;
+				}
+
+				Shaders.ApplyInstance(!m_instanceUpdated[currentInstanceId]);
+				m_instanceUpdated[currentInstanceId] = true;
+
+				// Apply the locals
+				if (!Shaders.SetUniformByIndex(m_uiShaderInfo.modelLocation, &geo.model))
+				{
+					m_logger.Error("OnRender() - Failed to apply model matrix for ui geometry.");
+				}
+
+				// Actually draw the geometry
+				Renderer.DrawGeometry(packet->geometries[i]);
+			}
+
+			// Draw bitmap text
+			for (const auto text : packetData->texts)
+			{
+				currentInstanceId = text->uniqueId;
+				Shaders.BindInstance(currentInstanceId);
+
+				u32 r, g, b;
+				U32ToRgb(text->uniqueId, &r, &g, &b);
+				vec3 color = RgbToVec3(r, g, b);
+
+				if (!Shaders.SetUniformByIndex(m_uiShaderInfo.idColorLocation, &color))
+				{
+					m_logger.Error("OnRender() - Failed to apply id color uniform.");
+					return false;
+				}
+
+				Shaders.ApplyInstance(true);
+
+				// Apply the locals
+				mat4 model = text->transform.GetWorld();
+				if (!Shaders.SetUniformByIndex(m_uiShaderInfo.modelLocation, &model))
+				{
+					m_logger.Error("OnRender() - Failed to apply model matrix for text");
+				}
+
+				// Actually draw the text
+				text->Draw();
+			}
+
+			if (!Renderer.EndRenderPass(pass))
+			{
+				m_logger.Error("OnRender() - EndRenderPass() failed for pass: '{}'", pass->id);
+				return false;
+			}
+		}
+
+		u8 pixelRgba[4] = { 0 };
+		u8* pixel = &pixelRgba[0];
+
+		const u16 xCoord = C3D_CLAMP(m_mouseX, 0, m_width - 1);
+		const u16 yCoord = C3D_CLAMP(m_mouseY, 0, m_height - 1);
+		Renderer.ReadPixelFromTexture(&m_colorTargetAttachmentTexture, xCoord, yCoord, &pixel);
+
+		// Extract the id from the sampled color
+		auto id = RgbToU32(pixel[0], pixel[1], pixel[2]);
+		if (id == 0x00FFFFFF)
+		{
+			// This is pure white.
+			id = INVALID_ID;
+		}
+
+		EventContext context{};
+		context.data.u32[0] = id;
+		Event.Fire(SystemEventCode::ObjectHoverIdChanged, nullptr, context);
+
 		return true;
 	}
 
 	void RenderViewPick::GetMatrices(mat4* outView, mat4* outProjection)
 	{
+	}
+
+	bool RenderViewPick::RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment)
+	{
+		if (attachment->type == RenderTargetAttachmentType::Color)
+		{
+			attachment->texture = &m_colorTargetAttachmentTexture;
+		}
+		else if (attachment->type == RenderTargetAttachmentType::Depth)
+		{
+			attachment->texture = &m_depthTargetAttachmentTexture;
+		}
+		else
+		{
+			m_logger.Error("RegenerateAttachmentTarget() - Unknown attachment type: '{}'", ToUnderlying(attachment->type));
+		}
+
+		if (passIndex == 1)
+		{
+			// No need to regenerate for both passes since they both use the same attachment.
+			return true;
+		}
+
+		if (attachment->texture->internalData)
+		{
+			Renderer.DestroyTexture(attachment->texture);
+			Platform::Zero(attachment->texture);
+		}
+
+		// Setup a new texture
+		// Generate a UUID to act as the name
+		const auto textureNameUUID = UUIDS::Generate();
+
+		const u32 width = passes[passIndex]->renderArea.z;
+		const u32 height = passes[passIndex]->renderArea.w;
+		constexpr bool hasTransparency = false; //TODO: make this configurable
+
+		attachment->texture->id = INVALID_ID;
+		attachment->texture->type = TextureType::Type2D;
+		StringNCopy(attachment->texture->name, textureNameUUID.value, TEXTURE_NAME_MAX_LENGTH);
+		attachment->texture->width = width;
+		attachment->texture->height = height;
+		attachment->texture->channelCount = 4; //TODO: Configurable
+		attachment->texture->generation = INVALID_ID;
+		attachment->texture->flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
+		attachment->texture->flags |= TextureFlag::IsWritable;
+		if (attachment->type == RenderTargetAttachmentType::Depth)
+		{
+			attachment->texture->flags |= TextureFlag::IsDepth;
+		}
+		attachment->texture->internalData = nullptr;
+
+		Renderer.CreateWritableTexture(attachment->texture);
+		return true;
 	}
 
 	bool RenderViewPick::OnMouseMovedEvent(u16 code, void* sender, EventContext context)
@@ -127,5 +463,39 @@ namespace C3D
 		}
 
 		return false;
+	}
+
+	void RenderViewPick::AcquireShaderInstances()
+	{
+		u32 instance;
+		if (!Renderer.AcquireShaderInstanceResources(m_uiShaderInfo.shader, nullptr, &instance))
+		{
+			m_logger.Fatal("AcquireShaderInstances() - Failed to acquire UI shader resources from Renderer.");
+		}
+
+		if (!Renderer.AcquireShaderInstanceResources(m_worldShaderInfo.shader, nullptr, &instance))
+		{
+			m_logger.Fatal("AcquireShaderInstances() - Failed to acquire World shader resources from Renderer.");
+		}
+
+		m_instanceCount++;
+		m_instanceUpdated.PushBack(false);
+	}
+
+	void RenderViewPick::ReleaseShaderInstances()
+	{
+		for (u32 i = 0; i < m_instanceCount; i++)
+		{
+			if (!Renderer.ReleaseShaderInstanceResources(m_uiShaderInfo.shader, i))
+			{
+				m_logger.Warn("ReleaseShaderInstances() - Failed to release UI shader resources.");
+			}
+
+			if (!Renderer.ReleaseShaderInstanceResources(m_worldShaderInfo.shader, i))
+			{
+				m_logger.Warn("ReleaseShaderInstances() - Failed to release World shader resources.");
+			}
+		}
+		m_instanceUpdated.Clear();
 	}
 }

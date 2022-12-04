@@ -1,9 +1,8 @@
 
 #pragma once
 #include "core/defines.h"
-#include "memory/linear_allocator.h"
+#include "memory/allocators/linear_allocator.h"
 
-#define Memory		C3D::Services::GetMemory()
 #define Input		C3D::Services::GetInput()
 #define Event		C3D::Services::GetEvent()
 #define Renderer	C3D::Services::GetRenderer()
@@ -20,9 +19,6 @@
 namespace C3D
 {
 	class Application;
-
-	class MemorySystem;
-	struct MemorySystemConfig;
 
 	class InputSystem;
 	struct ResourceSystemConfig;
@@ -63,16 +59,11 @@ namespace C3D
 			const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig,
 			const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& viewSystemConfig, const FontSystemConfig& fontSystemConfig);
 
-		static bool InitMemory(const MemorySystemConfig& memorySystemConfig);
-
-		static void SetMemorySystem(MemorySystem* memorySystem) { m_pMemorySystem = memorySystem; }
-
 		static bool InitMaterialSystem(const MaterialSystemConfig& config);
 		static bool InitGeometrySystem(const GeometrySystemConfig& config);
 
 		static void Shutdown();
 
-		static MemorySystem&		GetMemory()			{ return *m_pMemorySystem;		}
 		static InputSystem&			GetInput()			{ return *m_pInputSystem;		}
 		static EventSystem&			GetEvent()			{ return *m_pEventSystem;		}
 		static RenderSystem&		GetRenderer()		{ return *m_pRenderSystem;		}
@@ -87,7 +78,6 @@ namespace C3D
 		static FontSystem&			GetFontSystem()		{ return *m_pFontSystem;		}
 
 	private:
-		static MemorySystem*		m_pMemorySystem;
 		static EventSystem*			m_pEventSystem;
 		static InputSystem*			m_pInputSystem;
 		static RenderSystem*		m_pRenderSystem;

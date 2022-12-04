@@ -7,8 +7,8 @@
 #include <cstdarg>
 #include <sstream>
 
-#include "memory.h"
-#include "services/services.h"
+#include "memory/global_memory_system.h"
+#include "platform/platform.h"
 
 #ifndef _MSC_VER
 #include <strings.h>
@@ -153,7 +153,7 @@ namespace C3D
 			// Big, but can fit on the stack.
 			char buffer[16000];
 			const auto written = vsnprintf(buffer, sizeof buffer, format, vaList);
-			Memory.Copy(dest, buffer, written + 1);
+			Platform::Copy(dest, buffer, written + 1);
 
 			return written;
 		}
@@ -163,8 +163,8 @@ namespace C3D
 	char* StringDuplicate(const char* str)
 	{
 		const u64 length = StringLength(str);
-		char* copy = Memory.Allocate<char>(length + 1, MemoryType::String);
-		Memory.Copy(copy, str, length);
+		char* copy = Memory.Allocate<char>(MemoryType::String, length + 1);
+		Platform::Copy(copy, str, length);
 		copy[length] = 0;
 		return copy;
 	}
@@ -188,7 +188,7 @@ namespace C3D
 	{
 		if (!str) return false;
 
-		Memory.Zero(outVec, sizeof(vec4));
+		Platform::Zero(outVec, sizeof(vec4));
 		const auto result = sscanf_s(str, "%f %f %f %f", &outVec->x, &outVec->y, &outVec->z, &outVec->w);
 		return result != -1;
 	}
@@ -197,7 +197,7 @@ namespace C3D
 	{
 		if (!str) return false;
 
-		Memory.Zero(outVec, sizeof(vec3));
+		Platform::Zero(outVec, sizeof(vec3));
 		const auto result = sscanf_s(str, "%f %f %f", &outVec->x, &outVec->y, &outVec->z);
 		return result != -1;
 	}
@@ -206,7 +206,7 @@ namespace C3D
 	{
 		if (!str) return false;
 
-		Memory.Zero(outVec, sizeof(vec2));
+		Platform::Zero(outVec, sizeof(vec2));
 		const auto result = sscanf_s(str, "%f %f", &outVec->x, &outVec->y);
 		return result != -1;
 	}

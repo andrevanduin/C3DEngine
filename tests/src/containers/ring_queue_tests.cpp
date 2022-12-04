@@ -4,6 +4,7 @@
 
 #include <containers/ring_queue.h>
 #include <core/defines.h>
+#include <core/metrics.h>
 
 u8 RingQueueShouldCreateAndDestroy()
 {
@@ -12,14 +13,14 @@ u8 RingQueueShouldCreateAndDestroy()
 	ExpectShouldBe(10, queue.Capacity());
 	ExpectShouldBe(0, queue.Size());
 	ExpectShouldNotBe(nullptr, (void*)queue.GetData());
-	ExpectShouldBe(sizeof(int) * 10, Memory.GetMemoryUsage(C3D::MemoryType::RingQueue));
+	ExpectShouldBe(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::RingQueue));
 
 	queue.Destroy();
 
 	ExpectShouldBe(0, queue.Capacity());
 	ExpectShouldBe(0, queue.Size());
 	ExpectShouldBe(nullptr, (void*)queue.GetData());
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::RingQueue));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::RingQueue));
 
 	return true;
 }
@@ -32,10 +33,10 @@ u8 RingQueueShouldDestroyWhenLeavingScope()
 		ExpectShouldBe(10, queue.Capacity());
 		ExpectShouldBe(0, queue.Size());
 		ExpectShouldNotBe(nullptr, (void*)queue.GetData());
-		ExpectShouldBe(sizeof(int) * 10, Memory.GetMemoryUsage(C3D::MemoryType::RingQueue));
+		ExpectShouldBe(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::RingQueue));
 	}
 
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::RingQueue));
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::RingQueue));
 	return true;
 }
 

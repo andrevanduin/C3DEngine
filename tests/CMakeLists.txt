@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_executable (Tests "src/expect.h" "src/test_manager.h" "src/test_manager.cpp" "src/main.cpp" 
 	"src/memory/linear_allocator_tests.h" "src/memory/linear_allocator_tests.cpp"
 	"src/memory/dynamic_allocator_tests.h" "src/memory/dynamic_allocator_tests.cpp"
+	"src/memory/stack_allocator_tests.h" "src/memory/stack_allocator_tests.cpp"
 	"src/containers/array_tests.h" "src/containers/array_tests.cpp"
 	"src/containers/hash_table_tests.h" "src/containers/hash_table_tests.cpp"
 	"src/containers/hash_map_tests.h" "src/containers/hash_map_tests.cpp"

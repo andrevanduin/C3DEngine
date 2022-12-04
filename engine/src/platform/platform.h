@@ -20,13 +20,23 @@
 
 namespace C3D
 {
-	class Platform
+	class C3D_API Platform
 	{
 	public:
 		static void* Allocate(u64 size, bool aligned);
+
 		static void Free(void* block, bool aligned);
-		static void* ZeroOutMemory(void* block, u64 size);
-		static void* CopyOverMemory(void* dest, const void* source, u64 size);
+
+		static void* Zero(void* block, u64 size);
+
+		template <typename T>
+		static T* Zero(T* pItem)
+		{
+			return static_cast<T*>(Zero(pItem, sizeof(T)));
+		}
+
+		static void* Copy(void* dest, const void* source, u64 size);
+
 		static void* SetMemory(void* dest, i32 value, u64 size);
 
 		static f64 GetAbsoluteTime();

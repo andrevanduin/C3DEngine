@@ -4,7 +4,6 @@
 #include "vulkan_device.h"
 #include "vulkan_types.h"
 
-#include "core/memory.h"
 #include "core/logger.h"
 #include "services/services.h"
 
@@ -39,7 +38,7 @@ namespace C3D
 		return VK_IMAGE_VIEW_TYPE_2D;
 	}
 
-	void VulkanImage::Create(const VulkanContext* context, TextureType type, const u32 _width, const u32 _height, const VkFormat format,
+	void VulkanImage::Create(const VulkanContext* context, const TextureType type, const u32 _width, const u32 _height, const VkFormat format,
 	                         const VkImageTiling tiling, const VkImageUsageFlags usage, const VkMemoryPropertyFlags memoryFlags, const bool createView,
 							 const VkImageAspectFlags viewAspectFlags)
 	{
@@ -84,7 +83,7 @@ namespace C3D
 		VK_CHECK(vkBindImageMemory(context->device.logicalDevice, handle, m_memory, 0)); // TODO: Configurable memory offset.
 
 		const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		Memory.AllocateReport(m_memoryRequirements.size, isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan);
+		Metrics.Allocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
 
 		if (createView)
 		{
@@ -253,7 +252,7 @@ namespace C3D
 		}
 
 		const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		Memory.FreeReport(m_memoryRequirements.size, isDeviceMemory ? MemoryType::GpuLocal : MemoryType::Vulkan);
-		Memory.Zero(&m_memoryRequirements, sizeof(VkMemoryRequirements));
+		Metrics.Free(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
+		Platform::Zero(&m_memoryRequirements, sizeof(VkMemoryRequirements));
 	}
 }

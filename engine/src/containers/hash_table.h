@@ -1,12 +1,10 @@
 
 #pragma once
 #include "core/defines.h"
-#include "services/services.h"
+#include "memory/global_memory_system.h"
 
 #include <type_traits>
 #include <algorithm>
-
-#include "core/memory.h"
 
 namespace C3D
 {
@@ -32,7 +30,7 @@ namespace C3D
 
 		void Destroy();
 
-		bool Set(const char* name, T* value);
+		bool Set(const char* name, const T& value);
 
 		T Get(const char* name);
 
@@ -68,7 +66,7 @@ namespace C3D
 		}
 
 		m_elementCount = elementCount;
-		m_elements = Memory.Allocate<T>(elementCount, MemoryType::HashTable);
+		m_elements = Memory.Allocate<T>(MemoryType::HashTable, elementCount);
 		return true;
 	}
 
@@ -108,32 +106,23 @@ namespace C3D
 				m_elements[i].~T();
 			}
 
-			Memory.Free(m_elements, static_cast<u64>(m_elementCount) * sizeof(T), MemoryType::HashTable);
+			Memory.Free(MemoryType::HashTable, m_elements);
 			m_elementCount = 0;
 			m_elements = nullptr;
 		}
 	}
 
 	template <class T>
-	bool HashTable<T>::Set(const char* name, T* value)
+	bool HashTable<T>::Set(const char* name, const T& value)
 	{
-		if (!name || !value)
+		if (!name)
 		{
 			Logger::Error("[HASHTABLE] - Set() - requires valid name and value.");
 			return false;
 		}
 
 		u64 index = Hash(name);
-		if (std::is_pointer<T>())
-		{
-			// If we are storing pointers we dereference it
-			m_elements[index] = *value;
-		}
-		else
-		{
-			// Else we are storing values so we copy
-			Memory.Copy(&m_elements[index], value, sizeof(T));
-		}
+		m_elements[index] = value;
 		return true;
 	}
 

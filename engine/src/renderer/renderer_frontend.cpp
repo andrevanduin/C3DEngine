@@ -2,7 +2,6 @@
 #include "renderer_frontend.h"
 
 #include "core/logger.h"
-#include "core/memory.h"
 #include "core/application.h"
 
 #include "renderer/vulkan/renderer_vulkan.h"
@@ -63,7 +62,7 @@ namespace C3D
 		m_framesSinceResize = 0;
 	}
 
-	bool RenderSystem::DrawFrame(const RenderPacket* packet)
+	bool RenderSystem::DrawFrame(RenderPacket* packet)
 	{
 		m_backend->state.frameNumber++;
 
@@ -270,7 +269,7 @@ namespace C3D
 		m_backend->DestroyRenderTarget(target, freeInternalMemory);
 		if (freeInternalMemory)
 		{
-			Memory.Zero(target, sizeof(RenderTarget));
+			Platform::Zero(target, sizeof(RenderTarget));
 		}
 	}
 
@@ -340,7 +339,7 @@ namespace C3D
 	{
 		if (m_backend->type == RendererBackendType::Vulkan)
 		{
-			Memory.Free(m_backend, sizeof(RendererVulkan), MemoryType::RenderSystem);
+			Memory.Free(MemoryType::RenderSystem, m_backend);
 			m_backend = nullptr;
 		}
 	}

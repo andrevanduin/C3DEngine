@@ -6,7 +6,6 @@
 #include "vulkan_types.h"
 
 #include "core/logger.h"
-#include "core/memory.h"
 
 #include "services/services.h"
 #include "systems/texture_system.h"
@@ -171,7 +170,7 @@ namespace C3D
 		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, nullptr));
 		if (!renderTextures)
 		{
-			renderTextures = Memory.Allocate<Texture>(imageCount, MemoryType::RenderSystem);
+			renderTextures = Memory.Allocate<Texture>(MemoryType::RenderSystem, imageCount);
 			// If creating the array, then the internal texture objects aren't created yet either.
 			for (u32 i = 0; i < imageCount; ++i)
 			{
@@ -237,7 +236,7 @@ namespace C3D
 		// If we do not have an array for our depth textures yet we allocate it
 		if (!depthTextures)
 		{
-			depthTextures = Memory.Allocate<Texture>(imageCount, MemoryType::RenderSystem);
+			depthTextures = Memory.Allocate<Texture>(MemoryType::RenderSystem, imageCount);
 		}
 
 		for (u32 i = 0; i < imageCount; i++)

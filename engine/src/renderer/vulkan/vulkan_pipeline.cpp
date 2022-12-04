@@ -2,7 +2,6 @@
 #include "vulkan_pipeline.h"
 #include "vulkan_utils.h"
 
-#include "core/memory.h"
 #include "core/logger.h"
 
 #include "renderer/vertex.h"
@@ -74,7 +73,7 @@ namespace C3D
 		}
 
 		VkPipelineColorBlendAttachmentState colorBlendAttachmentState;
-		Memory.Zero(&colorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
+		Platform::Zero(&colorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
 
 		colorBlendAttachmentState.blendEnable = VK_TRUE;
 		colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
@@ -138,7 +137,7 @@ namespace C3D
 			}
 
 			VkPushConstantRange ranges[32];
-			Memory.Zero(ranges, sizeof(VkPushConstantRange) * 32);
+			Platform::Zero(ranges, sizeof(VkPushConstantRange) * 32);
 			for (u32 i = 0; i < config.pushConstantRangeCount; i++)
 			{
 				ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;

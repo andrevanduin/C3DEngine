@@ -1,8 +1,8 @@
 
 #pragma once
 #include "core/defines.h"
-#include "core/memory.h"
 #include "services/services.h"
+#include "memory/global_memory_system.h"
 
 namespace C3D
 {
@@ -82,7 +82,7 @@ namespace C3D
 			Destroy();
 		}
 
-		m_elements = Memory.Allocate<T>(initialCapacity, MemoryType::RingQueue);
+		m_elements = Memory.Allocate<T>(MemoryType::RingQueue, initialCapacity);
 		m_count = 0;
 		m_capacity = initialCapacity;
 		m_head = 0;
@@ -100,7 +100,7 @@ namespace C3D
 				m_elements[i].~T();
 			}
 
-			Memory.Free(m_elements, m_capacity * sizeof(T), MemoryType::RingQueue);
+			Memory.Free(MemoryType::RingQueue, m_elements);
 			m_elements = nullptr;
 			m_count = 0;
 			m_capacity = 0;

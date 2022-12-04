@@ -3,13 +3,7 @@
 
 namespace C3D
 {
-	DynamicArray<void*> Identifier::s_owners;
-
-
-	void Identifier::Init()
-	{
-		s_owners.Reserve(100);
-	}
+	DynamicArray<void*, MallocAllocator> Identifier::s_owners(100);
 
 	void Identifier::Destroy()
 	{
@@ -31,7 +25,7 @@ namespace C3D
 		// If there are no existing free slots we push a new one
 		s_owners.PushBack(owner);
 		// Our id will be equal to the index of the newly added item (size - 1)
-		return s_owners.Size() - 1;
+		return static_cast<u32>(s_owners.Size()) - 1;
 	}
 
 	void Identifier::ReleaseId(u32 id)

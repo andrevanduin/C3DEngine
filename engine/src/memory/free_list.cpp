@@ -1,8 +1,7 @@
 
 #include "free_list.h"
 
-#include "core/memory.h"
-#include "services/services.h"
+#include "platform/platform.h"
 
 namespace C3D
 {
@@ -18,7 +17,7 @@ namespace C3D
 		m_totalManagedSize = managedSize;
 
 		m_nodes = static_cast<Node*>(memory);
-		Memory.Zero(m_nodes, m_nodesSize);
+		Platform::Zero(m_nodes, m_nodesSize);
 
 		// Set all our nodes to invalid
 		for (u64 i = 0; i < m_totalNodes; i++)
@@ -40,7 +39,7 @@ namespace C3D
 	void FreeList::Destroy()
 	{
 		// Zero out our nodes
-		Memory.Zero(m_nodes, m_nodesSize);
+		Platform::Zero(m_nodes, m_nodesSize);
 		m_nodes = nullptr;
 		// NOTE: We can't free our memory since the user of this class is responsible for the memory we are using.
 	}

@@ -11,11 +11,11 @@ u8 HashTableShouldCreateAndDestroy()
 	ExpectToBeTrue(hashtable.Create(128));
 
 	ExpectShouldBe(128 * sizeof(int), C3D::HashTable<int>::GetMemoryRequirement(128))
-	ExpectShouldBe(128 * sizeof(int), Memory.GetMemoryUsage(C3D::MemoryType::HashTable))
+	ExpectShouldBe(128 * sizeof(int), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::HashTable))
 
 	hashtable.Destroy();
 
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::HashTable))
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable))
 	return true;
 }
 
@@ -26,12 +26,12 @@ u8 HashTableShouldSetAndGetForValueTypes()
 
 	int testValue = 5;
 
-	ExpectToBeTrue(hashtable.Set("test", &testValue))
+	ExpectToBeTrue(hashtable.Set("test", testValue))
 	ExpectShouldBe(testValue, hashtable.Get("test"))
 
 	hashtable.Destroy();
 
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::HashTable))
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable))
 	return true;
 }
 
@@ -43,12 +43,12 @@ u8 HashTableShouldSetAndGetForPointerTypes()
 	int testValue = 5;
 	int* pTestValue = &testValue;
 
-	ExpectToBeTrue(hashtable.Set("test", &pTestValue))
+	ExpectToBeTrue(hashtable.Set("test", pTestValue))
 	ExpectShouldBe(testValue, *hashtable.Get("test"))
 
 	hashtable.Destroy();
 
-	ExpectShouldBe(0, Memory.GetMemoryUsage(C3D::MemoryType::HashTable))
+	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable))
 	return true;
 }
 

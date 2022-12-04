@@ -33,16 +33,21 @@ namespace C3D
 		bool OnCreate() override;
 		void OnDestroy() override;
 
-		void OnResize(u32 width, u32 height) override;
+		void OnResize() override;
 
 		bool OnBuildPacket(void* data, RenderViewPacket* outPacket) override;
 
-		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const override;
+		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) override;
 
 		void GetMatrices(mat4* outView, mat4* outProjection);
 
+		bool RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment) override;
+
 	private:
 		bool OnMouseMovedEvent(u16 code, void* sender, EventContext context);
+
+		void AcquireShaderInstances();
+		void ReleaseShaderInstances();
 
 		RenderViewPickShaderInfo m_uiShaderInfo;
 		RenderViewPickShaderInfo m_worldShaderInfo;
@@ -50,7 +55,7 @@ namespace C3D
 		Texture m_colorTargetAttachmentTexture;
 		Texture m_depthTargetAttachmentTexture;
 
-		i32 m_instanceCount;
+		u32 m_instanceCount;
 		DynamicArray<bool> m_instanceUpdated;
 
 		i16 m_mouseX, m_mouseY;

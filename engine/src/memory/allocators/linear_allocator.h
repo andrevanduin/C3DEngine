@@ -2,32 +2,32 @@
 #pragma once
 #include "core/defines.h"
 #include "core/logger.h"
+#include "base_allocator.h"
 
 namespace C3D
 {
-	class C3D_API LinearAllocator
+	class C3D_API LinearAllocator final : public BaseAllocator
 	{
 	public:
 		LinearAllocator();
 
-		void Create(u64 totalSize, void* memory = nullptr);
-		
+		void Create(const char* name, u64 totalSize, void* memory = nullptr);
 		void Destroy();
 
-		void* Allocate(u64 size);
-
-		template<class T>
-		T* New()
-		{
-			return new(Allocate(sizeof T)) T();
-		}
+		void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
+		void Free(MemoryType type, void* block) override;
 
 		void FreeAll();
+
+		template <typename T>
+		T* New(const MemoryType type)
+		{
+			return new(AllocateBlock(type, sizeof(T), alignof(T))) T();
+		}
 
 		[[nodiscard]] u64 GetTotalSize() const { return m_totalSize; }
 		[[nodiscard]] u64 GetAllocated() const { return m_allocated; }
 
-		[[nodiscard]] void* GetMemory() const { return m_memory; }
 		[[nodiscard]] bool OwnsMemory() const { return m_ownsMemory; }
 
 	private:
@@ -36,7 +36,6 @@ namespace C3D
 		u64 m_totalSize;
 		u64 m_allocated;
 
-		void* m_memory;
 		bool m_ownsMemory;
 	};
 }

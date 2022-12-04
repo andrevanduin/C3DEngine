@@ -2,6 +2,7 @@
 #pragma once
 #include "containers/hash_table.h"
 #include "containers/dynamic_array.h"
+#include "containers/hash_map.h"
 #include "containers/string.h"
 
 #include "renderer/renderer_types.h"
@@ -35,8 +36,8 @@ namespace C3D
 	/* @brief Configuration for an attribute. */
 	struct ShaderAttributeConfig
 	{
-		u8 nameLength;
-		char* name;
+		String name;
+
 		u8 size;
 		ShaderAttributeType type;
 	};
@@ -44,17 +45,18 @@ namespace C3D
 	/* @brief Configuration for a uniform. */
 	struct ShaderUniformConfig
 	{
-		u8 nameLength;
-		char* name;
+		String name;
+
 		u8 size;
 		u32 location;
+
 		ShaderUniformType type;
 		ShaderScope scope;
 	};
 
 	struct ShaderConfig
 	{
-		char* name;
+		String name;
 
 		/* @brief The face cull mode to be used. Default is BACK if not supplied. */
 		FaceCullMode cullMode;
@@ -92,7 +94,7 @@ namespace C3D
 
 	struct ShaderAttribute
 	{
-		char* name;
+		String name;
 		ShaderAttributeType type;
 		u32 size;
 	};
@@ -107,16 +109,26 @@ namespace C3D
 
 	struct Shader
 	{
+		Shader()
+			: id(INVALID_ID), flags(ShaderFlagNone), requiredUboAlignment(0), globalUboSize(0), globalUboStride(0),
+			  globalUboOffset(0), uboSize(0), uboStride(0), attributeStride(0), instanceTextureCount(0),
+			  boundScope(), boundInstanceId(INVALID_ID), boundUboOffset(0), pushConstantSize(0),
+			  pushConstantRangeCount(0), pushConstantRanges{}, state(ShaderState::Uninitialized), frameNumber(INVALID_ID_U64),
+			  apiSpecificData(nullptr)
+		{}
+
 		u32 id;
-		char* name;
+		String name;
 
 		ShaderFlagBits flags;
 
 		u64 requiredUboAlignment;
+		// A running total of the size of the global uniform buffer object
 		u64 globalUboSize;
 		u64 globalUboStride;
 		u64 globalUboOffset;
 
+		// A running total of the size of the instance uniform buffer object
 		u64 uboSize;
 		u64 uboStride;
 		u16 attributeStride;
@@ -128,13 +140,13 @@ namespace C3D
 		u32 boundInstanceId;
 		u32 boundUboOffset;
 
-		HashTable<u16> uniformLookup;
-
-		DynamicArray<ShaderUniform> uniforms;
+		HashMap<String, ShaderUniform> uniforms;
 		DynamicArray<ShaderAttribute> attributes;
 
 		u64 pushConstantSize;
-		u64 pushConstantStride;
+		// Note: this is hard-coded because the vulkan spec only guarantees a minimum 128bytes stride
+		// The drivers might allocate more but this is not guaranteed on all video cards
+		u64 pushConstantStride = 128;
 		u8 pushConstantRangeCount;
 		Range pushConstantRanges[32];
 
