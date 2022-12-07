@@ -1,5 +1,7 @@
 
 #pragma once
+#include <cassert>
+
 #include "core/defines.h"
 
 namespace C3D
@@ -17,7 +19,7 @@ namespace C3D
 		Type& At(u64 index);
 		[[nodiscard]] const Type& At(u64 index) const;
 
-		[[nodiscard]] static u64 Size() { return ElementCount; }
+		[[nodiscard]] static constexpr u64 Size() { return ElementCount; }
 
 		[[nodiscard]] constexpr Type* Data() { return static_cast<Type*>(m_elements); }
 		[[nodiscard]] constexpr const Type* Data() const { return const_cast<Type*>(m_elements); }

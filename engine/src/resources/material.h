@@ -2,6 +2,7 @@
 #pragma once
 #include "math/math_types.h"
 #include "texture.h"
+#include "containers/string.h"
 
 namespace C3D
 {
@@ -45,7 +46,7 @@ namespace C3D
 		/* @brief Name of the Material. */
 		char name[MATERIAL_NAME_MAX_LENGTH];
 		/* @brief Name of the shader associated with this material. */
-		char* shaderName;
+		String shaderName;
 		/* @brief Indicates if this material should automatically be released when no references to it remain. */
 		bool autoRelease;
 		/* @brief The diffuse color of the material. */

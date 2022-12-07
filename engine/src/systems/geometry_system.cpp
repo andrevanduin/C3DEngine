@@ -66,7 +66,6 @@ namespace C3D
 		{
 			GeometryReference* ref = &m_registeredGeometries[geometry->id];
 
-			const u32 id = geometry->id; // Copy the id
 			if (ref->geometry.id == geometry->id)
 			{
 				if (ref->referenceCount > 0) ref->referenceCount--;

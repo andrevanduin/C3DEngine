@@ -1,4 +1,5 @@
 
+// ReSharper disable CppInconsistentNaming
 #pragma once
 #include <iostream>
 #include <ostream>
@@ -31,6 +32,12 @@ namespace C3D
 
 	public:
 		using value_type = char;
+		using reference = value_type&;
+		using difference_type = ptrdiff_t;
+		using pointer = value_type*;
+		using const_pointer = const value_type*;
+		using iterator = Iterator<char>;
+		using const_iterator = ConstIterator<char>;
 
 	private:
 		void Init(const u64 length)
@@ -710,6 +717,27 @@ namespace C3D
 			return -1;
 		}
 
+		/* @brief Gets a substring starting at the provided start iterator until the provided end iterator. */
+		[[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt, const_iterator endIt)
+		{
+			// Calculate the size of our new substring
+			const auto size = endIt - startIt;
+			// Create the new string here on the stack (RVO will make sure this string gets moved)
+			// We increase the capacity by 1 since we need to add a '\0' byte
+			BasicString<Allocator> sub(size, size + 1);
+			// Copy the elements from our current string into the new substring
+			std::copy_n(startIt, size, sub.m_data);
+			// Add the ending '\0' byte
+			sub.m_data[size] = '\0';
+			return sub;
+		}
+
+		/* @brief Gets a substring starting at the provided start iterator until the end of the string. */
+		[[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt)
+		{
+			return SubStr(startIt, cend());
+		}
+
 		/* @brief Converts string to an i32 in the provided base. */
 		[[nodiscard]] i32 ToI32(const i32 base = 10) const
 		{
@@ -794,10 +822,22 @@ namespace C3D
 		[[nodiscard]] char* Data() { return m_data; }
 
 		/* @brief Returns an iterator pointing to the start of the character array. */
-		[[nodiscard]] char* begin() const { return m_data; }
+		[[nodiscard]] iterator begin() noexcept { return iterator(m_data); }
+
+		/* @brief Returns a const_iterator pointing to the start of the character array. */
+		[[nodiscard]] const_iterator begin() const noexcept { return const_iterator(m_data); }
+
+		/* @brief Returns a const_iterator pointing to the start of the character array. */
+		[[nodiscard]] const_iterator cbegin() const noexcept { return const_iterator(m_data); }
 
 		/* @brief Returns an iterator pointing to the element right after the last character in the character array. */
-		[[nodiscard]] char* end() const	{ return m_data + m_size; }
+		[[nodiscard]] iterator end() noexcept { return iterator(m_data + m_size); }
+
+		/* @brief Returns a const_iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] const_iterator end() const noexcept { return const_iterator(m_data + m_size); }
+
+		/* @brief Returns a const_iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] const_iterator cend() const noexcept { return const_iterator(m_data + m_size); }
 
 		/* @brief Returns the first char in the string by reference. */
 		[[nodiscard]] char& First() const { return m_data[0]; }

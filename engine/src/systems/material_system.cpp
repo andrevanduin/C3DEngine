@@ -146,7 +146,7 @@ namespace C3D
 			// Get the uniform indices
 			Shader* shader = Shaders.GetById(mat->shaderId);
 			// Save locations to known types for quick lookups
-			if (m_materialShaderId == INVALID_ID && Equals(config.shaderName, "Shader.Builtin.Material"))
+			if (m_materialShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.Material")
 			{
 				m_materialShaderId = shader->id;
 				m_materialLocations.projection = Shaders.GetUniformIndex(shader, "projection");
@@ -161,7 +161,7 @@ namespace C3D
 				m_materialLocations.model = Shaders.GetUniformIndex(shader, "model");
 				m_materialLocations.renderMode = Shaders.GetUniformIndex(shader, "mode");
 			}
-			else if (m_uiShaderId == INVALID_ID && Equals(config.shaderName, "Shader.Builtin.UI"))
+			else if (m_uiShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.UI")
 			{
 				m_uiShaderId = shader->id;
 				m_uiLocations.projection = Shaders.GetUniformIndex(shader, "projection");
@@ -366,7 +366,7 @@ namespace C3D
 		// Name
 		StringNCopy(mat->name, config.name, MATERIAL_NAME_MAX_LENGTH);
 		// Id of the shader associated with this material
-		mat->shaderId = Shaders.GetId(config.shaderName);
+		mat->shaderId = Shaders.GetId(config.shaderName.Data());
 		// Diffuse color
 		mat->diffuseColor = config.diffuseColor;
 		// Shininess
@@ -443,7 +443,7 @@ namespace C3D
 			mat->normalMap.texture = Textures.GetDefaultNormal();
 		}
 
-		Shader* shader = Shaders.Get(config.shaderName);
+		Shader* shader = Shaders.Get(config.shaderName.Data());
 		if (!shader)
 		{
 			m_logger.Error("LoadMaterial() - Failed to load material since it's shader was not found: '{}'", config.shaderName);

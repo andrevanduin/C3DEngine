@@ -3,6 +3,7 @@
 #include "core/defines.h"
 #include "core/logger.h"
 #include "base_allocator.h"
+#include "core/metrics/metrics.h"
 #include "platform/platform.h"
 
 namespace C3D
@@ -61,7 +62,7 @@ namespace C3D
 		const auto dataPtr = &m_memory[m_allocated];
 		m_allocated += size;
 
-		Metrics.Allocate(m_id, type, size);
+		MetricsAllocate(m_id, type, size, size, dataPtr);
 
 		return dataPtr;
 	}

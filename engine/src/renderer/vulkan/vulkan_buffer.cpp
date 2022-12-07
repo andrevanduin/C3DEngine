@@ -75,7 +75,10 @@ namespace C3D
 		// Determine if memory is on device heap.
 		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		// Report memory as in-use
-		Metrics.Allocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
+		Metrics.Allocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), )
+
+		const Allocation alloc = { MemoryType::Vulkan, m_memoryRequirements.size, m_memoryRequirements.size, nullptr };
+		Metrics.Allocate(, alloc);
 
 		if (result != VK_SUCCESS)
 		{
@@ -102,8 +105,15 @@ namespace C3D
 		}
 
 		// Report the freeing of the memory.
-		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		Metrics.Free(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
+		if (m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+		{
+			Metrics.Free(GPU_ALLOCATOR_ID, DeAllocation(MemoryType::Vulkan, m_memoryRequirements.size));
+		}
+		else
+		{
+			Metrics.Free(Memory.GetId(), DeAllocation(MemoryType::Vulkan, m_memory));
+		}
+
 		Platform::Zero(&m_memoryRequirements);
 
 		totalSize = 0;
@@ -197,6 +207,9 @@ namespace C3D
 		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 		// Report memory as in-use
+		Allocation alloc = { MemoryType::Vulkan, isDeviceMemory ? m_memory : nullptr };
+		if (isDeviceMemory) alloc.ptr = m_memory;
+
 		Metrics.Free(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
 		m_memoryRequirements = requirements;
 		Metrics.Allocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);

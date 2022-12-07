@@ -1,7 +1,7 @@
 
 #pragma once
 #include "core/defines.h"
-#include "core/metrics.h"
+#include "core/metrics/types.h"
 
 namespace C3D
 {
@@ -33,6 +33,15 @@ namespace C3D
 		T* New(const MemoryType type, Args&&... args)
 		{
 			return new(AllocateBlock(type, sizeof T, alignof(T))) T(std::forward<Args>(args)...);
+		}
+
+		template <class T>
+		void Delete(const MemoryType type, T* instance)
+		{
+			// Call our destructor
+			instance->~T();
+			// Free our memory
+			Free(type, instance);
 		}
 
 		[[nodiscard]] void* GetMemory() const { return m_memoryBlock; }

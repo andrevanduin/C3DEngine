@@ -1,8 +1,8 @@
 
 #include "metrics.h"
 
-#include "c3d_string.h"
-#include "logger.h"
+#include "core/c3d_string.h"
+#include "core/logger.h"
 #include "math/c3d_math.h"
 #include "platform/platform.h"
 
@@ -59,6 +59,9 @@ namespace C3D
 		{
 			stats.type = AllocatorType::None;
 		}
+
+		m_memoryStats[EXTERNAL_ALLOCATOR_ID].type = AllocatorType::External;
+		StringNCopy(m_memoryStats[EXTERNAL_ALLOCATOR_ID].name, "EXTERNAL_ALLOCATOR", ALLOCATOR_NAME_MAX_LENGTH);
 
 		m_memoryStats[GPU_ALLOCATOR_ID].type = AllocatorType::GpuLocal;
 		StringNCopy(m_memoryStats[GPU_ALLOCATOR_ID].name, "GPU_ALLOCATOR", ALLOCATOR_NAME_MAX_LENGTH);
@@ -132,40 +135,87 @@ namespace C3D
 		m_memoryStats[allocatorId].type = AllocatorType::None;
 	}
 
-	void MetricSystem::Allocate(const u8 allocatorId, const MemoryType type, const u64 requestedSize)
-	{
-		return Allocate(allocatorId, type, requestedSize, requestedSize);
-	}
-
-	void MetricSystem::Allocate(const u8 allocatorId, const MemoryType type, const u64 requestedSize, const u64 requiredSize)
+	void MetricSystem::Allocate(const u8 allocatorId, const Allocation& a)
 	{
 		auto& stats = m_memoryStats[allocatorId];
+		const auto type = ToUnderlying(a.type);
 
 		stats.allocCount++;
-		stats.totalRequested += requestedSize;
-		stats.totalRequired += requiredSize;
+		stats.totalRequested += a.requestedSize;
+		stats.totalRequired += a.requiredSize;
 
-		stats.taggedAllocations[ToUnderlying(type)].requestedSize += requestedSize;
-		stats.taggedAllocations[ToUnderlying(type)].requiredSize += requiredSize;
-		stats.taggedAllocations[ToUnderlying(type)].count++;
+#ifdef C3D_MEMORY_METRICS_POINTERS
+		auto tagged = stats.taggedAllocations[type];
+		if (!a.ptr)
+		{
+			tagged.count++;
+			tagged.requestedSize = a.requestedSize;
+			tagged.requiredSize = a.requiredSize;
+		}
+		else
+		{
+			tagged.allocations.push_back({ a.ptr, a.requestedSize, a.requiredSize });
+		}
+#else
+		stats.taggedAllocations[type].requestedSize += a.requestedSize;
+		stats.taggedAllocations[type].requiredSize += a.requiredSize;
+		stats.taggedAllocations[type].count++;
+#endif
 	}
 
-	void MetricSystem::Free(const u8 allocatorId, const MemoryType type, const u64 requestedSize)
+	void MetricSystem::AllocateExternal(const u64 size)
 	{
-		Free(allocatorId, type, requestedSize, requestedSize);
+		m_externalAllocations.count++;
+		m_externalAllocations.size += size;
 	}
 
-	void MetricSystem::Free(const u8 allocatorId, const MemoryType type, const u64 requestedSize, const u64 requiredSize)
+	void MetricSystem::Free(const u8 allocatorId, const DeAllocation& a)
 	{
 		auto& stats = m_memoryStats[allocatorId];
+		const auto type = ToUnderlying(a.type);
 
 		stats.allocCount--;
-		stats.totalRequested -= requestedSize;
-		stats.totalRequired -= requiredSize;
 
-		stats.taggedAllocations[ToUnderlying(type)].requestedSize -= requestedSize;
-		stats.taggedAllocations[ToUnderlying(type)].requiredSize  -= requiredSize;
-		stats.taggedAllocations[ToUnderlying(type)].count--;
+		auto tagged = stats.taggedAllocations[type];
+
+#ifdef C3D_MEMORY_METRICS_POINTERS
+		if (!a.ptr)
+		{
+			tagged.count--;
+			tagged.requestedSize -= a.requestedSize;
+			tagged.requiredSize -= a.requiredSize;
+		}
+		else
+		{
+			const auto allocIt = std::find_if(stats.taggedAllocations[type].allocations.begin(), stats.taggedAllocations[type].allocations.end(), [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
+			if (allocIt != stats.taggedAllocations[type].allocations.end())
+			{
+				const auto alloc = *allocIt;
+
+				stats.totalRequested -= alloc.requestedSize;
+				stats.totalRequired -= alloc.requiredSize;
+
+				stats.taggedAllocations[type].allocations.erase(allocIt);
+			}
+			else
+			{
+				throw std::bad_alloc();
+			}
+		}
+#else
+		stats.totalRequested -= a.requestedSize;
+		stats.totalRequired -= a.requiredSize;
+
+		stats.taggedAllocations[type].requestedSize -= a.requestedSize;
+		stats.taggedAllocations[type].requiredSize -= a.requiredSize;
+		stats.taggedAllocations[type].count--;
+#endif
+	}
+
+	void MetricSystem::FreeExternal(const u64 size)
+	{
+		m_externalAllocations.count--;
+		m_externalAllocations.size -= size;
 	}
 
 	void MetricSystem::FreeAll(const u8 allocatorId)
@@ -177,9 +227,13 @@ namespace C3D
 
 		for (auto& taggedAllocation : stats.taggedAllocations)
 		{
+#ifdef C3D_MEMORY_METRICS_POINTERS
+			taggedAllocation.allocations.clear();
+#else
 			taggedAllocation.requestedSize = 0;
 			taggedAllocation.requiredSize = 0;
 			taggedAllocation.count = 0;
+#endif
 		}
 	}
 
@@ -195,12 +249,33 @@ namespace C3D
 
 	u64 MetricSystem::GetMemoryUsage(const MemoryType memoryType, const u8 allocatorId) const
 	{
+#ifdef C3D_MEMORY_METRICS_POINTERS
+		u64 requiredSize = 0;
+		for (const auto& alloc : m_memoryStats[allocatorId].taggedAllocations[ToUnderlying(memoryType)].allocations)
+		{
+			requiredSize += alloc.requiredSize;
+		}
+		return requiredSize;
+#else
 		return m_memoryStats[allocatorId].taggedAllocations[ToUnderlying(memoryType)].requiredSize;
+#endif
 	}
 
 	u64 MetricSystem::GetRequestedMemoryUsage(const MemoryType memoryType, const u8 allocatorId) const
 	{
+#ifdef C3D_MEMORY_METRICS_POINTERS
+		const auto tagged = m_memoryStats[allocatorId].taggedAllocations[ToUnderlying(memoryType)];
+
+		u64 requestedSize = 0;
+		for (const auto& alloc : tagged.allocations)
+		{
+			requestedSize += alloc.requestedSize;
+		}
+		// Return the requested size + the gpu allocator's requested size
+		return requestedSize + tagged.requestedSize;
+#else
 		return m_memoryStats[allocatorId].taggedAllocations[ToUnderlying(memoryType)].requestedSize;
+#endif
 	}
 
 	void MetricSystem::PrintMemoryUsage(const u8 allocatorId)
@@ -286,12 +361,31 @@ namespace C3D
 		return "B";
 	}
 
-	void MetricSystem::SprintfAllocation(const MemoryAllocation& allocation, const int index, char* buffer, int& bytesWritten, const int offset)
+	void MetricSystem::SprintfAllocation(const MemoryAllocations& allocation, const int index, char* buffer, int& bytesWritten, const int offset)
 	{
 		f64 requestedAmount, requiredAmount;
+		const char* requestedUnit = nullptr;
+		const char* requiredUnit = nullptr;
+		auto count = 0;
 
-		const char* requestedUnit = SizeToText(allocation.requestedSize, &requestedAmount);
-		const char* requiredUnit = SizeToText(allocation.requiredSize, &requiredAmount);
+#ifdef C3D_MEMORY_METRICS_POINTERS
+		u64 requestedSize = 0;
+		u64 requiredSize = 0;
+
+		for (const auto& alloc : allocation.allocations)
+		{
+			requestedSize += alloc.requestedSize;
+			requiredSize += alloc.requiredSize;
+		}
+		
+		requestedUnit = SizeToText(requestedSize, &requestedAmount);
+		requiredUnit = SizeToText(requiredSize, &requiredAmount);
+		count = static_cast<int>(allocation.allocations.size());
+#else
+		requestedUnit = SizeToText(allocation.requestedSize, &requestedAmount);
+		requiredUnit = SizeToText(allocation.requiredSize, &requiredAmount);
+		count = allocation.count;
+#endif
 
 		if (EpsilonEqual(requestedAmount, 0) && EpsilonEqual(requiredAmount, 0))
 		{
@@ -301,11 +395,11 @@ namespace C3D
 
 		if (!EpsilonEqual(requestedAmount, requiredAmount))
 		{
-			bytesWritten = snprintf(buffer + offset, 8192, "  %s: %4d using %6.2f %-3s | (%6.2f %-3s)\n", MEMORY_TYPE_STRINGS[index], allocation.count, requestedAmount, requestedUnit, requiredAmount, requiredUnit);
+			bytesWritten = snprintf(buffer + offset, 8192, "  %s: %4d using %6.2f %-3s | (%6.2f %-3s)\n", MEMORY_TYPE_STRINGS[index], count, requestedAmount, requestedUnit, requiredAmount, requiredUnit);
 		}
 		else
 		{
-			bytesWritten = snprintf(buffer + offset, 8192, "  %s: %4d using %6.2f %-3s\n", MEMORY_TYPE_STRINGS[index], allocation.count, requestedAmount, requestedUnit);
+			bytesWritten = snprintf(buffer + offset, 8192, "  %s: %4d using %6.2f %-3s\n", MEMORY_TYPE_STRINGS[index], count, requestedAmount, requestedUnit);
 		}
 
 		if (bytesWritten == -1)

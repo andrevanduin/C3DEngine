@@ -2,7 +2,7 @@
 #include "game.h"
 
 #include <core/logger.h>
-#include <core/metrics.h>
+#include <core/metrics/metrics.h>
 
 #include <services/services.h>
 #include <systems/camera_system.h>

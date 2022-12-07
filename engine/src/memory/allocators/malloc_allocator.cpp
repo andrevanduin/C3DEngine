@@ -1,10 +1,11 @@
 
 #include "malloc_allocator.h"
+#include "core/metrics/metrics.h"
 
 namespace C3D
 {
 	MallocAllocator::MallocAllocator()
-		: BaseAllocator(ToUnderlying(AllocatorType::Malloc)), m_logger("MALLOC_ALLOCATOR"), m_allocations()
+		: BaseAllocator(ToUnderlying(AllocatorType::Malloc)), m_logger("MALLOC_ALLOCATOR")
 	{
 		m_id = Metrics.CreateAllocator("MALLOC_ALLOCATOR", AllocatorType::Malloc, 0);
 	}
@@ -16,43 +17,18 @@ namespace C3D
 
 	void* MallocAllocator::AllocateBlock(const MemoryType type, const u64 size, u16 alignment)
 	{
-#ifdef C3D_DEBUG_MEMORY_USAGE
-	#ifdef C3D_DEBUG_MALLOC_ALLOCATOR
-		Metrics.Allocate(m_id, type, size);
-	#endif
+		const auto ptr = std::malloc(size);
+#if defined C3D_MEMORY_METRICS_MALLOC && C3D_MEMORY_METRICS_POINTERS
+		Metrics.Allocate(m_id, { type, size, size, ptr });
 #endif
-		return std::malloc(size);
+		return ptr;
 	}
 
 	void MallocAllocator::Free(const MemoryType type, void* block)
 	{
-#ifdef C3D_DEBUG_MEMORY_USAGE
-	#ifdef C3D_DEBUG_MALLOC_ALLOCATOR
-		u64 size = 0;
-		for (const auto& [b, s] : m_allocations)
-		{
-			if (block == b)
-			{
-				size = s;
-				break;
-			}
-		}
-		Metrics.Free(m_id, type, size);
-	#endif
+#if defined C3D_MEMORY_METRICS_MALLOC && C3D_MEMORY_METRICS_POINTERS
+		Metrics.Free(m_id, { type, block });
 #endif
 		std::free(block);
-	}
-
-	u64 MallocAllocator::GetTotalAllocated() const
-	{
-		u64 total = 0;
-		for (const auto& [block, size] : m_allocations)
-		{
-			if (block)
-			{
-				total += size;
-			}
-		}
-		return total;
 	}
 }

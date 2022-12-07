@@ -691,9 +691,7 @@ namespace C3D
 		{
 			if (mesh.generation != INVALID_ID_U8 && mesh.geometries && mesh.geometryCount > 0)
 			{
-				Memory.Free(MemoryType::Array, mesh.geometries);
-				mesh.geometries = nullptr;
-				mesh.geometryCount = 0;
+				mesh.Unload();
 			}
 		}
 
@@ -701,9 +699,7 @@ namespace C3D
 		{
 			if (mesh.generation != INVALID_ID_U8 && mesh.geometries && mesh.geometryCount > 0)
 			{
-				Memory.Free(MemoryType::Array, mesh.geometries);
-				mesh.geometries = nullptr;
-				mesh.geometryCount = 0;
+				mesh.Unload();
 			}
 		}
 
@@ -761,7 +757,7 @@ namespace C3D
 					}
 					else if (e.window.event == SDL_WINDOWEVENT_ENTER && m_state.suspended)
 					{
-						EventContext context;
+						EventContext context{};
 						context.data.u16[0] = static_cast<u16>(m_state.width);
 						context.data.u16[1] = static_cast<u16>(m_state.height);
 						Event.Fire(SystemEventCode::FocusGained, nullptr, context);

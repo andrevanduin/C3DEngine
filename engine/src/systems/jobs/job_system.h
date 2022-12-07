@@ -34,11 +34,61 @@ namespace C3D
 		void Update();
 
 		template <typename InputType, typename OutputType>
-		C3D_API void Submit(const JobInfo<InputType, OutputType>& info);
+		C3D_API void Submit(const JobInfo<InputType, OutputType>& info)
+		{
+			// First we need to make a copy and allocate memory to keep track of this JobInfo
+			auto jobInfo = Memory.New<JobInfo<InputType, OutputType>>(MemoryType::Job, info);
+
+			// If the job priority is high, we try to start it immediately
+			if (jobInfo->priority == JobPriority::High)
+			{
+				for (auto& thread : m_jobThreads)
+				{
+					if (thread.typeMask & jobInfo->type)
+					{
+						std::lock_guard threadLock(thread.mutex);
+						if (thread.IsFree())
+						{
+							m_logger.Trace("Submit() - Job immediately submitted on thread {} since it has HIGH priority.", thread.index);
+							thread.SetInfo(jobInfo);
+							return;
+						}
+					}
+				}
+			}
+
+			// We need to lock our queue in case the job is submitted from another job/thread
+			switch (jobInfo->priority)
+			{
+				case JobPriority::High:
+				{
+					std::lock_guard queueLock(m_highPriorityMutex);
+					m_highPriorityQueue.Enqueue(jobInfo);
+					break;
+				}
+				case JobPriority::Normal:
+				{
+					std::lock_guard queueLock(m_normalPriorityMutex);
+					m_normalPriorityQueue.Enqueue(jobInfo);
+					break;
+				}
+				case JobPriority::Low:
+				{
+					std::lock_guard queueLock(m_lowPriorityMutex);
+					m_lowPriorityQueue.Enqueue(jobInfo);
+					break;
+				}
+				default:
+				case JobPriority::None:
+					m_logger.Error("Submit() - Failed to submit job since it has priority type NONE {}.");
+					break;
+			}
+
+			m_logger.Trace("Submit() - Job has been queued.");
+		}
 
 	private:
-		template <typename ResultType>
-		void StoreResult(const std::function<void(void*)>& callback, const ResultType& result);
+		void StoreResult(BaseJobInfo* info, bool wasSuccess);
 
 		void Runner(u32 index);
 
@@ -60,68 +110,4 @@ namespace C3D
 		DynamicArray<BaseJobResultEntry*> m_pendingResults;
 		std::mutex m_resultMutex;
 	};
-
-	template <typename InputType, typename OutputType>
-	void JobSystem::Submit(const JobInfo<InputType, OutputType>& info)
-	{
-		// If the job priority is high, we try to start it immediately
-		if (info.priority == JobPriority::High)
-		{
-			for (auto& thread : m_jobThreads)
-			{
-				if (thread.typeMask & info.type)
-				{
-					std::lock_guard threadLock(thread.mutex);
-					if (thread.IsFree())
-					{
-						m_logger.Trace("Submit() - Job immediately submitted on thread {} since it has HIGH priority.", thread.index);
-						thread.SetInfo(info);
-						return;
-					}
-				}
-			}
-		}
-
-		// We need to lock our queue in case the job is submitted from another job/thread
-		switch (info.priority)
-		{
-			case JobPriority::High:
-			{
-				std::lock_guard queueLock(m_highPriorityMutex);
-				m_highPriorityQueue.Enqueue(info);
-				break;
-			}
-			case JobPriority::Normal:
-			{
-				std::lock_guard queueLock(m_normalPriorityMutex);
-				m_normalPriorityQueue.Enqueue(info);
-				break;
-			}
-			case JobPriority::Low:
-			{
-				std::lock_guard queueLock(m_lowPriorityMutex);
-				m_lowPriorityQueue.Enqueue(info);
-				break;
-			}
-			default:
-			case JobPriority::None:
-				m_logger.Error("Submit() - Failed to submit job since it has priority type NONE {}.");
-				break;
-		}
-
-		m_logger.Trace("Submit() - Job has been queued.");
-	}
-
-	template <typename ResultType>
-	void JobSystem::StoreResult(const std::function<void(void*)>& callback, const ResultType& result)
-	{
-		JobResultEntry<ResultType> entry;
-		entry.id = INVALID_ID_U16;
-		entry.result = result;
-		entry.callback = callback;
-
-		// Lock our m_pendingResults
-		std::lock_guard lock(m_resultMutex);
-		m_pendingResults.PushBack(entry);
-	}
 }

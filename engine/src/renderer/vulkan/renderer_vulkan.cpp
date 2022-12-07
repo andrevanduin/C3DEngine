@@ -150,7 +150,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 		Logger::Trace("[VULKAN_EXTERNAL_ALLOCATE] - Allocation of size {}.", size);
 #endif
-		Metrics.Allocate(Memory.GetId(), MemoryType::VulkanExternal, size, size);
+		Metrics.AllocateExternal(size);
 	}
 
 	/*
@@ -162,7 +162,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 		Logger::Trace("[VULKAN_EXTERNAL_FREE] - Free of size {}.", size);
 #endif
-		Metrics.Free(Memory.GetId(), MemoryType::VulkanExternal, size, size);
+		Metrics.FreeExternal(size);
 	}
 
 	bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks)

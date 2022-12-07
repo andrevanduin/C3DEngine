@@ -458,6 +458,28 @@ namespace C3D
 		}
 
 		/*
+		 * @brief Removes the element at the provided index from the array.
+		 * If you remove an element all elements to the right of it will be copied over
+		 * and moved to the left one spot effectively shrinking the size by 1 but keeping the same capacity.
+		 */
+		void Erase(u64 index)
+		{
+			// Deconstruct the element at the provided index
+			m_elements[index].~T();
+
+			// We need to move all elements after the erased element one spot to the left
+			// in order for the dynamic array to be contiguous again
+			// We start moving from 1 element to the right of our erased element
+			const auto moveStart = begin() + index + 1;
+			// We move them one spot to the left (starting at our erased element)
+			const auto dest = begin() + index;
+			std::move(moveStart, end(), dest);
+
+			// Decrease the size by one for the removed element
+			m_size--;
+		}
+
+		/*
 		 * @brief Set a pointer to an allocator (must have a base type of BaseAllocator)
 		 * This method must be used if the allocator could not be set during initialization
 		 * because the global memory system was not yet setup for example.
@@ -472,6 +494,8 @@ namespace C3D
 		[[nodiscard]] T* GetData() const { return m_elements; }
 
 		[[nodiscard]] u64 Size() const noexcept { return m_size; }
+
+		[[nodiscard]] i64 SSize() const noexcept { return static_cast<i64>(m_size); }
 
 		[[nodiscard]] bool Empty() const noexcept { return m_size == 0; }
 

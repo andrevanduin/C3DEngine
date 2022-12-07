@@ -6,6 +6,15 @@
 
 namespace C3D
 {
+	struct MeshLoadParams
+	{
+		MeshLoadParams() : outMesh(nullptr) {}
+
+		String resourceName;
+		Mesh* outMesh;
+		MeshResource meshResource;
+	};
+
 	class Mesh
 	{
 	public:
@@ -26,12 +35,5 @@ namespace C3D
 		static bool LoadJobEntryPoint(void* data, void* resultData);
 		static void LoadJobSuccess(void* data);
 		static void LoadJobFailure(void* data);
-	};
-
-	struct MeshLoadParams
-	{
-		const char* resourceName;
-		Mesh* outMesh;
-		MeshResource meshResource;
 	};
 }

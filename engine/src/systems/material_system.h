@@ -62,7 +62,7 @@ namespace C3D
 		{}
 	};
 
-	class MaterialSystem : System<MaterialSystemConfig>
+	class MaterialSystem final : System<MaterialSystemConfig>
 	{
 	public:
 		MaterialSystem();

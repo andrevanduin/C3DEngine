@@ -4,7 +4,6 @@
 #include <mutex>
 
 #include "memory/global_memory_system.h"
-#include "platform/platform.h"
 #include "services/services.h"
 
 namespace C3D
@@ -34,6 +33,50 @@ namespace C3D
 		High,
 	};
 
+	class BaseJobResultEntry
+	{
+	public:
+		BaseJobResultEntry() : id(INVALID_ID_U16) {}
+
+		BaseJobResultEntry(const BaseJobResultEntry&) = default;
+		BaseJobResultEntry(BaseJobResultEntry&&) = default;
+
+		BaseJobResultEntry& operator=(const BaseJobResultEntry&) = default;
+		BaseJobResultEntry& operator=(BaseJobResultEntry&&) = default;
+
+		virtual ~BaseJobResultEntry() = default;
+
+		virtual void Callback() = 0;
+
+		virtual BaseJobResultEntry* MakeCopy() = 0;
+
+		/* @brief The id the job. */
+		u16 id;
+		/* @brief The callback that we need to call (onSuccess or onFailure depending on the result) */
+		std::function<void(void*)> callback = nullptr;
+	};
+
+
+	template <typename ResultType>
+	class JobResultEntry final : public BaseJobResultEntry
+	{
+	public:
+		JobResultEntry() : BaseJobResultEntry() {}
+
+		void Callback() override
+		{
+			callback(&result);
+		}
+
+		BaseJobResultEntry* MakeCopy() override
+		{
+			return Memory.New<JobResultEntry<ResultType>>(MemoryType::Job, *this);
+		}
+
+		/* @brief The result of the work that was done during this job. */
+		ResultType result;
+	};
+
 	class BaseJobInfo
 	{
 	public:
@@ -48,18 +91,18 @@ namespace C3D
 		virtual ~BaseJobInfo() = default;
 
 		virtual bool CallEntry() = 0;
-		virtual void CallSuccess() = 0;
-		virtual void CallFailure() = 0;
+		virtual BaseJobInfo* MakeCopy() = 0;
+		virtual BaseJobResultEntry* MakeResultEntry(bool wasSuccess) = 0;
 
 		JobType type;
 		JobPriority priority;
 
 		/* @brief The entry point of the job. Gets called when the job starts. */
-		std::function<bool(void*, void*)> entryPoint = nullptr;
+		std::function<bool(void*, void*)> entryPoint;
 		/* @brief An optional callback for when the job finishes successfully. */
-		std::function<void(void*)> onSuccess = nullptr;
+		std::function<void(void*)> onSuccess;
 		/* @brief An optional callback for when the job finishes unsuccessfully. */
-		std::function<void(void*)> onFailure = nullptr;
+		std::function<void(void*)> onFailure;
 	};
 
 	template <typename InputType, typename OutputType>
@@ -80,14 +123,18 @@ namespace C3D
 			return entryPoint(&input, &output);
 		}
 
-		void CallSuccess() override
+		BaseJobInfo* MakeCopy() override
 		{
-			onSuccess(&input, &output);
+			return Memory.New<JobInfo<InputType, OutputType>>(MemoryType::Job, *this);
 		}
 
-		void CallFailure() override
+		BaseJobResultEntry* MakeResultEntry(const bool wasSuccess) override
 		{
-			onFailure(&input, &output);
+			auto entry = Memory.New<JobResultEntry<OutputType>>(MemoryType::Job);
+			entry->id = INVALID_ID_U16;
+			entry->callback = wasSuccess ? onSuccess : onFailure;
+			entry->result = output;
+			return entry;
 		}
 
 		InputType input;
@@ -99,10 +146,10 @@ namespace C3D
 	public:
 		JobThread() : index(0), typeMask(0), m_info(nullptr) {}
 
-		/* @brief Gets a copy of the info. Thread should be locked before calling this! */
-		[[nodiscard]] BaseJobInfo* GetInfo() const
+		[[nodiscard]] BaseJobInfo* CopyInfo() const
 		{
-			return m_info;
+			if (!m_info) return nullptr;
+			return m_info->MakeCopy();
 		}
 
 		/* @brief Sets the thread's info. Thread should be locked before calling this! */
@@ -114,7 +161,13 @@ namespace C3D
 		/* @brief Clears the thread's info. Thread should be locked before calling this! */
 		void ClearInfo()
 		{
-			m_info = nullptr;
+			if (m_info)
+			{
+				// Free our JobInfo memory that was allocated when we submitted this job
+				Memory.Delete(MemoryType::Job, m_info);
+				// Set our m_info to nullptr so it's explicitly empty
+				m_info = nullptr;
+			}
 		}
 			 
 		/* @brief Checks if the thread currently has any work assigned. Thread should be locked before calling this! */
@@ -132,48 +185,5 @@ namespace C3D
 
 	private:
 		BaseJobInfo* m_info;
-	};
-
-	class BaseJobResultEntry
-	{
-	public:
-		BaseJobResultEntry() : id(INVALID_ID_U16) {}
-
-		BaseJobResultEntry(const BaseJobResultEntry&) = default;
-		BaseJobResultEntry(BaseJobResultEntry&&) = default;
-
-		BaseJobResultEntry& operator=(const BaseJobResultEntry&) = default;
-		BaseJobResultEntry& operator=(BaseJobResultEntry&&) = default;
-
-		virtual ~BaseJobResultEntry() = default;
-
-		void Clear()
-		{
-			id = INVALID_ID_U16;
-			callback = nullptr;
-		}
-
-		virtual void Callback() = 0;
-
-		/* @brief The id the job. */
-		u16 id;
-		/* @brief The callback that we need to call (onSuccess or onFailure depending on the result) */
-		std::function<void(void*)> callback = nullptr;
-	};
-
-
-	template <typename ResultType>
-	class JobResultEntry final : public BaseJobResultEntry
-	{
-	public:
-		JobResultEntry() : BaseJobResultEntry() {}
-
-		void Callback() override
-		{
-			callback(&result);
-		}
-
-		/* @brief The result of the work that was done during this job. */
-		ResultType result;
 	};
 }

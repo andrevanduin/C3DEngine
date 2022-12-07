@@ -30,10 +30,7 @@ namespace C3D
 
 		m_threadCount = config.threadCount;
 
-		for (auto& pendingResult : m_pendingResults)
-		{
-			pendingResult.id = INVALID_ID_U16;
-		}
+		m_pendingResults.Reserve(100);
 
 		m_logger.Info("Main thread id is: {}", Platform::GetThreadId());
 		m_logger.Info("Spawning {} job threads.", m_threadCount);
@@ -45,6 +42,7 @@ namespace C3D
 			m_jobThreads[i].index = i;
 			m_jobThreads[i].typeMask = config.typeMasks[i];
 			m_jobThreads[i].thread = std::thread([this, i] { Runner(i); });
+			m_jobThreads[i].SetInfo(nullptr);
 		}
 		return true;
 	}
@@ -72,28 +70,37 @@ namespace C3D
 		ProcessQueue(m_lowPriorityQueue, m_lowPriorityMutex);
 
 		// Process all pending results
-		for (const auto pendingResult : m_pendingResults)
+		for (i64 i = m_pendingResults.SSize() - 1; i >= 0; --i)
 		{
-			// Lock, take a copy of our result and unlock
-			BaseJobResultEntry
-
-			BaseJobResultEntry entry;
+			BaseJobResultEntry* entry;
 			{
+				// Lock our result so we can take a copy of our pointer and remove it from our array
 				std::lock_guard resultLock(m_resultMutex);
-				entry = *pendingResult;
+				entry = m_pendingResults[i]->MakeCopy();
 			}
 
-			// Check if we have a result
-			if (entry->id != INVALID_ID_U16)
-			{
-				// Execute the callback
-				entry.Callback();
+			// Execute our callback
+			entry->Callback();
 
-				// Lock our pending results and clear 
-				std::lock_guard resultLock(m_resultMutex);
-				pendingResult->Clear();
-			}
+			// Free our memory
+			Memory.Delete(MemoryType::Job, entry);
+
+			// Lock our actual result array
+			std::lock_guard resultLock(m_resultMutex);
+
+			// Delete the memory associated with the result
+			Memory.Delete(MemoryType::Job, m_pendingResults[i]);
+
+			// Remove it from our results array
+			m_pendingResults.Erase(i);
 		}
+	}
+
+	void JobSystem::StoreResult(BaseJobInfo* info, const bool wasSuccess)
+	{
+		// Lock our m_pendingResults
+		std::lock_guard lock(m_resultMutex);
+		m_pendingResults.PushBack(info->MakeResultEntry(wasSuccess));
 	}
 
 	void JobSystem::Runner(const u32 index)
@@ -112,10 +119,10 @@ namespace C3D
 			BaseJobInfo* info;
 			{
 				std::lock_guard threadLock(currentThread.mutex);
-				info = currentThread.GetInfo();
+				info = currentThread.CopyInfo();
 			}
 
-			if (info->entryPoint)
+			if (info && info->entryPoint)
 			{
 				// Call our entry point and do the work and store the result of the work
 				// if the user has provided a onSuccess callback (in the case of success)
@@ -124,12 +131,15 @@ namespace C3D
 
 				if (info->CallEntry())
 				{
-					if (info->onSuccess) StoreResult(info->onSuccess, info.);
+					if (info->onSuccess) StoreResult(info, true);
 				}
 				else
 				{
-					if (info->onFailure) StoreResult(info->onFailure, info.resultDataSize, info.resultData);
+					if (info->onFailure) StoreResult(info, false);
 				}
+
+				// We delete our copy since we are done with it
+				Memory.Delete(MemoryType::Job, info);
 
 				// Clear out our current thread's info
 				{
@@ -165,7 +175,7 @@ namespace C3D
 					// Lock our thread so we can access it
 					std::lock_guard threadLock(thread.mutex);
 
-					// If the thread is free (not doing any work we queue this job
+					// If the thread is free (not doing any work) we queue this job
 					if (thread.IsFree())
 					{
 						BaseJobInfo* nextJobInfo;
@@ -176,7 +186,7 @@ namespace C3D
 						}
 
 						thread.SetInfo(nextJobInfo);
-						m_logger.Trace("Assigning job to thread: '{}'", thread.index);
+						m_logger.Trace("Assigning job to thread: #{}", thread.index);
 
 						threadFound = true;
 					}

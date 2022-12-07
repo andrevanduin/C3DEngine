@@ -471,8 +471,7 @@ namespace C3D
 			}
 		}
 
-		// LEAK: Does this ever get cleaned up?
-		currentConfig.shaderName = StringDuplicate("Builtin.Shader.Material");
+		currentConfig.shaderName = "Builtin.Shader.Material";
 		if (currentConfig.shininess == 0.0f) currentConfig.shininess = 8.0f;
 
 		if (!WriteMtFile(mtlFilePath, &currentConfig))
@@ -545,7 +544,7 @@ namespace C3D
 			// It's a material name
 
 			// NOTE: Hardcoded default material shader name because all objects imported this way will be treated the same
-			config.shaderName = StringDuplicate("Builtin.Shader.Material");
+			config.shaderName = "Builtin.Shader.Material";
 			// NOTE: Shininess of 0 will cause problems so use a default if not provided
 			if (config.shininess == 0.0f) config.shininess = 8.0f;
 
@@ -610,7 +609,7 @@ namespace C3D
 			StringFormat(lineBuffer, "normalMapName = %s", config->normalMapName);
 			file.WriteLine(lineBuffer);
 		}
-		StringFormat(lineBuffer, "shader = %s", config->shaderName);
+		StringFormat(lineBuffer, "shader = %s", config->shaderName.Data());
 		file.WriteLine(lineBuffer);
 
 

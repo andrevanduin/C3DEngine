@@ -380,12 +380,11 @@ namespace C3D
 		params.outTexture = texture;
 		params.currentGeneration = texture->generation;
 
-		JobInfo info;
+		JobInfo<TextureLoadParams, TextureLoadParams> info;
 		info.entryPoint = LoadJobEntryPoint;
 		info.onSuccess = [this](void* r) { LoadJobSuccess(r); };
 		info.onFailure = [this](void* r) { LoadJobFailure(r); };
-
-		info.SetData<TextureLoadParams, TextureLoadParams>(params);
+		info.input = params;
 
 		Jobs.Submit(info);
 		return true;
@@ -628,8 +627,8 @@ namespace C3D
 			loadParams->tempTexture.generation = INVALID_ID;
 			loadParams->tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
 
-			// NOTE: The load params are also used as the result data here, only the imageResource field is populated now.
-			Platform::Copy(resultData, loadParams, sizeof(TextureLoadParams));
+			const auto rData = static_cast<TextureLoadParams*>(resultData);
+			*rData = *loadParams;
 		}
 
 		return result;

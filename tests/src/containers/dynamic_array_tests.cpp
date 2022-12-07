@@ -6,7 +6,7 @@
 
 #include <containers/dynamic_array.h>
 #include <core/defines.h>
-#include <core/metrics.h>
+#include <core/metrics/metrics.h>
 
 #include "containers/string.h"
 #include "renderer/vertex.h"

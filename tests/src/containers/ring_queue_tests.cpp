@@ -4,7 +4,7 @@
 
 #include <containers/ring_queue.h>
 #include <core/defines.h>
-#include <core/metrics.h>
+#include <core/metrics/metrics.h>
 
 u8 RingQueueShouldCreateAndDestroy()
 {

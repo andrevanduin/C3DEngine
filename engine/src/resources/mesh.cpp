@@ -14,11 +14,11 @@ namespace C3D
 		params.resourceName = resourceName;
 		params.outMesh = this;
 
-		JobInfo info;
+		JobInfo<MeshLoadParams, MeshLoadParams> info;
 		info.entryPoint = LoadJobEntryPoint;
 		info.onSuccess = LoadJobSuccess;
 		info.onFailure = LoadJobFailure;
-		info.SetData<MeshLoadParams, MeshLoadParams>(params);
+		info.input = params;
 
 		Jobs.Submit(info);
 		return true;
@@ -41,10 +41,11 @@ namespace C3D
 	{
 		const auto loadParams = static_cast<MeshLoadParams*>(data);
 
-		const bool result = Resources.Load(loadParams->resourceName, &loadParams->meshResource);
+		const bool result = Resources.Load(loadParams->resourceName.Data(), &loadParams->meshResource);
 
 		// NOTE: The load params are also used as the result data here, only the meshResource field is populated now.
-		Platform::Copy(resultData, loadParams, sizeof(MeshLoadParams));
+		const auto rData = static_cast<MeshLoadParams*>(resultData);
+		*rData = *loadParams;
 
 		return result;
 	}
