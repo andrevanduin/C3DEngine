@@ -42,6 +42,11 @@ namespace C3D
 		}
 	}
 
+	void RenderView::OnDestroyPacket(RenderViewPacket& packet)
+	{
+		packet.geometries.Clear();
+	}
+
 	void RenderView::OnResize() {}
 
 	bool RenderView::RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment)

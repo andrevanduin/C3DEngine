@@ -130,15 +130,23 @@ namespace C3D
 		return m_registeredViews.Get(name);
 	}
 
-	bool RenderViewSystem::BuildPacket(RenderView* view, void* data, RenderViewPacket* outPacket) const
+	bool RenderViewSystem::BuildPacket(RenderView* view, LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket) const
 	{
 		if (view && outPacket)
 		{
-			return view->OnBuildPacket(data, outPacket);
+			return view->OnBuildPacket(frameAllocator, data, outPacket);
 		}
 
 		m_logger.Error("BuildPacket() - Requires valid view and outPacket.");
 		return false;
+	}
+
+	void RenderViewSystem::DestroyPacket(RenderView* view, RenderViewPacket& packet) const
+	{
+		if (view)
+		{
+			view->OnDestroyPacket(packet);
+		}
 	}
 
 	bool RenderViewSystem::OnRender(RenderView* view, const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex) const

@@ -72,7 +72,7 @@ namespace C3D
 
 		u64 size;
 		u16 alignment;
-		if (Memory.GetSizeAlignment(memory, &size, &alignment))
+		if (DynamicAllocator::GetSizeAlignment(memory, &size, &alignment))
 		{
 			Memory.Free(MemoryType::Vulkan, memory);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
@@ -102,7 +102,7 @@ namespace C3D
 
 		u64 allocSize;
 		u16 allocAlignment;
-		if (!Memory.GetSizeAlignment(original, &allocSize, &allocAlignment))
+		if (!DynamicAllocator::GetSizeAlignment(original, &allocSize, &allocAlignment))
 		{
 			Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.", fmt::ptr(original));
 			return nullptr;
@@ -125,7 +125,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 			Logger::Trace("[VULKAN_REALLOCATE] - Successfully reallocated to: {}. Copying data.", fmt::ptr(result));
 #endif
-			Platform::Copy(result, original, allocSize);
+			Platform::MemCopy(result, original, allocSize);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 			Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", fmt::ptr(original));
 #endif
@@ -536,7 +536,7 @@ namespace C3D
 		{
 			attachmentViews[i] = static_cast<VulkanImage*>(attachments[i].texture->internalData)->view;
 		}
-		Platform::Copy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
+		Platform::MemCopy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
 
 		// Setup our frameBuffer creation
 		VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
@@ -775,7 +775,7 @@ namespace C3D
 		if (texture && texture->internalData)
 		{
 			const auto image = static_cast<VulkanImage*>(texture->internalData);
-			image->Destroy(&m_context);
+			Memory.Delete(MemoryType::Texture, image);
 
 			const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -879,7 +879,7 @@ namespace C3D
 		const auto data = static_cast<VulkanTextureData*>(texture->internalData);
 		if (data)
 		{
-			data->image.Destroy(&m_context);
+			data->image.Destroy();
 			Platform::Zero(&data->image);
 			Memory.Free(MemoryType::Texture, texture->internalData);
 		}
@@ -1722,7 +1722,7 @@ namespace C3D
 		const VkResult result = vkFreeDescriptorSets(m_context.device.logicalDevice, internal->descriptorPool, 
 		    3, instanceState->descriptorSetState.descriptorSets);
 
-		if (!result == VK_SUCCESS)
+		if (result != VK_SUCCESS)
 		{
 			m_logger.Error("ReleaseShaderInstanceResources() - Error while freeing shader descriptor sets.");
 		}
@@ -1815,7 +1815,7 @@ namespace C3D
 				// Map the appropriate memory location and copy the data over.
 				auto address = static_cast<u8*>(internal->mappedUniformBufferBlock);
 				address += shader->boundUboOffset + uniform->offset;
-				Platform::Copy(address, value, uniform->size);
+				Platform::MemCopy(address, value, uniform->size);
 			}
 		}
 

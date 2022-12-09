@@ -97,6 +97,11 @@ namespace C3D
 
 	void ResourceLoader<MeshResource>::Unload(MeshResource* resource)
 	{
+		for (auto& config : resource->geometryConfigs)
+		{
+			Geometric.DisposeConfig(&config);
+		}
+
 		resource->geometryConfigs.Destroy();
 		resource->name.Destroy();
 		resource->fullPath.Destroy();

@@ -25,10 +25,9 @@ namespace C3D
 
 	struct FontSystemConfig
 	{
-		u8 defaultSystemFontCount;
-		SystemFontConfig* systemFontConfigs;
-		u8 defaultBitmapFontCount;
-		BitmapFontConfig* bitmapFontConfigs;
+		DynamicArray<SystemFontConfig> systemFontConfigs;
+		DynamicArray<BitmapFontConfig> bitmapFontConfigs;
+
 		u8 maxSystemFontCount;
 		u8 maxBitmapFontCount;
 		bool autoRelease;

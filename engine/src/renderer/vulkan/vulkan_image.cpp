@@ -13,6 +13,11 @@ namespace C3D
 		: handle(nullptr), view(nullptr), width(0), height(0), m_memory(nullptr), m_memoryRequirements(), m_memoryFlags(0)
 	{}
 
+	VulkanImage::~VulkanImage()
+	{
+		Destroy();
+	}
+
 	VkImageType GetVkImageType(const TextureType type)
 	{
 		/*
@@ -42,6 +47,7 @@ namespace C3D
 	                         const VkImageTiling tiling, const VkImageUsageFlags usage, const VkMemoryPropertyFlags memoryFlags, const bool createView,
 							 const VkImageAspectFlags viewAspectFlags)
 	{
+		m_context = context;
 		width = _width;
 		height = _height;
 		m_memoryFlags = memoryFlags;
@@ -82,8 +88,11 @@ namespace C3D
 
 		VK_CHECK(vkBindImageMemory(context->device.logicalDevice, handle, m_memory, 0)); // TODO: Configurable memory offset.
 
+		// Determine if memory is device local (on the GPU)
 		const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		Metrics.Allocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
+		const auto size = m_memoryRequirements.size;
+		// Report memory as in-use
+		MetricsAllocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
 
 		if (createView)
 		{
@@ -233,26 +242,30 @@ namespace C3D
 		vkCmdCopyImageToBuffer(commandBuffer->handle, handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
 	}
 
-	void VulkanImage::Destroy(const VulkanContext* context)
+	void VulkanImage::Destroy()
 	{
+		// Determine if memory is device-local (on the GPU)
+		const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		const auto size = m_memoryRequirements.size;
+		// Report memory as freed
+		MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
+
 		if (view)
 		{
-			vkDestroyImageView(context->device.logicalDevice, view, context->allocator);
+			vkDestroyImageView(m_context->device.logicalDevice, view, m_context->allocator);
 			view = nullptr;
 		}
 		if (m_memory)
 		{
-			vkFreeMemory(context->device.logicalDevice, m_memory, context->allocator);
+			vkFreeMemory(m_context->device.logicalDevice, m_memory, m_context->allocator);
 			m_memory = nullptr;
 		}
 		if (handle)
 		{
-			vkDestroyImage(context->device.logicalDevice, handle, context->allocator);
+			vkDestroyImage(m_context->device.logicalDevice, handle, m_context->allocator);
 			handle = nullptr;
 		}
 
-		const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		Metrics.Free(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
 		Platform::Zero(&m_memoryRequirements, sizeof(VkMemoryRequirements));
 	}
 }

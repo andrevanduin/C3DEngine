@@ -1,31 +1,236 @@
 
 #include "game.h"
 
-#include <core/logger.h>
-#include <core/metrics/metrics.h>
-
-#include <services/services.h>
-#include <systems/camera_system.h>
-
 #include <glm/gtx/matrix_decompose.hpp>
 
+#include <core/identifier.h>
+#include <core/logger.h>
 #include <core/input.h>
 #include <core/events/event.h>
 #include <core/events/event_context.h>
+#include <core/metrics/metrics.h>
+
+#include <services/services.h>
+
+#include <systems/camera_system.h>
+#include <systems/shader_system.h>
+#include <systems/texture_system.h>
+
 #include <renderer/renderer_types.h>
 
+#include "systems/render_view_system.h"
+
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
-	: Application(config), m_camera(nullptr)
+	: Application(config), m_camera(nullptr), m_width(0), m_height(0), m_carMesh(nullptr), m_sponzaMesh(nullptr),
+	  m_modelsLoaded(false), m_hoveredObjectId(0)
 {}
 
-void TestEnv::OnCreate()
+bool TestEnv::OnBoot()
 {
+	m_logger.Info("OnBoot() - Booting TestEnv");
+
+	// Setup the frame allocator
+	m_frameAllocator.Create("FRAME_ALLOCATOR", MebiBytes(64));
+
+	m_config.fontConfig.autoRelease = false;
+
+	// Default bitmap font config
+	C3D::BitmapFontConfig bmpFontConfig;
+	bmpFontConfig.name = "Ubuntu Mono 21px";
+	bmpFontConfig.resourceName = "UbuntuMono21px";
+	bmpFontConfig.size = 21;
+	m_config.fontConfig.bitmapFontConfigs.PushBack(bmpFontConfig);
+
+	// Default system font config
+	C3D::SystemFontConfig systemFontConfig;
+	systemFontConfig.name = "Noto Sans";
+	systemFontConfig.resourceName = "NotoSansCJK";
+	systemFontConfig.defaultSize = 20;
+	m_config.fontConfig.systemFontConfigs.PushBack(systemFontConfig);
+
+	m_config.fontConfig.maxBitmapFontCount = 101;
+	m_config.fontConfig.maxSystemFontCount = 101;
+
+	// Config our render views. TODO: Read this from a file
+	if (!ConfigureRenderViews())
+	{
+		m_logger.Error("OnBoot() - Failed to create render views.");
+		return false;
+	}
+
+	return true;
+}
+
+bool TestEnv::OnCreate()
+{
+	// TEMP
+	// Create test ui text objects
+	if (!m_testText.Create(C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21, "Some test text 123,\nyesyes!\n\tKaas!"))
+	{
+		m_logger.Fatal("Failed to load basic ui bitmap text.");
+	}
+
+	m_testText.SetPosition({ 10, 640, 0 });
+
+	auto& cubeMap = m_skybox.cubeMap;
+	cubeMap.magnifyFilter = cubeMap.minifyFilter = C3D::TextureFilter::ModeLinear;
+	cubeMap.repeatU = cubeMap.repeatV = cubeMap.repeatW = C3D::TextureRepeat::ClampToEdge;
+	cubeMap.use = C3D::TextureUse::CubeMap;
+	if (!Renderer.AcquireTextureMapResources(&cubeMap))
+	{
+		m_logger.Fatal("Unable to acquire resources for cube map texture.");
+		return false;
+	}
+	cubeMap.texture = Textures.AcquireCube("skybox", true);
+
+	C3D::GeometryConfig skyboxCubeConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "skybox_cube", "");
+	skyboxCubeConfig.materialName[0] = '\0';
+
+	m_skybox.g = Geometric.AcquireFromConfig(skyboxCubeConfig, true);
+	m_skybox.frameNumber = INVALID_ID_U64;
+
+	Geometric.DisposeConfig(&skyboxCubeConfig);
+
+	C3D::Shader* skyboxShader = Shaders.Get("Shader.Builtin.Skybox");
+	C3D::TextureMap* maps[1] = { &m_skybox.cubeMap };
+	if (!Renderer.AcquireShaderInstanceResources(skyboxShader, maps, &m_skybox.instanceId))
+	{
+		m_logger.Fatal("Unable to acquire shader resources for skybox texture.");
+		return false;
+	}
+
+	// World meshes
+	for (u32 i = 0; i < 10; i++)
+	{
+		m_meshes[i].generation = INVALID_ID_U8;
+		m_uiMeshes[i].generation = INVALID_ID_U8;
+	}
+
+	u8 meshCount = 0;
+
+	// Our First cube
+	// Load up a cube configuration, and load geometry for it
+	C3D::GeometryConfig gConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
+
+	C3D::Mesh* cubeMesh = &m_meshes[meshCount];
+	cubeMesh->geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
+	cubeMesh->transform = C3D::Transform();
+	cubeMesh->generation = 0;
+	cubeMesh->uniqueId = C3D::Identifier::GetNewId(cubeMesh);
+
+	meshCount++;
+
+	// Cleanup the allocations that we just did
+	Geometric.DisposeConfig(&gConfig);
+
+	// A second cube
+	// Load up a cube configuration, and load geometry for it
+	gConfig = Geometric.GenerateCubeConfig(5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube_2", "test_material");
+
+	C3D::Mesh* cubeMesh2 = &m_meshes[meshCount];
+	cubeMesh2->geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
+	cubeMesh2->transform = C3D::Transform(vec3(20.0f, 0.0f, 1.0f));
+	cubeMesh2->transform.SetParent(&cubeMesh->transform);
+	cubeMesh2->generation = 0;
+	cubeMesh2->uniqueId = C3D::Identifier::GetNewId(cubeMesh2);
+
+	meshCount++;
+
+	// Cleanup the other allocations that we just did
+	Geometric.DisposeConfig(&gConfig);
+
+	// A third cube
+	gConfig = Geometric.GenerateCubeConfig(2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube_3", "test_material");
+
+	C3D::Mesh* cubeMesh3 = &m_meshes[meshCount];
+	cubeMesh3->geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
+	cubeMesh3->transform = C3D::Transform(vec3(5.0f, 0.0f, 1.0f));
+	cubeMesh3->transform.SetParent(&cubeMesh2->transform);
+	cubeMesh3->generation = 0;
+	cubeMesh3->uniqueId = C3D::Identifier::GetNewId(cubeMesh3);
+
+	meshCount++;
+
+	// Cleanup the other allocations that we just did
+	Geometric.DisposeConfig(&gConfig);
+
+	m_carMesh = &m_meshes[meshCount];
+	m_carMesh->transform = C3D::Transform({ 15.0f, 0.0f, 1.0f });
+	m_carMesh->uniqueId = C3D::Identifier::GetNewId(m_carMesh);
+	meshCount++;
+
+	m_sponzaMesh = &m_meshes[meshCount];
+	m_sponzaMesh->transform = C3D::Transform({ 15.0f, 0.0f, 1.0f }, mat4(1.0f), { 0.05f, 0.05f, 0.05f });
+	m_sponzaMesh->uniqueId = C3D::Identifier::GetNewId(m_sponzaMesh);
+
+	meshCount++;
+
+	// Load up our test ui geometry
+	C3D::GeometryConfig<C3D::Vertex2D, u32> uiConfig{};
+	uiConfig.vertices = C3D::DynamicArray<C3D::Vertex2D>();
+	uiConfig.vertices.Resize(4);
+
+	uiConfig.indices = C3D::DynamicArray<u32>(6);
+
+	C3D::StringNCopy(uiConfig.materialName, "test_ui_material", C3D::MATERIAL_NAME_MAX_LENGTH);
+	C3D::StringNCopy(uiConfig.name, "test_ui_geometry", C3D::GEOMETRY_NAME_MAX_LENGTH);
+
+	constexpr f32 w = 128.0f;
+	constexpr f32 h = 32.0f;
+
+	uiConfig.vertices[0].position.x = 0.0f;
+	uiConfig.vertices[0].position.y = 0.0f;
+	uiConfig.vertices[0].texture.x = 0.0f;
+	uiConfig.vertices[0].texture.y = 0.0f;
+
+	uiConfig.vertices[1].position.x = w;
+	uiConfig.vertices[1].position.y = h;
+	uiConfig.vertices[1].texture.x = 1.0f;
+	uiConfig.vertices[1].texture.y = 1.0f;
+
+	uiConfig.vertices[2].position.x = 0.0f;
+	uiConfig.vertices[2].position.y = h;
+	uiConfig.vertices[2].texture.x = 0.0f;
+	uiConfig.vertices[2].texture.y = 1.0f;
+
+	uiConfig.vertices[3].position.x = w;
+	uiConfig.vertices[3].position.y = 0.0f;
+	uiConfig.vertices[3].texture.x = 1.0f;
+	uiConfig.vertices[3].texture.y = 0.0f;
+
+	// Counter-clockwise
+	uiConfig.indices.PushBack(2);
+	uiConfig.indices.PushBack(1);
+	uiConfig.indices.PushBack(0);
+	uiConfig.indices.PushBack(3);
+	uiConfig.indices.PushBack(0);
+	uiConfig.indices.PushBack(1);
+
+	m_uiMeshes[0].uniqueId = C3D::Identifier::GetNewId(&m_uiMeshes[0]);
+	m_uiMeshes[0].geometries.PushBack(Geometric.AcquireFromConfig(uiConfig, true));
+	m_uiMeshes[0].generation = 0;
+
+	auto rotation = angleAxis(C3D::DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
+	m_uiMeshes[0].transform.Rotate(rotation);
+	// TEMP END
+
 	m_camera = Cam.GetDefault();
 	m_camera->SetPosition({ 10.5f, 5.0f, 9.5f });
+
+	// TEMP
+	Event.Register(C3D::SystemEventCode::Debug0, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
+	Event.Register(C3D::SystemEventCode::Debug1, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
+	Event.Register(C3D::SystemEventCode::ObjectHoverIdChanged, new C3D::EventCallback(this, &TestEnv::OnEvent));
+	// TEMP END
+
+	return true;
 }
 
 void TestEnv::OnUpdate(const f64 deltaTime)
 {
+	// Reset our frame allocator
+	m_frameAllocator.FreeAll();
+
 	static u64 allocCount = 0;
 	const u64 prevAllocCount = allocCount;
 	allocCount = Metrics.GetAllocCount();
@@ -132,8 +337,359 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	{
 		m_camera->MoveDown(temp_move_speed * deltaTime);
 	}
+
+	// Rotate 
+	quat rotation = angleAxis(0.5f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
+	m_meshes[0].transform.Rotate(rotation);
+	m_meshes[1].transform.Rotate(rotation);
+	m_meshes[2].transform.Rotate(rotation);
+
+	const auto cam = Cam.GetDefault();
+	const auto pos = cam->GetPosition();
+	const auto rot = cam->GetEulerRotation();
+
+	const auto mouse = Input.GetMousePosition();
+	// Convert to NDC
+	const auto mouseNdcX = C3D::RangeConvert(static_cast<f32>(mouse.x), 0.0f, static_cast<f32>(m_state.width), -1.0f, 1.0f);
+	const auto mouseNdcY = C3D::RangeConvert(static_cast<f32>(mouse.y), 0.0f, static_cast<f32>(m_state.height), -1.0f, 1.0f);
+
+	const auto leftButton = Input.IsButtonDown(C3D::Buttons::ButtonLeft);
+	const auto middleButton = Input.IsButtonDown(C3D::Buttons::ButtonMiddle);
+	const auto rightButton = Input.IsButtonDown(C3D::Buttons::ButtonRight);
+
+	char buffer[256]{};
+	sprintf_s(buffer, "Cam: Pos(%.3f, %.3f, %.3f) Rot(%.3f, %.3f, %.3f)\nMouse: Pos(%.2f, %.2f) Buttons(%d, %d, %d) Hovered: %d",
+		pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, m_hoveredObjectId);
+
+	m_testText.SetText(buffer);
 }
 
-void TestEnv::OnRender(f64 deltaTime)
+bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 {
+	// TEMP
+	// Ensure that we will be using our frame allocator for this packet's view
+	packet.views.SetAllocator(&m_frameAllocator);
+	// Pre-Allocate enough space for 4 views (and default initialize them)
+	packet.views.Resize(4);
+
+	// Skybox
+	C3D::SkyboxPacketData skyboxData = { &m_skybox };
+	if (!Views.BuildPacket(Views.Get("skybox"), m_frameAllocator, &skyboxData, &packet.views[0]))
+	{
+		m_logger.Error("Failed to build packet for view: 'skybox'");
+		return false;
+	}
+
+	// World
+	C3D::MeshPacketData worldPacket;
+	// Ensure we have capacity for 10 meshes (while using our frame allocator)
+	worldPacket.meshes = C3D::DynamicArray<C3D::Mesh*, C3D::LinearAllocator>(10, &m_frameAllocator);
+	for (auto& mesh : m_meshes)
+	{
+		if (mesh.generation != INVALID_ID_U8)
+		{
+			worldPacket.meshes.PushBack(&mesh);
+		}
+	}
+	if (!Views.BuildPacket(Views.Get("world"), m_frameAllocator, &worldPacket, &packet.views[1]))
+	{
+		m_logger.Error("Failed to build packet for view: 'world'");
+		return false;
+	}
+
+	// UI
+	C3D::UIPacketData uiPacket = {};
+	uiPacket.meshData.meshes.SetAllocator(&m_frameAllocator);
+	for (auto& mesh : m_uiMeshes)
+	{
+		if (mesh.generation != INVALID_ID_U8)
+		{
+			uiPacket.meshData.meshes.PushBack(&mesh);
+		}
+	}
+	uiPacket.texts.SetAllocator(&m_frameAllocator);
+	uiPacket.texts.PushBack(&m_testText);
+	if (!Views.BuildPacket(Views.Get("ui"), m_frameAllocator, &uiPacket, &packet.views[2]))
+	{
+		m_logger.Error("Failed to build packet for view: 'ui'");
+		return false;
+	}
+
+	// Pick
+	C3D::PickPacketData pickPacket = {};
+	pickPacket.uiMeshData = uiPacket.meshData;
+	pickPacket.worldMeshData = worldPacket;
+	pickPacket.texts = uiPacket.texts;
+	if (!Views.BuildPacket(Views.Get("pick"), m_frameAllocator, &pickPacket, &packet.views[3]))
+	{
+		m_logger.Error("Failed to build packet for view: 'pick'");
+		return false;
+	}
+
+	// TEMP END
+	return true;
+}
+
+void TestEnv::OnResize(const u16 width, const u16 height)
+{
+	m_state.width = width;
+	m_state.height = height;
+
+	// TEMP
+	m_testText.SetPosition({ 10, height - 80, 0 });
+	// TEMP END
+}
+
+void TestEnv::OnShutdown()
+{
+	// TEMP
+	m_skybox.Destroy();
+	m_testText.Destroy();
+
+	for (auto& mesh : m_meshes)
+	{
+		if (mesh.generation != INVALID_ID_U8)
+		{
+			mesh.Unload();
+		}
+	}
+
+	for (auto& mesh : m_uiMeshes)
+	{
+		if (mesh.generation != INVALID_ID_U8)
+		{
+			mesh.Unload();
+		}
+	}
+
+	Event.UnRegister(C3D::SystemEventCode::Debug0, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
+	Event.UnRegister(C3D::SystemEventCode::Debug1, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
+	Event.UnRegister(C3D::SystemEventCode::ObjectHoverIdChanged, new C3D::EventCallback(this, &TestEnv::OnEvent));
+
+	m_frameAllocator.Destroy();
+	// TEMP END
+}
+
+bool TestEnv::ConfigureRenderViews()
+{
+	// Skybox View
+	C3D::RenderViewConfig skyboxConfig{};
+	skyboxConfig.type = C3D::RenderViewKnownType::Skybox;
+	skyboxConfig.width = 1280;
+	skyboxConfig.height = 720;
+	skyboxConfig.name = "skybox";
+	skyboxConfig.passCount = 1;
+	skyboxConfig.viewMatrixSource = C3D::RenderViewViewMatrixSource::SceneCamera;
+
+	C3D::RenderPassConfig skyboxPass{};
+	skyboxPass.name = "RenderPass.Builtin.Skybox";
+	skyboxPass.renderArea = { 0, 0, 1280, 720 };
+	skyboxPass.clearColor = { 0, 0, 0.2f, 1.0f };
+	skyboxPass.clearFlags = C3D::ClearColorBuffer;
+	skyboxPass.depth = 1.0f;
+	skyboxPass.stencil = 0;
+
+	C3D::RenderTargetAttachmentConfig skyboxTargetAttachment = {};
+	skyboxTargetAttachment.type = C3D::RenderTargetAttachmentType::Color;
+	skyboxTargetAttachment.source = C3D::RenderTargetAttachmentSource::Default;
+	skyboxTargetAttachment.loadOperation = C3D::RenderTargetAttachmentLoadOperation::DontCare;
+	skyboxTargetAttachment.storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+	skyboxTargetAttachment.presentAfter = false;
+
+	skyboxPass.target.attachments.PushBack(skyboxTargetAttachment);
+	skyboxPass.renderTargetCount = Renderer.GetWindowAttachmentCount();
+
+	skyboxConfig.passes.PushBack(skyboxPass);
+
+	m_config.renderViews.PushBack(skyboxConfig);
+
+	// World View
+	C3D::RenderViewConfig worldConfig{};
+	worldConfig.type = C3D::RenderViewKnownType::World;
+	worldConfig.width = 1280;
+	worldConfig.height = 720;
+	worldConfig.name = "world";
+	worldConfig.passCount = 1;
+	worldConfig.viewMatrixSource = C3D::RenderViewViewMatrixSource::SceneCamera;
+
+	C3D::RenderPassConfig worldPass;
+	worldPass.name = "RenderPass.Builtin.World";
+	worldPass.renderArea = { 0, 0, 1280, 720 };
+	worldPass.clearColor = { 0, 0, 0.2f, 1.0f };
+	worldPass.clearFlags = C3D::ClearDepthBuffer | C3D::ClearStencilBuffer;
+	worldPass.depth = 1.0f;
+	worldPass.stencil = 0;
+
+	C3D::RenderTargetAttachmentConfig worldTargetAttachments[2]{};
+	worldTargetAttachments[0].type = C3D::RenderTargetAttachmentType::Color;
+	worldTargetAttachments[0].source = C3D::RenderTargetAttachmentSource::Default;
+	worldTargetAttachments[0].loadOperation = C3D::RenderTargetAttachmentLoadOperation::Load;
+	worldTargetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+	worldTargetAttachments[0].presentAfter = false;
+
+	worldTargetAttachments[1].type = C3D::RenderTargetAttachmentType::Depth;
+	worldTargetAttachments[1].source = C3D::RenderTargetAttachmentSource::Default;
+	worldTargetAttachments[1].loadOperation = C3D::RenderTargetAttachmentLoadOperation::DontCare;
+	worldTargetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+	worldTargetAttachments[1].presentAfter = false;
+
+	worldPass.target.attachments.PushBack(worldTargetAttachments[0]);
+	worldPass.target.attachments.PushBack(worldTargetAttachments[1]);
+	worldPass.renderTargetCount = Renderer.GetWindowAttachmentCount();
+
+	worldConfig.passes.PushBack(worldPass);
+
+	m_config.renderViews.PushBack(worldConfig);
+
+	// UI View
+	C3D::RenderViewConfig uiViewConfig{};
+	uiViewConfig.type = C3D::RenderViewKnownType::UI;
+	uiViewConfig.width = 1280;
+	uiViewConfig.height = 720;
+	uiViewConfig.name = "ui";
+	uiViewConfig.passCount = 1;
+	uiViewConfig.viewMatrixSource = C3D::RenderViewViewMatrixSource::SceneCamera;
+
+	C3D::RenderPassConfig uiPass;
+	uiPass.name = "RenderPass.Builtin.UI";
+	uiPass.renderArea = { 0, 0, 1280, 720 };
+	uiPass.clearColor = { 0, 0, 0.2f, 1.0f };
+	uiPass.clearFlags = C3D::ClearNone;
+	uiPass.depth = 1.0f;
+	uiPass.stencil = 0;
+
+	C3D::RenderTargetAttachmentConfig uiAttachment = {};
+	uiAttachment.type = C3D::RenderTargetAttachmentType::Color;
+	uiAttachment.source = C3D::RenderTargetAttachmentSource::Default;
+	uiAttachment.loadOperation = C3D::RenderTargetAttachmentLoadOperation::Load;
+	uiAttachment.storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+	uiAttachment.presentAfter = true;
+
+	uiPass.target.attachments.PushBack(uiAttachment);
+	uiPass.renderTargetCount = Renderer.GetWindowAttachmentCount();
+
+	uiViewConfig.passes.PushBack(uiPass);
+
+	m_config.renderViews.PushBack(uiViewConfig);
+
+	// Pick View
+	C3D::RenderViewConfig pickViewConfig = {};
+	pickViewConfig.type = C3D::RenderViewKnownType::Pick;
+	pickViewConfig.width = 1280;
+	pickViewConfig.height = 720;
+	pickViewConfig.name = "pick";
+	pickViewConfig.passCount = 2;
+	pickViewConfig.viewMatrixSource = C3D::RenderViewViewMatrixSource::SceneCamera;
+
+	C3D::RenderPassConfig pickPasses[2] = {};
+
+	pickPasses[0].name = "RenderPass.Builtin.WorldPick";
+	pickPasses[0].renderArea = { 0, 0, 1280, 720 };
+	pickPasses[0].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // HACK: Clear to white for better visibility (should be 0 since it's invalid id)
+	pickPasses[0].clearFlags = C3D::RenderPassClearFlags::ClearColorBuffer | C3D::RenderPassClearFlags::ClearDepthBuffer;
+	pickPasses[0].depth = 1.0f;
+	pickPasses[0].stencil = 0;
+
+	C3D::RenderTargetAttachmentConfig worldPickTargetAttachments[2];
+	worldPickTargetAttachments[0].type = C3D::RenderTargetAttachmentType::Color;
+	worldPickTargetAttachments[0].source = C3D::RenderTargetAttachmentSource::View;
+	worldPickTargetAttachments[0].loadOperation = C3D::RenderTargetAttachmentLoadOperation::DontCare;
+	worldPickTargetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+	worldPickTargetAttachments[0].presentAfter = false;
+
+	worldPickTargetAttachments[1].type = C3D::RenderTargetAttachmentType::Depth;
+	worldPickTargetAttachments[1].source = C3D::RenderTargetAttachmentSource::View;
+	worldPickTargetAttachments[1].loadOperation = C3D::RenderTargetAttachmentLoadOperation::DontCare;
+	worldPickTargetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+	worldPickTargetAttachments[1].presentAfter = false;
+
+	pickPasses[0].target.attachments.PushBack(worldPickTargetAttachments[0]);
+	pickPasses[0].target.attachments.PushBack(worldPickTargetAttachments[1]);
+	pickPasses[0].renderTargetCount = 1;
+
+	pickPasses[1].name = "RenderPass.Builtin.UIPick";
+	pickPasses[1].renderArea = { 0, 0, 1280, 720 };
+	pickPasses[1].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+	pickPasses[1].clearFlags = C3D::RenderPassClearFlags::ClearNone;
+	pickPasses[1].depth = 1.0f;
+	pickPasses[1].stencil = 0;
+
+	C3D::RenderTargetAttachmentConfig uiPickTargetAttachment{};
+	uiPickTargetAttachment.type = C3D::RenderTargetAttachmentType::Color;
+	uiPickTargetAttachment.source = C3D::RenderTargetAttachmentSource::View;
+	uiPickTargetAttachment.loadOperation = C3D::RenderTargetAttachmentLoadOperation::Load;
+	uiPickTargetAttachment.storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+	uiPickTargetAttachment.presentAfter = false;
+
+	pickPasses[1].target.attachments.PushBack(uiPickTargetAttachment);
+	pickPasses[1].renderTargetCount = 1;
+
+	pickViewConfig.passes.PushBack(pickPasses[0]);
+	pickViewConfig.passes.PushBack(pickPasses[1]);
+
+	m_config.renderViews.PushBack(pickViewConfig);
+
+	return true;
+}
+
+bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext context)
+{
+	switch (code)
+	{
+		case C3D::SystemEventCode::ObjectHoverIdChanged:
+			m_hoveredObjectId = context.data.u32[0];
+			return true;
+		default:
+			return false;
+	}
+}
+
+bool TestEnv::OnDebugEvent(const u16 code, void* sender, C3D::EventContext context)
+{
+	if (code == C3D::SystemEventCode::Debug0)
+	{
+		const char* names[3] = { "cobblestone", "paving", "paving2" };
+		static i8 choice = 2;
+
+		const char* oldName = names[choice];
+
+		choice++;
+		choice %= 3;
+
+		if (C3D::Geometry* g = m_meshes[0].geometries[0])
+		{
+			g->material = Materials.Acquire(names[choice]);
+			if (!g->material)
+			{
+				m_logger.Warn("OnDebugEvent() - No material found! Using default material.");
+				g->material = Materials.GetDefault();
+			}
+
+			Materials.Release(oldName);
+		}
+
+		return true;
+	}
+		
+	if (code == C3D::SystemEventCode::Debug1)
+	{
+		if (!m_modelsLoaded)
+		{
+			m_logger.Debug("OnDebugEvent() - Loading models...");
+			m_modelsLoaded = true;
+
+			if (!m_carMesh->LoadFromResource("falcon"))
+			{
+				m_logger.Error("OnDebugEvent() - Failed to load falcon mesh!");
+			}
+			if (!m_sponzaMesh->LoadFromResource("sponza"))
+			{
+				m_logger.Error("OnDebugEvent() - Failed to load sponza mesh!");
+			}
+		}
+
+		return true;
+	}
+		
+	return false;
 }

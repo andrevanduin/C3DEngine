@@ -62,7 +62,14 @@ namespace C3D
 		const auto dataPtr = &m_memory[m_allocated];
 		m_allocated += size;
 
-		MetricsAllocate(m_id, type, size, size, dataPtr);
+#ifdef C3D_MEMORY_METRICS
+#ifdef C3D_MEMORY_METRICS_POINTERS
+		Metrics.Allocate(m_id, Allocation(type, dataPtr, size));
+#endif
+#ifndef C3D_MEMORY_METRICS_POINTERS
+		Metrics.Allocate(m_id, Allocation(type, size));
+#endif
+#endif
 
 		return dataPtr;
 	}

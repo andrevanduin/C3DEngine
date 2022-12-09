@@ -16,6 +16,7 @@
 int main(int argc, char** argv)
 {
 	C3D::Logger::Init();
+	Metrics.Init();
 	C3D::GlobalMemorySystem::Init({ MebiBytes(64) });
 	
 	TestManager manager;

@@ -18,7 +18,7 @@ namespace C3D
 		for (u32 t = 0; t < renderTargetCount; t++)
 		{
 			auto& target = targets[t];
-			target.attachmentCount = config.target.attachmentCount;
+			target.attachmentCount = static_cast<u8>(config.target.attachments.Size());
 			target.attachments = Memory.Allocate<RenderTargetAttachment>(MemoryType::Array, target.attachmentCount);
 
 			// Each attachment for the target

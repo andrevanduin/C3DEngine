@@ -74,11 +74,9 @@ namespace C3D
 
 		// Determine if memory is on device heap.
 		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		const auto memSize = m_memoryRequirements.size;
 		// Report memory as in-use
-		Metrics.Allocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), )
-
-		const Allocation alloc = { MemoryType::Vulkan, m_memoryRequirements.size, m_memoryRequirements.size, nullptr };
-		Metrics.Allocate(, alloc);
+		MetricsAllocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, memSize, memSize, m_memory);
 
 		if (result != VK_SUCCESS)
 		{
@@ -93,6 +91,11 @@ namespace C3D
 	{
 		RenderBuffer::Destroy();
 
+		// Report the freeing of the memory.
+		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		const auto size = m_memoryRequirements.size;
+		MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
+
 		if (m_memory)
 		{
 			vkFreeMemory(m_context->device.logicalDevice, m_memory, m_context->allocator);
@@ -102,16 +105,6 @@ namespace C3D
 		{
 			vkDestroyBuffer(m_context->device.logicalDevice, handle, m_context->allocator);
 			handle = nullptr;
-		}
-
-		// Report the freeing of the memory.
-		if (m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-		{
-			Metrics.Free(GPU_ALLOCATOR_ID, DeAllocation(MemoryType::Vulkan, m_memoryRequirements.size));
-		}
-		else
-		{
-			Metrics.Free(Memory.GetId(), DeAllocation(MemoryType::Vulkan, m_memory));
 		}
 
 		Platform::Zero(&m_memoryRequirements);
@@ -191,6 +184,13 @@ namespace C3D
 		// Make sure anything potentially using these is finished
 		vkDeviceWaitIdle(m_context->device.logicalDevice);
 
+		// Determine if memory is on device heap.
+		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		const auto size = m_memoryRequirements.size;
+
+		// Report the free of our old allocation
+		MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
+
 		// Destroy the old buffer
 		if (m_memory)
 		{
@@ -203,21 +203,16 @@ namespace C3D
 			handle = nullptr;
 		}
 
-		// Determine if memory is on device heap.
-		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-		// Report memory as in-use
-		Allocation alloc = { MemoryType::Vulkan, isDeviceMemory ? m_memory : nullptr };
-		if (isDeviceMemory) alloc.ptr = m_memory;
-
-		Metrics.Free(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
+		// Set the new memory requirements
 		m_memoryRequirements = requirements;
-		Metrics.Allocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size);
 
 		// Set our new properties
 		totalSize = newSize;
 		m_memory = newMemory;
 		handle = newBuffer;
+
+		// Report memory as in-use
+		MetricsAllocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
 
 		return true;
 	}
@@ -249,7 +244,7 @@ namespace C3D
 			// Map, copy and unmap
 			void* mappedData;
 			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, read.m_memory, 0, size, 0, &mappedData));
-			Platform::Copy(*outMemory, mappedData, size);
+			Platform::MemCopy(*outMemory, mappedData, size);
 			vkUnmapMemory(m_context->device.logicalDevice, read.m_memory);
 
 			// Cleanup the read buffer
@@ -261,7 +256,7 @@ namespace C3D
 			// We don't need a read buffer can just directly map, copy and unmap
 			void* mappedData;
 			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, 0, size, 0, &mappedData));
-			Platform::Copy(*outMemory, mappedData, size);
+			Platform::MemCopy(*outMemory, mappedData, size);
 			vkUnmapMemory(m_context->device.logicalDevice, m_memory);
 		}
 
@@ -306,7 +301,7 @@ namespace C3D
 			// If we don't need a staging buffer we just map, copy and unmap directly
 			void* mappedData;
 			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, offset, size, 0, &mappedData));
-			Platform::Copy(mappedData, data, size);
+			Platform::MemCopy(mappedData, data, size);
 			vkUnmapMemory(m_context->device.logicalDevice, m_memory);
 		}
 

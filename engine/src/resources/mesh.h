@@ -15,10 +15,10 @@ namespace C3D
 		MeshResource meshResource;
 	};
 
-	class Mesh
+	class C3D_API Mesh
 	{
 	public:
-		Mesh() : uniqueId(INVALID_ID), generation(INVALID_ID_U8), geometryCount(0), geometries(nullptr) {}
+		Mesh();
 
 		bool LoadFromResource(const char* resourceName);
 		void Unload();
@@ -26,8 +26,7 @@ namespace C3D
 		u32 uniqueId;
 		u8 generation;
 
-		u16 geometryCount;
-		Geometry** geometries;
+		DynamicArray<Geometry*> geometries;
 
 		Transform transform;
 

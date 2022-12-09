@@ -6,8 +6,15 @@
 
 namespace C3D
 {
-	struct Skybox
+	class C3D_API Skybox
 	{
+	public:
+		Skybox();
+
+		bool Create(const char* cubeMapName);
+
+		void Destroy();
+
 		TextureMap cubeMap;
 		Geometry* g;
 

@@ -37,9 +37,7 @@ namespace C3D
 	JobSystem*			Services::m_pJobSystem		= nullptr;
 	FontSystem*			Services::m_pFontSystem		= nullptr;
 
-	bool Services::Init(const Application* application, const JobSystemConfig& jobSystemConfig, 
-						const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig, 
-						const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& viewSystemConfig, const FontSystemConfig& fontSystemConfig)
+	void Services::InitBeforeBoot(const Application* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig)
 	{
 		// 32 mb of total space for all our systems
 		constexpr u64 systemsAllocatorTotalSize = MebiBytes(32);
@@ -50,13 +48,6 @@ namespace C3D
 		if (!m_pEventSystem->Init())
 		{
 			m_logger.Fatal("EventSystem failed to be Initialized.");
-		}
-
-		// Job System
-		m_pJobSystem = m_allocator.New<JobSystem>(MemoryType::CoreSystem);
-		if (!m_pJobSystem->Init(jobSystemConfig))
-		{
-			m_logger.Fatal("JobSystem failed to be Initialized.");
 		}
 
 		// Input System
@@ -86,12 +77,30 @@ namespace C3D
 		{
 			m_logger.Fatal("RenderSystem failed to be Initialized.");
 		}
+	}
+
+	void Services::InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig, 
+		const FontSystemConfig& fontSystemConfig, const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& renderViewSystemConfig)
+	{
+		// Job System
+		m_pJobSystem = m_allocator.New<JobSystem>(MemoryType::CoreSystem);
+		if (!m_pJobSystem->Init(jobSystemConfig))
+		{
+			m_logger.Fatal("JobSystem failed to be Initialized.");
+		}
 
 		// Texture System
 		m_pTextureSystem = m_allocator.New<TextureSystem>(MemoryType::CoreSystem);
 		if (!m_pTextureSystem->Init(textureSystemConfig))
 		{
 			m_logger.Fatal("TextureSystem failed to be Initialized.");
+		}
+
+		// Font System
+		m_pFontSystem = m_allocator.New<FontSystem>(MemoryType::CoreSystem);
+		if (!m_pFontSystem->Init(fontSystemConfig))
+		{
+			m_logger.Fatal("FontSystem failed to be Initialized.");
 		}
 
 		// Camera System
@@ -103,43 +112,27 @@ namespace C3D
 
 		// View System
 		m_pViewSystem = m_allocator.New<RenderViewSystem>(MemoryType::CoreSystem);
-		if (!m_pViewSystem->Init(viewSystemConfig))
+		if (!m_pViewSystem->Init(renderViewSystemConfig))
 		{
 			m_logger.Fatal("ViewSystem failed to be Initialized.");
 		}
-
-		// Font System
-		m_pFontSystem = m_allocator.New<FontSystem>(MemoryType::CoreSystem);
-		if (!m_pFontSystem->Init(fontSystemConfig))
-		{
-			m_logger.Fatal("FontSystem failed to be Initialized.");
-		}
-
-		return true;
 	}
 
-	bool Services::InitMaterialSystem(const MaterialSystemConfig& config)
+	void Services::FinalInit(const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig)
 	{
 		// Material System
 		m_pMaterialSystem = m_allocator.New<MaterialSystem>(MemoryType::CoreSystem);
-		if (!m_pMaterialSystem->Init(config))
+		if (!m_pMaterialSystem->Init(materialSystemConfig))
 		{
 			m_logger.Fatal("Material System failed to be Initialized.");
 		}
 
-		return true;
-	}
-
-	bool Services::InitGeometrySystem(const GeometrySystemConfig& config)
-	{
 		// Geometry System
 		m_pGeometrySystem = m_allocator.New<GeometrySystem>(MemoryType::CoreSystem);
-		if (!m_pGeometrySystem->Init(config))
+		if (!m_pGeometrySystem->Init(geometrySystemConfig))
 		{
 			m_logger.Fatal("GeometrySystem failed to be Initialized.");
 		}
-
-		return true;
 	}
 
 	void Services::Shutdown()

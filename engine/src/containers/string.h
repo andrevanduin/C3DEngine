@@ -26,7 +26,7 @@ namespace C3D
 	constexpr f64 STRING_RESIZE_FACTOR = 1.5;
 
 	template <class Allocator>
-	class BasicString
+	class __declspec(dllexport) BasicString
 	{
 		static_assert(std::is_base_of_v<BaseAllocator, Allocator>, "Allocator needs to be have a base type of BaseAllocator");
 
@@ -51,7 +51,7 @@ namespace C3D
 				m_sso.capacity = capacity;
 				m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 
-				m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, capacity);
+				m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
 				//Logger::Trace("[STRING] - Init() with capacity = {}", capacity);
 			}
 			else
@@ -74,7 +74,7 @@ namespace C3D
 					//Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
 
 					// Allocate enough space for the new data
-					const auto newData = m_allocator->template Allocate<char>(MemoryType::C3DString, newCapacity);
+					const auto newData = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
 					// Copy over the old data (including the final '0' byte)
 					std::memcpy(newData, m_data, m_size + 1);
 					// Now we free our current pointer
@@ -95,7 +95,7 @@ namespace C3D
 					//Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
 
 					// Allocate enough space for the new capacity
-					m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, newCapacity);
+					m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
 					// Copy over the old data from the stack to the heap (including the final '0' byte)
 					std::memcpy(m_data, m_sso.data, m_size + 1);
 					// Now we set our MEMORY_TYPE to HEAP since we just grew past our stack limit
@@ -126,7 +126,7 @@ namespace C3D
 			if (capacity > SSO_THRESHOLD)
 			{
 				// We need to allocate the memory on the heap.
-				m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, capacity);
+				m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
 				// Keep track of the capacity
 				m_sso.capacity = capacity;
 				// Set the flag bit to Heap
@@ -267,7 +267,7 @@ namespace C3D
 				// Set our MEMORY_TYPE bit to use the heap
 				m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 				// Allocate enough space on the heap for our entire capacity
-				m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, m_sso.capacity);
+				m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, m_sso.capacity);
 				// Copy over the contents from 'other' (we use our capacity instead of our size since we also want the trailing '\0' byte from 'other')
 				std::memcpy(m_data, other.m_data, m_sso.capacity);
 			}
@@ -325,7 +325,7 @@ namespace C3D
 				// Set our MEMORY_TYPE bit to use the heap
 				m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 				// Allocate enough space on the heap for our entire capacity
-				m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, m_sso.capacity);
+				m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, m_sso.capacity);
 				// Copy over the contents from 'other' (we use our capacity instead of our size since we also want the trailing '\0' byte from 'other')
 				std::memcpy(m_data, other.m_data, m_sso.capacity);
 			}
@@ -393,7 +393,7 @@ namespace C3D
 					// The new capacity is larger than the old so we need to allocate more space
 
 					// Allocate enough space for the new data
-					const auto newData = m_allocator->template Allocate<char>(MemoryType::C3DString, capacity);
+					const auto newData = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
 					// Copy over the old data (including the final '0' byte)
 					if (m_size > 0) std::memcpy(newData, m_data, m_size + 1);
 					// Now we free our current pointer
@@ -410,7 +410,7 @@ namespace C3D
 					// Our new capacity is too large for SSO
 
 					// Allocate enough space for the new capacity
-					m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, capacity);
+					m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
 					// Copy over the old data from the stack to the heap (including the final '0' byte)
 					if (m_size > 0) std::memcpy(m_data, m_sso.data, m_size + 1);
 					// Now we set our MEMORY_TYPE to HEAP since we just grew past our stack limit

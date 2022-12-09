@@ -174,7 +174,7 @@ namespace C3D
 			// If creating the array, then the internal texture objects aren't created yet either.
 			for (u32 i = 0; i < imageCount; ++i)
 			{
-				const auto internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
+				const auto internalData = Memory.New<VulkanImage>(MemoryType::Texture);
 
 				char texName[38] = "__internal_vulkan_swapChain_image_0__";
 				texName[34] = '0' + static_cast<char>(i);
@@ -262,8 +262,10 @@ namespace C3D
 		// Destroy our depth textures
 		for (u32 i = 0; i < imageCount; i++)
 		{
+			// First we destroy the internal data for every texture
 			const auto image = static_cast<VulkanImage*>(depthTextures[i].internalData);
-			image->Destroy(context);
+			Memory.Delete(MemoryType::Texture, image);
+
 			depthTextures[i].internalData = nullptr;
 		}
 

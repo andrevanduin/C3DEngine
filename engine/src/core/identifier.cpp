@@ -28,7 +28,7 @@ namespace C3D
 		return static_cast<u32>(s_owners.Size()) - 1;
 	}
 
-	void Identifier::ReleaseId(u32 id)
+	void Identifier::ReleaseId(u32& id)
 	{
 		if (id > s_owners.Size())
 		{
@@ -38,5 +38,7 @@ namespace C3D
 		
 		// Free this id so it's usable again
 		s_owners[id] = nullptr;
+		// Ensure the id is set to invalid
+		id = INVALID_ID;
 	}
 }

@@ -8,6 +8,7 @@ namespace C3D
 	enum class AllocatorType : u8
 	{
 		None,
+		GlobalDynamic,
 		Dynamic,
 		System,
 		Linear,
@@ -40,6 +41,7 @@ namespace C3D
 		Geometry,
 		CoreSystem,
 		RenderSystem,
+		RenderView,
 		Game,
 		Transform,
 		Entity,
@@ -60,18 +62,14 @@ namespace C3D
 	struct Allocation
 	{
 #ifdef C3D_MEMORY_METRICS_POINTERS
-		Allocation(const MemoryType type, const u64 requestedSize, const u64 requiredSize)
-			: type(type), requestedSize(requestedSize), requiredSize(requiredSize), ptr(nullptr)
-		{}
-
-		Allocation(const MemoryType type, void* ptr)
-			: type(type), requestedSize(0), requiredSize(0), ptr(ptr)
+		Allocation(const MemoryType type, void* ptr, const u64 requestedSize, const u64 requiredSize = 0)
+			: type(type), requestedSize(requestedSize), requiredSize(requiredSize == 0 ? requestedSize : requiredSize), ptr(ptr)
 		{}
 #endif
 
 #ifndef C3D_MEMORY_METRICS_POINTERS
-		Allocation(const MemoryType type, const u64 requestedSize, const u64 requiredSize)
-			: type(type), requestedSize(requestedSize), requiredSize(requiredSize)
+		Allocation(const MemoryType type, const u64 requestedSize, const u64 requiredSize = 0)
+			: type(type), requestedSize(requestedSize), requiredSize(requiredSize == 0 ? requestedSize : requiredSize)
 		{}
 #endif
 
@@ -87,12 +85,8 @@ namespace C3D
 	struct DeAllocation
 	{
 #ifdef C3D_MEMORY_METRICS_POINTERS
-		DeAllocation(const MemoryType type, const u64 requestedSize, const u64 requiredSize = 0)
-			: type(type), requestedSize(requestedSize), requiredSize(requiredSize == 0 ? requestedSize : requiredSize), ptr(nullptr)
-		{}
-
 		DeAllocation(const MemoryType type, void* ptr)
-			: type(type), requestedSize(0), requiredSize(0), ptr(ptr)
+			: type(type), ptr(ptr)
 		{}
 #endif
 
@@ -103,17 +97,25 @@ namespace C3D
 #endif
 
 		MemoryType type;
-		u64 requestedSize;
-		u64 requiredSize;
 
 #ifdef C3D_MEMORY_METRICS_POINTERS
 		void* ptr;
+#else
+		u64 requestedSize;
+		u64 requiredSize;
 #endif
 	};
 
 #ifdef C3D_MEMORY_METRICS_POINTERS
 	struct TrackedAllocation
 	{
+		TrackedAllocation(void* ptr, const char* file, const int line, const u64 requestedSize, const u64 requiredSize)
+			: file(file), line(line), ptr(ptr), requestedSize(requestedSize), requiredSize(requiredSize)
+		{}
+
+		const char* file;
+		int line;
+
 		void* ptr = nullptr;
 		u64 requestedSize = 0;
 		u64 requiredSize = 0;

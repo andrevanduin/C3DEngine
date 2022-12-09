@@ -69,7 +69,7 @@ namespace C3D
 			return *this;
 		}
 
-		~Resource()
+		virtual ~Resource()
 		{
 			name.Destroy();
 			fullPath.Destroy();

@@ -59,7 +59,7 @@ namespace C3D
 		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
 	}
 
-	bool RenderViewSkybox::OnBuildPacket(void* data, RenderViewPacket* outPacket)
+	bool RenderViewSkybox::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -67,18 +67,19 @@ namespace C3D
 			return false;
 		}
 
-		auto skyBoxData = static_cast<SkyboxPacketData*>(data);
+		const auto skyboxData = static_cast<SkyboxPacketData*>(data);
 
 		outPacket->view = this;
 		outPacket->projectionMatrix = m_projectionMatrix;
 		outPacket->viewMatrix = m_camera->GetViewMatrix();
 		outPacket->viewPosition = m_camera->GetPosition();
-		outPacket->extendedData = data;
+		outPacket->extendedData = frameAllocator.Allocate<SkyboxPacketData>(MemoryType::RenderView);
+		Platform::Copy<SkyboxPacketData>(outPacket->extendedData, data);
 
 		return true;
 	}
 
-	bool RenderViewSkybox::OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex)
+	bool RenderViewSkybox::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex)
 	{
 		const auto skyBoxData = static_cast<SkyboxPacketData*>(packet->extendedData);
 
@@ -134,8 +135,7 @@ namespace C3D
 			skyBoxData->box->frameNumber = frameNumber;
 
 			// Draw it
-			GeometryRenderData data;
-			data.geometry = skyBoxData->box->g;
+			GeometryRenderData data(skyBoxData->box->g);
 			Renderer.DrawGeometry(data);
 
 			if (!Renderer.EndRenderPass(pass))

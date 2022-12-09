@@ -45,7 +45,7 @@ namespace C3D
 		ImageResource imageResource;
 	};
 
-	class TextureSystem final : public System<TextureSystemConfig>
+	class C3D_API TextureSystem final : public System<TextureSystemConfig>
 	{
 	public:
 		TextureSystem();

@@ -15,8 +15,18 @@ namespace C3D
 	static constexpr u64 INDICES_PER_QUAD = 6;
 
 	UIText::UIText()
-		: type(), data(nullptr), instanceId(INVALID_ID), frameNumber(INVALID_ID_U64), m_logger("UI_TEXT"), m_vertexBuffer(nullptr), m_indexBuffer(nullptr), m_text(nullptr)
-	{}
+		: uniqueId(INVALID_ID), type(), data(nullptr), instanceId(INVALID_ID), frameNumber(INVALID_ID_U64), m_logger("UI_TEXT"),
+		  m_vertexBuffer(nullptr), m_indexBuffer(nullptr), m_text(nullptr)
+	{
+	}
+
+	UIText::~UIText()
+	{
+		if (uniqueId != INVALID_ID)
+		{
+			Destroy();
+		}
+	}
 
 	bool UIText::Create(const UITextType fontType, const char* fontName, const u16 fontSize, const char* textContent)
 	{

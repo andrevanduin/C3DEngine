@@ -276,7 +276,7 @@ namespace C3D
 		constexpr u32 channels = 4;
 		constexpr u32 pixelCount = textureDimensions * textureDimensions;
 
-		const auto pixels = new u8[pixelCount * channels];
+		const auto pixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(pixelCount) * channels);
 		Platform::SetMemory(pixels, 255, sizeof(u8) * pixelCount * channels);
 
 		for (u64 row = 0; row < textureDimensions; row++)
@@ -311,7 +311,7 @@ namespace C3D
 
 		// Diffuse texture
 		m_logger.Trace("Create default diffuse texture...");
-		const auto diffusePixels = new u8[16 * 16 * 4];
+		const auto diffusePixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
 		// Default diffuse texture is all white
 		Platform::SetMemory(diffusePixels, 255, sizeof(u8) * 16 * 16 * 4); // Default diffuse map is all white
 
@@ -322,7 +322,7 @@ namespace C3D
 
 		// Specular texture.
 		m_logger.Trace("Create default specular texture...");
-		const auto specPixels = new u8[16 * 16 * 4];
+		const auto specPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
 		Platform::SetMemory(specPixels, 0, sizeof(u8) * 16 * 16 * 4); // Default specular map is black (no specular)
 
 		m_defaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, TextureType::Type2D, 16, 16, 4);
@@ -332,7 +332,7 @@ namespace C3D
 
 		// Normal texture.
 		m_logger.Trace("Create default normal texture...");
-		const auto normalPixels = new u8[16 * 16 * 4];
+		const auto normalPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
 		Platform::SetMemory(normalPixels, 0, sizeof(u8) * 16 * 16 * 4);
 
 		// Each pixel
@@ -357,10 +357,10 @@ namespace C3D
 		m_defaultNormalTexture.generation = INVALID_ID;
 
 		// Cleanup our pixel arrays
-		delete[] pixels;
-		delete[] diffusePixels;
-		delete[] specPixels;
-		delete[] normalPixels;
+		Memory.Free(MemoryType::Array, pixels);
+		Memory.Free(MemoryType::Array, diffusePixels);
+		Memory.Free(MemoryType::Array, specPixels);
+		Memory.Free(MemoryType::Array, normalPixels);
 
 		return true;
 	}
@@ -438,7 +438,7 @@ namespace C3D
 			}
 
 			// Copy over the pixels to the correct location in the array
-			Platform::Copy(pixels + (imageSize * i), res.data.pixels, imageSize);
+			Platform::MemCopy(pixels + (imageSize * i), res.data.pixels, imageSize);
 
 			// Cleanup our resource
 			Resources.Unload(&res);

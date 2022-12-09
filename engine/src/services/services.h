@@ -20,25 +20,25 @@ namespace C3D
 {
 	class Application;
 
+	class EventSystem;
 	class InputSystem;
+
+	class ResourceSystem;
 	struct ResourceSystemConfig;
 
-	class EventSystem;
+	class ShaderSystem;
 	struct ShaderSystemConfig;
 
 	class RenderSystem;
 
+	class JobSystem;
+	struct JobSystemConfig;
+
 	class TextureSystem;
 	struct TextureSystemConfig;
 
-	class MaterialSystem;
-	struct MaterialSystemConfig;
-
-	class GeometrySystem;
-	struct GeometrySystemConfig;
-
-	class ResourceSystem;
-	class ShaderSystem;
+	class FontSystem;
+	struct FontSystemConfig;
 
 	class CameraSystem;
 	struct CameraSystemConfig;
@@ -46,21 +46,21 @@ namespace C3D
 	class RenderViewSystem;
 	struct RenderViewSystemConfig;
 
-	class JobSystem;
-	struct JobSystemConfig;
+	class MaterialSystem;
+	struct MaterialSystemConfig;
 
-	class FontSystem;
-	struct FontSystemConfig;
+	class GeometrySystem;
+	struct GeometrySystemConfig;
 
 	class C3D_API Services
 	{
 	public:
-		static bool Init(const Application* application, const JobSystemConfig& jobSystemConfig,
-			const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig, const TextureSystemConfig& textureSystemConfig,
-			const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& viewSystemConfig, const FontSystemConfig& fontSystemConfig);
+		static void InitBeforeBoot(const Application* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig);
 
-		static bool InitMaterialSystem(const MaterialSystemConfig& config);
-		static bool InitGeometrySystem(const GeometrySystemConfig& config);
+		static void InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig, const FontSystemConfig& fontSystemConfig,
+			const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& renderViewSystemConfig);
+
+		static void FinalInit(const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig);
 
 		static void Shutdown();
 

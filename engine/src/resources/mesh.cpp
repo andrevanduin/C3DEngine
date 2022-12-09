@@ -6,6 +6,10 @@
 
 namespace C3D
 {
+	Mesh::Mesh()
+		: uniqueId(INVALID_ID), generation(INVALID_ID_U8)
+	{}
+
 	bool Mesh::LoadFromResource(const char* resourceName)
 	{
 		generation = INVALID_ID_U8;
@@ -26,14 +30,10 @@ namespace C3D
 
 	void Mesh::Unload()
 	{
-		for (u16 i = 0; i < geometryCount; i++)
+		for (const auto geometry : geometries)
 		{
-			Geometric.Release(geometries[i]);
+			Geometric.Release(geometry);
 		}
-
-		Memory.Free(MemoryType::Array, geometries);
-		geometries = nullptr;
-		geometryCount = 0;
 		generation = INVALID_ID_U8;
 	}
 
@@ -58,11 +58,9 @@ namespace C3D
 		auto& configs = meshParams->meshResource.geometryConfigs;
 		const auto configCount = configs.Size();
 
-		meshParams->outMesh->geometryCount = static_cast<u16>(configCount);
-		meshParams->outMesh->geometries = Memory.Allocate<Geometry*>(MemoryType::Array, configCount);
 		for (u64 i = 0; i < configCount; i++)
 		{
-			meshParams->outMesh->geometries[i] = Geometric.AcquireFromConfig(configs[i], true);
+			meshParams->outMesh->geometries.PushBack(Geometric.AcquireFromConfig(configs[i], true));
 		}
 		meshParams->outMesh->generation++;
 

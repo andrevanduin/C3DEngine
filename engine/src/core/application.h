@@ -2,10 +2,10 @@
 #pragma once
 #include "defines.h"
 #include "logger.h"
+#include "renderer/renderer_types.h"
+#include "renderer/render_view.h"
 
-#include "resources/mesh.h"
-#include "resources/skybox.h"
-#include "resources/ui_text.h"
+#include "systems/font_system.h"
 
 int main(int argc, char** argv);
 
@@ -17,14 +17,17 @@ namespace C3D
 
 	struct ApplicationConfig
 	{
-		string name;
+		String name;
 		i32 x, y;
 		i32 width, height;
+
+		FontSystemConfig fontConfig;
+		DynamicArray<RenderViewConfig> renderViews;
 	};
 
 	struct ApplicationState
 	{
-		string name;
+		String name;
 
 		u32 width = 0;
 		u32 height = 0;
@@ -39,7 +42,7 @@ namespace C3D
 	class C3D_API Application
 	{
 	public:
-		explicit Application(const ApplicationConfig& config);
+		explicit Application(ApplicationConfig config);
 
 		Application(const Application&) = delete;
 		Application(Application&&) = delete;
@@ -49,20 +52,34 @@ namespace C3D
 
 		virtual ~Application();
 
+		void Init();
+
 		void Run();
 		void Quit();
 
-		virtual void OnCreate() {}
+		virtual bool OnBoot()	{ return true; }
+		virtual bool OnCreate() { return true; }
+
 		virtual void OnUpdate(f64 deltaTime) {}
-		virtual void OnRender(f64 deltaTime) {}
+		virtual bool OnRender(RenderPacket& packet, f64 deltaTime) { return true; }
 
 		virtual void OnResize(u16 width, u16 height) {}
+
+		virtual void OnShutdown() {}
 
 		void GetFrameBufferSize(u32* width, u32* height) const;
 
 		[[nodiscard]] SDL_Window* GetWindow() const;
 
 		[[nodiscard]] const ApplicationState* GetState() const;
+
+	protected:
+		LoggerInstance m_logger;
+		LinearAllocator m_frameAllocator;
+
+		ApplicationConfig m_config;
+		ApplicationState m_state;
+
 	private:
 		void Shutdown();
 		void HandleSdlEvents();
@@ -71,33 +88,8 @@ namespace C3D
 		bool OnMinimizeEvent(u16 code, void* sender, EventContext context);
 		bool OnFocusGainedEvent(u16 code, void* sender, EventContext context);
 
-		// TEMP
-		bool OnDebugEvent(u16 code, void* sender, EventContext context);
-		// TEMP END
-
-		static bool OnKeyEvent(u16 code, void* sender, EventContext context);
-		bool OnEvent(u16 code, void* sender, EventContext context);
-
-		LoggerInstance m_logger;
-		ApplicationState m_state;
-
 		SDL_Window* m_window{ nullptr };
-
-		// TEMP
-		Skybox m_skybox;
-
-		Mesh m_meshes[10];
-
-		Mesh* carMesh;
-		Mesh* sponzaMesh;
-		bool modelsLoaded = false;
-
-		u32 m_hoveredObjectId;
-
-		Mesh m_uiMeshes[10];
-		UIText m_testText;
-		// TEMP END
-
+		
 		friend int ::main(int argc, char** argv);
 	};
 

@@ -5,7 +5,7 @@
 
 namespace C3D
 {
-	class BaseAllocator
+	class C3D_API BaseAllocator
 	{
 	public:
 		explicit BaseAllocator(const u8 type)
@@ -22,6 +22,9 @@ namespace C3D
 
 		virtual void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) = 0;
 		virtual void Free(MemoryType type, void* block) = 0;
+
+		BaseAllocator& SetFileAndLineRef(const char* file, int line);
+		BaseAllocator* SetFileAndLine(const char* file, int line);
 
 		template <typename T>
 		T* Allocate(const MemoryType type, const u64 count = 1)

@@ -48,6 +48,11 @@ namespace C3D
 
 	struct MeshResource : Resource
 	{
+		~MeshResource() override
+		{
+			Logger::Debug("~MeshResource()");
+		}
+
 		DynamicArray<GeometryConfig<Vertex3D, u32>> geometryConfigs;
 	};
 

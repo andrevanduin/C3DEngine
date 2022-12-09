@@ -2,12 +2,21 @@
 #pragma once
 #include "core/defines.h"
 #include "allocators/dynamic_allocator.h"
+#include "allocators/linear_allocator.h"
 #include "allocators/malloc_allocator.h"
 #include "allocators/stack_allocator.h"
 
 namespace C3D
 {
-#define Memory C3D::GlobalMemorySystem::GetAllocator()
+#define Memory C3D::GlobalMemorySystem::GetAllocator().SetFileAndLineRef(__FILE__, __LINE__)
+
+#ifdef C3D_MEMORY_METRICS_FILE_LINE
+	#define Allocator(pAlloc) pAlloc->SetFileAndLine(__FILE__, __LINE__)
+#else
+	#define Allocator(pAlloc) pAlloc
+#endif
+
+
 
 	struct MemorySystemConfig
 	{
@@ -19,6 +28,7 @@ namespace C3D
 	{
 		static DynamicAllocator* s_globalAllocator;
 		static MallocAllocator* s_mallocAllocator;
+		static LinearAllocator* s_linearAllocator;
 		static StackAllocator<KibiBytes(8)>* s_stackAllocator;
 
 	public:
@@ -61,5 +71,11 @@ namespace C3D
 	inline StackAllocator<KibiBytes(8)>* GlobalMemorySystem::GetDefaultAllocator()
 	{
 		return s_stackAllocator;
+	}
+
+	template<>
+	inline LinearAllocator* GlobalMemorySystem::GetDefaultAllocator()
+	{
+		return s_linearAllocator;
 	}
 }

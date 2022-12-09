@@ -19,7 +19,7 @@ namespace C3D
 	{
 		const auto ptr = std::malloc(size);
 #if defined C3D_MEMORY_METRICS_MALLOC && C3D_MEMORY_METRICS_POINTERS
-		Metrics.Allocate(m_id, { type, size, size, ptr });
+		Metrics.Allocate(m_id, Allocation(type, ptr, size));
 #endif
 		return ptr;
 	}
@@ -27,7 +27,7 @@ namespace C3D
 	void MallocAllocator::Free(const MemoryType type, void* block)
 	{
 #if defined C3D_MEMORY_METRICS_MALLOC && C3D_MEMORY_METRICS_POINTERS
-		Metrics.Free(m_id, { type, block });
+		Metrics.Free(m_id, DeAllocation(type, block));
 #endif
 		std::free(block);
 	}

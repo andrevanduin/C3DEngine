@@ -29,10 +29,8 @@ namespace C3D
 		DynamicArray<VkAttachmentDescription> depthAttachmentDescriptions;
 
 		// We can always just look at the first target since they are all the same (one per frame)
-		for (u32 i = 0; i < config.target.attachmentCount; i++)
+		for (auto& attachmentConfig : config.target.attachments)
 		{
-			auto& attachmentConfig = config.target.attachments[i];
-
 			VkAttachmentDescription attachmentDescription = {};
 			if (attachmentConfig.type == RenderTargetAttachmentType::Color)
 			{
@@ -301,13 +299,13 @@ namespace C3D
 
 		if (m_clearFlags & ClearColorBuffer)
 		{
-			Platform::Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			Platform::MemCopy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
 		}
 		beginInfo.clearValueCount++;
 
 		if (m_clearFlags & ClearDepthBuffer)
 		{
-			Platform::Copy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			Platform::MemCopy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
 			clearValues[beginInfo.clearValueCount].depthStencil.depth = m_depth;
 
 			const bool doClearStencil = m_clearFlags & ClearStencilBuffer;

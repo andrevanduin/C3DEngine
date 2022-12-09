@@ -18,7 +18,7 @@ namespace C3D
 
 	class Camera;
 
-	class RenderSystem
+	class C3D_API RenderSystem
 	{
 	public:
 		RenderSystem();

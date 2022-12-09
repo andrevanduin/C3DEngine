@@ -2,22 +2,6 @@
 #pragma once
 #include "../core/defines.h"
 
-#if C3D_PLATFORM_WINDOWS
-#define SPRINTF(bufferSize, format, value)									\
-	char buffer[bufferSize];												\
-	if (sprintf_s(buffer, format, value) == -1)								\
-	{																		\
-		throw std::invalid_argument("Sprintf returned -1");					\
-	}																		
-#elif C3D_PLATFORM_LINUX
-#define SPRINTF(bufferSize, format, value)									\
-	char buffer[bufferSize];												\
-	if (snprintf(buffer, format, value) == -1)								\
-	{																		\
-		throw std::invalid_argument("Sprintf returned -1");					\
-	}
-#endif
-
 namespace C3D
 {
 	class C3D_API Platform
@@ -35,8 +19,17 @@ namespace C3D
 			return static_cast<T*>(Zero(pItem, sizeof(T)));
 		}
 
-		static void* Copy(void* dest, const void* source, u64 size);
+		template <typename T>
+		static void* Copy(void* dest, const void* source)
+		{
+			const auto d = static_cast<T*>(dest);
+			const auto s = static_cast<const T*>(source);
+			*d = *s;
+			return dest;
+		}
 
+		static void* MemCopy(void* dest, const void* source, u64 size);
+		
 		static void* SetMemory(void* dest, i32 value, u64 size);
 
 		static f64 GetAbsoluteTime();

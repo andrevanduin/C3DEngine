@@ -30,6 +30,7 @@ namespace C3D
 		"Geometry         ",
 		"CoreSystem       ",
 		"RenderSystem     ",
+		"RenderView       ",
 		"Game             ",
 		"Transform        ",
 		"Entity           ",
@@ -60,11 +61,10 @@ namespace C3D
 			stats.type = AllocatorType::None;
 		}
 
-		m_memoryStats[EXTERNAL_ALLOCATOR_ID].type = AllocatorType::External;
-		StringNCopy(m_memoryStats[EXTERNAL_ALLOCATOR_ID].name, "EXTERNAL_ALLOCATOR", ALLOCATOR_NAME_MAX_LENGTH);
-
 		m_memoryStats[GPU_ALLOCATOR_ID].type = AllocatorType::GpuLocal;
 		StringNCopy(m_memoryStats[GPU_ALLOCATOR_ID].name, "GPU_ALLOCATOR", ALLOCATOR_NAME_MAX_LENGTH);
+
+		m_memoryStats[DYNAMIC_ALLOCATOR_ID].type = AllocatorType::Dynamic;
 	}
 
 	void MetricSystem::Update(const f64 elapsedTime)
@@ -100,6 +100,15 @@ namespace C3D
 		m_frames++;
 	}
 
+	u8 SetMemoryStats(const char* name, MemoryStats& stats, const AllocatorType type, const u64 availableSpace, const u8 i)
+	{
+		stats.type = type;
+		stats.totalAvailableSpace = availableSpace;
+		StringNCopy(stats.name, name, ALLOCATOR_NAME_MAX_LENGTH);
+		// Return the index into our array as an id
+		return i;
+	}
+
 	u8 MetricSystem::CreateAllocator(const char* name, const AllocatorType type, const u64 availableSpace)
 	{
 		if (StringLength(name) > ALLOCATOR_NAME_MAX_LENGTH)
@@ -107,16 +116,22 @@ namespace C3D
 			Logger::Fatal("Allocator name: '{}' should <= {} characters", name, ALLOCATOR_NAME_MAX_LENGTH);
 		}
 
+		if (type == AllocatorType::GlobalDynamic)
+		{
+			return SetMemoryStats(name, m_memoryStats[DYNAMIC_ALLOCATOR_ID], type, availableSpace, DYNAMIC_ALLOCATOR_ID);
+		}
+		if (type == AllocatorType::GpuLocal)
+		{
+			return SetMemoryStats(name, m_memoryStats[GPU_ALLOCATOR_ID], type, availableSpace, GPU_ALLOCATOR_ID);
+		}
+
 		for (u8 i = 0; i < METRICS_COUNT; i++)
 		{
 			auto& stats = m_memoryStats[i];
 			if (stats.type == AllocatorType::None)
 			{
-				stats.type = type;
-				stats.totalAvailableSpace = availableSpace;
-				StringNCopy(stats.name, name, ALLOCATOR_NAME_MAX_LENGTH);
 				// Return the index into our array as an id
-				return i;
+				return SetMemoryStats(name, stats, type, availableSpace, i);
 			}
 		}
 
@@ -128,11 +143,9 @@ namespace C3D
 	void MetricSystem::DestroyAllocator(const u8 allocatorId)
 	{
 		// Print the memory usage for this allocator
-		PrintMemoryUsage(allocatorId);
+		PrintMemoryUsage(allocatorId, true);
 		// Clear out the metrics we have on this allocator
-		Platform::Zero(&m_memoryStats[allocatorId]);
-		// Set the type to none again so we can reuse this space
-		m_memoryStats[allocatorId].type = AllocatorType::None;
+		m_memoryStats[allocatorId] = MemoryStats();
 	}
 
 	void MetricSystem::Allocate(const u8 allocatorId, const Allocation& a)
@@ -145,16 +158,16 @@ namespace C3D
 		stats.totalRequired += a.requiredSize;
 
 #ifdef C3D_MEMORY_METRICS_POINTERS
-		auto tagged = stats.taggedAllocations[type];
+		auto& tagged = stats.taggedAllocations[type];
 		if (!a.ptr)
 		{
 			tagged.count++;
-			tagged.requestedSize = a.requestedSize;
-			tagged.requiredSize = a.requiredSize;
+			tagged.requestedSize += a.requestedSize;
+			tagged.requiredSize += a.requiredSize;
 		}
 		else
 		{
-			tagged.allocations.push_back({ a.ptr, a.requestedSize, a.requiredSize });
+			tagged.allocations.emplace_back(a.ptr, m_file, m_line, a.requestedSize, a.requiredSize);
 		}
 #else
 		stats.taggedAllocations[type].requestedSize += a.requestedSize;
@@ -176,31 +189,22 @@ namespace C3D
 
 		stats.allocCount--;
 
-		auto tagged = stats.taggedAllocations[type];
+		auto& tagged = stats.taggedAllocations[type];
 
 #ifdef C3D_MEMORY_METRICS_POINTERS
-		if (!a.ptr)
+		const auto allocIt = std::find_if(tagged.allocations.begin(), tagged.allocations.end(), [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
+		if (allocIt != tagged.allocations.end())
 		{
-			tagged.count--;
-			tagged.requestedSize -= a.requestedSize;
-			tagged.requiredSize -= a.requiredSize;
+			const auto alloc = *allocIt;
+
+			stats.totalRequested -= alloc.requestedSize;
+			stats.totalRequired -= alloc.requiredSize;
+
+			tagged.allocations.erase(allocIt);
 		}
 		else
 		{
-			const auto allocIt = std::find_if(stats.taggedAllocations[type].allocations.begin(), stats.taggedAllocations[type].allocations.end(), [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
-			if (allocIt != stats.taggedAllocations[type].allocations.end())
-			{
-				const auto alloc = *allocIt;
-
-				stats.totalRequested -= alloc.requestedSize;
-				stats.totalRequired -= alloc.requiredSize;
-
-				stats.taggedAllocations[type].allocations.erase(allocIt);
-			}
-			else
-			{
-				throw std::bad_alloc();
-			}
+			throw std::bad_alloc();
 		}
 #else
 		stats.totalRequested -= a.requestedSize;
@@ -278,7 +282,7 @@ namespace C3D
 #endif
 	}
 
-	void MetricSystem::PrintMemoryUsage(const u8 allocatorId)
+	void MetricSystem::PrintMemoryUsage(const u8 allocatorId, const bool debugLines)
 	{
 		char buffer[4096];
 		Platform::Zero(buffer, sizeof(char) * 4096);
@@ -298,7 +302,7 @@ namespace C3D
 			for (u8 j = 0; j < ToUnderlying(MemoryType::MaxType); j++)
 			{
 				auto& allocation = memStats.taggedAllocations[j];
-				SprintfAllocation(allocation, j, buffer, bytesWritten, offset);
+				SprintfAllocation(allocation, j, buffer, bytesWritten, offset, debugLines);
 				offset += bytesWritten;
 			}
 
@@ -317,12 +321,12 @@ namespace C3D
 		}
 	}
 
-	void MetricSystem::PrintMemoryUsage()
+	void MetricSystem::PrintMemoryUsage(const bool debugLines)
 	{
 		Logger::Info("--------- MEMORY USAGE ---------");
 		for (u8 i = 0; i < METRICS_COUNT; i++)
 		{
-			PrintMemoryUsage(i);
+			PrintMemoryUsage(i, debugLines);
 		}
 		Logger::Info("--------- MEMORY USAGE ---------");
 	}
@@ -361,7 +365,7 @@ namespace C3D
 		return "B";
 	}
 
-	void MetricSystem::SprintfAllocation(const MemoryAllocations& allocation, const int index, char* buffer, int& bytesWritten, const int offset)
+	void MetricSystem::SprintfAllocation(const MemoryAllocations& allocation, const int index, char* buffer, int& bytesWritten, const int offset, const bool debugLines)
 	{
 		f64 requestedAmount, requiredAmount;
 		const char* requestedUnit = nullptr;
@@ -376,6 +380,11 @@ namespace C3D
 		{
 			requestedSize += alloc.requestedSize;
 			requiredSize += alloc.requiredSize;
+
+			if (debugLines)
+			{
+				Logger::Debug("[File: {}, Line: {}]", alloc.file, alloc.line);
+			}
 		}
 		
 		requestedUnit = SizeToText(requestedSize, &requestedAmount);

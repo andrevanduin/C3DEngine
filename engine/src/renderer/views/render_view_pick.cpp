@@ -119,7 +119,7 @@ namespace C3D
 		m_worldShaderInfo.projection = glm::perspectiveRH_NO(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
 	}
 
-	bool RenderViewPick::OnBuildPacket(void* data, RenderViewPacket* outPacket)
+	bool RenderViewPick::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -136,18 +136,14 @@ namespace C3D
 
 		packetData->worldGeometryCount = 0;
 		packetData->uiGeometryCount = 0;
-		outPacket->extendedData = data;
+		outPacket->extendedData = frameAllocator.Allocate<PickPacketData>(MemoryType::RenderView);
 
 		u32 highestInstanceId = 0;
 		for (const auto mesh : packetData->worldMeshData.meshes)
 		{
-			for (u32 i = 0; i < mesh->geometryCount; i++)
+			for (const auto geometry : mesh->geometries)
 			{
-				GeometryRenderData renderData{};
-				renderData.geometry = mesh->geometries[i];
-				renderData.model = mesh->transform.GetWorld();
-				renderData.uniqueId = mesh->uniqueId;
-				outPacket->geometries.PushBack(renderData);
+				outPacket->geometries.EmplaceBack(mesh->transform.GetWorld(), geometry, mesh->uniqueId);
 				packetData->worldGeometryCount++;
 			}
 
@@ -159,13 +155,9 @@ namespace C3D
 
 		for (const auto mesh : packetData->uiMeshData.meshes)
 		{
-			for (u32 i = 0; i < mesh->geometryCount; i++)
+			for (const auto geometry : mesh->geometries)
 			{
-				GeometryRenderData renderData{};
-				renderData.geometry = mesh->geometries[i];
-				renderData.model = mesh->transform.GetWorld();
-				renderData.uniqueId = mesh->uniqueId;
-				outPacket->geometries.PushBack(renderData);
+				outPacket->geometries.EmplaceBack(mesh->transform.GetWorld(), geometry, mesh->uniqueId);
 				packetData->uiGeometryCount++;
 			}
 
@@ -192,6 +184,9 @@ namespace C3D
 				AcquireShaderInstances();
 			}
 		}
+
+		// Copy over the packet data
+		Platform::Copy<PickPacketData>(outPacket->extendedData, packetData);
 
 		return true;
 	}

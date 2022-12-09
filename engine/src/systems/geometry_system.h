@@ -27,6 +27,11 @@ namespace C3D
 	{
 		GeometryConfig() : center(), minExtents(), maxExtents(), name(), materialName() {}
 
+		~GeometryConfig()
+		{
+			Logger::Debug("~GeometryConfig()");
+		}
+
 		DynamicArray<VertexType> vertices;
 		DynamicArray<IndexType> indices;
 
@@ -48,7 +53,7 @@ namespace C3D
 		bool autoRelease;
 	};
 
-	class GeometrySystem
+	class C3D_API GeometrySystem
 	{
 	public:
 		GeometrySystem();
@@ -70,9 +75,9 @@ namespace C3D
 		Geometry* GetDefault2D();
 
 		// NOTE: Vertex and index arrays are dynamically allocated so they should be freed by the user
-		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName);
+		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const String& name, const String& materialName);
 
-		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const string& name, const string& materialName);
+		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const String& name, const String& materialName);
 
 	private:
 		template<typename VertexType, typename IndexType>

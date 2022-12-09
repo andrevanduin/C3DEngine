@@ -1,4 +1,5 @@
 #pragma once
+#include "containers/dynamic_array.h"
 #include "core/defines.h"
 
 namespace C3D
@@ -41,8 +42,7 @@ namespace C3D
 
 	struct RenderTargetConfig
 	{
-		u8 attachmentCount;
-		RenderTargetAttachmentConfig* attachments;
+		DynamicArray<RenderTargetAttachmentConfig> attachments;
 	};
 
 	struct RenderTargetAttachment

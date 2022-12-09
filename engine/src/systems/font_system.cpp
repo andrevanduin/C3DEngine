@@ -26,11 +26,11 @@ namespace C3D
 		m_bitmapFonts.Create(config.maxBitmapFontCount);
 
 		// Load all our bitmap fonts
-		for (u32 i = 0; i < m_config.defaultBitmapFontCount; i++)
+		for (auto& font : m_config.bitmapFontConfigs)
 		{
-			if (!LoadBitmapFont(m_config.bitmapFontConfigs[i]))
+			if (!LoadBitmapFont(font))
 			{
-				m_logger.Error("Init() - Failed to load bitmap font: '{}'", m_config.bitmapFontConfigs[i].name);
+				m_logger.Error("Init() - Failed to load bitmap font: '{}'", font.name);
 			}
 		}
 

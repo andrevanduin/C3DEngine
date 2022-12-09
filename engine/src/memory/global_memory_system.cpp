@@ -12,6 +12,10 @@ namespace C3D
 	// of other statically initialized systems in our engine since the global allocator
 	// will not yet have been initialized at that point.
 	MallocAllocator* GlobalMemorySystem::s_mallocAllocator;
+
+	// Default linear stack allocator
+	LinearAllocator* GlobalMemorySystem::s_linearAllocator;
+
 	// Default Stack allocator that should never really be used but it is required to
 	// ensure that the compiler will always find a GetDefaultAllocator function
 	StackAllocator<KibiBytes(8)>* GlobalMemorySystem::s_stackAllocator;
@@ -31,8 +35,11 @@ namespace C3D
 			Logger::Fatal("[GLOBAL_MEMORY_SYSTEM] - Allocating memory pool failed");
 		}
 
-		s_globalAllocator = new DynamicAllocator();
+		s_globalAllocator = new DynamicAllocator(AllocatorType::GlobalDynamic);
 		s_globalAllocator->Create(m_memoryBlock, memoryRequirement, config.totalAllocSize);
+
+		s_linearAllocator = new LinearAllocator();
+		s_linearAllocator->Create("DefaultLinearAllocator", KibiBytes(8));
 
 		s_stackAllocator = new StackAllocator<KibiBytes(8)>();
 		s_stackAllocator->Create("DefaultStackAllocator");
@@ -42,6 +49,18 @@ namespace C3D
 
 	void GlobalMemorySystem::Destroy()
 	{
+		if (s_stackAllocator)
+		{
+			s_stackAllocator->Destroy();
+			delete s_stackAllocator;
+		}
+
+		if (s_linearAllocator)
+		{
+			s_linearAllocator->Destroy();
+			delete s_linearAllocator;
+		}
+
 		if (s_globalAllocator)
 		{
 			s_globalAllocator->Destroy();

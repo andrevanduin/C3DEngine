@@ -21,7 +21,7 @@ namespace C3D
 	class C3D_API DynamicAllocator final : public BaseAllocator
 	{
 	public:
-		DynamicAllocator();
+		DynamicAllocator(AllocatorType type = AllocatorType::Dynamic);
 
 		bool Create(void* memory, u64 totalMemory, u64 usableMemory);
 

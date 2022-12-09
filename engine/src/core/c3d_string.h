@@ -14,7 +14,7 @@ namespace C3D
 	 *
 	 * @return the length of the string
 	 */
-	u64 StringLength(const char* str);
+	u64 C3D_API StringLength(const char* str);
 
 	/*
 	 * @brief Compares two strings case-sensitive
@@ -47,7 +47,7 @@ namespace C3D
 	 * @param source The source string
 	 * @param length The maximum number of characters that will be copied
 	 */
-	void StringNCopy(char* dest, const char* source, i64 length);
+	void C3D_API StringNCopy(char* dest, const char* source, i64 length);
 
 	/*
 	 * @brief Trims all the whitespace on the left of the provided string.

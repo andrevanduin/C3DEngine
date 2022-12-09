@@ -16,6 +16,8 @@ namespace C3D
 	public:
 		VulkanImage();
 
+		~VulkanImage();
+
 		void Create(const VulkanContext* context, TextureType type, u32 _width, u32 _height, VkFormat format,
 			VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags, bool createView,
 			VkImageAspectFlags viewAspectFlags);
@@ -29,7 +31,7 @@ namespace C3D
 		void CopyToBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
 		void CopyPixelToBuffer(TextureType type, VkBuffer buffer, u32 x, u32 y, const VulkanCommandBuffer* commandBuffer) const;
 
-		void Destroy(const VulkanContext* context);
+		void Destroy();
 
 		VkImage handle;
 		VkImageView view;
@@ -39,5 +41,7 @@ namespace C3D
 		VkDeviceMemory m_memory;
 		VkMemoryRequirements m_memoryRequirements;
 		VkMemoryPropertyFlags m_memoryFlags;
+
+		const VulkanContext* m_context;
 	};
 }

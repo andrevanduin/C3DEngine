@@ -12,12 +12,6 @@
 
 #include "services/services.h"
 
-// TEMP
-#include "core/c3d_string.h"
-#include "renderer/transform.h"
-//
-
-#include "identifier.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/geometry_system.h"
 #include "systems/material_system.h"
@@ -25,22 +19,24 @@
 #include "systems/shader_system.h"
 #include "systems/texture_system.h"
 #include "systems/camera_system.h"
-#include "systems/font_system.h"
 #include "systems/render_view_system.h"
 #include "systems/jobs/job_system.h"
 
 namespace C3D
 {
-	Application::Application(const ApplicationConfig& config)
-		: m_logger("APPLICATION"), m_meshes{}, m_hoveredObjectId(0), m_uiMeshes{}
+	Application::Application(ApplicationConfig config)
+		: m_logger("APPLICATION"), m_config(std::move(config))
+	{}
+
+	Application::~Application() = default;
+
+	void Application::Init()
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice");
 
-		m_logger.Info("Starting");
-
-		m_state.name = config.name;
-		m_state.width = config.width;
-		m_state.height = config.height;
+		m_state.name = m_config.name;
+		m_state.width = m_config.width;
+		m_state.height = m_config.height;
 
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
@@ -49,7 +45,10 @@ namespace C3D
 
 		m_logger.Info("Successfully initialized SDL");
 
-		m_window = SDL_CreateWindow(("C3DEngine - " + config.name).c_str(), config.x, config.y, config.width, config.height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+		String windowName = "C3DEngine - ";
+		windowName.Append(m_config.name);
+
+		m_window = SDL_CreateWindow(windowName.Data(), m_config.x, m_config.y, m_config.width, m_config.height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 		if (m_window == nullptr)
 		{
 			m_logger.Fatal("Failed to create a Window: {}", SDL_GetError());
@@ -67,14 +66,21 @@ namespace C3D
 			m_logger.Info("System reported {} threads (including main thread).", threadCount);
 		}
 
+		constexpr ResourceSystemConfig		resourceSystemConfig{ 32, "../../../../assets" };
+		constexpr ShaderSystemConfig		shaderSystemConfig{ 128, 128, 31, 31 };
+
+		Services::InitBeforeBoot(this, resourceSystemConfig, shaderSystemConfig);
+
+		const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
+
+		OnBoot();
+
 		constexpr auto maxThreadCount = 15;
 		if (threadCount - 1 > maxThreadCount)
 		{
 			m_logger.Info("Available threads on this system is greater than {} (). Capping used threads at {}", maxThreadCount, (threadCount - 1), maxThreadCount);
 			threadCount = maxThreadCount;
 		}
-
-		constexpr auto rendererMultiThreaded = false;
 
 		u32 jobThreadTypes[15];
 		for (u32& jobThreadType : jobThreadTypes) jobThreadType = JobTypeGeneral;
@@ -94,384 +100,30 @@ namespace C3D
 			jobThreadTypes[1] = JobTypeResourceLoad;
 		}
 
-		JobSystemConfig	jobSystemConfig { maxThreadCount, jobThreadTypes };
-		
-		constexpr ResourceSystemConfig		resourceSystemConfig	{ 32, "../../../../assets" };
-		constexpr ShaderSystemConfig		shaderSystemConfig		{ 128, 128, 31, 31 };
-		constexpr TextureSystemConfig		textureSystemConfig		{ 65536 };
-		constexpr MaterialSystemConfig		materialSystemConfig	{ 4096 };
-		constexpr GeometrySystemConfig		geometrySystemConfig	{ 4096 };
-		constexpr CameraSystemConfig		cameraSystemConfig		{ 61 };
-		constexpr RenderViewSystemConfig	viewSystemConfig		{ 251 };
+		const JobSystemConfig				jobSystemConfig { maxThreadCount, jobThreadTypes };
+		constexpr TextureSystemConfig		textureSystemConfig { 65536 };
+		constexpr CameraSystemConfig		cameraSystemConfig { 61 };
+		constexpr RenderViewSystemConfig	viewSystemConfig { 251 };
 
-		FontSystemConfig fontSystemConfig;
-		fontSystemConfig.autoRelease = false;
-		fontSystemConfig.defaultBitmapFontCount = 1;
-
-		BitmapFontConfig bmpFontConfig = {};
-		bmpFontConfig.name = "Ubuntu Mono 21px";
-		bmpFontConfig.resourceName = "UbuntuMono21px";
-		bmpFontConfig.size = 21;
-
-		fontSystemConfig.bitmapFontConfigs = &bmpFontConfig;
-
-		fontSystemConfig.defaultSystemFontCount = 0;
-		fontSystemConfig.systemFontConfigs = nullptr;
-		fontSystemConfig.maxBitmapFontCount = 101;
-		fontSystemConfig.maxSystemFontCount = 101;
-
-		Services::Init(this, jobSystemConfig, resourceSystemConfig, shaderSystemConfig, textureSystemConfig, 
-			cameraSystemConfig, viewSystemConfig, fontSystemConfig);
+		Services::InitAfterBoot(jobSystemConfig, textureSystemConfig, m_config.fontConfig, cameraSystemConfig, viewSystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
-		Event.Register(SystemEventCode::Minimized,  new EventCallback(this, &Application::OnMinimizeEvent));
+		Event.Register(SystemEventCode::Minimized, new EventCallback(this, &Application::OnMinimizeEvent));
 		Event.Register(SystemEventCode::FocusGained, new EventCallback(this, &Application::OnFocusGainedEvent));
 
-		auto callback = new EventCallback(this, &Application::OnDebugEvent);
-		Event.Register(SystemEventCode::Debug0, callback);
-		Event.Register(SystemEventCode::Debug1, callback);
-
-		Event.Register(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
-		Event.Register(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
-		Event.Register(SystemEventCode::ObjectHoverIdChanged, new EventCallback(this, &Application::OnEvent));
-
 		// Load render views
-		RenderViewConfig skyboxConfig{};
-		skyboxConfig.type = RenderViewKnownType::Skybox;
-		skyboxConfig.width = 1280;
-		skyboxConfig.height = 720;
-		skyboxConfig.name = "skybox";
-		skyboxConfig.passCount = 1;
-		skyboxConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
-
-		RenderPassConfig skyboxPasses[1];
-		skyboxPasses[0].name = "RenderPass.Builtin.Skybox";
-		skyboxPasses[0].renderArea = { 0, 0, 1280, 720 };
-		skyboxPasses[0].clearColor = { 0, 0, 0.2f, 1.0f };
-		skyboxPasses[0].clearFlags = ClearColorBuffer;
-		skyboxPasses[0].depth = 1.0f;
-		skyboxPasses[0].stencil = 0;
-
-		RenderTargetAttachmentConfig skyboxTargetAttachment = {};
-		skyboxTargetAttachment.type = RenderTargetAttachmentType::Color;
-		skyboxTargetAttachment.source = RenderTargetAttachmentSource::Default;
-		skyboxTargetAttachment.loadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-		skyboxTargetAttachment.storeOperation = RenderTargetAttachmentStoreOperation::Store;
-		skyboxTargetAttachment.presentAfter = false;
-
-		skyboxPasses[0].target.attachmentCount = 1;
-		skyboxPasses[0].target.attachments = &skyboxTargetAttachment;
-		skyboxPasses[0].renderTargetCount = Renderer.GetWindowAttachmentCount();
-
-		skyboxConfig.passes = skyboxPasses;
-
-		if (!Views.Create(skyboxConfig))
+		for (auto& view : m_config.renderViews)
 		{
-			m_logger.Fatal("Failed to create view '{}'.", skyboxConfig.name);
+			if (!Views.Create(view))
+			{
+				m_logger.Fatal("Failed to Create view: '{}'", view.name);
+			}
 		}
 
-		RenderViewConfig worldConfig{};
-		worldConfig.type = RenderViewKnownType::World;
-		worldConfig.width = 1280;
-		worldConfig.height = 720;
-		worldConfig.name = "world";
-		worldConfig.passCount = 1;
-		worldConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
+		constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
+		constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
-		RenderPassConfig worldPasses[1];
-		worldPasses[0].name = "RenderPass.Builtin.World";
-		worldPasses[0].renderArea = { 0, 0, 1280, 720 };
-		worldPasses[0].clearColor = { 0, 0, 0.2f, 1.0f };
-		worldPasses[0].clearFlags = ClearDepthBuffer | ClearStencilBuffer;
-		worldPasses[0].depth = 1.0f;
-		worldPasses[0].stencil = 0;
-
-		RenderTargetAttachmentConfig worldTargetAttachments[2]{};
-		worldTargetAttachments[0].type = RenderTargetAttachmentType::Color;
-		worldTargetAttachments[0].source = RenderTargetAttachmentSource::Default;
-		worldTargetAttachments[0].loadOperation = RenderTargetAttachmentLoadOperation::Load;
-		worldTargetAttachments[0].storeOperation = RenderTargetAttachmentStoreOperation::Store;
-		worldTargetAttachments[0].presentAfter = false;
-
-		worldTargetAttachments[1].type = RenderTargetAttachmentType::Depth;
-		worldTargetAttachments[1].source = RenderTargetAttachmentSource::Default;
-		worldTargetAttachments[1].loadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-		worldTargetAttachments[1].storeOperation = RenderTargetAttachmentStoreOperation::Store;
-		worldTargetAttachments[1].presentAfter = false;
-
-		worldPasses[0].target.attachmentCount = 2;
-		worldPasses[0].target.attachments = worldTargetAttachments;
-		worldPasses[0].renderTargetCount = Renderer.GetWindowAttachmentCount();
-
-		worldConfig.passes = worldPasses;
-
-		if (!Views.Create(worldConfig))
-		{
-			m_logger.Fatal("Failed to create view '{}'.", worldConfig.name);
-		}
-
-		RenderViewConfig uiViewConfig{};
-		uiViewConfig.type = RenderViewKnownType::UI;
-		uiViewConfig.width = 1280;
-		uiViewConfig.height = 720;
-		uiViewConfig.name = "ui";
-		uiViewConfig.passCount = 1;
-		uiViewConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
-
-		RenderPassConfig uiPasses[1];
-		uiPasses[0].name = "RenderPass.Builtin.UI";
-		uiPasses[0].renderArea = { 0, 0, 1280, 720 };
-		uiPasses[0].clearColor = { 0, 0, 0.2f, 1.0f };
-		uiPasses[0].clearFlags = ClearNone;
-		uiPasses[0].depth = 1.0f;
-		uiPasses[0].stencil = 0;
-
-		RenderTargetAttachmentConfig uiAttachment = {};
-		uiAttachment.type = RenderTargetAttachmentType::Color;
-		uiAttachment.source = RenderTargetAttachmentSource::Default;
-		uiAttachment.loadOperation = RenderTargetAttachmentLoadOperation::Load;
-		uiAttachment.storeOperation = RenderTargetAttachmentStoreOperation::Store;
-		uiAttachment.presentAfter = true;
-
-		uiPasses[0].target.attachmentCount = 1;
-		uiPasses[0].target.attachments = &uiAttachment;
-		uiPasses[0].renderTargetCount = Renderer.GetWindowAttachmentCount();
-
-		uiViewConfig.passes = uiPasses;
-
-		if (!Views.Create(uiViewConfig))
-		{
-			m_logger.Fatal("Failed to create view '{}'.", uiViewConfig.name);
-		}
-
-		RenderViewConfig pickViewConfig = {};
-		pickViewConfig.type = RenderViewKnownType::Pick;
-		pickViewConfig.width = 1280;
-		pickViewConfig.height = 720;
-		pickViewConfig.name = "pick";
-		pickViewConfig.passCount = 2;
-		pickViewConfig.viewMatrixSource = RenderViewViewMatrixSource::SceneCamera;
-
-		RenderPassConfig pickPasses[2] = {};
-
-		pickPasses[0].name = "RenderPass.Builtin.WorldPick";
-		pickPasses[0].renderArea = { 0, 0, 1280, 720 };
-		pickPasses[0].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // HACK: Clear to white for better visibility (should be 0 since it's invalid id)
-		pickPasses[0].clearFlags = RenderPassClearFlags::ClearColorBuffer | RenderPassClearFlags::ClearDepthBuffer;
-		pickPasses[0].depth = 1.0f;
-		pickPasses[0].stencil = 0;
-
-		RenderTargetAttachmentConfig worldPickTargetAttachments[2];
-		worldPickTargetAttachments[0].type = RenderTargetAttachmentType::Color;
-		worldPickTargetAttachments[0].source = RenderTargetAttachmentSource::View;
-		worldPickTargetAttachments[0].loadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-		worldPickTargetAttachments[0].storeOperation = RenderTargetAttachmentStoreOperation::Store;
-		worldPickTargetAttachments[0].presentAfter = false;
-
-		worldPickTargetAttachments[1].type = RenderTargetAttachmentType::Depth;
-		worldPickTargetAttachments[1].source = RenderTargetAttachmentSource::View;
-		worldPickTargetAttachments[1].loadOperation = RenderTargetAttachmentLoadOperation::DontCare;
-		worldPickTargetAttachments[1].storeOperation = RenderTargetAttachmentStoreOperation::Store;
-		worldPickTargetAttachments[1].presentAfter = false;
-
-		pickPasses[0].target.attachmentCount = 2;
-		pickPasses[0].target.attachments = worldPickTargetAttachments;
-		pickPasses[0].renderTargetCount = 1;
-
-		pickPasses[1].name = "RenderPass.Builtin.UIPick";
-		pickPasses[1].renderArea = { 0, 0, 1280, 720 };
-		pickPasses[1].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-		pickPasses[1].clearFlags = RenderPassClearFlags::ClearNone;
-		pickPasses[1].depth = 1.0f;
-		pickPasses[1].stencil = 0;
-
-		RenderTargetAttachmentConfig uiPickTargetAttachments[1];
-		uiPickTargetAttachments[0].type = RenderTargetAttachmentType::Color;
-		uiPickTargetAttachments[0].source = RenderTargetAttachmentSource::View;
-		uiPickTargetAttachments[0].loadOperation = RenderTargetAttachmentLoadOperation::Load;
-		uiPickTargetAttachments[0].storeOperation = RenderTargetAttachmentStoreOperation::Store;
-		uiPickTargetAttachments[0].presentAfter = false;
-
-		pickPasses[1].target.attachmentCount = 1;
-		pickPasses[1].target.attachments = uiPickTargetAttachments;
-		pickPasses[1].renderTargetCount = 1;
-
-		pickViewConfig.passes = pickPasses;
-
-		if (!Views.Create(pickViewConfig))
-		{
-			m_logger.Fatal("Failed to Create pick view.");
-		}
-
-		// Init material and geometry system since they need the shader created above
-		if (!Services::InitMaterialSystem(materialSystemConfig))
-		{
-			m_logger.Fatal("Failed to init Material system.");
-		}
-		if (!Services::InitGeometrySystem(geometrySystemConfig))
-		{
-			m_logger.Fatal("Failed to init Geometry system.");
-		}
-
-		// TEMP
-		// Create test ui text objects
-		if (!m_testText.Create(UITextType::Bitmap, "Ubuntu Mono 21px", 21, "Some test text 123,\nyesyes!\n\tKaas!"))
-		{
-			m_logger.Fatal("Failed to load basic ui bitmap text.");
-		}
-
-		m_testText.SetPosition({ 10, 640, 0 });
-
-		auto& cubeMap = m_skybox.cubeMap;
-		cubeMap.magnifyFilter = cubeMap.minifyFilter = TextureFilter::ModeLinear;
-		cubeMap.repeatU = cubeMap.repeatV = cubeMap.repeatW = TextureRepeat::ClampToEdge;
-		cubeMap.use = TextureUse::CubeMap;
-		if (!Renderer.AcquireTextureMapResources(&cubeMap))
-		{
-			m_logger.Fatal("Unable to acquire resources for cube map texture.");
-		}
-		cubeMap.texture = Textures.AcquireCube("skybox", true);
-		
-		GeometryConfig skyboxCubeConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "skybox_cube", "");
-		skyboxCubeConfig.materialName[0] = '\0';
-
-		m_skybox.g = Geometric.AcquireFromConfig(skyboxCubeConfig, true);
-		m_skybox.frameNumber = INVALID_ID_U64;
-
-		Geometric.DisposeConfig(&skyboxCubeConfig);
-
-		Shader* skyboxShader = Shaders.Get("Shader.Builtin.Skybox");
-		TextureMap* maps[1] = { &m_skybox.cubeMap };
-		if (!Renderer.AcquireShaderInstanceResources(skyboxShader, maps, &m_skybox.instanceId))
-		{
-			m_logger.Fatal("Unable to acquire shader resources for skybox texture.");
-		}
-
-		// World meshes
-		for (u32 i = 0; i < 10; i++)
-		{
-			m_meshes[i].generation = INVALID_ID_U8;
-			m_uiMeshes[i].generation = INVALID_ID_U8;
-		}
-
-		u8 meshCount = 0;
-
-		Mesh* cubeMesh = &m_meshes[meshCount];
-		cubeMesh->geometryCount = 1;
-		cubeMesh->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
-
-		// Load up a cube configuration, and load geometry for it
-		GeometryConfig gConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
-
-		cubeMesh->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
-		cubeMesh->transform = Transform();
-		cubeMesh->generation = 0;
-		cubeMesh->uniqueId = Identifier::GetNewId(cubeMesh);
-
-		meshCount++;
-
-		// Cleanup the allocations that we just did
-		Geometric.DisposeConfig(&gConfig);
-
-		// A second cube
-		Mesh* cubeMesh2 = &m_meshes[meshCount];
-		cubeMesh2->geometryCount = 1;
-		cubeMesh2->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
-
-		// Load up a cube configuration, and load geometry for it
-		gConfig = Geometric.GenerateCubeConfig(5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube_2", "test_material");
-
-		cubeMesh2->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
-		cubeMesh2->transform = Transform(vec3(20.0f, 0.0f, 1.0f));
-		cubeMesh2->transform.SetParent(&cubeMesh->transform);
-		cubeMesh2->generation = 0;
-		cubeMesh2->uniqueId = Identifier::GetNewId(cubeMesh2);
-
-		meshCount++;
-
-		// Cleanup the other allocations that we just did
-		Geometric.DisposeConfig(&gConfig);
-
-		// A third cube
-		Mesh* cubeMesh3 = &m_meshes[meshCount];
-		cubeMesh3->geometryCount = 1;
-		cubeMesh3->geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
-
-		gConfig = Geometric.GenerateCubeConfig(2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube_3", "test_material");
-
-		cubeMesh3->geometries[0] = Geometric.AcquireFromConfig(gConfig, true);
-		cubeMesh3->transform = Transform(vec3(5.0f, 0.0f, 1.0f));
-		cubeMesh3->transform.SetParent(&cubeMesh2->transform);
-		cubeMesh3->generation = 0;
-		cubeMesh3->uniqueId = Identifier::GetNewId(cubeMesh3);
-
-		meshCount++;
-
-		// Cleanup the other allocations that we just did
-		Geometric.DisposeConfig(&gConfig);
-
-		carMesh = &m_meshes[meshCount];
-		carMesh->transform = Transform({ 15.0f, 0.0f, 1.0f });
-		carMesh->uniqueId = Identifier::GetNewId(carMesh);
-		meshCount++;
-
-		sponzaMesh = &m_meshes[meshCount];
-		sponzaMesh->transform = Transform({ 15.0f, 0.0f, 1.0f }, mat4(1.0f), { 0.05f, 0.05f, 0.05f });
-		sponzaMesh->uniqueId = Identifier::GetNewId(sponzaMesh);
-
-		meshCount++;
-
-		// Load up our test ui geometry
-		GeometryConfig<Vertex2D, u32> uiConfig{};
-		uiConfig.vertices = DynamicArray<Vertex2D>();
-		uiConfig.vertices.Resize(4);
-
-		uiConfig.indices = DynamicArray<u32>(6);
-
-		StringNCopy(uiConfig.materialName, "test_ui_material", MATERIAL_NAME_MAX_LENGTH);
-		StringNCopy(uiConfig.name, "test_ui_geometry", GEOMETRY_NAME_MAX_LENGTH);
-
-		constexpr f32 w = 128.0f;
-		constexpr f32 h = 32.0f;
-
-		uiConfig.vertices[0].position.x = 0.0f;
-		uiConfig.vertices[0].position.y = 0.0f;
-		uiConfig.vertices[0].texture.x = 0.0f;
-		uiConfig.vertices[0].texture.y = 0.0f;
-
-		uiConfig.vertices[1].position.x = w;
-		uiConfig.vertices[1].position.y = h;
-		uiConfig.vertices[1].texture.x = 1.0f;
-		uiConfig.vertices[1].texture.y = 1.0f;
-
-		uiConfig.vertices[2].position.x = 0.0f;
-		uiConfig.vertices[2].position.y = h;
-		uiConfig.vertices[2].texture.x = 0.0f;
-		uiConfig.vertices[2].texture.y = 1.0f;
-
-		uiConfig.vertices[3].position.x = w;
-		uiConfig.vertices[3].position.y = 0.0f;
-		uiConfig.vertices[3].texture.x = 1.0f;
-		uiConfig.vertices[3].texture.y = 0.0f;
-
-		// Counter-clockwise
-		uiConfig.indices.PushBack(2);
-		uiConfig.indices.PushBack(1);
-		uiConfig.indices.PushBack(0);
-		uiConfig.indices.PushBack(3);
-		uiConfig.indices.PushBack(0);
-		uiConfig.indices.PushBack(1);
-
-		m_uiMeshes[0].uniqueId = Identifier::GetNewId(&m_uiMeshes[0]);
-		m_uiMeshes[0].geometryCount = 1;
-		m_uiMeshes[0].geometries = Memory.Allocate<Geometry*>(MemoryType::Array);
-		m_uiMeshes[0].geometries[0] = Geometric.AcquireFromConfig(uiConfig, true);
-		m_uiMeshes[0].generation = 0;
-
-		auto rotation = angleAxis(DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
-		m_uiMeshes[0].transform.Rotate(rotation);
-
-		// TEMP END
+		Services::FinalInit(materialSystemConfig, geometrySystemConfig);
 
 		m_state.initialized = true;
 		m_state.lastTime = 0;
@@ -479,8 +131,6 @@ namespace C3D
 		Application::OnResize(m_state.width, m_state.height);
 		Renderer.OnResize(m_state.width, m_state.height);
 	}
-
-	Application::~Application() = default;
 
 	void Application::Run()
 	{
@@ -493,154 +143,64 @@ namespace C3D
 
 		m_state.lastTime = clock.GetElapsed();
 
+		u8 frameCount = 0;
+		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
+		f64 frameElapsedTime = 0;
+
 		OnCreate();
 
-		f64 runningTime = 0;
-		u16 frameCount = 0;
-		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
+		Metrics.PrintMemoryUsage();
 
+		while (m_state.running)
 		{
-			Metrics.PrintMemoryUsage();
+			HandleSdlEvents();
 
-			RenderPacket packet = {};
-			packet.views.Resize(4); // Ensure enough space for 3 views so we only allocate once
-
-			SkyboxPacketData skyboxData = {};
-			skyboxData.box = &m_skybox;
-
-			MeshPacketData worldMeshData = {};
-			worldMeshData.meshes.Reserve(10);
-
-			UIPacketData uiPacketData = {};
-			uiPacketData.meshData.meshes.Reserve(10);
-			uiPacketData.texts.PushBack(&m_testText);
-
-			while (m_state.running)
+			if (!m_state.suspended)
 			{
-				HandleSdlEvents();
+				clock.Update();
+				const f64 currentTime = clock.GetElapsed();
+				const f64 delta = currentTime - m_state.lastTime;
+				const f64 frameStartTime = Platform::GetAbsoluteTime();
 
-				if (!m_state.suspended)
+				Jobs.Update();
+				Metrics.Update(frameElapsedTime);
+
+				OnUpdate(delta);
+
+				// TODO: Refactor packet creation
+				RenderPacket packet;
+				OnRender(packet, delta);
+
+				if (!Renderer.DrawFrame(&packet))
 				{
-					clock.Update();
-					const f64 currentTime = clock.GetElapsed();
-					const f64 delta = currentTime - m_state.lastTime;
-					const f64 frameStartTime = Platform::GetAbsoluteTime();
-
-					Jobs.Update();
-
-					OnUpdate(delta);
-					OnRender(delta);
-
-					// Rotate 
-					quat rotation = angleAxis(0.5f * static_cast<f32>(delta), vec3(0.0f, 1.0f, 0.0f));
-					m_meshes[0].transform.Rotate(rotation);
-					m_meshes[1].transform.Rotate(rotation);
-					m_meshes[2].transform.Rotate(rotation);
-
-					packet.deltaTime = static_cast<f32>(delta);
-
-					// Skybox
-					if (!Views.BuildPacket(Views.Get("skybox"), &skyboxData, &packet.views[0]))
-					{
-						m_logger.Error("Failed to build packet for view 'skybox'.");
-						return;
-					}
-
-					worldMeshData.meshes.Clear();
-					for (auto& mesh : m_meshes)
-					{
-						if (mesh.generation != INVALID_ID_U8)
-						{
-							worldMeshData.meshes.PushBack(&mesh);
-						}
-					}
-
-					// World
-					if (!Views.BuildPacket(Views.Get("world"), &worldMeshData, &packet.views[1]))
-					{
-						m_logger.Error("Failed to build packet for view 'world_opaque'.");
-						return;
-					}
-
-					uiPacketData.meshData.meshes.Clear();
-					for (auto& mesh : m_uiMeshes)
-					{
-						if (mesh.generation != INVALID_ID_U8)
-						{
-							uiPacketData.meshData.meshes.PushBack(&mesh);
-						}
-					}
-
-					const auto cam = Cam.GetDefault();
-					const auto pos = cam->GetPosition();
-					const auto rot = cam->GetEulerRotation();
-
-					const auto mouse = Input.GetMousePosition();
-					// Convert to NDC
-					const auto mouseNdcX = RangeConvert(static_cast<f32>(mouse.x), 0.0f, static_cast<f32>(m_state.width), -1.0f, 1.0f);
-					const auto mouseNdcY = RangeConvert(static_cast<f32>(mouse.y), 0.0f, static_cast<f32>(m_state.height), -1.0f, 1.0f);
-
-					const auto leftButton = Input.IsButtonDown(Buttons::ButtonLeft);
-					const auto middleButton = Input.IsButtonDown(Buttons::ButtonMiddle);
-					const auto rightButton = Input.IsButtonDown(Buttons::ButtonRight);
-
-					char buffer[256]{};
-					sprintf_s(buffer, "Cam: Pos(%.3f, %.3f, %.3f) Rot(%.3f, %.3f, %.3f)\nMouse: Pos(%.2f, %.2f) Buttons(%d, %d, %d) Hovered: %d", 
-						pos.x, pos.y, pos.z, RadToDeg(rot.x), RadToDeg(rot.y), RadToDeg(rot.z), mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, m_hoveredObjectId);
-
-					uiPacketData.texts[0]->SetText(buffer);
-
-					// Ui
-					if (!Views.BuildPacket(Views.Get("ui"), &uiPacketData, &packet.views[2]))
-					{
-						m_logger.Error("Failed to build packet for view 'ui'.");
-						return;
-					}
-
-					PickPacketData pickPacketData = {};
-					pickPacketData.uiMeshData = uiPacketData.meshData;
-					pickPacketData.worldMeshData = worldMeshData;
-					pickPacketData.texts = uiPacketData.texts;
-
-					// Pick
-					if (!Views.BuildPacket(Views.Get("pick"), &pickPacketData, &packet.views[3]))
-					{
-						m_logger.Error("Failed to build packet for view 'pick'");
-						return;
-					}
-
-					if (!Renderer.DrawFrame(&packet))
-					{
-						m_logger.Warn("DrawFrame() failed");
-					}
-
-					for (auto& view : packet.views)
-					{
-						view.geometries.Clear();
-					}
-
-					const f64 frameEndTime = Platform::GetAbsoluteTime();
-					const f64 frameElapsedTime = frameEndTime - frameStartTime;
-					runningTime += frameElapsedTime;
-					const f64 remainingSeconds = targetFrameSeconds - frameElapsedTime;
-
-					if (remainingSeconds > 0)
-					{
-						/*const u64 remainingMs = static_cast<u64>(remainingSeconds) * 1000;
-
-						constexpr bool limitFrames = false;
-						/if (remainingMs > 0 && limitFrames)
-						{
-							Platform::SleepMs(remainingMs - 1);
-						}*/
-
-						frameCount++;
-					}
-
-					Input.Update(delta);
-
-					m_state.lastTime = currentTime;
+					m_logger.Warn("DrawFrame() failed");
 				}
+
+				// Cleanup our packets
+				for (auto& view : packet.views)
+				{
+					Views.DestroyPacket(view.view, view);
+				}
+
+				const f64 frameEndTime = Platform::GetAbsoluteTime();
+				frameElapsedTime = frameEndTime - frameStartTime;
+
+				if (const f64 remainingSeconds = targetFrameSeconds - frameElapsedTime; remainingSeconds > 0)
+				{
+					const u64 remainingMs = static_cast<u64>(remainingSeconds) * 1000;
+
+					constexpr bool limitFrames = true;
+					if (remainingMs > 0 && limitFrames)
+					{
+						Platform::SleepMs(remainingMs - 1);
+					}
+
+					frameCount++;
+				}
+
+				Input.Update(delta);
+
+				m_state.lastTime = currentTime;
 			}
 		}
 
@@ -672,44 +232,17 @@ namespace C3D
 	{
 		C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized")
 
+		// Call the OnShutdown() method that is defined by the user
+		OnShutdown();
+
 		m_logger.Info("Shutdown()");
 		m_logger.Info("UnRegistering events");
 
 		Event.UnRegister(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
 		Event.UnRegister(SystemEventCode::Minimized, new EventCallback(this, &Application::OnMinimizeEvent));
 		Event.UnRegister(SystemEventCode::FocusGained, new EventCallback(this, &Application::OnFocusGainedEvent));
-		// TEMP
-		Event.UnRegister(SystemEventCode::Debug0, new EventCallback(this, &Application::OnDebugEvent));
-		// TEMP END
-
-		Event.UnRegister(SystemEventCode::KeyPressed, new StaticEventCallback(&OnKeyEvent));
-		Event.UnRegister(SystemEventCode::KeyReleased, new StaticEventCallback(&OnKeyEvent));
-
-		// TEMP
-		// TODO: Implement skybox destroy.
-		for (auto& mesh : m_meshes)
-		{
-			if (mesh.generation != INVALID_ID_U8 && mesh.geometries && mesh.geometryCount > 0)
-			{
-				mesh.Unload();
-			}
-		}
-
-		for (auto& mesh : m_uiMeshes)
-		{
-			if (mesh.generation != INVALID_ID_U8 && mesh.geometries && mesh.geometryCount > 0)
-			{
-				mesh.Unload();
-			}
-		}
-
-		Renderer.ReleaseTextureMapResources(&m_skybox.cubeMap);
-
-		m_testText.Destroy();
-		// TEMP END
 
 		Services::Shutdown();
-		Identifier::Destroy();
 
 		SDL_DestroyWindow(m_window);
 
@@ -796,8 +329,6 @@ namespace C3D
 
 				OnResize(width, height);
 				Renderer.OnResize(width, height);
-
-				m_testText.SetPosition({ 10, height - 80, 0 });
 			}
 		}
 
@@ -829,85 +360,6 @@ namespace C3D
 			Renderer.OnResize(width, height);
 		}
 
-		return false;
-	}
-
-	// TEMP
-	bool Application::OnDebugEvent(const u16 code, void* sender, EventContext context)
-	{
-		if (code == SystemEventCode::Debug0)
-		{
-			const char* names[3] = { "cobblestone", "paving", "paving2" };
-			static i8 choice = 2;
-
-			const char* oldName = names[choice];
-
-			choice++;
-			choice %= 3;
-
-			Geometry* g = m_meshes[0].geometries[0];
-			if (g)
-			{
-				// Acquire new material
-				g->material = Materials.Acquire(names[choice]);
-				if (!g->material)
-				{
-					m_logger.Warn("[ON_DEBUG_EVENT] - No material found. Using default.");
-					g->material = Materials.GetDefault();
-				}
-
-				Materials.Release(oldName);
-			}
-
-			return true;
-		}
-
-		if (code == SystemEventCode::Debug1)
-		{
-			if (!modelsLoaded)
-			{
-				modelsLoaded = true;
-				m_logger.Debug("OnDebugEvent() - Loading models...");
-
-				if (!carMesh->LoadFromResource("falcon"))
-				{
-					m_logger.Error("OnDebugEvent() - Failed to load falcon mesh.");
-				}
-				if (!sponzaMesh->LoadFromResource("sponza"))
-				{
-					m_logger.Error("OnDebugEvent() - Failed to load sponza mesh.");
-				}
-			}
-
-			return true;
-		}
-		
-		return false;
-	}
-	// TEMP END
-
-	bool Application::OnKeyEvent(const u16 code, void* sender, const EventContext context)
-	{
-		if (code == SystemEventCode::KeyPressed)
-		{
-			const auto key = context.data.u16[0];
-			Logger::Debug("Key Pressed: {}", static_cast<char>(key));
-		}
-		else if (code == SystemEventCode::KeyReleased)
-		{
-			const auto key = context.data.u16[0];
-			Logger::Debug("Key Released: {}", static_cast<char>(key));
-		}
-		return false;
-	}
-
-	bool Application::OnEvent(u16 code, void* sender, EventContext context)
-	{
-		if (code == SystemEventCode::ObjectHoverIdChanged)
-		{
-			m_hoveredObjectId = context.data.u32[0];
-			return true;
-		}
 		return false;
 	}
 }

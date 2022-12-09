@@ -109,7 +109,7 @@ namespace C3D
 		return &m_default2DGeometry;
 	}
 
-	GeometryConfig<Vertex3D, u32> GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName)
+	GeometryConfig<Vertex3D, u32> GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const String& name, const String& materialName)
 	{
 		if (width == 0.f)	width = 1.0f;
 		if (height == 0.f)	height = 1.0f;
@@ -185,18 +185,18 @@ namespace C3D
 			}
 		}
 
-		if (!name.empty())
+		if (!name.Empty())
 		{
-			StringNCopy(config.name, name.data(), GEOMETRY_NAME_MAX_LENGTH);
+			StringNCopy(config.name, name.Data(), GEOMETRY_NAME_MAX_LENGTH);
 		}
 		else
 		{
 			StringNCopy(config.name, DEFAULT_GEOMETRY_NAME, GEOMETRY_NAME_MAX_LENGTH);
 		}
 
-		if (!materialName.empty())
+		if (!materialName.Empty())
 		{
-			StringNCopy(config.materialName, materialName.data(), MATERIAL_NAME_MAX_LENGTH);
+			StringNCopy(config.materialName, materialName.Data(), MATERIAL_NAME_MAX_LENGTH);
 		}
 		else
 		{
@@ -206,7 +206,7 @@ namespace C3D
 		return config;
 	}
 
-	GeometryConfig<Vertex3D, u32> GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const string& name, const string& materialName)
+	GeometryConfig<Vertex3D, u32> GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const String& name, const String& materialName)
 	{
 		if (width == 0.f)  width = 1.0f;
 		if (height == 0.f) height = 1.0f;
@@ -333,18 +333,18 @@ namespace C3D
 			config.indices[iOffset + 5] = vOffset + 1;
 		}
 
-		if (!name.empty())
+		if (!name.Empty())
 		{
-			StringNCopy(config.name, name.data(), GEOMETRY_NAME_MAX_LENGTH);
+			StringNCopy(config.name, name.Data(), GEOMETRY_NAME_MAX_LENGTH);
 		}
 		else
 		{
 			StringNCopy(config.name, DEFAULT_GEOMETRY_NAME, GEOMETRY_NAME_MAX_LENGTH);
 		}
 
-		if (!materialName.empty())
+		if (!materialName.Empty())
 		{
-			StringNCopy(config.materialName, materialName.data(), MATERIAL_NAME_MAX_LENGTH);
+			StringNCopy(config.materialName, materialName.Data(), MATERIAL_NAME_MAX_LENGTH);
 		}
 		else
 		{

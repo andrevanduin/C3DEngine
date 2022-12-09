@@ -3,7 +3,6 @@
 #pragma once
 #include "core/defines.h"
 #include "memory/global_memory_system.h"
-#include "platform/platform.h"
 
 #include "iterator.h"
 #include "const_iterator.h"
@@ -113,7 +112,7 @@ namespace C3D
 			//Logger::Trace("[DYNAMIC_ARRAY] - Reserve({})", initialCapacity);
 
 			// We allocate enough memory for the new capacity
-			T* newElements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, initialCapacity);
+			T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, initialCapacity);
 			u64 newSize = 0;
 
 			if (m_elements)
@@ -174,7 +173,7 @@ namespace C3D
 			}
 
 			// Allocate exactly enough space for our current elements
-			T* newElements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, m_size);
+			T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, m_size);
 			// Copy over the elements from our already allocated memory
 			std::copy_n(begin(), m_size, Iterator(newElements));
 			// Free our old memory
@@ -380,7 +379,7 @@ namespace C3D
 			Free();
 
 			// We allocate enough memory for the provided count
-			m_elements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, count);
+			m_elements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, count);
 			// Then we copy over the elements from the provided pointer into our newly allocated memory
 			// Note: Again we may not use std::memcpy here since T could have an arbitrarily complex copy constructor
 			for (u64 i = 0; i < count; i++)
@@ -408,7 +407,7 @@ namespace C3D
 			if (other.m_size > 0)
 			{
 				// We allocate enough memory for the provided count
-				m_elements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, other.m_size);
+				m_elements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, other.m_size);
 				// Then we copy over the elements from the provided pointer into our newly allocated memory
 				// Note: Again we may not use std::memcpy here since T could have an arbitrarily complex copy constructor
 				for (u64 i = 0; i < other.m_size; i++)
@@ -548,7 +547,7 @@ namespace C3D
 		void ReAlloc(u64 capacity)
 		{
 			// Allocate memory for the new capacity
-			T* newElements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, capacity);
+			T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, capacity);
 			u64 newSize = 0;
 
 			// If there exists an element pointer

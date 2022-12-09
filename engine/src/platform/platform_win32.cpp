@@ -32,7 +32,7 @@ namespace C3D
 		return std::memset(block, 0, size);
 	}
 
-	void* Platform::Copy(void* dest, const void* source, const u64 size)
+	void* Platform::MemCopy(void* dest, const void* source, const u64 size)
 	{
 		return std::memcpy(dest, source, size);
 	}

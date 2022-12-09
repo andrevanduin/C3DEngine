@@ -72,7 +72,7 @@ namespace C3D
 		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
 	}
 
-	bool RenderViewWorld::OnBuildPacket(void* data, RenderViewPacket* outPacket)
+	bool RenderViewWorld::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -92,15 +92,11 @@ namespace C3D
 		{
 			auto model = mesh->transform.GetWorld();
 
-			for (u16 i = 0; i < mesh->geometryCount; i++)
+			for (const auto geometry : mesh->geometries)
 			{
-				GeometryRenderData renderData
-				{
-					model,
-					mesh->geometries[i],
-				};
+				GeometryRenderData renderData(model, geometry);
 
-				if ((mesh->geometries[i]->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
+				if ((geometry->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
 				{
 					// Material has no transparency
 					outPacket->geometries.PushBack(renderData);

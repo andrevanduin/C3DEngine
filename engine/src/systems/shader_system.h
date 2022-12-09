@@ -40,14 +40,12 @@ namespace C3D
 		bool SetSampler(const char* name, const Texture* t) const;
 		bool SetSamplerByIndex(u16 index, const Texture* t) const;
 
-		[[nodiscard]] bool ApplyGlobal() const;
-		[[nodiscard]] bool ApplyInstance(bool needsUpdate) const;
+		bool ApplyGlobal() const;
+		bool ApplyInstance(bool needsUpdate) const;
 
-		[[nodiscard]] bool BindInstance(u32 instanceId) const;
+		bool BindInstance(u32 instanceId) const;
 
 	private:
-		[[nodiscard]] u32 GetNewShaderId() const;
-
 		bool AddAttribute(Shader* shader, const ShaderAttributeConfig* config) const;
 		bool AddSampler(Shader* shader, const ShaderUniformConfig* config);
 

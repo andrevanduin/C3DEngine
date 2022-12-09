@@ -28,7 +28,7 @@ namespace C3D
 	struct RenderPacket
 	{
 		f32 deltaTime = 0;
-		DynamicArray<RenderViewPacket> views;
+		DynamicArray<RenderViewPacket, LinearAllocator> views;
 	};
 
 	struct RendererBackendConfig

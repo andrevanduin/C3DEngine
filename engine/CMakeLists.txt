@@ -12,6 +12,7 @@ add_compile_definitions(C3D_PLATFORM_WINDOWS)
 add_compile_definitions(C3D_MEMORY_METRICS)
 add_compile_definitions(C3D_MEMORY_METRICS_POINTERS)
 add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)
+add_compile_definitions(C3D_MEMORY_METRICS_FILE_LINE)
 # add_compile_definitions(C3D_TRACE_ALLOCS)
 
 find_package(Vulkan REQUIRED)

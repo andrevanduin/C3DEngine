@@ -8,29 +8,28 @@ namespace C3D
 {
 #define Metrics C3D::MetricSystem::GetInstance()
 
-#if defined C3D_MEMORY_METRICS && C3D_MEMORY_METRICS_POINTERS
-#define MetricsAllocate(id, type, requested, required, ptr)			\
-	Metrics.Allocate(id, { type, requested, required, ptr })
-#elif C3D_MEMORY_METRICS
-#define MetricsAllocate(id, type, requested, required, ptr)			\
-	Metrics.Allocate(id, { type, requested, required })
-#endif
+#ifdef C3D_MEMORY_METRICS
+	#ifdef C3D_MEMORY_METRICS_POINTERS
+		#define MetricsAllocate(id, type, requested, required, ptr)				\
+			Metrics.Allocate(id, Allocation(type, ptr, requested, required))
 
-#if defined C3D_MEMORY_METRICS && C3D_MEMORY_METRICS_POINTERS
-#define MetricsFree(id, type, requested, required, ptr)				\
-	Metrics.Free(id, { type, ptr })
-#elif C3D_MEMORY_METRICS
-#define MetricsFree(id, requested, required, type, ptr)				\
-	Metrics.Allocate(id, { type, requested, required })
+		#define MetricsFree(id, type, requested, required, ptr)					\
+			Metrics.Free(id, DeAllocation(type, ptr))
+	#else
+		#define MetricsAllocate(id, type, requested, required, ptr)			\
+			Metrics.Allocate(id, Allocation(type, requested, required))
+
+		#define MetricsFree(id, type, requested, required, ptr)				\
+			Metrics.Free(id, DeAllocation(type, requested, required))
+	#endif
 #endif
 
 	constexpr auto AVG_COUNT = 30;
 	constexpr auto METRICS_COUNT = 16;
 	constexpr auto ALLOCATOR_NAME_MAX_LENGTH = 128;
 
-	constexpr u8 EXTERNAL_ALLOCATOR_ID = 1;
-	constexpr u8 GPU_ALLOCATOR_ID = 2;
-	constexpr u8 DYNAMIC_ALLOCATOR_ID = 3;
+	constexpr u8 DYNAMIC_ALLOCATOR_ID = 0;
+	constexpr u8 GPU_ALLOCATOR_ID = 1;
 
 	class C3D_API MetricSystem
 	{
@@ -70,9 +69,15 @@ namespace C3D
 		[[nodiscard]] u64 GetMemoryUsage(MemoryType memoryType, u8 allocatorId = DYNAMIC_ALLOCATOR_ID) const;
 
 		[[nodiscard]] u64 GetRequestedMemoryUsage(MemoryType memoryType, u8 allocatorId = DYNAMIC_ALLOCATOR_ID) const;
+		 
+		void SetFileAndLine(const char* file, const int line)
+		{
+			m_file = file;
+			m_line = line;
+		}
 
-		void PrintMemoryUsage(u8 allocatorId);
-		void PrintMemoryUsage();
+		void PrintMemoryUsage(u8 allocatorId, bool debugLines);
+		void PrintMemoryUsage(bool debugLines = false);
 
 		static MetricSystem& GetInstance();
 
@@ -81,7 +86,10 @@ namespace C3D
 
 	private:
 		static const char* SizeToText(u64 size, f64* outAmount);
-		static void SprintfAllocation(const MemoryAllocations& allocation, int index, char* buffer, int& bytesWritten, int offset);
+		static void SprintfAllocation(const MemoryAllocations& allocation, int index, char* buffer, int& bytesWritten, int offset, bool debugLines);
+
+		const char* m_file = "";
+		int m_line = 0;
 
 		u8 m_frameAverageCounter;
 
