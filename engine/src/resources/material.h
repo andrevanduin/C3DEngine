@@ -25,7 +25,7 @@ namespace C3D
 		/* @brief The material's associated shader id. */
 		u32 shaderId;
 		/* @brief The material name. */
-		char name[MATERIAL_NAME_MAX_LENGTH];
+		CString<MATERIAL_NAME_MAX_LENGTH> name;
 		/* @brief The material diffuse color. */
 		vec4 diffuseColor;
 		/* @brief The material diffuse texture map. */
@@ -44,7 +44,7 @@ namespace C3D
 	struct MaterialConfig
 	{
 		/* @brief Name of the Material. */
-		char name[MATERIAL_NAME_MAX_LENGTH];
+		CString<MATERIAL_NAME_MAX_LENGTH> name;
 		/* @brief Name of the shader associated with this material. */
 		String shaderName;
 		/* @brief Indicates if this material should automatically be released when no references to it remain. */
@@ -54,10 +54,10 @@ namespace C3D
 		/* @brief How shiny this material is. */
 		float shininess;
 		/* @brief The diffuse map name. */
-		char diffuseMapName[TEXTURE_NAME_MAX_LENGTH];
+		CString<TEXTURE_NAME_MAX_LENGTH> diffuseMapName;
 		/* @brief The specular map name. */
-		char specularMapName[TEXTURE_NAME_MAX_LENGTH];
+		CString<TEXTURE_NAME_MAX_LENGTH> specularMapName;
 		/* @brief The normal map name. */
-		char normalMapName[TEXTURE_NAME_MAX_LENGTH];
+		CString<TEXTURE_NAME_MAX_LENGTH> normalMapName;
 	};
 }

@@ -1,7 +1,6 @@
 
 #include "resource_system.h"
 
-#include "core/c3d_string.h"
 #include "core/logger.h"
 
 // Default loaders
@@ -82,7 +81,7 @@ namespace C3D
 				m_logger.Error("RegisterLoader() - A loader of type '{}' already exists so the new one will not be registered", m_loaderTypes[ToUnderlying(newLoader->type)]);
 				return false;
 			}
-			if (loader->customType && StringLength(loader->customType) > 0 && IEquals(loader->customType, newLoader->customType))
+			if (loader->customType && !loader->customType.Empty() && loader->customType.IEquals(newLoader->customType))
 			{
 				m_logger.Error("RegisterLoader() - A loader of custom type '{}' already exists so the new one will not be registered", newLoader->customType);
 				return false;

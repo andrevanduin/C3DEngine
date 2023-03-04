@@ -12,7 +12,7 @@ int main(int argc, char** argv);
 struct SDL_Window;
 namespace C3D
 {
-	class Application;
+	class Engine;
 	struct EventContext;
 
 	struct ApplicationConfig
@@ -25,7 +25,7 @@ namespace C3D
 		DynamicArray<RenderViewConfig> renderViews;
 	};
 
-	struct ApplicationState
+	struct EngineState
 	{
 		String name;
 
@@ -39,18 +39,18 @@ namespace C3D
 		f64 lastTime = 0;
 	};
 
-	class C3D_API Application
+	class C3D_API Engine
 	{
 	public:
-		explicit Application(ApplicationConfig config);
+		explicit Engine(ApplicationConfig config);
 
-		Application(const Application&) = delete;
-		Application(Application&&) = delete;
+		Engine(const Engine&) = delete;
+		Engine(Engine&&) = delete;
 
-		Application& operator=(const Application&) = delete;
-		Application& operator=(Application&&) = delete;
+		Engine& operator=(const Engine&) = delete;
+		Engine& operator=(Engine&&) = delete;
 
-		virtual ~Application();
+		virtual ~Engine();
 
 		void Init();
 
@@ -71,14 +71,14 @@ namespace C3D
 
 		[[nodiscard]] SDL_Window* GetWindow() const;
 
-		[[nodiscard]] const ApplicationState* GetState() const;
+		[[nodiscard]] const EngineState* GetState() const;
 
 	protected:
 		LoggerInstance m_logger;
 		LinearAllocator m_frameAllocator;
 
 		ApplicationConfig m_config;
-		ApplicationState m_state;
+		EngineState m_state;
 
 	private:
 		void Shutdown();
@@ -93,6 +93,6 @@ namespace C3D
 		friend int ::main(int argc, char** argv);
 	};
 
-	Application* CreateApplication();
-	void DestroyApplication(const Application* app);
+	Engine* CreateApplication();
+	void DestroyApplication(const Engine* app);
 }

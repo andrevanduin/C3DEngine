@@ -7,6 +7,7 @@
 
 #include "core/defines.h"
 #include "containers/dynamic_array.h"
+#include "math/math_types.h"
 
 #include "memory/global_memory_system.h"
 
@@ -461,7 +462,7 @@ namespace C3D
 		static BasicString<DynamicAllocator> FromFormat(const char* format, Args&&... args)
 		{
 			BasicString<DynamicAllocator> buffer;
-			fmt::format_to(std::back_inserter(buffer), format, std::forward<Args>(args)...);
+			fmt::vformat_to(std::back_inserter(buffer), format, fmt::make_format_args(args...));
 			return buffer;
 		}
 
@@ -738,6 +739,12 @@ namespace C3D
 			return SubStr(startIt, cend());
 		}
 
+		/* @brief Converts string to a f32. */
+		[[nodiscard]] f32 ToF32() const
+		{
+			return std::strtof(m_data, nullptr);
+		}
+
 		/* @brief Converts string to an i32 in the provided base. */
 		[[nodiscard]] i32 ToI32(const i32 base = 10) const
 		{
@@ -774,10 +781,22 @@ namespace C3D
 			return static_cast<u8>(std::strtoul(m_data, nullptr, base));
 		}
 
+		/* @brief Converts string to a boolean value. */
 		[[nodiscard]] bool ToBool() const
 		{
 			if (IEquals("1") || IEquals("true")) return true;
 			return false;
+		}
+
+		/* @brief Converts string to a vec4. */
+		[[nodiscard]] vec4 ToVec4() const
+		{
+			vec4 vec{};
+			if (sscanf_s(m_data, "%f %f %f %f", &vec.x, &vec.y, &vec.z, &vec.w) == -1)
+			{
+				throw std::invalid_argument("The string does not contain a valid vec4 representation");
+			}
+			return vec;
 		}
 
 		[[nodiscard]] Allocator* GetAllocator() const

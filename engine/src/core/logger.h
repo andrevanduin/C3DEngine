@@ -12,30 +12,64 @@
 #include "defines.h"
 #include "asserts.h"
 
+#include "containers/cstring.h"
+
 namespace C3D
 {
 	class C3D_API Logger
 	{
+		#define ASSERT_INIT C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!")
+
 	public:
 		static void Init();
 
 		template <class... Args>
-		static void Debug(const string& format, Args&& ... args);
+		static void Debug(const char* format, Args&& ... args)
+		{
+			ASSERT_INIT;
+			const std::string str = fmt::vformat(format, fmt::make_format_args(args...));
+			s_coreLogger->debug(str);
+		}
 
 		template <class... Args>
-		static void Trace(const string& format, Args&& ... args);
+		static void Trace(const char* format, Args&& ... args)
+		{
+			ASSERT_INIT;
+			const std::string str = fmt::vformat(format, fmt::make_format_args(args...));
+			s_coreLogger->trace(str);
+		}
 
 		template <class... Args>
-		static void Info(const string& format, Args&& ... args);
+		static void Info(const char* format, Args&& ... args)
+		{
+			ASSERT_INIT;
+			const std::string str = fmt::vformat(format, fmt::make_format_args(args...));
+			s_coreLogger->info(str);
+		}
 
 		template <class... Args>
-		static void Warn(const string& format, Args&& ... args);
+		static void Warn(const char* format, Args&& ... args)
+		{
+			ASSERT_INIT;
+			const std::string str = fmt::vformat(format, fmt::make_format_args(args...));
+			s_coreLogger->warn(str);
+		}
 
 		template <class... Args>
-		static void Error(const string& format, Args&& ... args);
+		static void Error(const char* format, Args&& ... args)
+		{
+			ASSERT_INIT;
+			const std::string str = fmt::vformat(format, fmt::make_format_args(args...));
+			s_coreLogger->error(str);
+		}
 
 		template <class... Args>
-		static void Fatal(const string& format, Args&& ... args);
+		static void Fatal(const char* format, Args&& ... args)
+		{
+			ASSERT_INIT;
+			const std::string str = fmt::vformat(format, fmt::make_format_args(args...));
+			s_coreLogger->critical(str);
+		}
 
 		static VkBool32 VkDebugLog(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
 			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
@@ -53,109 +87,48 @@ namespace C3D
 		explicit LoggerInstance(std::string prefix) : m_prefix(std::move(prefix)) {}
 
 		template <class... Args>
-		void Debug(const string& format, Args&& ... args) const;
+		void Debug(const char* format, Args&& ... args) const
+		{
+			const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(m_prefix, format));
+			Logger::Debug(formatStr.data(), std::forward<Args>(args)...);
+		}
 
 		template <class... Args>
-		void Trace(const string& format, Args&& ... args) const;
+		void Trace(const char* format, Args&& ... args) const
+		{
+			const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(m_prefix, format));
+			Logger::Trace(formatStr.data(), std::forward<Args>(args)...);
+		}
 
 		template <class... Args>
-		void Info(const string& format, Args&& ... args) const;
+		void Info(const char* format, Args&& ... args) const
+		{
+			const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(m_prefix, format));
+			Logger::Info(formatStr.data(), std::forward<Args>(args)...);
+		}
 
 		template <class... Args>
-		void Warn(const string& format, Args&& ... args) const;
+		void Warn(const char* format, Args&& ... args) const
+		{
+			const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(m_prefix, format));
+			Logger::Warn(formatStr.data(), std::forward<Args>(args)...);
+		}
 
 		template <class... Args>
-		void Error(const string& format, Args&& ... args) const;
+		void Error(const char* format, Args&& ... args) const
+		{
+			const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(m_prefix, format));
+			Logger::Error(formatStr.data(), std::forward<Args>(args)...);
+		}
 
 		template <class... Args>
-		void Fatal(const string& format, Args&& ... args) const;
+		void Fatal(const char* format, Args&& ... args) const
+		{
+			const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(m_prefix, format));
+			Logger::Fatal(formatStr.data(), std::forward<Args>(args)...);
+		}
 
 	private:
 		std::string m_prefix;
 	};
-
-	template <class ... Args>
-	void Logger::Debug(const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-
-		s_coreLogger->debug(format, std::forward<Args>(args)...);
-	}
-
-	template <class ... Args>
-	void LoggerInstance::Debug(const string& format, Args&&... args) const
-	{
-		return Logger::Debug("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
-	}
-
-	template <class ... Args>
-	void Logger::Trace(const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-
-		s_coreLogger->trace(format, std::forward<Args>(args)...);
-	}
-
-	template <class ... Args>
-	void LoggerInstance::Trace(const string& format, Args&&... args) const
-	{
-		return Logger::Trace("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
-	}
-
-	template <class ... Args>
-	void Logger::Info(const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-
-		s_coreLogger->info(format, std::forward<Args>(args)...);
-	}
-
-	template <class ... Args>
-	void LoggerInstance::Info(const string& format, Args&&... args) const
-	{
-		return Logger::Info("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
-	}
-
-	template <class... Args>
-	void Logger::Warn(const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-
-		s_coreLogger->warn(format, std::forward<Args>(args)...);
-	}
-
-	template <class ... Args>
-	void LoggerInstance::Warn(const string& format, Args&&... args) const
-	{
-		return Logger::Warn("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
-	}
-
-	template <class... Args>
-	void Logger::Error(const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-		s_coreLogger->error(format, std::forward<Args>(args)...);
-	}
-
-	template <class ... Args>
-	void LoggerInstance::Error(const string& format, Args&&... args) const
-	{
-		return Logger::Error("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
-	}
-
-
-	template <class ... Args>
-	void Logger::Fatal(const string& format, Args&&... args)
-	{
-		C3D_ASSERT_MSG(m_initialized, "Logger was used before it was initialized!");
-
-		s_coreLogger->critical(format, std::forward<Args>(args)...);
-		abort();
-	}
-
-	template <class ... Args>
-	void LoggerInstance::Fatal(const string& format, Args&&... args) const
-	{
-		return Logger::Fatal("[{}] - " + format, m_prefix, std::forward<Args>(args)...);
-	}
 }

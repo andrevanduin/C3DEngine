@@ -2,7 +2,6 @@
 #include "bitmap_font_loader.h"
 
 #include "containers/string.h"
-#include "core/string_utils.h"
 #include "platform/filesystem.h"
 #include "services/services.h"
 #include "systems/resource_system.h"
@@ -177,7 +176,7 @@ namespace C3D
 	{
 		auto elements = line.Split('\"');
 
-		StringNCopy(res->data.face, elements[1].Data(), FONT_DATA_FACE_MAX_LENGTH);
+		res->data.face = elements[1].Data();
 
 		elements = elements[2].Split(' ');
 		DynamicArray<String> values;
@@ -289,7 +288,7 @@ namespace C3D
 
 		BitmapFontPage p{};
 		p.id = values[1].ToI8();
-		StringNCopy(p.file, elements[1].Data(), FONT_DATA_FACE_MAX_LENGTH);
+		p.file = elements[1].Data();
 
 		res->pages.PushBack(p);
 		return true;
@@ -347,11 +346,7 @@ namespace C3D
 		// TODO: Read/Process the file version
 
 		// Face string
-		u64 faceLength = 0;
-		file.Read(&faceLength);
-		file.Read(res->data.face, faceLength + 1);
-		// Ensure null terminator
-		res->data.face[faceLength] = '\0';
+		file.Read(res->data.face);
 
 		// Font size
 		file.Read(&res->data.size);
@@ -378,15 +373,8 @@ namespace C3D
 
 			// Page id
 			file.Read(&page.id);
-
 			// Page file name
-			u64 pageFilenameLength;
-			// Get the length of the name
-			file.Read(&pageFilenameLength);
-			// Actually read the name
-			file.Read(page.file, pageFilenameLength + 1);
-			// Ensure '\0' termination
-			page.file[pageFilenameLength] = '\0';
+			file.Read(page.file);
 
 			res->pages.PushBack(page);
 		}
@@ -418,9 +406,7 @@ namespace C3D
 		// Header
 		file.Write(&header);
 		// Face string
-		const u64 length = StringLength(res->data.face);
-		file.Write(&length);
-		file.Write(res->data.face, length + 1); // Account for the '\0' character
+		file.Write(res->data.face);
 		// Font size
 		file.Write(&res->data.size);
 		// Line height
@@ -441,9 +427,7 @@ namespace C3D
 			// Page id
 			file.Write(&page.id);
 			// File name
-			const u64 pageFileLength = StringLength(page.file);
-			file.Write(&pageFileLength);
-			file.Write(page.file, pageFileLength + 1); // Account for the '\0' character
+			file.Write(page.file);
 		}
 
 		// Write out the glyphs which we can do directly since it's just simple data

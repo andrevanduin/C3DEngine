@@ -25,12 +25,7 @@ namespace C3D
 	template<typename VertexType, typename IndexType>
 	struct GeometryConfig
 	{
-		GeometryConfig() : center(), minExtents(), maxExtents(), name(), materialName() {}
-
-		~GeometryConfig()
-		{
-			Logger::Debug("~GeometryConfig()");
-		}
+		GeometryConfig() : center(), minExtents(), maxExtents() {}
 
 		DynamicArray<VertexType> vertices;
 		DynamicArray<IndexType> indices;
@@ -39,8 +34,8 @@ namespace C3D
 		vec3 minExtents;
 		vec3 maxExtents;
 
-		char name[GEOMETRY_NAME_MAX_LENGTH];
-		char materialName[MATERIAL_NAME_MAX_LENGTH];
+		CString<GEOMETRY_NAME_MAX_LENGTH> name;
+		CString<MATERIAL_NAME_MAX_LENGTH> materialName;
 
 		[[nodiscard]] static constexpr u32 GetVertexSize() { return sizeof(VertexType); }
 		[[nodiscard]] static constexpr u32 GetIndexSize()  { return sizeof(IndexType);  }
@@ -160,9 +155,9 @@ namespace C3D
 		g->extents.max = config.maxExtents;
 
 		// Acquire the material
-		if (StringLength(config.materialName) > 0)
+		if (!config.materialName.Empty())
 		{
-			g->material = Materials.Acquire(config.materialName);
+			g->material = Materials.Acquire(config.materialName.Data());
 			if (!g->material)
 			{
 				g->material = Materials.GetDefault();

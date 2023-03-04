@@ -2,7 +2,7 @@
 #include "texture_system.h"
 
 #include "core/logger.h"
-#include "core/c3d_string.h"
+#include "core/string_utils.h"
 
 #include "services/services.h"
 
@@ -75,7 +75,7 @@ namespace C3D
 	{
 		// If the default texture is requested we return it. But we warn about it since it should be
 		// retrieved with GetDefault()
-		if (IEquals(name, DEFAULT_TEXTURE_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
 			m_logger.Warn("Acquire() - Called for {} texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
 			return &m_defaultTexture;
@@ -95,7 +95,7 @@ namespace C3D
 	{
 		// If the default texture is requested we return it. But we warn about it since it should be
 		// retrieved with GetDefault()
-		if (IEquals(name, DEFAULT_TEXTURE_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
 			m_logger.Warn("AcquireCube() - Called for {} texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
 			return &m_defaultTexture;
@@ -133,7 +133,7 @@ namespace C3D
 
 	void TextureSystem::Release(const char* name)
 	{
-		if (IEquals(name, DEFAULT_TEXTURE_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
 			m_logger.Warn("Tried to release {}. This happens on shutdown automatically", DEFAULT_TEXTURE_NAME);
 			return;
@@ -390,7 +390,7 @@ namespace C3D
 		return true;
 	}
 
-	bool TextureSystem::LoadCubeTextures(const char* name, const std::array<char[TEXTURE_NAME_MAX_LENGTH], 6>& textureNames, Texture* texture) const
+	bool TextureSystem::LoadCubeTextures(const char* name, const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames, Texture* texture) const
 	{
 		constexpr ImageResourceParams params { false };
 
@@ -402,7 +402,7 @@ namespace C3D
 			const auto textureName = textureNames[i];
 
 			ImageResource res{};
-			if (!Resources.Load(textureName, &res, params))
+			if (!Resources.Load(textureName.Data(), &res, params))
 			{
 				m_logger.Error("LoadCubeTextures() - Failed to load image resource for texture '{}'", textureName);
 				return false;
@@ -421,7 +421,7 @@ namespace C3D
 				texture->channelCount = res.data.channelCount;
 				texture->flags = 0;
 				texture->generation = 0;
-				StringNCopy(texture->name, name, TEXTURE_NAME_MAX_LENGTH);
+				texture->name = name;
 
 				imageSize = static_cast<u64>(texture->width) * texture->height * texture->channelCount;
 				pixels = Memory.Allocate<u8>(MemoryType::Array, imageSize * 6); // 6 textures one for every side of the cube
@@ -459,7 +459,7 @@ namespace C3D
 		Renderer.DestroyTexture(texture);
 
 		// Zero out the memory for the texture
-		Platform::Zero(texture->name, sizeof(char) * TEXTURE_NAME_MAX_LENGTH);
+		texture->name.Clear();
 		Platform::Zero(texture);
 
 		// Invalidate the id and generation
@@ -488,8 +488,7 @@ namespace C3D
 		// Increment / Decrement our reference count
 		ref.referenceCount += referenceDiff;
 
-		char nameCopy[TEXTURE_NAME_MAX_LENGTH];
-		StringNCopy(nameCopy, name, TEXTURE_NAME_MAX_LENGTH);
+		CString<TEXTURE_NAME_MAX_LENGTH> nameCopy = name;
 
 		// If decrementing, this means we want to release
 		if (referenceDiff < 0)
@@ -548,13 +547,13 @@ namespace C3D
 				{
 					if (type == TextureType::TypeCube)
 					{
-						std::array<char[TEXTURE_NAME_MAX_LENGTH], 6> textureNames{};
-						StringFormat(textureNames[0], "%s_r", name); // Right texture
-						StringFormat(textureNames[1], "%s_l", name); // Left texture
-						StringFormat(textureNames[2], "%s_u", name); // Up texture
-						StringFormat(textureNames[3], "%s_d", name); // Down texture
-						StringFormat(textureNames[4], "%s_f", name); // Front texture
-						StringFormat(textureNames[5], "%s_b", name); // Back texture
+						std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6> textureNames{};
+						textureNames[0].FromFormat("{}_r", name); // Right texture
+						textureNames[1].FromFormat("{}_l", name); // Left texture
+						textureNames[2].FromFormat("{}_u", name); // Up texture
+						textureNames[3].FromFormat("{}_d", name); // Down texture
+						textureNames[4].FromFormat("{}_f", name); // Front texture
+						textureNames[5].FromFormat("{}_b", name); // Back texture
 
 						if (!LoadCubeTextures(name, textureNames, texture))
 						{
@@ -623,7 +622,7 @@ namespace C3D
 			}
 
 			// Take a copy of the name
-			StringNCopy(loadParams->tempTexture.name, loadParams->resourceName.Data(), TEXTURE_NAME_MAX_LENGTH);
+			loadParams->tempTexture.name = loadParams->resourceName.Data();
 			loadParams->tempTexture.generation = INVALID_ID;
 			loadParams->tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
 

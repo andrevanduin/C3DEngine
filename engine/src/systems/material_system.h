@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include "system.h"
+#include "containers/hash_map.h"
 #include "containers/hash_table.h"
 #include "core/defines.h"
 #include "core/logger.h"

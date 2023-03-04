@@ -8,7 +8,7 @@
 
 namespace C3D
 {
-	class Application;
+	class Engine;
 	struct Texture;
 	struct Shader;
 	struct ShaderUniform;

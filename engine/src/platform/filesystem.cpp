@@ -8,7 +8,6 @@
 #include <string>
 
 #include "containers/string.h"
-#include "core/c3d_string.h"
 
 namespace C3D
 {
@@ -219,7 +218,10 @@ namespace C3D
 				}
 			}
 
-			StringMid(dest, path, static_cast<i32>(start), static_cast<i32>(end - start));
+			const auto count = end - start;
+			// Copy count chars from our calculated start
+			std::memcpy(dest, path + start, count);
+			dest[count] = '\0';
 		}
 	}
 }

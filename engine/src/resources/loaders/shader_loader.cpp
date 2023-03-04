@@ -1,7 +1,6 @@
 
 #include "shader_loader.h"
 
-#include "core/c3d_string.h"
 #include "platform/filesystem.h"
 #include "resources/shader.h"
 #include "services/services.h"
@@ -15,15 +14,13 @@ namespace C3D
 
 	bool ResourceLoader<ShaderResource>::Load(const char* name, ShaderResource* outResource) const
 	{
-		if (StringLength(name) == 0 || !outResource)
+		if (std::strlen(name) == 0 || !outResource)
 		{
 			m_logger.Error("Load() - Provided name was empty or no outResource pointer provided");
 			return false;
 		}
 
-		char fullPath[512];
-		const auto formatStr = "%s/%s/%s.%s";
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, "shadercfg");
+		auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, name, "shadercfg");
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead))

@@ -72,7 +72,7 @@ namespace C3D
 
 		// Acquire the texture
 		// TODO: This only supports one page at the moment!
-		lookup.resource.data.atlas.texture = Textures.Acquire(lookup.resource.pages[0].file, true);
+		lookup.resource.data.atlas.texture = Textures.Acquire(lookup.resource.pages[0].file.Data(), true);
 
 		const bool result = SetupFontData(lookup.resource.data);
 
@@ -191,7 +191,7 @@ namespace C3D
 		// If it's a bitmap font, we release the reference to it's texture
 		if (font.type == FontType::Bitmap && font.atlas.texture)
 		{
-			Textures.Release(font.atlas.texture->name);
+			Textures.Release(font.atlas.texture->name.Data());
 		}
 		font.atlas.texture = nullptr;
 	}

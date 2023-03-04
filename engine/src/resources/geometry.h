@@ -15,7 +15,7 @@ namespace C3D
 		vec3 center;
 		Extents3D extents;
 
-		char name[GEOMETRY_NAME_MAX_LENGTH];
+		CString<GEOMETRY_NAME_MAX_LENGTH> name;
 		Material* material;
 	};
 }

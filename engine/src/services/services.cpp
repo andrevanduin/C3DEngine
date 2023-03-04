@@ -1,7 +1,7 @@
 
 #include "services.h"
 
-#include "core/application.h"
+#include "core/engine.h"
 #include "core/input.h"
 #include "core/events/event.h"
 #include "core/logger.h"
@@ -37,7 +37,7 @@ namespace C3D
 	JobSystem*			Services::m_pJobSystem		= nullptr;
 	FontSystem*			Services::m_pFontSystem		= nullptr;
 
-	void Services::InitBeforeBoot(const Application* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig)
+	void Services::InitBeforeBoot(const Engine* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig)
 	{
 		// 32 mb of total space for all our systems
 		constexpr u64 systemsAllocatorTotalSize = MebiBytes(32);
@@ -139,18 +139,18 @@ namespace C3D
 	{
 		m_logger.Info("Shutting down all services");
 
-		m_pFontSystem->Shutdown();
-		m_pViewSystem->Shutdown();
-		m_pCameraSystem->Shutdown();
-		m_pGeometrySystem->Shutdown();
-		m_pMaterialSystem->Shutdown();
-		m_pTextureSystem->Shutdown();
-		m_pShaderSystem->Shutdown();
-		m_pRenderSystem->Shutdown();
-		m_pResourceSystem->Shutdown();
-		m_pInputSystem->Shutdown();
-		m_pEventSystem->Shutdown();
-		m_pJobSystem->Shutdown();
+		ShutdownSystem(m_pFontSystem);
+		ShutdownSystem(m_pViewSystem);
+		ShutdownSystem(m_pCameraSystem);
+		ShutdownSystem(m_pGeometrySystem);
+		ShutdownSystem(m_pMaterialSystem);
+		ShutdownSystem(m_pTextureSystem);
+		ShutdownSystem(m_pShaderSystem);
+		ShutdownSystem(m_pRenderSystem);
+		ShutdownSystem(m_pResourceSystem);
+		ShutdownSystem(m_pInputSystem);
+		ShutdownSystem(m_pEventSystem);
+		ShutdownSystem(m_pJobSystem);
 
 		m_logger.Info("Destroying Linear Allocator");
 		m_allocator.Destroy();

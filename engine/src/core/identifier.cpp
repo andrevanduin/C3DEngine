@@ -3,7 +3,12 @@
 
 namespace C3D
 {
-	DynamicArray<void*, MallocAllocator> Identifier::s_owners(100);
+	DynamicArray<void*, MallocAllocator> Identifier::s_owners;
+
+	void Identifier::Init()
+	{
+		s_owners = DynamicArray<void*, MallocAllocator>(100);
+	}
 
 	void Identifier::Destroy()
 	{

@@ -1,6 +1,6 @@
 
 #pragma once
-#include "core/application.h"
+#include "core/engine.h"
 #include "core/identifier.h"
 #include "memory/global_memory_system.h"
 
@@ -14,6 +14,9 @@ int main(int argc, char** argv)
 
 	// Initialize our global allocator that we will normally always use
 	C3D::GlobalMemorySystem::Init({ MebiBytes(512) });
+
+	// Create our identifiers
+	C3D::Identifier::Init();
 
 	// Create our application (game) by calling the user supplied method
 	const auto app = C3D::CreateApplication();

@@ -1,5 +1,5 @@
 
-#include "application.h"
+#include "engine.h"
 #include "logger.h"
 #include "input.h"
 #include "clock.h"
@@ -24,13 +24,13 @@
 
 namespace C3D
 {
-	Application::Application(ApplicationConfig config)
+	Engine::Engine(ApplicationConfig config)
 		: m_logger("APPLICATION"), m_config(std::move(config))
 	{}
 
-	Application::~Application() = default;
+	Engine::~Engine() = default;
 
-	void Application::Init()
+	void Engine::Init()
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice");
 
@@ -107,9 +107,9 @@ namespace C3D
 
 		Services::InitAfterBoot(jobSystemConfig, textureSystemConfig, m_config.fontConfig, cameraSystemConfig, viewSystemConfig);
 
-		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
-		Event.Register(SystemEventCode::Minimized, new EventCallback(this, &Application::OnMinimizeEvent));
-		Event.Register(SystemEventCode::FocusGained, new EventCallback(this, &Application::OnFocusGainedEvent));
+		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Engine::OnResizeEvent));
+		Event.Register(SystemEventCode::Minimized, new EventCallback(this, &Engine::OnMinimizeEvent));
+		Event.Register(SystemEventCode::FocusGained, new EventCallback(this, &Engine::OnFocusGainedEvent));
 
 		// Load render views
 		for (auto& view : m_config.renderViews)
@@ -128,11 +128,11 @@ namespace C3D
 		m_state.initialized = true;
 		m_state.lastTime = 0;
 
-		Application::OnResize(m_state.width, m_state.height);
+		OnResize(m_state.width, m_state.height);
 		Renderer.OnResize(m_state.width, m_state.height);
 	}
 
-	void Application::Run()
+	void Engine::Run()
 	{
 		m_state.running = true;
 
@@ -207,28 +207,28 @@ namespace C3D
 		Shutdown();
 	}
 
-	void Application::Quit()
+	void Engine::Quit()
 	{
 		m_state.running = false;
 	}
 
-	void Application::GetFrameBufferSize(u32* width, u32* height) const
+	void Engine::GetFrameBufferSize(u32* width, u32* height) const
 	{
 		*width = m_state.width;
 		*height = m_state.height;
 	}
 
-	SDL_Window* Application::GetWindow() const
+	SDL_Window* Engine::GetWindow() const
 	{
 		return m_window;
 	}
 
-	const ApplicationState* Application::GetState() const
+	const EngineState* Engine::GetState() const
 	{
 		return &m_state;
 	}
 
-	void Application::Shutdown()
+	void Engine::Shutdown()
 	{
 		C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized")
 
@@ -238,9 +238,9 @@ namespace C3D
 		m_logger.Info("Shutdown()");
 		m_logger.Info("UnRegistering events");
 
-		Event.UnRegister(SystemEventCode::Resized, new EventCallback(this, &Application::OnResizeEvent));
-		Event.UnRegister(SystemEventCode::Minimized, new EventCallback(this, &Application::OnMinimizeEvent));
-		Event.UnRegister(SystemEventCode::FocusGained, new EventCallback(this, &Application::OnFocusGainedEvent));
+		Event.UnRegister(SystemEventCode::Resized, new EventCallback(this, &Engine::OnResizeEvent));
+		Event.UnRegister(SystemEventCode::Minimized, new EventCallback(this, &Engine::OnMinimizeEvent));
+		Event.UnRegister(SystemEventCode::FocusGained, new EventCallback(this, &Engine::OnFocusGainedEvent));
 
 		Services::Shutdown();
 
@@ -249,7 +249,7 @@ namespace C3D
 		m_state.initialized = false;
 	}
 
-	void Application::HandleSdlEvents()
+	void Engine::HandleSdlEvents()
 	{
 		SDL_Event e;
 		while (SDL_PollEvent(&e) != 0)
@@ -306,7 +306,7 @@ namespace C3D
 		}
 	}
 
-	bool Application::OnResizeEvent(const u16 code, void* sender, const EventContext context)
+	bool Engine::OnResizeEvent(const u16 code, void* sender, const EventContext context)
 	{
 		if (code == SystemEventCode::Resized)
 		{
@@ -335,7 +335,7 @@ namespace C3D
 		return false;
 	}
 
-	bool Application::OnMinimizeEvent(const u16 code, void* sender, EventContext context)
+	bool Engine::OnMinimizeEvent(const u16 code, void* sender, EventContext context)
 	{
 		if (code == SystemEventCode::Minimized)
 		{
@@ -346,7 +346,7 @@ namespace C3D
 		return false;
 	}
 
-	bool Application::OnFocusGainedEvent(const u16 code, void* sender, const EventContext context)
+	bool Engine::OnFocusGainedEvent(const u16 code, void* sender, const EventContext context)
 	{
 		if (code == SystemEventCode::FocusGained)
 		{

@@ -2,9 +2,12 @@
 #pragma once
 #include <vector>
 #include "containers/array.h"
+#include <containers/cstring.h>
 
 namespace C3D
 {
+	constexpr auto ALLOCATOR_NAME_MAX_LENGTH = 128;
+
 	enum class AllocatorType : u8
 	{
 		None,
@@ -27,13 +30,14 @@ namespace C3D
 		FreeList,
 		Array,
 		DynamicArray,
+		Stack,
 		HashTable,
 		HashMap,
 		RingQueue,
 		Bst,
 		String,
 		C3DString,
-		Application,
+		Engine,
 		ResourceLoader,
 		Job,
 		Texture,
@@ -145,7 +149,7 @@ namespace C3D
 		// The type of this allocator
 		AllocatorType type = AllocatorType::None;
 		// The name of this allocator
-		char name[128]{};
+		CString<ALLOCATOR_NAME_MAX_LENGTH> name;
 		// The amount of total space available in this allocator
 		u64 totalAvailableSpace = 0;
 		// The amount of total space current required for all the allocations associated with this allocator

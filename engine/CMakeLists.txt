@@ -1,7 +1,7 @@
 
 cmake_minimum_required (VERSION 3.13)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 
 file(GLOB_RECURSE C3DEngine_SRC "*.h" "*.cpp")
 
@@ -12,7 +12,7 @@ add_compile_definitions(C3D_PLATFORM_WINDOWS)
 add_compile_definitions(C3D_MEMORY_METRICS)
 add_compile_definitions(C3D_MEMORY_METRICS_POINTERS)
 add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)
-add_compile_definitions(C3D_MEMORY_METRICS_FILE_LINE)
+# add_compile_definitions(C3D_MEMORY_METRICS_FILE_LINE)
 # add_compile_definitions(C3D_TRACE_ALLOCS)
 
 find_package(Vulkan REQUIRED)

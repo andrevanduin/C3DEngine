@@ -172,7 +172,7 @@ namespace C3D
 			return INVALID_ID_U16;
 		}
 
-		return shader->uniforms.GetIndex(name);
+		return static_cast<u16>(shader->uniforms.GetIndex(name));
 	}
 
 	bool ShaderSystem::SetUniform(const char* name, const void* value) const

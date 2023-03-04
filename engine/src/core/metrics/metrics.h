@@ -26,7 +26,6 @@ namespace C3D
 
 	constexpr auto AVG_COUNT = 30;
 	constexpr auto METRICS_COUNT = 16;
-	constexpr auto ALLOCATOR_NAME_MAX_LENGTH = 128;
 
 	constexpr u8 DYNAMIC_ALLOCATOR_ID = 0;
 	constexpr u8 GPU_ALLOCATOR_ID = 1;

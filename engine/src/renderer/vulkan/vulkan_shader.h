@@ -50,7 +50,7 @@ namespace C3D
 	struct VulkanShaderStageConfig
 	{
 		VkShaderStageFlagBits stage;
-		char fileName[VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH];
+		CString<VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH> fileName;
 	};
 
 	/* @brief Configuration for a specific descriptor set. */

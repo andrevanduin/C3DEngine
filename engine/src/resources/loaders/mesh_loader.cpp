@@ -1,6 +1,7 @@
 
 #include "mesh_loader.h"
 
+#include "core/string_utils.h"
 #include "math/geometry_utils.h"
 #include "platform/filesystem.h"
 #include "renderer/renderer_types.h"
@@ -16,12 +17,12 @@ namespace C3D
 
 	bool ResourceLoader<MeshResource>::Load(const char* name, MeshResource* outResource) const
 	{
-		if (StringLength(name) == 0 || !outResource) {
+		if (std::strlen(name) == 0 || !outResource) {
 			m_logger.Error("Load() - Name was empty or outResource was nullptr");
 			return false;
 		}
 
-		char fullPath[512];
+		String fullPath;
 		auto type = MeshFileType::NotFound;
 		File file;
 
@@ -34,8 +35,7 @@ namespace C3D
 
 		for (const auto fileType : supportedFileTypes)
 		{
-			constexpr auto formatStr = "%s/%s/%s.%s";
-			StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, fileType.extension);
+			fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, name, fileType.extension);
 
 			// Check if the requested file exists with the current extension
 			if (File::Exists(fullPath))
@@ -71,10 +71,7 @@ namespace C3D
 		switch (type)
 		{
 			case MeshFileType::Obj:
-				// Generate CSM filename
-				char csmFileName[512];
-				StringFormat(csmFileName, "%s/%s/%s.csm", Resources.GetBasePath(), typePath, name);
-				result = ImportObjFile(file, csmFileName, outResource->geometryConfigs);
+				result = ImportObjFile(file, String::FromFormat("{}/{}/{}.csm", Resources.GetBasePath(), typePath, name), outResource->geometryConfigs);
 				break;
 			case MeshFileType::Csm:
 				result = LoadCsmFile(file, outResource->geometryConfigs);
@@ -107,7 +104,7 @@ namespace C3D
 		resource->fullPath.Destroy();
 	}
 
-	bool ResourceLoader<MeshResource>::ImportObjFile(File& file, const char* outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const
+	bool ResourceLoader<MeshResource>::ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const
 	{
 		// Allocate dynamic arrays with lots of space reserved for our data
 		DynamicArray<vec3> positions(16384);
@@ -123,12 +120,11 @@ namespace C3D
 		u8 currentMaterialNameCount = 0;
 		char materialNames[32][64];
 
-		string line;
-		line.reserve(512); // Reserve enough space so we don't have to reallocate this every time
+		String line(512); // Reserve enough space so we don't have to reallocate this every time
 		while (file.ReadLine(line))
 		{
 			// Skip blank lines
-			if (line.empty()) continue;
+			if (line.Empty()) continue;
 
 			switch (line[0])
 			{
@@ -146,10 +142,10 @@ namespace C3D
 				case 'm':
 					// Material library file
 					char substr[7];
-					sscanf(line.data(), "%s %s", substr, materialFileName);
+					sscanf(line.Data(), "%s %s", substr, materialFileName);
 
 					// If found, save off the material file name
-					if (IEquals(substr, "mtllib", 6))
+					if (StringUtils::IEquals(substr, "mtllib", 6))
 					{
 						// TODO: verification
 					}
@@ -163,28 +159,28 @@ namespace C3D
 					groups.PushBack(newGroup);
 
 					char t[8];
-					sscanf(line.data(), "%s %s", t, materialNames[currentMaterialNameCount]);
+					sscanf(line.Data(), "%s %s", t, materialNames[currentMaterialNameCount]);
 					currentMaterialNameCount++;
 					break;
 				}
 				case 'o':
 				{
 					char t[3];
-					sscanf(line.data(), "%s %s", t, &name);
+					sscanf(line.Data(), "%s %s", t, &name);
 					break;
 				}
 				case 'g':
 					for (u64 i = 0; i < groups.Size(); i++)
 					{
 						GeometryConfig<Vertex3D, u32> newData{};
-						StringNCopy(newData.name, name, 255);
+						newData.name = name;
 
 						if (i > 0)
 						{
-							StringAppend(newData.name, newData.name, i);
+							newData.name += i;
 						}
-						StringNCopy(newData.materialName, materialNames[i], 255);
 
+						newData.materialName = materialNames[i];
 						ProcessSubObject(positions, normals, texCoords, groups[i].faces, &newData);
 
 						outGeometries.PushBack(newData);
@@ -197,7 +193,7 @@ namespace C3D
 					Platform::Zero(name, 512);
 
 					char t[2];
-					sscanf(line.data(), "%s %s", t, name);
+					sscanf(line.Data(), "%s %s", t, name);
 					break;
 				default:
 					m_logger.Warn("ImportObjFile() - Unknown character found: '{}' in line: '{}'", line[0], line);
@@ -208,13 +204,13 @@ namespace C3D
 		for (u64 i = 0; i < groups.Size(); i++)
 		{
 			GeometryConfig<Vertex3D, u32> newData{};
-			StringNCopy(newData.name, name, 255);
+			newData.name = name;
 
 			if (i > 0)
 			{
-				StringAppend(newData.name, newData.name, i);
+				newData.name += i;
 			}
-			StringNCopy(newData.materialName, materialNames[i], 255);
+			newData.materialName = materialNames[i];
 
 			ProcessSubObject(positions, normals, texCoords, groups[i].faces, &newData);
 
@@ -222,16 +218,15 @@ namespace C3D
 			groups[i].faces.Destroy();
 		}
 
-		if (StringLength(materialFileName) > 0)
+		if (std::strlen(materialFileName) > 0)
 		{
 			// Load up the material file
-			char fullMtlPath[512];
-			Platform::Zero(fullMtlPath, sizeof(char) * 512);
+			CString<512> fullMtlPath;
 
-			FileSystem::DirectoryFromPath(fullMtlPath, outCsmFileName);
-			StringAppend(fullMtlPath, fullMtlPath, materialFileName);
+			FileSystem::DirectoryFromPath(fullMtlPath.Data(), outCsmFileName.Data());
+			fullMtlPath += materialFileName;
 
-			if (!ImportObjMaterialLibraryFile(fullMtlPath))
+			if (!ImportObjMaterialLibraryFile(fullMtlPath.Data()))
 			{
 				m_logger.Error("ImportObjFile() - Error reading obj mtl file: {}", fullMtlPath);
 			}
@@ -248,7 +243,7 @@ namespace C3D
 		return WriteCsmFile(outCsmFileName, name, outGeometries);
 	}
 
-	void ResourceLoader<MeshResource>::ObjParseVertexLine(const string& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords) const
+	void ResourceLoader<MeshResource>::ObjParseVertexLine(const String& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords) const
 	{
 		switch (line[1])
 		{
@@ -256,7 +251,7 @@ namespace C3D
 			{
 				vec3 pos;
 				char tp[3];
-				sscanf(line.data(), "%s %f %f %f", tp, &pos.x, &pos.y, &pos.z);
+				sscanf(line.Data(), "%s %f %f %f", tp, &pos.x, &pos.y, &pos.z);
 				positions.PushBack(pos);
 				break;
 			}
@@ -264,7 +259,7 @@ namespace C3D
 			{
 				vec3 norm;
 				char tn[3];
-				sscanf(line.data(), "%s %f %f %f", tn, &norm.x, &norm.y, &norm.z);
+				sscanf(line.Data(), "%s %f %f %f", tn, &norm.x, &norm.y, &norm.z);
 				normals.PushBack(norm);
 				break;
 			}
@@ -272,7 +267,7 @@ namespace C3D
 			{
 				vec2 tex;
 				char tx[3];
-				sscanf(line.data(), "%s %f %f", tx, &tex.x, &tex.y);
+				sscanf(line.Data(), "%s %f %f", tx, &tex.x, &tex.y);
 				texCoords.PushBack(tex);
 				break;
 			}
@@ -282,19 +277,19 @@ namespace C3D
 		}
 	}
 
-	void ResourceLoader<MeshResource>::ObjParseFaceLine(const string& line, const u64 normalCount, const u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups)
+	void ResourceLoader<MeshResource>::ObjParseFaceLine(const String& line, const u64 normalCount, const u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups)
 	{
 		MeshFaceData face{};
 		char t[2];
 
 		if (normalCount == 0 || texCoordinateCount == 0)
 		{
-			sscanf(line.data(), "%s %d %d %d", t, 
+			sscanf(line.Data(), "%s %d %d %d", t, 
 				&face.vertices[0].positionIndex, &face.vertices[1].positionIndex, &face.vertices[2].positionIndex);
 		}
 		else
 		{
-			sscanf(line.data(), "%s %d/%d/%d %d/%d/%d %d/%d/%d", t,
+			sscanf(line.Data(), "%s %d/%d/%d %d/%d/%d %d/%d/%d", t,
 				&face.vertices[0].positionIndex, &face.vertices[0].texCoordinateIndex, &face.vertices[0].normalIndex,
 				&face.vertices[1].positionIndex, &face.vertices[1].texCoordinateIndex, &face.vertices[1].normalIndex,
 				&face.vertices[2].positionIndex, &face.vertices[2].texCoordinateIndex, &face.vertices[2].normalIndex
@@ -429,12 +424,13 @@ namespace C3D
 
 		bool hitName = false;
 
-		string line;
-		line.reserve(512);
+		String line;
+		line.Reserve(512);
+
 		while (mtlFile.ReadLine(line))
 		{
-			Trim(line);
-			if (line.empty()) continue; // Skip empty lines
+			line.Trim();
+			if (line.Empty()) continue; // Skip empty lines
 
 			switch (line[0])
 			{
@@ -450,7 +446,7 @@ namespace C3D
 					if (line[1] == 's')
 					{
 						char t[3];
-						sscanf(line.data(), "%s %f", t, &currentConfig.shininess);
+						sscanf(line.Data(), "%s %f", t, &currentConfig.shininess);
 					}
 					break;
 				case 'm':
@@ -460,10 +456,10 @@ namespace C3D
 				{
 					char substr[10];
 					char textureFileName[512];
-					sscanf(line.data(), "%s %s", substr, textureFileName);
-					if (IEquals(substr, "bump", 4))
+					sscanf(line.Data(), "%s %s", substr, textureFileName);
+					if (StringUtils::IEquals(substr, "bump", 4))
 					{
-						FileSystem::FileNameFromPath(currentConfig.normalMapName, textureFileName);
+						FileSystem::FileNameFromPath(currentConfig.normalMapName.Data(), textureFileName);
 					}
 					break;
 				}
@@ -489,7 +485,7 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<MeshResource>::ObjMaterialParseColorLine(const string& line, MaterialConfig& config) const
+	void ResourceLoader<MeshResource>::ObjMaterialParseColorLine(const String& line, MaterialConfig& config) const
 	{
 		switch (line[1])
 		{
@@ -497,7 +493,7 @@ namespace C3D
 			case 'd':
 			{
 				char t[3];
-				sscanf(line.data(), "%s %f %f %f", t, &config.diffuseColor.r, &config.diffuseColor.g, &config.diffuseColor.b);
+				sscanf(line.Data(), "%s %f %f %f", t, &config.diffuseColor.r, &config.diffuseColor.g, &config.diffuseColor.b);
 				// NOTE: This is only used in the color shader. Transparency could be added as a material property later
 				config.diffuseColor.a = 1.0f;
 				break;
@@ -507,7 +503,7 @@ namespace C3D
 				char t[3];
 				// NOTE: this is not used for now
 				f32 ignore = 0.0f;
-				sscanf(line.data(), "%s %f %f %f", t, &ignore, &ignore, &ignore);
+				sscanf(line.Data(), "%s %f %f %f", t, &ignore, &ignore, &ignore);
 				break;
 			}
 			default:
@@ -516,35 +512,35 @@ namespace C3D
 		}
 	}
 
-	void ResourceLoader<MeshResource>::ObjMaterialParseMapLine(const string& line, MaterialConfig& config) const
+	void ResourceLoader<MeshResource>::ObjMaterialParseMapLine(const String& line, MaterialConfig& config) const
 	{
 		char substr[10];
 		char textureFileName[512];
 
-		sscanf(line.data(), "%s %s", substr, textureFileName);
+		sscanf(line.Data(), "%s %s", substr, textureFileName);
 
-		if (IEquals(substr, "map_Kd", 6))
+		if (StringUtils::IEquals(substr, "map_Kd", 6))
 		{
 			// Diffuse texture map
-			FileSystem::FileNameFromPath(config.diffuseMapName, textureFileName);
+			FileSystem::FileNameFromPath(config.diffuseMapName.Data(), textureFileName);
 		}
-		else if (IEquals(substr, "map_Ks", 6))
+		else if (StringUtils::IEquals(substr, "map_Ks", 6))
 		{
-			FileSystem::FileNameFromPath(config.specularMapName, textureFileName);
+			FileSystem::FileNameFromPath(config.specularMapName.Data(), textureFileName);
 		}
-		else if (IEquals(substr, "map_bump", 8))
+		else if (StringUtils::IEquals(substr, "map_bump", 8))
 		{
-			FileSystem::FileNameFromPath(config.normalMapName, textureFileName);
+			FileSystem::FileNameFromPath(config.normalMapName.Data(), textureFileName);
 		}
 	}
 
-	void ResourceLoader<MeshResource>::ObjMaterialParseNewMtlLine(const string& line, MaterialConfig& config, bool& hitName, const char* mtlFilePath) const
+	void ResourceLoader<MeshResource>::ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName, const char* mtlFilePath) const
 	{
 		char substr[10];
 		char materialName[512];
 
-		sscanf(line.data(), "%s %s", substr, materialName);
-		if (IEquals(substr, "newmtl", 6))
+		sscanf(line.Data(), "%s %s", substr, materialName);
+		if (StringUtils::IEquals(substr, "newmtl", 6))
 		{
 			// It's a material name
 
@@ -566,7 +562,7 @@ namespace C3D
 			}
 
 			hitName = true;
-			StringNCopy(config.name, materialName, 256);
+			config.name = materialName;
 		}
 	}
 
@@ -578,9 +574,8 @@ namespace C3D
 		File file;
 		char directory[320];
 		FileSystem::DirectoryFromPath(directory, mtlFilePath);
-		char fullPath[512];
 
-		StringFormat(fullPath, formatStr, directory, config->name, "mt");
+		auto fullPath = String::FromFormat(formatStr, directory, config->name, "mt");
 		if (!file.Open(fullPath, FileModeWrite))
 		{
 			m_logger.Error("WriteMtFile() - Failed to open material file for writing: '{}'", fullPath);
@@ -589,32 +584,37 @@ namespace C3D
 
 		m_logger.Debug("Writing .mt file: '{}'", fullPath);
 
-		char lineBuffer[512];
+		CString<512> lineBuffer;
 		file.WriteLine("#material file");
 		file.WriteLine("");
 		file.WriteLine("version = 0.1"); // TODO: hardcoded version
-		StringFormat(lineBuffer, "name = %s", config->name);
+
+		lineBuffer.FromFormat("name = {}", config->name);
 		file.WriteLine(lineBuffer);
-		StringFormat(lineBuffer, "diffuseColor = %.6f %.6f %.6f %.6f", config->diffuseColor.r, config->diffuseColor.g, config->diffuseColor.b, config->diffuseColor.a);
+
+		lineBuffer.FromFormat("diffuseColor = %.6f %.6f %.6f %.6f", config->diffuseColor.r, config->diffuseColor.g, config->diffuseColor.b, config->diffuseColor.a);
 		file.WriteLine(lineBuffer);
-		StringFormat(lineBuffer, "shininess = %.6f", config->shininess);
+
+		lineBuffer.FromFormat("shininess = %.6f", config->shininess);
 		file.WriteLine(lineBuffer);
-		if (config->diffuseMapName[0])
+
+		if (!config->diffuseMapName.Empty())
 		{
-			StringFormat(lineBuffer, "diffuseMapName = %s", config->diffuseMapName);
+			lineBuffer.FromFormat("diffuseMapName = %s", config->diffuseMapName);
 			file.WriteLine(lineBuffer);
 		}
-		if (config->specularMapName[0])
+		if (!config->specularMapName.Empty())
 		{
-			StringFormat(lineBuffer, "specularMapName = %s", config->specularMapName);
+			lineBuffer.FromFormat("specularMapName = %s", config->specularMapName);
 			file.WriteLine(lineBuffer);
 		}
-		if (config->normalMapName[0])
+		if (!config->normalMapName.Empty())
 		{
-			StringFormat(lineBuffer, "normalMapName = %s", config->normalMapName);
+			lineBuffer.FromFormat("normalMapName = %s", config->normalMapName);
 			file.WriteLine(lineBuffer);
 		}
-		StringFormat(lineBuffer, "shader = %s", config->shaderName.Data());
+
+		lineBuffer.FromFormat("shader = %s", config->shaderName.Data());
 		file.WriteLine(lineBuffer);
 
 

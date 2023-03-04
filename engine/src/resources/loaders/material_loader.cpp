@@ -1,7 +1,6 @@
 
 #include "material_loader.h"
 
-#include "core/c3d_string.h"
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
@@ -20,13 +19,10 @@ namespace C3D
 
 	bool ResourceLoader<MaterialResource>::Load(const char* name, MaterialResource* outResource) const
 	{
-		if (StringLength(name) == 0 || !outResource) return false;
-
-		char fullPath[512];
-		const auto formatStr = "%s/%s/%s.%s";
+		if (std::strlen(name) == 0 || !outResource) return false;
 
 		// TODO: try different extensions
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, "mt");
+		auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, name, "mt");
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead))
@@ -38,9 +34,7 @@ namespace C3D
 		outResource->fullPath = fullPath;
 		outResource->config.autoRelease = true;
 		outResource->config.diffuseColor = vec4(1); // Default white
-		outResource->config.diffuseMapName[0] = 0;
-
-		StringNCopy(outResource->config.name, name, MATERIAL_NAME_MAX_LENGTH);
+		outResource->config.name = name;
 
 		String line;
 		// Prepare for strings of up to 512 characters so we don't needlessly resize
@@ -81,26 +75,23 @@ namespace C3D
 			}
 			else if (varName.IEquals("name"))
 			{
-				StringNCopy(outResource->config.name, value.Data(), MATERIAL_NAME_MAX_LENGTH);
+				outResource->config.name = value.Data();
 			}
 			else if (varName.IEquals("diffuseMapName"))
 			{
-				StringNCopy(outResource->config.diffuseMapName, value.Data(), TEXTURE_NAME_MAX_LENGTH);
+				outResource->config.diffuseMapName = value.Data();
 			}
 			else if (varName.IEquals("specularMapName"))
 			{
-				StringNCopy(outResource->config.specularMapName, value.Data(), TEXTURE_NAME_MAX_LENGTH);
+				outResource->config.specularMapName = value.Data();
 			}
 			else if (varName.IEquals("normalMapName"))
 			{
-				StringNCopy(outResource->config.normalMapName, value.Data(), TEXTURE_NAME_MAX_LENGTH);
+				outResource->config.normalMapName = value.Data();
 			}
 			else if (varName.IEquals("diffuseColor"))
 			{
-				if (!StringToVec4(value.Data(), &outResource->config.diffuseColor))
-				{
-					m_logger.Warn("Error parsing diffuseColor in file '{}'. Using default of white instead", fullPath);
-				}
+				outResource->config.diffuseColor = value.ToVec4();
 			}
 			else if (varName.IEquals("shader"))
 			{
@@ -108,11 +99,7 @@ namespace C3D
 			}
 			else if (varName.IEquals("shininess"))
 			{
-				if (!StringToF32(value.Data(), &outResource->config.shininess))
-				{
-					m_logger.Warn("Error Parsing shininess in file '{}'. Using default of 32.0 instead", fullPath);
-					outResource->config.shininess = 32.0f;
-				}
+				outResource->config.shininess = value.ToF32();
 			}
 
 			// TODO: more fields

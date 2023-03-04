@@ -2,6 +2,7 @@
 #pragma once
 #include "core/defines.h"
 #include "containers/string.h"
+#include "containers/cstring.h"
 
 #include <fstream>
 
@@ -37,7 +38,13 @@ namespace C3D
 
 		bool WriteLine(const String& line);
 
+		template <u64 Capacity>
+		bool WriteLine(const CString<Capacity>& line);
+
 		bool Read(u64 dataSize, void* outData, u64* outBytesRead);
+
+		template<u64 CCapacity>
+		bool Read(CString<CCapacity>& str);
 
 		template<typename T>
 		bool Read(T* data, u64 count = 1);
@@ -50,6 +57,9 @@ namespace C3D
 
 		// Deprecated
 		bool Write(u64 dataSize, const void* data, u64* outBytesWritten);
+
+		template<u64 CCapacity>
+		bool Write(const CString<CCapacity>& str);
 
 		template<typename T>
 		bool Write(const T* data, u64 count = 1);
@@ -70,6 +80,37 @@ namespace C3D
 		u64 m_size;
 		std::fstream m_file;
 	};
+
+	template <u64 Capacity>
+	bool File::WriteLine(const CString<Capacity>& line)
+	{
+		if (!isValid) return false;
+		m_file << line << "\n";
+		// Flush to ensure that we don't have data loss if the engine crashes before closing the file
+		m_file.flush();
+		return true;
+	}
+
+	template <u64 CCapacity>
+	bool File::Read(CString<CCapacity>& str)
+	{
+		u64 size;
+		if (!Read(&size)) return false;
+
+		// No need to keep reading if this is 0
+		if (size == 0) return true;
+
+		// Check if the size of the string will fit our provided CString
+		if (size >= CCapacity) return false;
+
+		// Get the string data
+		if (!Read(str.Data(), size + 1)) return false;
+
+		// Ensure null-termination character
+		str[size] = '\0';
+
+		return true;
+	}
 
 	template <typename T>
 	bool File::Read(T* data, const u64 count)
@@ -98,6 +139,24 @@ namespace C3D
 		data.Resize(size);
 		if (!Read(data.GetData(), size)) return false;
 			
+		return true;
+	}
+
+	template <u64 CCapacity>
+	bool File::Write(const CString<CCapacity>& str)
+	{
+		if (!isValid) return false;
+
+		// Write out the size
+		const auto size = str.Size();
+		if (!Write(&size)) return false;
+
+		if (size != 0)
+		{
+			// Write all chars up-to size and add 1 to account for the null-terminating character
+			if (!Write(str.Data(), size + 1)) return false;
+		}
+
 		return true;
 	}
 

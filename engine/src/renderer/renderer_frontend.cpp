@@ -2,7 +2,7 @@
 #include "renderer_frontend.h"
 
 #include "core/logger.h"
-#include "core/application.h"
+#include "core/engine.h"
 
 #include "renderer/vulkan/renderer_vulkan.h"
 #include "resources/shader.h"
@@ -21,7 +21,7 @@ namespace C3D
 		  m_resizing(false), m_framesSinceResize(0)
 	{}
 
-	bool RenderSystem::Init(const Application* application)
+	bool RenderSystem::Init(const Engine* application)
 	{
 		// TODO: Make this configurable once we have multiple rendering backend options
 		if (!CreateBackend(RendererBackendType::Vulkan))

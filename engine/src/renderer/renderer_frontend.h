@@ -9,7 +9,7 @@
 
 namespace C3D
 {
-	class Application;
+	class Engine;
 
 	struct Texture;
 	struct Geometry;
@@ -23,7 +23,7 @@ namespace C3D
 	public:
 		RenderSystem();
 
-		bool Init(const Application* application);
+		bool Init(const Engine* application);
 		void Shutdown();
 
 		void OnResize(u16 width, u16 height);

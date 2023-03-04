@@ -18,7 +18,7 @@
 
 namespace C3D
 {
-	class Application;
+	class Engine;
 
 	class EventSystem;
 	class InputSystem;
@@ -55,12 +55,15 @@ namespace C3D
 	class C3D_API Services
 	{
 	public:
-		static void InitBeforeBoot(const Application* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig);
+		static void InitBeforeBoot(const Engine* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig);
 
 		static void InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig, const FontSystemConfig& fontSystemConfig,
 			const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& renderViewSystemConfig);
 
 		static void FinalInit(const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig);
+
+		template <class System>
+		static void ShutdownSystem(System* system);
 
 		static void Shutdown();
 
@@ -94,5 +97,12 @@ namespace C3D
 		static LinearAllocator m_allocator;
 		static LoggerInstance m_logger;
 	};
+
+	template <class System>
+	void Services::ShutdownSystem(System* system)
+	{
+		system->Shutdown();
+		system->~System();
+	}
 }
 

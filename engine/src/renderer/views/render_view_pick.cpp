@@ -431,7 +431,7 @@ namespace C3D
 
 		attachment->texture->id = INVALID_ID;
 		attachment->texture->type = TextureType::Type2D;
-		StringNCopy(attachment->texture->name, textureNameUUID.value, TEXTURE_NAME_MAX_LENGTH);
+		attachment->texture->name = textureNameUUID.value;
 		attachment->texture->width = width;
 		attachment->texture->height = height;
 		attachment->texture->channelCount = 4; //TODO: Configurable

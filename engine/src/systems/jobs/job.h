@@ -56,7 +56,6 @@ namespace C3D
 		std::function<void(void*)> callback = nullptr;
 	};
 
-
 	template <typename ResultType>
 	class JobResultEntry final : public BaseJobResultEntry
 	{

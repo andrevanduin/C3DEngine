@@ -1,7 +1,6 @@
 
 #include "geometry_system.h"
 
-#include "core/c3d_string.h"
 #include "core/logger.h"
 #include "math/geometry_utils.h"
 
@@ -187,20 +186,20 @@ namespace C3D
 
 		if (!name.Empty())
 		{
-			StringNCopy(config.name, name.Data(), GEOMETRY_NAME_MAX_LENGTH);
+			config.name = name.Data();
 		}
 		else
 		{
-			StringNCopy(config.name, DEFAULT_GEOMETRY_NAME, GEOMETRY_NAME_MAX_LENGTH);
+			config.name = DEFAULT_GEOMETRY_NAME;
 		}
 
 		if (!materialName.Empty())
 		{
-			StringNCopy(config.materialName, materialName.Data(), MATERIAL_NAME_MAX_LENGTH);
+			config.materialName = materialName.Data();
 		}
 		else
 		{
-			StringNCopy(config.materialName, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
+			config.materialName = DEFAULT_MATERIAL_NAME;
 		}
 
 		return config;
@@ -335,20 +334,20 @@ namespace C3D
 
 		if (!name.Empty())
 		{
-			StringNCopy(config.name, name.Data(), GEOMETRY_NAME_MAX_LENGTH);
+			config.name = name.Data();
 		}
 		else
 		{
-			StringNCopy(config.name, DEFAULT_GEOMETRY_NAME, GEOMETRY_NAME_MAX_LENGTH);
+			config.name = DEFAULT_GEOMETRY_NAME;
 		}
 
 		if (!materialName.Empty())
 		{
-			StringNCopy(config.materialName, materialName.Data(), MATERIAL_NAME_MAX_LENGTH);
+			config.materialName = materialName.Data();
 		}
 		else
 		{
-			StringNCopy(config.materialName, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
+			config.materialName = DEFAULT_MATERIAL_NAME;
 		}
 
 		GeometryUtils::GenerateTangents(config.vertices.GetData(), config.indices.Size(), config.indices.GetData());
@@ -361,13 +360,12 @@ namespace C3D
 		g->internalId = INVALID_ID;
 		g->generation = INVALID_ID;
 		g->id = INVALID_ID;
-
-		StringEmpty(g->name);
+		g->name.Clear();
 
 		// Release the material
-		if (g->material && StringLength(g->material->name) > 0)
+		if (g->material && !g->material->name.Empty())
 		{
-			Materials.Release(g->material->name);
+			Materials.Release(g->material->name.Data());
 			g->material = nullptr;
 		}
 	}

@@ -94,7 +94,7 @@ namespace C3D
 
 		bool RecreateSwapChain();
 
-		bool CreateModule(VulkanShaderStageConfig config, VulkanShaderStage* shaderStage) const;
+		bool CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const;
 
 		VkSamplerAddressMode ConvertRepeatType(const char* axis, TextureRepeat repeat) const;
 		VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;

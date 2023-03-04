@@ -2,7 +2,7 @@
 #include "material_system.h"
 
 #include "core/logger.h"
-#include "core/c3d_string.h"
+#include "core/string_utils.h"
 
 #include "renderer/renderer_types.h"
 #include "renderer/renderer_frontend.h"
@@ -101,7 +101,7 @@ namespace C3D
 
 	Material* MaterialSystem::AcquireFromConfig(const MaterialConfig& config)
 	{
-		if (IEquals(config.name, DEFAULT_MATERIAL_NAME))
+		if (config.name.IEquals(DEFAULT_MATERIAL_NAME))
 		{
 			return &m_defaultMaterial;
 		}
@@ -189,12 +189,11 @@ namespace C3D
 
 	void MaterialSystem::Release(const char* name)
 	{
-		if (IEquals(name, DEFAULT_MATERIAL_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_MATERIAL_NAME))
 		{
 			m_logger.Warn("Tried to release {}. This happens automatically on shutdown", DEFAULT_MATERIAL_NAME);
 			return;
 		}
-
 
 		MaterialReference ref = m_registeredMaterialTable.Get(name);
 		if (ref.referenceCount == 0)
@@ -333,7 +332,7 @@ namespace C3D
 
 		m_defaultMaterial.id = INVALID_ID;
 		m_defaultMaterial.generation = INVALID_ID;
-		StringNCopy(m_defaultMaterial.name, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
+		m_defaultMaterial.name = DEFAULT_MATERIAL_NAME;
 		m_defaultMaterial.diffuseColor = vec4(1);
 
 		m_defaultMaterial.diffuseMap.use = TextureUse::Diffuse;
@@ -364,7 +363,7 @@ namespace C3D
 		Platform::Zero(mat);
 
 		// Name
-		StringNCopy(mat->name, config.name, MATERIAL_NAME_MAX_LENGTH);
+		mat->name = config.name;
 		// Id of the shader associated with this material
 		mat->shaderId = Shaders.GetId(config.shaderName.Data());
 		// Diffuse color
@@ -381,9 +380,9 @@ namespace C3D
 			return false;
 		}
 
-		if (StringLength(config.diffuseMapName) > 0)
+		if (!config.diffuseMapName.Empty())
 		{
-			mat->diffuseMap.texture = Textures.Acquire(config.diffuseMapName, true);
+			mat->diffuseMap.texture = Textures.Acquire(config.diffuseMapName.Data(), true);
 			if (!mat->diffuseMap.texture)
 			{
 				m_logger.Warn("Unable to load diffuse texture '{}' for material '{}', using the default", config.diffuseMapName, mat->name);
@@ -404,9 +403,9 @@ namespace C3D
 			return false;
 		}
 
-		if (StringLength(config.specularMapName) > 0)
+		if (!config.specularMapName.Empty())
 		{
-			mat->specularMap.texture = Textures.Acquire(config.specularMapName, true);
+			mat->specularMap.texture = Textures.Acquire(config.specularMapName.Data(), true);
 
 			if (!mat->specularMap.texture)
 			{
@@ -428,9 +427,9 @@ namespace C3D
 			return false;
 		}
 
-		if (StringLength(config.normalMapName) > 0)
+		if (!config.normalMapName.Empty())
 		{
-			mat->normalMap.texture = Textures.Acquire(config.normalMapName, true);
+			mat->normalMap.texture = Textures.Acquire(config.normalMapName.Data(), true);
 
 			if (!mat->normalMap.texture)
 			{
@@ -468,19 +467,19 @@ namespace C3D
 		// If the diffuseMap has a texture we release it
 		if (mat->diffuseMap.texture)
 		{
-			Textures.Release(mat->diffuseMap.texture->name);
+			Textures.Release(mat->diffuseMap.texture->name.Data());
 		}
 
 		// If the specularMap has a texture we release it
 		if (mat->specularMap.texture)
 		{
-			Textures.Release(mat->specularMap.texture->name);
+			Textures.Release(mat->specularMap.texture->name.Data());
 		}
 
 		// If the normalMap has a texture we release it
 		if (mat->normalMap.texture)
 		{
-			Textures.Release(mat->normalMap.texture->name);
+			Textures.Release(mat->normalMap.texture->name.Data());
 		}
 
 		// Release texture map resources

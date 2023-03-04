@@ -37,7 +37,7 @@ namespace C3D
 	struct FontData
 	{
 		FontType type;
-		char face[FONT_DATA_FACE_MAX_LENGTH];
+		CString<FONT_DATA_FACE_MAX_LENGTH> face;
 		u32 size;
 		i32 lineHeight;
 		i32 baseline;
@@ -54,11 +54,11 @@ namespace C3D
 	struct BitmapFontPage
 	{
 		i8 id;
-		char file[256];
+		CString<256> file;
 	};
 
 	struct SystemFontFace
 	{
-		char name[256];
+		CString<256> name;
 	};
 }

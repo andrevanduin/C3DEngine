@@ -117,7 +117,7 @@ namespace C3D
 		void Delete(const Key& key);
 
 		Value& Get(const Key& key);
-		Value& GetByIndex(u64 index) const;
+		[[nodiscard]] Value& GetByIndex(u64 index) const;
 
 		bool Has(const Key& key);
 

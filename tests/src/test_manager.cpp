@@ -34,7 +34,7 @@ void TestManager::RunTests()
 	{
 		if (m_prevType != test.type)
 		{
-			m_logger.Info("------------------- {} -------------------", test.type);
+			m_logger.Info("{:-^70}", test.type);
 			m_prevType = test.type;
 		}
 

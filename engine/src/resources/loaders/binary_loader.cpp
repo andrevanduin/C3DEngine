@@ -1,7 +1,6 @@
 
 #include "binary_loader.h"
 
-#include "core/c3d_string.h"
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
@@ -17,13 +16,10 @@ namespace C3D
 
 	bool ResourceLoader<BinaryResource>::Load(const char* name, BinaryResource* outResource) const
 	{
-		if (StringLength(name) == 0 || !outResource) return false;
-
-		char fullPath[512];
-		const auto formatStr = "%s/%s/%s";
+		if (std::strlen(name) == 0 || !outResource) return false;
 
 		// TODO: try different extensions
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name);
+		auto fullPath = String::FromFormat("{}/{}/{}", Resources.GetBasePath(), typePath, name);
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead | FileModeBinary))

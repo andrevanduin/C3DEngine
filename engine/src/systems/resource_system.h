@@ -118,7 +118,7 @@ namespace C3D
 	template <typename Type>
 	bool ResourceSystem::LoadInternal(const char* name, ResourceLoader<Type>* loader, Type* outResource)
 	{
-		if (StringLength(name) == 0 || !outResource) return false;
+		if (std::strlen(name) == 0 || !outResource) return false;
 		if (!loader)
 		{
 			outResource->loaderId = INVALID_ID;
@@ -132,7 +132,7 @@ namespace C3D
 	template <typename Type, typename Params>
 	bool ResourceSystem::LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type* outResource, const Params& params)
 	{
-		if (StringLength(name) == 0 || !outResource) return false;
+		if (std::strlen(name) == 0 || !outResource) return false;
 		if (!loader)
 		{
 			outResource->loaderId = INVALID_ID;

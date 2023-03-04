@@ -66,22 +66,22 @@ namespace C3D
 		static void Unload(MeshResource* resource);
 
 	private:
-		bool ImportObjFile(File& file, const char* outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const;
-		void ObjParseVertexLine(const string& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords) const;
-		static void ObjParseFaceLine(const string& line, u64 normalCount, u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups);
+		bool ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const;
+		void ObjParseVertexLine(const String& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords) const;
+		static void ObjParseFaceLine(const String& line, u64 normalCount, u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups);
 
 		void ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords, DynamicArray<MeshFaceData>& faces, GeometryConfig<Vertex3D, u32>* outData) const;
 
 		bool ImportObjMaterialLibraryFile(const char* mtlFilePath) const;
-		void ObjMaterialParseColorLine(const string& line, MaterialConfig& config) const;
-		void ObjMaterialParseMapLine(const string& line, MaterialConfig& config) const;
-		void ObjMaterialParseNewMtlLine(const string& line, MaterialConfig& config, bool& hitName, const char* mtlFilePath) const;
+		void ObjMaterialParseColorLine(const String& line, MaterialConfig& config) const;
+		void ObjMaterialParseMapLine(const String& line, MaterialConfig& config) const;
+		void ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName, const char* mtlFilePath) const;
 
 		template<typename VertexType, typename IndexType>
 		bool LoadCsmFile(File& file, DynamicArray<GeometryConfig<VertexType, IndexType>>& outGeometries) const;
 
 		template<typename VertexType, typename IndexType>
-		bool WriteCsmFile(const char* path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries) const;
+		bool WriteCsmFile(const String& path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries) const;
 
 		bool WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const;
 	};
@@ -131,14 +131,10 @@ namespace C3D
 			file.Read(g.indices.GetData(), indexCount);
 
 			// Name
-			u64 gNameLength = 0;
-			file.Read(&gNameLength);
-			file.Read(g.name, gNameLength);
+			file.Read(g.name);
 
 			// Material Name
-			u64 mNameLength = 0;
-			file.Read(&mNameLength);
-			file.Read(g.materialName, mNameLength);
+			file.Read(g.materialName);
 
 			// Center
 			file.Read(&g.center);
@@ -156,7 +152,7 @@ namespace C3D
 	}
 
 	template <typename VertexType, typename IndexType>
-	bool ResourceLoader<MeshResource>::WriteCsmFile(const char* path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries) const
+	bool ResourceLoader<MeshResource>::WriteCsmFile(const String& path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries) const
 	{
 		if (File::Exists(path))
 		{
@@ -175,7 +171,7 @@ namespace C3D
 		file.Write(&version);
 
 		// Name Length
-		const u64 nameLength = StringLength(name) + 1;
+		const u64 nameLength = std::strlen(name) + 1;
 		file.Write(&nameLength);
 		// Name + null terminator
 		file.Write(name, nameLength);
@@ -203,14 +199,10 @@ namespace C3D
 			file.Write(geometry.indices.GetData(), indexCount);
 
 			// Name
-			u64 gNameLength = StringLength(geometry.name) + 1;
-			file.Write(&gNameLength);
-			file.Write(geometry.name, gNameLength);
+			file.Write(geometry.name);
 
 			// Material Name
-			u64 materialNameLength = StringLength(geometry.materialName) + 1;
-			file.Write(&materialNameLength);
-			file.Write(geometry.materialName, materialNameLength);
+			file.Write(geometry.materialName);
 
 			// Center
 			file.Write(&geometry.center);

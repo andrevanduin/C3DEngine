@@ -32,7 +32,13 @@ namespace C3D
 
 		bool Set(const char* name, const T& value);
 
+		template <u64 Capacity>
+		bool Set(const CString<Capacity>& name, const T& value);
+
 		T Get(const char* name);
+
+		template <u64 Capacity>
+		T Get(const CString<Capacity>& name);
 
 		static u64 GetMemoryRequirement(u64 elementCount);
 	private:
@@ -127,6 +133,21 @@ namespace C3D
 	}
 
 	template <class T>
+	template <u64 Capacity>
+	bool HashTable<T>::Set(const CString<Capacity>& name, const T& value)
+	{
+		if (name.Empty())
+		{
+			Logger::Error("[HASHTABLE] - Set() - requires valid name and value.");
+			return false;
+		}
+
+		u64 index = Hash(name.Data());
+		m_elements[index] = value;
+		return true;
+	}
+
+	template <class T>
 	T HashTable<T>::Get(const char* name)
 	{
 		if (!name)
@@ -135,6 +156,18 @@ namespace C3D
 			return m_elements[0];
 		}
 		return m_elements[Hash(name)];
+	}
+
+	template <class T>
+	template <u64 Capacity>
+	T HashTable<T>::Get(const CString<Capacity>& name)
+	{
+		if (name.Empty())
+		{
+			Logger::Error("[HASHTABLE] - Get() - requires valid name.");
+			return m_elements[0];
+		}
+		return m_elements[Hash(name.Data())];
 	}
 
 	template <class T>

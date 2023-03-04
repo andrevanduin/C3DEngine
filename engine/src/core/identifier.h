@@ -8,6 +8,8 @@ namespace C3D
 	class C3D_API Identifier
 	{
 	public:
+		static void Init();
+
 		static void Destroy();
 
 		static u32 GetNewId(void* owner);

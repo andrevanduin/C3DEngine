@@ -12,8 +12,7 @@
 #include "vulkan_utils.h"
 
 #include "core/logger.h"
-#include "core/application.h"
-#include "core/c3d_string.h"
+#include "core/engine.h"
 #include "core/events/event.h"
 #include "core/events/event_context.h"
 #include "renderer/renderer_frontend.h"
@@ -1074,7 +1073,7 @@ namespace C3D
 			// Set the stage and increment the stage count
 			const auto stageIndex = vulkanShader->config.stageCount;
 			vulkanShader->config.stages[stageIndex].stage = stageFlag;
-			StringNCopy(vulkanShader->config.stages[stageIndex].fileName, config.stageFileNames[i].Data(), VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH);
+			vulkanShader->config.stages[stageIndex].fileName = config.stageFileNames[i].Data();
 			vulkanShader->config.stageCount++;
 		}
 
@@ -1889,11 +1888,11 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::CreateModule(VulkanShaderStageConfig config, VulkanShaderStage* shaderStage) const
+	bool RendererVulkan::CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const
 	{
 		// Read the resource
 		BinaryResource res{};
-		if (!Resources.Load(config.fileName, &res))
+		if (!Resources.Load(config.fileName.Data(), &res))
 		{
 			m_logger.Error("CreateModule() - Unable to read shader module: '{}'", config.fileName);
 			return false;

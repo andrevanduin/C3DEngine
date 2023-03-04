@@ -1,6 +1,6 @@
 
 #pragma once
-#include <core/application.h>
+#include <core/engine.h>
 
 #include <resources/mesh.h>
 #include "resources/ui_text.h"
@@ -10,7 +10,7 @@ namespace C3D
 	class Camera;
 }
 
-class TestEnv final : public C3D::Application
+class TestEnv final : public C3D::Engine
 {
 public:
 	explicit TestEnv(const C3D::ApplicationConfig& config);
@@ -32,8 +32,6 @@ private:
 	bool OnDebugEvent(u16 code, void* sender, C3D::EventContext context);
 
 	C3D::Camera* m_camera;
-
-	u16 m_width, m_height;
 
 	// TEMP
 	C3D::Skybox m_skybox;

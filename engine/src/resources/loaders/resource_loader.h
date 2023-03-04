@@ -21,8 +21,8 @@ namespace C3D
 		u32 id;
 		ResourceType type;
 
-		const char* customType;
-		const char* typePath;
+		String customType;
+		String typePath;
 	protected:
 		LoggerInstance m_logger;
 		MemoryType m_memoryType;

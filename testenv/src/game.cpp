@@ -10,6 +10,8 @@
 #include <core/events/event_context.h>
 #include <core/metrics/metrics.h>
 
+#include <containers/cstring.h>
+
 #include <services/services.h>
 
 #include <systems/camera_system.h>
@@ -21,7 +23,7 @@
 #include "systems/render_view_system.h"
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
-	: Application(config), m_camera(nullptr), m_width(0), m_height(0), m_carMesh(nullptr), m_sponzaMesh(nullptr),
+	: Engine(config), m_camera(nullptr), m_carMesh(nullptr), m_sponzaMesh(nullptr),
 	  m_modelsLoaded(false), m_hoveredObjectId(0)
 {}
 
@@ -129,7 +131,7 @@ bool TestEnv::OnCreate()
 
 	C3D::Mesh* cubeMesh2 = &m_meshes[meshCount];
 	cubeMesh2->geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
-	cubeMesh2->transform = C3D::Transform(vec3(20.0f, 0.0f, 1.0f));
+	cubeMesh2->transform = C3D::Transform(vec3(0.0f, 10.0f, 0.0f));
 	cubeMesh2->transform.SetParent(&cubeMesh->transform);
 	cubeMesh2->generation = 0;
 	cubeMesh2->uniqueId = C3D::Identifier::GetNewId(cubeMesh2);
@@ -144,7 +146,7 @@ bool TestEnv::OnCreate()
 
 	C3D::Mesh* cubeMesh3 = &m_meshes[meshCount];
 	cubeMesh3->geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
-	cubeMesh3->transform = C3D::Transform(vec3(5.0f, 0.0f, 1.0f));
+	cubeMesh3->transform = C3D::Transform(vec3(0.0f, 5.0f, 0.0f));
 	cubeMesh3->transform.SetParent(&cubeMesh2->transform);
 	cubeMesh3->generation = 0;
 	cubeMesh3->uniqueId = C3D::Identifier::GetNewId(cubeMesh3);
@@ -172,8 +174,8 @@ bool TestEnv::OnCreate()
 
 	uiConfig.indices = C3D::DynamicArray<u32>(6);
 
-	C3D::StringNCopy(uiConfig.materialName, "test_ui_material", C3D::MATERIAL_NAME_MAX_LENGTH);
-	C3D::StringNCopy(uiConfig.name, "test_ui_geometry", C3D::GEOMETRY_NAME_MAX_LENGTH);
+	uiConfig.materialName = "test_ui_material";
+	uiConfig.name = "test_ui_geometry";
 
 	constexpr f32 w = 128.0f;
 	constexpr f32 h = 32.0f;
@@ -210,8 +212,10 @@ bool TestEnv::OnCreate()
 	m_uiMeshes[0].geometries.PushBack(Geometric.AcquireFromConfig(uiConfig, true));
 	m_uiMeshes[0].generation = 0;
 
-	auto rotation = angleAxis(C3D::DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
-	m_uiMeshes[0].transform.Rotate(rotation);
+	//auto rotation = angleAxis(C3D::DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
+	//m_uiMeshes[0].transform.Rotate(rotation);
+	//m_uiMeshes[0].transform.SetPosition({ 0})
+
 	// TEMP END
 
 	m_camera = Cam.GetDefault();
@@ -291,8 +295,6 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 
 	static constexpr f64 temp_move_speed = 50.0;
 
-	auto velocity = vec3(0.0f);
-
 	if (Input.IsKeyDown('w'))
 	{
 		m_camera->MoveForward(temp_move_speed * deltaTime);
@@ -344,6 +346,11 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	m_meshes[1].transform.Rotate(rotation);
 	m_meshes[2].transform.Rotate(rotation);
 
+	if (m_meshes[3].generation != INVALID_ID_U8)
+	{
+		m_meshes[3].transform.Rotate(rotation);
+	}
+
 	const auto cam = Cam.GetDefault();
 	const auto pos = cam->GetPosition();
 	const auto rot = cam->GetEulerRotation();
@@ -357,11 +364,11 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	const auto middleButton = Input.IsButtonDown(C3D::Buttons::ButtonMiddle);
 	const auto rightButton = Input.IsButtonDown(C3D::Buttons::ButtonRight);
 
-	char buffer[256]{};
-	sprintf_s(buffer, "Cam: Pos(%.3f, %.3f, %.3f) Rot(%.3f, %.3f, %.3f)\nMouse: Pos(%.2f, %.2f) Buttons(%d, %d, %d) Hovered: %d",
+	C3D::CString<256> buffer;
+	buffer.FromFormat("Cam: Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\nMouse: Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}",
 		pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, m_hoveredObjectId);
 
-	m_testText.SetText(buffer);
+	m_testText.SetText(buffer.Data());
 }
 
 bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
@@ -437,6 +444,7 @@ void TestEnv::OnResize(const u16 width, const u16 height)
 
 	// TEMP
 	m_testText.SetPosition({ 10, height - 80, 0 });
+	m_uiMeshes[0].transform.SetPosition({ width - 130, 10, 0 });
 	// TEMP END
 }
 
@@ -648,7 +656,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void* sender, C3D::EventContext conte
 {
 	if (code == C3D::SystemEventCode::Debug0)
 	{
-		const char* names[3] = { "cobblestone", "paving", "paving2" };
+		const char* names[3] = { "cobblestone", "paving", "rock" };
 		static i8 choice = 2;
 
 		const char* oldName = names[choice];
