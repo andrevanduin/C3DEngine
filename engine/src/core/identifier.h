@@ -3,6 +3,8 @@
 #include "defines.h"
 #include "containers/dynamic_array.h"
 
+#include "memory/allocators/malloc_allocator.h"
+
 namespace C3D
 {
 	class C3D_API Identifier

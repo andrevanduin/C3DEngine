@@ -42,7 +42,7 @@ namespace C3D
 	class UIText;
 	struct FontData;
 
-	class C3D_API FontSystem final : public System<FontSystemConfig>
+	class C3D_API FontSystem final : public System<16, FontSystemConfig>
 	{
 	public:
 		FontSystem();

@@ -50,7 +50,7 @@ namespace C3D
 	private:
 		void RegenerateGeometry();
 
-		LoggerInstance m_logger;
+		LoggerInstance<16> m_logger;
 
 		RenderBuffer* m_vertexBuffer;
 		RenderBuffer* m_indexBuffer;

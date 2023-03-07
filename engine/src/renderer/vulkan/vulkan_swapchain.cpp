@@ -7,7 +7,7 @@
 
 #include "core/logger.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/texture_system.h"
 
 namespace C3D
@@ -55,10 +55,27 @@ namespace C3D
 		CreateInternal(context, width, height);
 	}
 
-	void VulkanSwapChain::Destroy(const VulkanContext* context) const
+	void VulkanSwapChain::Destroy(const VulkanContext* context)
 	{
 		Logger::Info("[VULKAN_SWAP_CHAIN] - Destroying SwapChain");
 		DestroyInternal(context);
+
+		// Since we don't destroy our depth and render textures in destroy internal (so we can re-use the textures on a recreate() call)
+		// We still need to cleanup our depth textures
+		Memory.Free(MemoryType::Texture, depthTextures);
+		depthTextures = nullptr;
+
+		// And we also need to cleanup our render textures
+		for (u32 i = 0; i < imageCount; i++)
+		{
+			// We start with the vulkan internal data
+			const auto img = renderTextures[i].internalData;
+			Memory.Delete(MemoryType::Texture, img);
+		}
+
+		// then we cleanup the actual render textures themselves
+		Memory.Free(MemoryType::Texture, renderTextures);
+		renderTextures = nullptr;
 	}
 
 	bool VulkanSwapChain::AcquireNextImageIndex(VulkanContext* context, const u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
@@ -170,7 +187,7 @@ namespace C3D
 		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, nullptr));
 		if (!renderTextures)
 		{
-			renderTextures = Memory.Allocate<Texture>(MemoryType::RenderSystem, imageCount);
+			renderTextures = Memory.Allocate<Texture>(MemoryType::Texture, imageCount);
 			// If creating the array, then the internal texture objects aren't created yet either.
 			for (u32 i = 0; i < imageCount; ++i)
 			{
@@ -236,7 +253,7 @@ namespace C3D
 		// If we do not have an array for our depth textures yet we allocate it
 		if (!depthTextures)
 		{
-			depthTextures = Memory.Allocate<Texture>(MemoryType::RenderSystem, imageCount);
+			depthTextures = Memory.Allocate<Texture>(MemoryType::Texture, imageCount);
 		}
 
 		for (u32 i = 0; i < imageCount; i++)
@@ -259,10 +276,10 @@ namespace C3D
 	{
 		vkDeviceWaitIdle(context->device.logicalDevice);
 
-		// Destroy our depth textures
+		// Destroy our internal depth textures
 		for (u32 i = 0; i < imageCount; i++)
 		{
-			// First we destroy the internal data for every texture
+			// First we destroy the internal vulkan specific data for every depth texture
 			const auto image = static_cast<VulkanImage*>(depthTextures[i].internalData);
 			Memory.Delete(MemoryType::Texture, image);
 
@@ -272,6 +289,7 @@ namespace C3D
 		// Destroy our views for our render textures
 		for (u32 i = 0; i < imageCount; i++)
 		{
+			// First we destroy the internal vulkan specific data for every render texture
 			const auto img = static_cast<VulkanImage*>(renderTextures[i].internalData);
 			vkDestroyImageView(context->device.logicalDevice, img->view, context->allocator);
 		}

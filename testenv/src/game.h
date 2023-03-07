@@ -3,6 +3,8 @@
 #include <core/engine.h>
 
 #include <resources/mesh.h>
+
+#include "math/frustum.h"
 #include "resources/ui_text.h"
 
 namespace C3D
@@ -32,6 +34,7 @@ private:
 	bool OnDebugEvent(u16 code, void* sender, C3D::EventContext context);
 
 	C3D::Camera* m_camera;
+	C3D::Frustum m_cameraFrustum;
 
 	// TEMP
 	C3D::Skybox m_skybox;

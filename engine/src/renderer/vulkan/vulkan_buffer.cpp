@@ -1,11 +1,16 @@
 
+#include "platform/platform.h"
+
 #include "vulkan_buffer.h"
+#include "vulkan_formatters.h"
 
 #include "vulkan_device.h"
 #include "vulkan_command_buffer.h"
 
 #include "core/logger.h"
-#include "services/services.h"
+#include "core/metrics/metrics.h"
+
+#include "services/system_manager.h"
 
 namespace C3D
 {
@@ -168,7 +173,7 @@ namespace C3D
 
 		// Allocate the memory
 		VkDeviceMemory newMemory;
-		VkResult result = vkAllocateMemory(m_context->device.logicalDevice, &allocateInfo, m_context->allocator, &newMemory);
+		const VkResult result = vkAllocateMemory(m_context->device.logicalDevice, &allocateInfo, m_context->allocator, &newMemory);
 		if (result != VK_SUCCESS)
 		{
 			m_logger.Error("Resize() - Unable to resize because the required memory allocation failed. Error: {}", result);

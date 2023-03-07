@@ -42,7 +42,7 @@ namespace C3D
 	private:
 		[[nodiscard]] Node* GetNode() const;
 
-		LoggerInstance m_logger;
+		LoggerInstance<16> m_logger;
 
 		Node* m_nodes;
 		Node* m_head;

@@ -8,10 +8,6 @@
 
 namespace C3D
 {
-	bool Logger::m_initialized = false;
-
-	std::shared_ptr<spdlog::logger> Logger::s_coreLogger;
-
 	void Logger::Init()
 	{
 		auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -22,10 +18,10 @@ namespace C3D
 		consoleSink->set_pattern("%^ [%T] %v%$");
 		consoleSink->set_level(spdlog::level::trace);
 
-		s_coreLogger = std::make_shared<spdlog::logger>(spdlog::logger("core", { consoleSink, fileSink }));
-		s_coreLogger->set_level(spdlog::level::trace);
+		GetCoreLogger() = std::make_shared<spdlog::logger>(spdlog::logger("core", { consoleSink, fileSink }));
+		GetCoreLogger()->set_level(spdlog::level::trace);
 
-		m_initialized = true;
+		GetInitialized() = true;
 	}
 
 	VkBool32 Logger::VkDebugLog(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -52,5 +48,17 @@ namespace C3D
 		}
 
 		return VK_FALSE;
+	}
+
+	bool& Logger::GetInitialized()
+	{
+		static bool initialized = false;
+		return initialized;
+	}
+
+	std::shared_ptr<spdlog::logger>& Logger::GetCoreLogger()
+	{
+		static std::shared_ptr<spdlog::logger> coreLogger;
+		return coreLogger;
 	}
 }

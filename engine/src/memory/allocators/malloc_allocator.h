@@ -28,6 +28,6 @@ namespace C3D
 		void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
 		void Free(MemoryType type, void* block) override;
 	private:
-		LoggerInstance m_logger;
+		LoggerInstance<32> m_logger;
 	};
 }

@@ -7,12 +7,13 @@ file(GLOB_RECURSE C3DEngine_SRC "*.h" "*.cpp")
 
 add_library(C3DEngine SHARED ${C3DEngine_SRC})
 
-add_compile_definitions(C3D_EXPORT)
+target_compile_definitions(C3DEngine PUBLIC C3D_EXPORT)
+
 add_compile_definitions(C3D_PLATFORM_WINDOWS)
 add_compile_definitions(C3D_MEMORY_METRICS)
 add_compile_definitions(C3D_MEMORY_METRICS_POINTERS)
 add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)
-# add_compile_definitions(C3D_MEMORY_METRICS_FILE_LINE)
+# add_compile_definitions(C3D_MEMORY_METRICS_STACKTRACE)
 # add_compile_definitions(C3D_TRACE_ALLOCS)
 
 find_package(Vulkan REQUIRED)

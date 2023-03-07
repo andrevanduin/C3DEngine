@@ -326,7 +326,7 @@ namespace C3D
         C3D_API ivec2 GetMousePosition();
         C3D_API ivec2 GetPreviousMousePosition();
 	private:
-        LoggerInstance m_logger;
+        LoggerInstance<16> m_logger;
 
         bool m_initialized;
 		InputState m_state;

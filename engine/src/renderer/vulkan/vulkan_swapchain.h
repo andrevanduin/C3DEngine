@@ -17,7 +17,7 @@ namespace C3D
 
 		void Recreate(VulkanContext* context, u32 width, u32 height);
 
-		void Destroy(const VulkanContext* context) const;
+		void Destroy(const VulkanContext* context);
 
 		bool AcquireNextImageIndex(VulkanContext* context, u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex);
 

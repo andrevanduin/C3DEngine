@@ -55,7 +55,7 @@ namespace C3D
 		bool EndRenderPass(RenderPass* pass) const;
 
 		bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const;
-		void DestroyShader(Shader* shader) const;
+		void DestroyShader(Shader& shader) const;
 
 		bool InitializeShader(Shader* shader) const;
 
@@ -96,7 +96,7 @@ namespace C3D
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend();
 
-		LoggerInstance m_logger;
+		LoggerInstance<16> m_logger;
 
 		u8 m_windowRenderTargetCount;
 		u32 m_frameBufferWidth, m_frameBufferHeight;
@@ -104,6 +104,6 @@ namespace C3D
 		bool m_resizing;
 		u8 m_framesSinceResize;
 
-		RendererBackend* m_backend{ nullptr };
+		RendererBackend<64>* m_backend;
 	};
 }

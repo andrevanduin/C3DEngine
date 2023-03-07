@@ -44,6 +44,11 @@ namespace C3D
 
 	struct VulkanContext
 	{
+		~VulkanContext()
+		{
+			Logger::Debug("~VulkanContext() called");
+		}
+
 		f32 frameDeltaTime;
 
 		VkInstance instance;

@@ -25,6 +25,9 @@ namespace C3D
 		vec3 GetLeft();
 		vec3 GetRight();
 
+		vec3 GetUp();
+		vec3 GetDown();
+
 		void MoveForward(f32 amount);
 		void MoveForward(f64 amount);
 

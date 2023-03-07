@@ -41,7 +41,7 @@ namespace C3D
 	{
 		const auto loadParams = static_cast<MeshLoadParams*>(data);
 
-		const bool result = Resources.Load(loadParams->resourceName.Data(), &loadParams->meshResource);
+		const bool result = Resources.Load(loadParams->resourceName.Data(), loadParams->meshResource);
 
 		// NOTE: The load params are also used as the result data here, only the meshResource field is populated now.
 		const auto rData = static_cast<MeshLoadParams*>(resultData);
@@ -66,7 +66,7 @@ namespace C3D
 
 		Logger::Trace("[MESH] - Successfully loaded: '{}'.", meshParams->resourceName);
 
-		Resources.Unload(&meshParams->meshResource);
+		Resources.Unload(meshParams->meshResource);
 	}
 
 	void Mesh::LoadJobFailure(void* data)
@@ -75,6 +75,6 @@ namespace C3D
 
 		Logger::Error("[MESH] - Failed to load: '{}'.", meshParams->resourceName);
 
-		Resources.Unload(&meshParams->meshResource);
+		Resources.Unload(meshParams->meshResource);
 	}
 }

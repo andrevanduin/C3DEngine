@@ -107,7 +107,7 @@ namespace C3D
 
 		char* m_customShaderName;
 
-		LoggerInstance m_logger;
+		LoggerInstance<64> m_logger;
 	};
 
 	struct GeometryRenderData
@@ -159,8 +159,7 @@ namespace C3D
 
 	struct PickPacketData
 	{
-		MeshPacketData worldMeshData;
-		u32 worldGeometryCount;
+		DynamicArray<GeometryRenderData, LinearAllocator>* worldMeshData;
 
 		MeshPacketData uiMeshData;
 		u32 uiGeometryCount;

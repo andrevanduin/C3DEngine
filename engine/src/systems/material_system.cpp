@@ -9,7 +9,7 @@
 #include "resources/shader.h"
 #include "resources/loaders/material_loader.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/shader_system.h"
 #include "systems/resource_system.h"
 #include "systems/texture_system.h"
@@ -83,14 +83,14 @@ namespace C3D
 	Material* MaterialSystem::Acquire(const char* name)
 	{
 		MaterialResource materialResource{};
-		if (!Resources.Load(name, &materialResource))
+		if (!Resources.Load(name, materialResource))
 		{
 			m_logger.Error("Failed to load material resource. Returning nullptr");
 			return nullptr;
 		}
 
 		Material* m = AcquireFromConfig(materialResource.config);
-		Resources.Unload(&materialResource);
+		Resources.Unload(materialResource);
 
 		if (!m)
 		{

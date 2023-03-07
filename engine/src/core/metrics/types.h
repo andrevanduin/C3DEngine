@@ -63,6 +63,8 @@ namespace C3D
 		MaxType,
 	};
 
+	constexpr auto MAX_MEMORY_TYPES = static_cast<u64>(MemoryType::MaxType);
+
 	struct Allocation
 	{
 #ifdef C3D_MEMORY_METRICS_POINTERS
@@ -113,14 +115,14 @@ namespace C3D
 #ifdef C3D_MEMORY_METRICS_POINTERS
 	struct TrackedAllocation
 	{
-		TrackedAllocation(void* ptr, const char* file, const int line, const u64 requestedSize, const u64 requiredSize)
-			: file(file), line(line), ptr(ptr), requestedSize(requestedSize), requiredSize(requiredSize)
+		TrackedAllocation(void* ptr, std::string stacktrace, const u64 requestedSize, const u64 requiredSize)
+			: ptr(ptr), stacktrace(std::move(stacktrace)), requestedSize(requestedSize), requiredSize(requiredSize)
 		{}
 
-		const char* file;
-		int line;
-
 		void* ptr = nullptr;
+
+		std::string stacktrace;
+		
 		u64 requestedSize = 0;
 		u64 requiredSize = 0;
 	};
@@ -142,7 +144,7 @@ namespace C3D
 		u64 size = 0;
 	};
 
-	using TaggedAllocations = Array<MemoryAllocations, static_cast<u64>(MemoryType::MaxType)>;
+	using TaggedAllocations = Array<MemoryAllocations, MAX_MEMORY_TYPES>;
 
 	struct MemoryStats
 	{

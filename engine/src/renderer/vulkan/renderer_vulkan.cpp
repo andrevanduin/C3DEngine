@@ -15,6 +15,8 @@
 #include "core/engine.h"
 #include "core/events/event.h"
 #include "core/events/event_context.h"
+#include "core/metrics/metrics.h"
+#include "platform/platform.h"
 #include "renderer/renderer_frontend.h"
 
 #include "resources/texture.h"
@@ -23,7 +25,7 @@
 #include "renderer/vertex.h"
 #include "resources/loaders/binary_loader.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/resource_system.h"
 #include "systems/texture_system.h"
 
@@ -1185,12 +1187,12 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::DestroyShader(Shader* shader)
+	void RendererVulkan::DestroyShader(Shader& shader)
 	{
 		// Make sure there is something to destroy
-		if (shader && shader->apiSpecificData)
+		if (shader.apiSpecificData)
 		{
-			const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
+			const auto vulkanShader = static_cast<VulkanShader*>(shader.apiSpecificData);
 
 			VkDevice logicalDevice = m_context.device.logicalDevice;
 			const VkAllocationCallbacks* vkAllocator = m_context.allocator;
@@ -1229,8 +1231,8 @@ namespace C3D
 			Platform::Zero(&vulkanShader->config, sizeof(VulkanShaderConfig));
 
 			// Free the api (Vulkan in this case) specific data from the shader
-			Memory.Free(MemoryType::Shader, shader->apiSpecificData);
-			shader->apiSpecificData = nullptr;
+			Memory.Free(MemoryType::Shader, shader.apiSpecificData);
+			shader.apiSpecificData = nullptr;
 		}
 	}
 
@@ -1892,7 +1894,7 @@ namespace C3D
 	{
 		// Read the resource
 		BinaryResource res{};
-		if (!Resources.Load(config.fileName.Data(), &res))
+		if (!Resources.Load(config.fileName.Data(), res))
 		{
 			m_logger.Error("CreateModule() - Unable to read shader module: '{}'", config.fileName);
 			return false;
@@ -1905,7 +1907,7 @@ namespace C3D
 		VK_CHECK(vkCreateShaderModule(m_context.device.logicalDevice, &shaderStage->createInfo, m_context.allocator, &shaderStage->handle));
 
 		// Release our resource
-		Resources.Unload(&res);
+		Resources.Unload(res);
 
 		//Shader stage info
 		shaderStage->shaderStageCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };

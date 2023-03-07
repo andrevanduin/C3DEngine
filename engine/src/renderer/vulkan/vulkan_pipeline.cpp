@@ -6,7 +6,7 @@
 
 #include "renderer/vertex.h"
 #include "resources/shader.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {

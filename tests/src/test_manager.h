@@ -6,9 +6,9 @@
 
 #include "core/logger.h"
 
-#define FAILED 0
-#define PASSED 1
-#define SKIPPED 2
+constexpr auto FAILED  = 0;
+constexpr auto PASSED  = 1;
+constexpr auto SKIPPED = 2;
 
 typedef u8 (*pFnTest)();
 
@@ -30,7 +30,7 @@ public:
 	void RunTests();
 
 private:
-	C3D::LoggerInstance m_logger;
+	C3D::LoggerInstance<16> m_logger;
 
 	std::string m_currentType;
 	std::string m_prevType;

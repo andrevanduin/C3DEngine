@@ -14,10 +14,10 @@ namespace C3D
 	{
 		static_assert(std::is_base_of_v<BaseAllocator, Allocator>, "Allocator must derive from BaseAllocator");
 
-	constexpr static auto default_capacity = 4;
-	constexpr static auto resize_factor = 1.5f;
-
 	public:
+		constexpr static auto default_capacity = 4;
+		constexpr static auto resize_factor = 1.5f;
+
 		using value_type = T;
 		using reference = value_type&;
 		using difference_type = ptrdiff_t;
@@ -30,13 +30,13 @@ namespace C3D
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{}
 
-		DynamicArray(const DynamicArray<T, Allocator>& other)
+		DynamicArray(const DynamicArray& other)
 			: m_capacity(0), m_size(0), m_elements(nullptr)
 		{
 			Copy(other);
 		}
 
-		DynamicArray(DynamicArray<T, Allocator>&& other) noexcept
+		DynamicArray(DynamicArray&& other) noexcept
 			: m_capacity(other.Capacity()), m_size(other.Size()), m_elements(other.GetData()), m_allocator(other.m_allocator)
 		{
 			other.m_capacity = 0;
@@ -45,7 +45,7 @@ namespace C3D
 			other.m_elements = nullptr;
 		}
 
-		DynamicArray<T, Allocator>& operator=(const DynamicArray<T, Allocator>& other)
+		DynamicArray& operator=(const DynamicArray& other)
 		{
 			if (this != &other)
 			{
@@ -54,7 +54,7 @@ namespace C3D
 			return *this;
 		}
 
-		DynamicArray<T, Allocator>& operator=(DynamicArray<T, Allocator>&& other) noexcept
+		DynamicArray& operator=(DynamicArray&& other) noexcept
 		{
 			m_elements = other.GetData();
 			m_allocator = other.m_allocator;
@@ -93,7 +93,7 @@ namespace C3D
 
 		~DynamicArray()
 		{
-			Destroy();
+			Free();
 		}
 
 		/*
@@ -187,11 +187,6 @@ namespace C3D
 		/* @brief Destroys the underlying memory allocated by this dynamic array. */
 		void Destroy()
 		{
-			// Call destructor for all elements
-			for (size_t i = 0; i < m_size; i++)
-			{
-				m_elements[i].~T();
-			}
 			Free();
 		}
 
@@ -483,10 +478,13 @@ namespace C3D
 		 * This method must be used if the allocator could not be set during initialization
 		 * because the global memory system was not yet setup for example.
 		 * This method can also be used if the user want's to change the underlying allocator used for this dynamic array.
-		 * Keep in mind that this allocator needs to be of the same type as the initial allocator to avoid issues.
+		 * Keep in mind that this allocator needs to be of the same type as the initial allocator.
+		 * Also keep in mind that this is a destructive operation since it will clear and free anything inside the array.
 		 */
 		void SetAllocator(Allocator* allocator)
 		{
+			// Free any memory that is currently in our array since we will swap allocator
+			Free();
 			m_allocator = allocator;
 		}
 
@@ -572,7 +570,11 @@ namespace C3D
 		{
 			if (m_elements && m_capacity != 0)
 			{
+				// Call destructor for every element
+				std::destroy_n(m_elements, m_size);
+				// Free the memory
 				m_allocator->Free(MemoryType::DynamicArray, m_elements);
+				// Reset everything to initial values
 				m_elements = nullptr;
 				m_capacity = 0;
 				m_size = 0;

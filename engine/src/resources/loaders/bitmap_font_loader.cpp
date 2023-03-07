@@ -3,7 +3,7 @@
 
 #include "containers/string.h"
 #include "platform/filesystem.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/resource_system.h"
 
 namespace C3D
@@ -19,7 +19,7 @@ namespace C3D
 		: IResourceLoader("BITMAP_FONT_LOADER", MemoryType::BitmapFont, ResourceType::BitmapFont, nullptr, "fonts")
 	{}
 
-	bool ResourceLoader<BitmapFontResource>::Load(const char* name, BitmapFontResource* outResource) const
+	bool ResourceLoader<BitmapFontResource>::Load(const char* name, BitmapFontResource& resource) const
 	{
 		File file;
 
@@ -48,8 +48,8 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = filepath;
-		outResource->data.type = FontType::Bitmap;
+		resource.fullPath = filepath;
+		resource.data.type = FontType::Bitmap;
 
 		auto result = false;
 		switch (type)
@@ -57,10 +57,10 @@ namespace C3D
 			case BitmapFontFileType::FNT:
 				filepath.RemoveLast(3); // Remove "fnt"
 				filepath.Append("cbf");
-				result = ImportFntFile(file, filepath, outResource);
+				result = ImportFntFile(file, filepath, resource);
 				break;
 			case BitmapFontFileType::CBF:
-				result = ReadCbfFile(file, outResource);
+				result = ReadCbfFile(file, resource);
 				break;
 			case BitmapFontFileType::NotFound:
 				m_logger.Error("Load() - Unable to find bitmap font of supported type called: '{}.'", name);
@@ -78,18 +78,15 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<BitmapFontResource>::Unload(BitmapFontResource* resource)
+	void ResourceLoader<BitmapFontResource>::Unload(BitmapFontResource& resource)
 	{
-		if (resource)
-		{
-			resource->data.glyphs.Destroy();
-			resource->data.kernings.Destroy();
-			resource->pages.Destroy();
-			resource->loaderId = INVALID_ID;
+		resource.data.glyphs.Destroy();
+		resource.data.kernings.Destroy();
+		resource.pages.Destroy();
+		resource.loaderId = INVALID_ID;
 
-			resource->fullPath.Destroy();
-			resource->name.Destroy();
-		}
+		resource.fullPath.Destroy();
+		resource.name.Destroy();
 	}
 
 #define VERIFY_PARSE(lineType, lineNumber, result)														\
@@ -99,7 +96,7 @@ namespace C3D
 		return false;																					\
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource* data) const
+	bool ResourceLoader<BitmapFontResource>::ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource& data) const
 	{
 		String line;
 		line.Reserve(512);
@@ -172,37 +169,37 @@ namespace C3D
 		return out.Size() == 2;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ParseInfoLine(const String& line, BitmapFontResource* res)
+	bool ResourceLoader<BitmapFontResource>::ParseInfoLine(const String& line, BitmapFontResource& res)
 	{
 		auto elements = line.Split('\"');
 
-		res->data.face = elements[1].Data();
+		res.data.face = elements[1].Data();
 
 		elements = elements[2].Split(' ');
 		DynamicArray<String> values;
 
 		if (!ParseElementAndVerify(elements[0], "size", values)) return false;
 
-		res->data.size = values[1].ToU32();
+		res.data.size = values[1].ToU32();
 		return true;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ParseCommonLine(const String& line, BitmapFontResource* res) const
+	bool ResourceLoader<BitmapFontResource>::ParseCommonLine(const String& line, BitmapFontResource& res) const
 	{
 		const auto elements = line.Split(' ');
 		DynamicArray<String> values;
 
 		if (!ParseElementAndVerify(elements[1], "lineHeight", values)) return false;
-		res->data.lineHeight = values[1].ToI32();
+		res.data.lineHeight = values[1].ToI32();
 
 		if (!ParseElementAndVerify(elements[2], "base", values)) return false;
-		res->data.baseline = values[1].ToI32();
+		res.data.baseline = values[1].ToI32();
 
 		if (!ParseElementAndVerify(elements[3], "scaleW", values)) return false;
-		res->data.atlasSizeX = values[1].ToU32();
+		res.data.atlasSizeX = values[1].ToU32();
 
 		if (!ParseElementAndVerify(elements[4], "scaleH", values)) return false;
-		res->data.atlasSizeY = values[1].ToU32();
+		res.data.atlasSizeY = values[1].ToU32();
 
 		if (!ParseElementAndVerify(elements[5], "pages", values)) return false;
 
@@ -213,12 +210,12 @@ namespace C3D
 			return false;
 		}
 
-		res->pages.Reserve(pageCount);
+		res.pages.Reserve(pageCount);
 
 		return true;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ParseCharsLine(const String& line, BitmapFontResource* res) const
+	bool ResourceLoader<BitmapFontResource>::ParseCharsLine(const String& line, BitmapFontResource& res) const
 	{
 		const auto elements = line.Split(' ');
 		DynamicArray<String> values;
@@ -232,11 +229,11 @@ namespace C3D
 			return false;
 		}
 
-		res->data.glyphs.Reserve(glyphCount);
+		res.data.glyphs.Reserve(glyphCount);
 		return true;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ParseCharLine(const String& line, BitmapFontResource* res)
+	bool ResourceLoader<BitmapFontResource>::ParseCharLine(const String& line, BitmapFontResource& res)
 	{
 		const auto elements = line.Split(' ');
 		DynamicArray<String> values;
@@ -270,11 +267,11 @@ namespace C3D
 		if (!ParseElementAndVerify(elements[9], "page", values)) return false;
 		g.pageId = values[1].ToU8();
 
-		res->data.glyphs.PushBack(g);
+		res.data.glyphs.PushBack(g);
 		return true;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ParsePageLine(const String& line, BitmapFontResource* res)
+	bool ResourceLoader<BitmapFontResource>::ParsePageLine(const String& line, BitmapFontResource& res)
 	{
 		const auto elements = line.Split('\"');
 		DynamicArray<String> values;
@@ -290,11 +287,11 @@ namespace C3D
 		p.id = values[1].ToI8();
 		p.file = elements[1].Data();
 
-		res->pages.PushBack(p);
+		res.pages.PushBack(p);
 		return true;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ParseKerningsLine(const String& line, BitmapFontResource* res) const
+	bool ResourceLoader<BitmapFontResource>::ParseKerningsLine(const String& line, BitmapFontResource& res) const
 	{
 		const auto elements = line.Split(' ');
 		DynamicArray<String> values;
@@ -308,11 +305,11 @@ namespace C3D
 			return false;
 		}
 
-		res->data.kernings.Reserve(kerningCount);
+		res.data.kernings.Reserve(kerningCount);
 		return true;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ParseKerningLine(const String& line, BitmapFontResource* res)
+	bool ResourceLoader<BitmapFontResource>::ParseKerningLine(const String& line, BitmapFontResource& res)
 	{
 		const auto elements = line.Split(' ');
 		DynamicArray<String> values;
@@ -328,11 +325,11 @@ namespace C3D
 		if (!ParseElementAndVerify(elements[3], "amount", values)) return false;
 		k.amount = values[1].ToI16();
 
-		res->data.kernings.PushBack(k);
+		res.data.kernings.PushBack(k);
 		return true;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::ReadCbfFile(File& file, BitmapFontResource* res) const
+	bool ResourceLoader<BitmapFontResource>::ReadCbfFile(File& file, BitmapFontResource& res) const
 	{
 		ResourceHeader header = {};
 		file.Read(&header);
@@ -346,27 +343,27 @@ namespace C3D
 		// TODO: Read/Process the file version
 
 		// Face string
-		file.Read(res->data.face);
+		file.Read(res.data.face);
 
 		// Font size
-		file.Read(&res->data.size);
+		file.Read(&res.data.size);
 
 		// Line height
-		file.Read(&res->data.lineHeight);
+		file.Read(&res.data.lineHeight);
 
 		// Baseline
-		file.Read(&res->data.baseline);
+		file.Read(&res.data.baseline);
 
 		// SizeX
-		file.Read(&res->data.atlasSizeX);
+		file.Read(&res.data.atlasSizeX);
 
 		// SizeY
-		file.Read(&res->data.atlasSizeY);
+		file.Read(&res.data.atlasSizeY);
 
 		// Pages
 		u64 pageCount;
 		file.Read(&pageCount);
-		res->pages.Reserve(pageCount);
+		res.pages.Reserve(pageCount);
 		for (u64 i = 0; i < pageCount; i++)
 		{
 			BitmapFontPage page{};
@@ -376,20 +373,20 @@ namespace C3D
 			// Page file name
 			file.Read(page.file);
 
-			res->pages.PushBack(page);
+			res.pages.PushBack(page);
 		}
 
 		// Both of these are only simple data so we can read them directly
 		// Glyphs
-		file.Read(res->data.glyphs);
+		file.Read(res.data.glyphs);
 		// Kernings
-		file.Read(res->data.kernings);
+		file.Read(res.data.kernings);
 
 		file.Close();
 		return true;
 	}
 
-	bool ResourceLoader<BitmapFontResource>::WriteCbfFile(const String& path, const BitmapFontResource* res) const
+	bool ResourceLoader<BitmapFontResource>::WriteCbfFile(const String& path, const BitmapFontResource& res) const
 	{
 		File file;
 		if (!file.Open(path, FileModeWrite | FileModeBinary))
@@ -406,23 +403,23 @@ namespace C3D
 		// Header
 		file.Write(&header);
 		// Face string
-		file.Write(res->data.face);
+		file.Write(res.data.face);
 		// Font size
-		file.Write(&res->data.size);
+		file.Write(&res.data.size);
 		// Line height
-		file.Write(&res->data.lineHeight);
+		file.Write(&res.data.lineHeight);
 		// Baseline
-		file.Write(&res->data.baseline);
+		file.Write(&res.data.baseline);
 		// SizeX
-		file.Write(&res->data.atlasSizeX);
+		file.Write(&res.data.atlasSizeX);
 		// SizeY
-		file.Write(&res->data.atlasSizeY);
+		file.Write(&res.data.atlasSizeY);
 		// Page count
-		const auto pageCount = res->pages.Size();
+		const auto pageCount = res.pages.Size();
 		file.Write(&pageCount);
 
 		// The pages
-		for (auto& page : res->pages)
+		for (auto& page : res.pages)
 		{
 			// Page id
 			file.Write(&page.id);
@@ -431,10 +428,10 @@ namespace C3D
 		}
 
 		// Write out the glyphs which we can do directly since it's just simple data
-		file.Write(res->data.glyphs);
+		file.Write(res.data.glyphs);
 
 		// Write out the kernings which we can do directly since it's just simple data
-		file.Write(res->data.kernings);
+		file.Write(res.data.kernings);
 
 		file.Close();
 		return true;

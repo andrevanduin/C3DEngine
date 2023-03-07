@@ -3,73 +3,90 @@
 
 #include "platform/platform.h"
 
+#include "allocators/linear_allocator.h"
+#include "allocators/malloc_allocator.h"
+#include "allocators/stack_allocator.h"
+
 namespace C3D
 {
-	void* GlobalMemorySystem::m_memoryBlock;
+	template <>
+	C3D_API inline DynamicAllocator* GlobalMemorySystem::GetDefaultAllocator()
+	{
+		static auto globalAllocator = new DynamicAllocator(AllocatorType::GlobalDynamic);
+		return globalAllocator;
+	}
 
-	DynamicAllocator* GlobalMemorySystem::s_globalAllocator;
-	// We keep this allocator immediately statically loaded so we can use it for the creation
-	// of other statically initialized systems in our engine since the global allocator
-	// will not yet have been initialized at that point.
-	MallocAllocator* GlobalMemorySystem::s_mallocAllocator;
+	template <>
+	C3D_API inline MallocAllocator* GlobalMemorySystem::GetDefaultAllocator()
+	{
+		static auto mallocAllocator = new MallocAllocator();
+		return mallocAllocator;
+	}
 
-	// Default linear stack allocator
-	LinearAllocator* GlobalMemorySystem::s_linearAllocator;
+	template <>
+	C3D_API inline StackAllocator<KibiBytes(8)>* GlobalMemorySystem::GetDefaultAllocator()
+	{
+		static auto stackAllocator = new StackAllocator<KibiBytes(8)>();
+		return stackAllocator;
+	}
 
-	// Default Stack allocator that should never really be used but it is required to
-	// ensure that the compiler will always find a GetDefaultAllocator function
-	StackAllocator<KibiBytes(8)>* GlobalMemorySystem::s_stackAllocator;
+	template<>
+	C3D_API inline LinearAllocator* GlobalMemorySystem::GetDefaultAllocator()
+	{
+		static auto linearAllocator = new LinearAllocator();
+		return linearAllocator;
+	}
 
 	void GlobalMemorySystem::Init(const MemorySystemConfig& config)
 	{
-		if (s_globalAllocator)
-		{
-			Logger::Fatal("[GLOBAL_MEMORY_SYSTEM] - Init() has already been called.");
-		}
-
 		const u64 memoryRequirement = DynamicAllocator::GetMemoryRequirements(config.totalAllocSize);
-
-		m_memoryBlock = Platform::Allocate(memoryRequirement, false);
-		if (!m_memoryBlock)
+		const auto memoryBlock = GetMemoryBlock(memoryRequirement);
+		if (!memoryBlock)
 		{
 			Logger::Fatal("[GLOBAL_MEMORY_SYSTEM] - Allocating memory pool failed");
 		}
 
-		s_globalAllocator = new DynamicAllocator(AllocatorType::GlobalDynamic);
-		s_globalAllocator->Create(m_memoryBlock, memoryRequirement, config.totalAllocSize);
+		const auto globalAllocator = GetDefaultAllocator<DynamicAllocator>();
+		globalAllocator->Create(memoryBlock, memoryRequirement, config.totalAllocSize);
 
-		s_linearAllocator = new LinearAllocator();
-		s_linearAllocator->Create("DefaultLinearAllocator", KibiBytes(8));
+		const auto linearAllocator = GetDefaultAllocator<LinearAllocator>();
+		linearAllocator->Create("DefaultLinearAllocator", KibiBytes(8));
 
-		s_stackAllocator = new StackAllocator<KibiBytes(8)>();
-		s_stackAllocator->Create("DefaultStackAllocator");
+		const auto stackAllocator = GetDefaultAllocator<StackAllocator<KibiBytes(8)>>();
+		stackAllocator->Create("DefaultStackAllocator");
 
 		Logger::Info("[GLOBAL_MEMORY_SYSTEM] - Initialized successfully");
 	}
 
 	void GlobalMemorySystem::Destroy()
 	{
-		if (s_stackAllocator)
+		if (const auto stackAllocator = GetDefaultAllocator<StackAllocator<KibiBytes(8)>>())
 		{
-			s_stackAllocator->Destroy();
-			delete s_stackAllocator;
+			stackAllocator->Destroy();
+			delete stackAllocator;
 		}
 
-		if (s_linearAllocator)
+		if (const auto linearAllocator = GetDefaultAllocator<LinearAllocator>())
 		{
-			s_linearAllocator->Destroy();
-			delete s_linearAllocator;
+			linearAllocator->Destroy();
+			delete linearAllocator;
 		}
 
-		if (s_globalAllocator)
+		if (const auto globalAllocator = GetDefaultAllocator<DynamicAllocator>())
 		{
-			s_globalAllocator->Destroy();
-			Platform::Free(m_memoryBlock, false);
+			globalAllocator->Destroy();
+			Platform::Free(GetMemoryBlock(), false);
 		}
 	}
 
 	DynamicAllocator& GlobalMemorySystem::GetAllocator()
 	{
-		return *s_globalAllocator;
+		return *GetDefaultAllocator<DynamicAllocator>();
+	}
+
+	void* GlobalMemorySystem::GetMemoryBlock(const u64 memoryRequirement)
+	{
+		static void* memoryBlock = Platform::Allocate(memoryRequirement, false);
+		return memoryBlock;
 	}
 }

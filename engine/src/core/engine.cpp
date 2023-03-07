@@ -3,14 +3,16 @@
 #include "logger.h"
 #include "input.h"
 #include "clock.h"
-#include "containers/string.h"
 
 #include <SDL2/SDL.h>
 
-#include "events/event.h"
 #include "platform/platform.h"
+#include "containers/string.h"
 
-#include "services/services.h"
+#include "events/event.h"
+#include "metrics/metrics.h"
+
+#include "services/system_manager.h"
 
 #include "renderer/renderer_frontend.h"
 #include "systems/geometry_system.h"
@@ -69,7 +71,7 @@ namespace C3D
 		constexpr ResourceSystemConfig		resourceSystemConfig{ 32, "../../../../assets" };
 		constexpr ShaderSystemConfig		shaderSystemConfig{ 128, 128, 31, 31 };
 
-		Services::InitBeforeBoot(this, resourceSystemConfig, shaderSystemConfig);
+		Systems.InitBeforeBoot(this, resourceSystemConfig, shaderSystemConfig);
 
 		const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
@@ -105,7 +107,7 @@ namespace C3D
 		constexpr CameraSystemConfig		cameraSystemConfig { 61 };
 		constexpr RenderViewSystemConfig	viewSystemConfig { 251 };
 
-		Services::InitAfterBoot(jobSystemConfig, textureSystemConfig, m_config.fontConfig, cameraSystemConfig, viewSystemConfig);
+		Systems.InitAfterBoot(jobSystemConfig, textureSystemConfig, m_config.fontConfig, cameraSystemConfig, viewSystemConfig);
 
 		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Engine::OnResizeEvent));
 		Event.Register(SystemEventCode::Minimized, new EventCallback(this, &Engine::OnMinimizeEvent));
@@ -123,7 +125,7 @@ namespace C3D
 		constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
 		constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
-		Services::FinalInit(materialSystemConfig, geometrySystemConfig);
+		Systems.FinalInit(materialSystemConfig, geometrySystemConfig);
 
 		m_state.initialized = true;
 		m_state.lastTime = 0;
@@ -242,7 +244,7 @@ namespace C3D
 		Event.UnRegister(SystemEventCode::Minimized, new EventCallback(this, &Engine::OnMinimizeEvent));
 		Event.UnRegister(SystemEventCode::FocusGained, new EventCallback(this, &Engine::OnFocusGainedEvent));
 
-		Services::Shutdown();
+		Systems.Shutdown();
 
 		SDL_DestroyWindow(m_window);
 
@@ -263,17 +265,17 @@ namespace C3D
 					break;
 				case SDL_KEYDOWN:
 				case SDL_KEYUP:
-					Services::GetInput().ProcessKey(e.key.keysym.sym, e.type == SDL_KEYDOWN);
+					Input.ProcessKey(e.key.keysym.sym, e.type == SDL_KEYDOWN);
 					break;
 				case SDL_MOUSEBUTTONDOWN:
 				case SDL_MOUSEBUTTONUP:
-					Services::GetInput().ProcessButton(e.button.button, e.type == SDL_MOUSEBUTTONDOWN);
+					Input.ProcessButton(e.button.button, e.type == SDL_MOUSEBUTTONDOWN);
 					break;
 				case SDL_MOUSEMOTION:
-					Services::GetInput().ProcessMouseMove(e.motion.x, e.motion.y);
+					Input.ProcessMouseMove(e.motion.x, e.motion.y);
 					break;
 				case SDL_MOUSEWHEEL:
-					Services::GetInput().ProcessMouseWheel(e.wheel.y);
+					Input.ProcessMouseWheel(e.wheel.y);
 					break;
 				case SDL_WINDOWEVENT:
 					if (e.window.event == SDL_WINDOWEVENT_RESIZED)

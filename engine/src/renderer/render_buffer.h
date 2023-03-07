@@ -60,7 +60,7 @@ namespace C3D
 		u64 totalSize;
 
 	protected:
-		LoggerInstance m_logger;
+		LoggerInstance<64> m_logger;
 
 		u64 m_freeListMemoryRequirement;
 		FreeList m_freeList;

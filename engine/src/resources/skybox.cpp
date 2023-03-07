@@ -2,7 +2,7 @@
 #include "skybox.h"
 
 #include "renderer/renderer_frontend.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/geometry_system.h"
 #include "systems/shader_system.h"
 #include "systems/texture_system.h"
@@ -52,6 +52,9 @@ namespace C3D
 
 	void Skybox::Destroy()
 	{
+		const auto shader = Shaders.Get("Shader.Builtin.Skybox");
+
 		Renderer.ReleaseTextureMapResources(&cubeMap);
+		Renderer.ReleaseShaderInstanceResources(shader, instanceId);
 	}
 }

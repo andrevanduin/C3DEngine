@@ -1,9 +1,11 @@
 
 #include "vulkan_renderpass.h"
 #include "vulkan_types.h"
+#include "vulkan_formatters.h"
 
 #include "core/logger.h"
-#include "services/services.h"
+#include "platform/platform.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {

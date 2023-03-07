@@ -166,7 +166,7 @@ namespace C3D
 		}
 		else
 		{
-			tagged.allocations.emplace_back(a.ptr, m_file, m_line, a.requestedSize, a.requiredSize);
+			tagged.allocations.emplace_back(a.ptr, m_stacktrace, a.requestedSize, a.requiredSize);
 		}
 #else
 		stats.taggedAllocations[type].requestedSize += a.requestedSize;
@@ -191,7 +191,7 @@ namespace C3D
 		auto& tagged = stats.taggedAllocations[type];
 
 #ifdef C3D_MEMORY_METRICS_POINTERS
-		const auto allocIt = std::find_if(tagged.allocations.begin(), tagged.allocations.end(), [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
+		const auto allocIt = std::ranges::find_if(tagged.allocations, [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
 		if (allocIt != tagged.allocations.end())
 		{
 			const auto alloc = *allocIt;
@@ -279,6 +279,12 @@ namespace C3D
 #else
 		return m_memoryStats[allocatorId].taggedAllocations[ToUnderlying(memoryType)].requestedSize;
 #endif
+	}
+
+	void MetricSystem::SetStacktrace()
+	{
+		const auto trace = std::stacktrace::current();
+		m_stacktrace = std::to_string(trace);
 	}
 
 	void MetricSystem::PrintMemoryUsage(const u8 allocatorId, const bool debugLines)
@@ -380,10 +386,10 @@ namespace C3D
 			requestedSize += alloc.requestedSize;
 			requiredSize += alloc.requiredSize;
 
-#ifdef C3D_MEMORY_METRICS_FILE_LINE
+#ifdef C3D_MEMORY_METRICS_STACKTRACE
 			if (debugLines)
 			{
-				Logger::Debug("[File: {}, Line: {}]", alloc.file, alloc.line);
+				Logger::Debug("[STACKTRACE] {}", alloc.stacktrace);
 			}
 #endif
 		}

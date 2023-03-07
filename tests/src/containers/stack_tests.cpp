@@ -3,6 +3,7 @@
 #include "../expect.h"
 
 #include "containers/stack.h"
+#include "core/metrics/metrics.h"
 
 
 u8 StackShouldCreateEmptyWithDefaultCtor()

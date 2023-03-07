@@ -24,7 +24,7 @@ namespace C3D
 		String customType;
 		String typePath;
 	protected:
-		LoggerInstance m_logger;
+		LoggerInstance<64> m_logger;
 		MemoryType m_memoryType;
 	};
 
@@ -34,6 +34,6 @@ namespace C3D
 	public:
 		ResourceLoader() : IResourceLoader("NONE", MemoryType::Unknown, ResourceType::None, nullptr, nullptr) {}
 
-		bool Load(const char* name, T* outResource) const;
+		bool Load(const char* name, T& resource) const;
 	};
 }

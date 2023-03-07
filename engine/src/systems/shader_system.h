@@ -14,7 +14,7 @@ namespace C3D
 		u8 maxInstanceTextures;
 	};
 
-	class C3D_API ShaderSystem : public System<ShaderSystemConfig>
+	class C3D_API ShaderSystem : public System<16, ShaderSystemConfig>
 	{
 	public:
 		ShaderSystem();
@@ -52,7 +52,7 @@ namespace C3D
 		bool AddUniform(Shader* shader, const ShaderUniformConfig* config);
 		bool AddUniform(Shader* shader, const String& name, u16 size, ShaderUniformType type, ShaderScope scope, u16 setLocation, bool isSampler);
 
-		static void ShaderDestroy(Shader* shader);
+		static void ShaderDestroy(Shader& shader);
 
 		bool UniformAddStateIsValid(const Shader* shader) const;
 		bool UniformNameIsValid(Shader* shader, const String& name) const;

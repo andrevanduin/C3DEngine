@@ -5,7 +5,7 @@
 
 #include "platform/filesystem.h"
 #include "resources/material.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "systems/resource_system.h"
 
@@ -17,9 +17,9 @@ namespace C3D
 		: IResourceLoader("MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
 	{}
 
-	bool ResourceLoader<MaterialResource>::Load(const char* name, MaterialResource* outResource) const
+	bool ResourceLoader<MaterialResource>::Load(const char* name, MaterialResource& resource) const
 	{
-		if (std::strlen(name) == 0 || !outResource) return false;
+		if (std::strlen(name) == 0) return false;
 
 		// TODO: try different extensions
 		auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, name, "mt");
@@ -31,10 +31,10 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = fullPath;
-		outResource->config.autoRelease = true;
-		outResource->config.diffuseColor = vec4(1); // Default white
-		outResource->config.name = name;
+		resource.fullPath = fullPath;
+		resource.config.autoRelease = true;
+		resource.config.diffuseColor = vec4(1); // Default white
+		resource.config.name = name;
 
 		String line;
 		// Prepare for strings of up to 512 characters so we don't needlessly resize
@@ -75,31 +75,31 @@ namespace C3D
 			}
 			else if (varName.IEquals("name"))
 			{
-				outResource->config.name = value.Data();
+				resource.config.name = value.Data();
 			}
 			else if (varName.IEquals("diffuseMapName"))
 			{
-				outResource->config.diffuseMapName = value.Data();
+				resource.config.diffuseMapName = value.Data();
 			}
 			else if (varName.IEquals("specularMapName"))
 			{
-				outResource->config.specularMapName = value.Data();
+				resource.config.specularMapName = value.Data();
 			}
 			else if (varName.IEquals("normalMapName"))
 			{
-				outResource->config.normalMapName = value.Data();
+				resource.config.normalMapName = value.Data();
 			}
 			else if (varName.IEquals("diffuseColor"))
 			{
-				outResource->config.diffuseColor = value.ToVec4();
+				resource.config.diffuseColor = value.ToVec4();
 			}
 			else if (varName.IEquals("shader"))
 			{
-				outResource->config.shaderName = value;
+				resource.config.shaderName = value;
 			}
 			else if (varName.IEquals("shininess"))
 			{
-				outResource->config.shininess = value.ToF32();
+				resource.config.shininess = value.ToF32();
 			}
 
 			// TODO: more fields
@@ -109,14 +109,14 @@ namespace C3D
 
 		file.Close();
 
-		outResource->name = name;
+		resource.name = name;
 		return true;
 	}
 
-	void ResourceLoader<MaterialResource>::Unload(MaterialResource* resource)
+	void ResourceLoader<MaterialResource>::Unload(MaterialResource& resource)
 	{
-		resource->config.shaderName.Destroy();
-		resource->fullPath.Destroy();
-		resource->name.Destroy();
+		resource.config.shaderName.Destroy();
+		resource.fullPath.Destroy();
+		resource.name.Destroy();
 	}
 }

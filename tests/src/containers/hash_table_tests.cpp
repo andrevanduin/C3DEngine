@@ -5,6 +5,8 @@
 #include <containers/hash_table.h>
 #include <core/defines.h>
 
+#include "core/metrics/metrics.h"
+
 u8 HashTableShouldCreateAndDestroy()
 {
 	C3D::HashTable<int> hashtable;

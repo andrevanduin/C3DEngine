@@ -25,7 +25,7 @@ namespace C3D
 		// Builtin skybox shader
 		const auto shaderName = "Shader.Builtin.Material";
 		ShaderResource res;
-		if (!Resources.Load(shaderName, &res))
+		if (!Resources.Load(shaderName, res))
 		{
 			m_logger.Error("OnCreate() - Failed to load ShaderResource");
 			return false;
@@ -37,7 +37,7 @@ namespace C3D
 			return false;
 		}
 
-		Resources.Unload(&res);
+		Resources.Unload(res);
 
 		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
 
@@ -80,7 +80,7 @@ namespace C3D
 			return false;
 		}
 
-		const auto meshData = static_cast<MeshPacketData*>(data);
+		const auto& geometryData = *static_cast<DynamicArray<GeometryRenderData, LinearAllocator>*>(data);
 
 		outPacket->view = this;
 		outPacket->projectionMatrix = m_projectionMatrix;
@@ -88,40 +88,31 @@ namespace C3D
 		outPacket->viewPosition = m_camera->GetPosition();
 		outPacket->ambientColor = m_ambientColor;
 
-		for (const auto mesh : meshData->meshes)
+		for (const auto& gData : geometryData)
 		{
-			auto model = mesh->transform.GetWorld();
-
-			for (const auto geometry : mesh->geometries)
+			if ((gData.geometry->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
 			{
-				GeometryRenderData renderData(model, geometry);
+				// Material has no transparency
+				outPacket->geometries.PushBack(gData);
+			}
+			else
+			{
+				vec3 center = vec4(gData.geometry->center, 1.0f) * gData.model;
+				const f32 distance = glm::distance(center, m_camera->GetPosition());
 
-				if ((geometry->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
+				GeometryDistance gDistance
 				{
-					// Material has no transparency
-					outPacket->geometries.PushBack(renderData);
-				}
-				else
-				{
-					vec3 center = vec4(renderData.geometry->center, 1.0f) * model;
-					const f32 distance = glm::distance(center, m_camera->GetPosition());
-
-					GeometryDistance gDistance
-					{
-						renderData,
-						Abs(distance)
-					};
-					m_distances.PushBack(gDistance);
-				}
+					gData,
+					Abs(distance)
+				};
+				m_distances.PushBack(gDistance);
 			}
 		}
 
-		std::sort(m_distances.begin(), m_distances.end(),
-			[](const GeometryDistance& a, const GeometryDistance& b)
-			{
-				return a.distance < b.distance;
-			}
-		);
+		std::ranges::sort(m_distances, [](const GeometryDistance& a, const GeometryDistance& b)
+		{
+			return a.distance < b.distance;
+		});
 
 		for (auto& [g, distance] : m_distances)
 		{

@@ -16,7 +16,7 @@ namespace C3D
 	public:
 		ResourceLoader();
 
-		bool Load(const char* name, MaterialResource* outResource) const;
-		static void Unload(MaterialResource* resource);
+		bool Load(const char* name, MaterialResource& resource) const;
+		static void Unload(MaterialResource& resource);
 	};
 }

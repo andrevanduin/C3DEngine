@@ -5,12 +5,15 @@
 #include "vulkan_types.h"
 
 #include "core/logger.h"
-#include "services/services.h"
+#include "core/metrics/metrics.h"
+#include "platform/platform.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {
 	VulkanImage::VulkanImage()
-		: handle(nullptr), view(nullptr), width(0), height(0), m_memory(nullptr), m_memoryRequirements(), m_memoryFlags(0)
+		: handle(nullptr), view(nullptr), width(0), height(0), m_memory(nullptr), m_memoryRequirements(),
+		  m_memoryFlags(0), m_context(nullptr)
 	{}
 
 	VulkanImage::~VulkanImage()

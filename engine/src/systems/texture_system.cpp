@@ -4,7 +4,7 @@
 #include "core/logger.h"
 #include "core/string_utils.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "renderer/renderer_frontend.h"
 #include "resources/loaders/image_loader.h"
@@ -402,7 +402,7 @@ namespace C3D
 			const auto textureName = textureNames[i];
 
 			ImageResource res{};
-			if (!Resources.Load(textureName.Data(), &res, params))
+			if (!Resources.Load(textureName.Data(), res, params))
 			{
 				m_logger.Error("LoadCubeTextures() - Failed to load image resource for texture '{}'", textureName);
 				return false;
@@ -441,7 +441,7 @@ namespace C3D
 			Platform::MemCopy(pixels + (imageSize * i), res.data.pixels, imageSize);
 
 			// Cleanup our resource
-			Resources.Unload(&res);
+			Resources.Unload(res);
 		}
 
 		// Acquire internal texture resources and upload to the GPU
@@ -595,7 +595,7 @@ namespace C3D
 
 		constexpr ImageResourceParams resourceParams{ true };
 
-		const auto result = Resources.Load(loadParams->resourceName.Data(), &loadParams->imageResource, resourceParams);
+		const auto result = Resources.Load(loadParams->resourceName.Data(), loadParams->imageResource, resourceParams);
 		if (result)
 		{
 			const ImageResourceData& resourceData = loadParams->imageResource.data;
@@ -661,13 +661,13 @@ namespace C3D
 		m_logger.Trace("LoadJobSuccess() - Successfully loaded texture '{}'.", params->resourceName);
 
 		// Cleanup our data
-		Resources.Unload(&params->imageResource);
+		Resources.Unload(params->imageResource);
 	}
 
 	void TextureSystem::LoadJobFailure(void* data) const
 	{
 		const auto params = static_cast<TextureLoadParams*>(data);
 		m_logger.Error("LoadJobFailure() - Failed to load texture '{}'.", params->resourceName);
-		Resources.Unload(&params->imageResource);
+		Resources.Unload(params->imageResource);
 	}
 }

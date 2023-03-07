@@ -313,6 +313,9 @@ namespace C3D
 		{
 			if (this == &other) return *this;
 
+			// We need to free this string if there is any dynamically allocated memory
+			Free();
+
 			// Copy over the size
 			m_size = other.m_size;
 			// Copy over the allocator
@@ -452,7 +455,7 @@ namespace C3D
 		template <typename... Args>
 		void Format(const char* format, Args&&... args)
 		{
-			fmt::format_to(std::back_inserter(*this), format, std::forward<Args>(args)...);
+			std::vformat_to(std::back_inserter(*this), format, std::make_format_args(args...));
 		}
 
 		/* @brief Builds a string from the format and the provided arguments.
@@ -462,7 +465,7 @@ namespace C3D
 		static BasicString<DynamicAllocator> FromFormat(const char* format, Args&&... args)
 		{
 			BasicString<DynamicAllocator> buffer;
-			fmt::vformat_to(std::back_inserter(buffer), format, fmt::make_format_args(args...));
+			std::vformat_to(std::back_inserter(buffer), format, std::make_format_args(args...));
 			return buffer;
 		}
 
@@ -1058,16 +1061,19 @@ namespace C3D
 	}
 }
 
-template<class Allocator>
-struct fmt::formatter<C3D::BasicString<Allocator>>
+template <class Allocator>
+struct std::formatter<C3D::BasicString<Allocator>>
 {
 	template<typename ParseContext>
-	static constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+	static auto parse(ParseContext& ctx)
+	{
+		return ctx.begin();
+	}
 
 	template<typename FormatContext>
-	auto format(C3D::BasicString<Allocator> const& str, FormatContext& ctx)
+	auto format(const C3D::BasicString<Allocator>& str, FormatContext& ctx)
 	{
-		return fmt::format_to(ctx.out(), "{}", str.Data());
+		return std::vformat_to(ctx.out(), "{}", std::make_format_args(str.Data()));
 	}
 };
 
@@ -1085,3 +1091,4 @@ struct std::hash<C3D::BasicString<Allocator>>
 		return hash;
 	}
 };
+

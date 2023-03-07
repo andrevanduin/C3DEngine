@@ -4,15 +4,15 @@
 
 namespace C3D
 {
-	BaseAllocator& BaseAllocator::SetFileAndLineRef(const char* file, const int line)
+	BaseAllocator& BaseAllocator::SetStacktraceRef()
 	{
-		Metrics.SetFileAndLine(file, line);
+		Metrics.SetStacktrace();
 		return *this;
 	}
 
-	BaseAllocator* BaseAllocator::SetFileAndLine(const char* file, const int line)
+	BaseAllocator* BaseAllocator::SetStacktrace()
 	{
-		Metrics.SetFileAndLine(file, line);
+		Metrics.SetStacktrace();
 		return this;
 	}
 }

@@ -29,13 +29,13 @@ namespace C3D
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{}
 
-		Stack(const Stack<Type, Allocator>& other)
+		Stack(const Stack& other)
 			: m_capacity(0), m_size(0), m_elements(nullptr)
 		{
 			Copy(other);
 		}
 
-		Stack(Stack<Type, Allocator>&& other) noexcept
+		Stack(Stack&& other) noexcept
 			: m_capacity(other.Capacity()), m_size(other.Size()), m_elements(other.GetData()), m_allocator(other.m_allocator)
 		{
 			other.m_capacity = 0;
@@ -44,7 +44,7 @@ namespace C3D
 			other.m_elements = nullptr;
 		}
 
-		Stack<Type, Allocator>& operator=(const Stack<Type, Allocator>& other)
+		Stack& operator=(const Stack& other)
 		{
 			if (this != &other)
 			{
@@ -53,7 +53,7 @@ namespace C3D
 			return *this;
 		}
 
-		Stack<Type, Allocator>& operator=(Stack<Type, Allocator>&& other) noexcept
+		Stack& operator=(Stack&& other) noexcept
 		{
 			m_elements = other.GetData();
 			m_allocator = other.m_allocator;
@@ -300,7 +300,7 @@ namespace C3D
 		 * This is a destructive operation that will first delete all the memory in the
 		 * stack if there is any and resize the stack to the capacity and size that is provided
 		 */
-		void Copy(Type* elements, const u64 count, Allocator* allocator)
+		void Copy(const Type* elements, const u64 count, Allocator* allocator)
 		{
 			// If we have any memory allocated we have to free it first
 			Free();
@@ -358,7 +358,7 @@ namespace C3D
 		void ReAlloc(u64 capacity)
 		{
 			// Allocate memory for the new capacity
-			pointer newElements = Allocator(m_allocator)->template Allocate<Type>(MemoryType::Stack, capacity);
+			auto newElements = Allocator(m_allocator)->template Allocate<Type>(MemoryType::Stack, capacity);
 			u64 newSize = 0;
 
 			// If there exists an element pointer

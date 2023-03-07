@@ -1,7 +1,7 @@
 
 #include "shader_system.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/texture_system.h"
 
@@ -30,7 +30,7 @@ namespace C3D
 	{
 		for (auto& shader : m_shaders)
 		{
-			ShaderDestroy(&shader);
+			ShaderDestroy(shader);
 		}
 		m_shaders.Destroy();
 	}
@@ -413,28 +413,28 @@ namespace C3D
 		return true;
 	}
 
-	void ShaderSystem::ShaderDestroy(Shader* shader)
+	void ShaderSystem::ShaderDestroy(Shader& shader)
 	{
 		Renderer.DestroyShader(shader);
 
 		// Set it to be unusable
-		shader->state = ShaderState::NotCreated;
+		shader.state = ShaderState::NotCreated;
 
 		// Free the global texture maps
-		for (const auto textureMap : shader->globalTextureMaps)
+		for (const auto textureMap : shader.globalTextureMaps)
 		{
 			Memory.Free(MemoryType::RenderSystem, textureMap);
 		}
 		// Destroy the global texture maps
-		shader->globalTextureMaps.Destroy();
+		shader.globalTextureMaps.Destroy();
 		// Free the name
-		shader->name.Destroy();
+		shader.name.Destroy();
 		// Set the id to invalid so we don't accidentally use this shader after this
-		shader->id = INVALID_ID;
+		shader.id = INVALID_ID;
 
 		// Free the uniforms and attributes
-		shader->uniforms.Destroy();
-		shader->attributes.Destroy();
+		shader.uniforms.Destroy();
+		shader.attributes.Destroy();
 	}
 
 	bool ShaderSystem::UniformAddStateIsValid(const Shader* shader) const

@@ -64,7 +64,7 @@ namespace C3D
 
 		// Load our font resource
 		BitmapFontLookup lookup;
-		if (!Resources.Load(config.resourceName.Data(), &lookup.resource))
+		if (!Resources.Load(config.resourceName.Data(), lookup.resource))
 		{
 			m_logger.Error("LoadBitmapFont() - Failed to load bitmap font resource.");
 			return false;

@@ -23,7 +23,7 @@ namespace C3D
 		u32* typeMasks;
 	};
 
-	class JobSystem final : public System<JobSystemConfig>
+	class JobSystem final : public System<16, JobSystemConfig>
 	{
 	public:
 		JobSystem();

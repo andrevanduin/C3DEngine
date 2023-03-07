@@ -1,5 +1,7 @@
 
 #pragma once
+#include <stacktrace>
+
 #include "core/defines.h"
 #include "containers/array.h"
 #include "types.h"
@@ -68,12 +70,8 @@ namespace C3D
 		[[nodiscard]] u64 GetMemoryUsage(MemoryType memoryType, u8 allocatorId = DYNAMIC_ALLOCATOR_ID) const;
 
 		[[nodiscard]] u64 GetRequestedMemoryUsage(MemoryType memoryType, u8 allocatorId = DYNAMIC_ALLOCATOR_ID) const;
-		 
-		void SetFileAndLine(const char* file, const int line)
-		{
-			m_file = file;
-			m_line = line;
-		}
+
+		void SetStacktrace();
 
 		void PrintMemoryUsage(u8 allocatorId, bool debugLines);
 		void PrintMemoryUsage(bool debugLines = false);
@@ -87,8 +85,7 @@ namespace C3D
 		static const char* SizeToText(u64 size, f64* outAmount);
 		static void SprintfAllocation(const MemoryAllocations& allocation, int index, char* buffer, int& bytesWritten, int offset, bool debugLines);
 
-		const char* m_file = "";
-		int m_line = 0;
+		std::string m_stacktrace;
 
 		u8 m_frameAverageCounter;
 

@@ -62,6 +62,30 @@ namespace C3D
 	C3D_API f32 Abs(f32 x);
 	C3D_API f64 Abs(f64 x);
 
+	template <typename T>
+	C3D_API T Min(T a, T b)
+	{
+		return std::min(a, b);
+	}
+
+	template <typename T>
+	C3D_API T Min(T a, T b, T c)
+	{
+		return std::min(std::min(a, b), c);
+	}
+
+	template <typename T>
+	C3D_API T Max(T a, T b)
+	{
+		return std::max(a, b);
+	}
+
+	template <typename T>
+	C3D_API T Max(T a, T b, T c)
+	{
+		return std::max(std::max(a, b), c);
+	}
+
 	C3D_API C3D_INLINE bool EpsilonEqual(const f32 a, const f32 b, const f32 tolerance = FLOAT_EPSILON)
 	{
 		if (Abs(a - b) > tolerance) return false;

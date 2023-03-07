@@ -25,6 +25,11 @@ namespace C3D
 		DynamicArray<RenderViewConfig> renderViews;
 	};
 
+	struct GameFrameData
+	{
+		DynamicArray<GeometryRenderData, LinearAllocator> worldGeometries;
+	};
+
 	struct EngineState
 	{
 		String name;
@@ -74,8 +79,10 @@ namespace C3D
 		[[nodiscard]] const EngineState* GetState() const;
 
 	protected:
-		LoggerInstance m_logger;
+		LoggerInstance<16> m_logger;
 		LinearAllocator m_frameAllocator;
+
+		GameFrameData m_frameData;
 
 		ApplicationConfig m_config;
 		EngineState m_state;

@@ -13,6 +13,7 @@
 #include "containers/string_tests.h"
 #include "containers/cstring_tests.h"
 #include "core/identifier.h"
+#include "core/metrics/metrics.h"
 #include "memory/global_memory_system.h"
 #include "memory/stack_allocator_tests.h"
 

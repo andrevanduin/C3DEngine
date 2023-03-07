@@ -26,7 +26,7 @@ namespace C3D
 		[[nodiscard]] u64 GetAllocated() const { return m_allocated; }
 
 	private:
-		LoggerInstance m_logger;
+		LoggerInstance<32> m_logger;
 
 		Array<char, Size> m_memory;
 		u64 m_allocated;

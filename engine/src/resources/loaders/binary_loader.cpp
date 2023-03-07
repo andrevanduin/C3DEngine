@@ -5,7 +5,7 @@
 
 #include "platform/filesystem.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/resource_system.h"
 
 namespace C3D
@@ -14,9 +14,9 @@ namespace C3D
 		: IResourceLoader("BINARY_LOADER", MemoryType::Array, ResourceType::Binary, nullptr, "")
 	{}
 
-	bool ResourceLoader<BinaryResource>::Load(const char* name, BinaryResource* outResource) const
+	bool ResourceLoader<BinaryResource>::Load(const char* name, BinaryResource& resource) const
 	{
-		if (std::strlen(name) == 0 || !outResource) return false;
+		if (std::strlen(name) == 0) return false;
 
 		// TODO: try different extensions
 		auto fullPath = String::FromFormat("{}/{}/{}", Resources.GetBasePath(), typePath, name);
@@ -28,7 +28,7 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = fullPath;
+		resource.fullPath = fullPath;
 
 		u64 fileSize = 0;
 		if (!file.Size(&fileSize))
@@ -39,10 +39,10 @@ namespace C3D
 		}
 
 		// TODO: should be using an allocator here
-		outResource->data = Memory.Allocate<char>(MemoryType::Array, fileSize);
-		outResource->name = name;
+		resource.data = Memory.Allocate<char>(MemoryType::Array, fileSize);
+		resource.name = name;
 
-		if (!file.ReadAll(outResource->data, &outResource->size))
+		if (!file.ReadAll(resource.data, &resource.size))
 		{
 			m_logger.Error("Unable to read binary file: '{}'", fullPath);
 			file.Close();
@@ -53,12 +53,12 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<BinaryResource>::Unload(BinaryResource* resource)
+	void ResourceLoader<BinaryResource>::Unload(BinaryResource& resource)
 	{
-		Memory.Free(MemoryType::Array, resource->data);
-		resource->data = nullptr;
+		Memory.Free(MemoryType::Array, resource.data);
+		resource.data = nullptr;
 
-		resource->name.Destroy();
-		resource->fullPath.Destroy();
+		resource.name.Destroy();
+		resource.fullPath.Destroy();
 	}
 }

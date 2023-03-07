@@ -48,11 +48,6 @@ namespace C3D
 
 	struct MeshResource : Resource
 	{
-		~MeshResource() override
-		{
-			Logger::Debug("~MeshResource()");
-		}
-
 		DynamicArray<GeometryConfig<Vertex3D, u32>> geometryConfigs;
 	};
 
@@ -62,8 +57,8 @@ namespace C3D
 	public:
 		ResourceLoader();
 
-		bool Load(const char* name, MeshResource* outResource) const;
-		static void Unload(MeshResource* resource);
+		bool Load(const char* name, MeshResource& resource) const;
+		static void Unload(MeshResource& resource);
 
 	private:
 		bool ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const;

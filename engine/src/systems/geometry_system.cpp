@@ -8,12 +8,12 @@
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {
 	GeometrySystem::GeometrySystem()
-		: m_logger("GEOMETRY_SYSTEM"), m_initialized(false), m_config(), m_defaultGeometry(),
+		: System("GEOMETRY_SYSTEM"), m_initialized(false), m_defaultGeometry(),
 		  m_default2DGeometry(), m_registeredGeometries(nullptr)
 	{}
 
@@ -41,7 +41,7 @@ namespace C3D
 		return true;
 	}
 
-	void GeometrySystem::Shutdown() const
+	void GeometrySystem::Shutdown()
 	{
 		Memory.Free(MemoryType::Geometry, m_registeredGeometries);
 	}

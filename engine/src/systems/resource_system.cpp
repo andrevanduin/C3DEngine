@@ -15,7 +15,7 @@
 namespace C3D
 {
 	ResourceSystem::ResourceSystem()
-		: m_logger("RESOURCE_SYSTEM"), m_initialized(false), m_config(), m_loaderTypes{}
+		: System("RESOURCE_SYSTEM"), m_initialized(false), m_loaderTypes{}
 	{
 		m_loaderTypes[ToUnderlying(ResourceType::None)]			= "None";
 		m_loaderTypes[ToUnderlying(ResourceType::Text)]			= "Text";

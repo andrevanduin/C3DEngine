@@ -15,9 +15,9 @@ namespace C3D
 		: IResourceLoader("MESH_LOADER", MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
 	{}
 
-	bool ResourceLoader<MeshResource>::Load(const char* name, MeshResource* outResource) const
+	bool ResourceLoader<MeshResource>::Load(const char* name, MeshResource& resource) const
 	{
-		if (std::strlen(name) == 0 || !outResource) {
+		if (std::strlen(name) == 0) {
 			m_logger.Error("Load() - Name was empty or outResource was nullptr");
 			return false;
 		}
@@ -61,20 +61,20 @@ namespace C3D
 		}
 
 		// Copy the path to the file
-		outResource->fullPath = fullPath;
+		resource.fullPath = fullPath;
 		// Copy the name of the resource
-		outResource->name = name;
+		resource.name = name;
 		// The resource data is just a dynamic array of configs
-		outResource->geometryConfigs.Reserve(8);
+		resource.geometryConfigs.Reserve(8);
 
 		bool result = false;
 		switch (type)
 		{
 			case MeshFileType::Obj:
-				result = ImportObjFile(file, String::FromFormat("{}/{}/{}.csm", Resources.GetBasePath(), typePath, name), outResource->geometryConfigs);
+				result = ImportObjFile(file, String::FromFormat("{}/{}/{}.csm", Resources.GetBasePath(), typePath, name), resource.geometryConfigs);
 				break;
 			case MeshFileType::Csm:
-				result = LoadCsmFile(file, outResource->geometryConfigs);
+				result = LoadCsmFile(file, resource.geometryConfigs);
 				break;
 			case MeshFileType::NotFound:
 				m_logger.Error("Load() - Unsupported mesh type for file '{}'", name);
@@ -92,16 +92,16 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<MeshResource>::Unload(MeshResource* resource)
+	void ResourceLoader<MeshResource>::Unload(MeshResource& resource)
 	{
-		for (auto& config : resource->geometryConfigs)
+		for (auto& config : resource.geometryConfigs)
 		{
 			Geometric.DisposeConfig(&config);
 		}
 
-		resource->geometryConfigs.Destroy();
-		resource->name.Destroy();
-		resource->fullPath.Destroy();
+		resource.geometryConfigs.Destroy();
+		resource.name.Destroy();
+		resource.fullPath.Destroy();
 	}
 
 	bool ResourceLoader<MeshResource>::ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const

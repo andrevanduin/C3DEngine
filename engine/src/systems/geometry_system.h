@@ -7,7 +7,7 @@
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 #include "resources/geometry.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {
@@ -48,13 +48,13 @@ namespace C3D
 		bool autoRelease;
 	};
 
-	class C3D_API GeometrySystem
+	class C3D_API GeometrySystem final : public System<32, GeometrySystemConfig>
 	{
 	public:
 		GeometrySystem();
 
-		bool Init(const GeometrySystemConfig& config);
-		void Shutdown() const;
+		bool Init(const GeometrySystemConfig& config) override;
+		void Shutdown() override;
 
 		[[nodiscard]] Geometry* AcquireById(u32 id) const;
 
@@ -82,11 +82,7 @@ namespace C3D
 
 		bool CreateDefaultGeometries();
 
-		LoggerInstance m_logger;
-
 		bool m_initialized;
-
-		GeometrySystemConfig m_config;
 
 		Geometry m_defaultGeometry;
 		Geometry m_default2DGeometry;

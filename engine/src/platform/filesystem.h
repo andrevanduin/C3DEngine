@@ -128,7 +128,7 @@ namespace C3D
 	template <typename T>
 	bool File::Read(DynamicArray<T>& data)
 	{
-		static_assert(std::is_pod_v<T>, "This method can only be used with simple types.");
+		static_assert(std::is_trivial_v<T>, "This method can only be used with simple types.");
 
 		u64 size;
 		if (!Read(&size)) return false;

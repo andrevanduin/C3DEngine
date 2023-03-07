@@ -12,7 +12,7 @@
 
 #include <containers/cstring.h>
 
-#include <services/services.h>
+#include <services/system_manager.h>
 
 #include <systems/camera_system.h>
 #include <systems/shader_system.h>
@@ -20,6 +20,7 @@
 
 #include <renderer/renderer_types.h>
 
+#include "math/frustum.h"
 #include "systems/render_view_system.h"
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
@@ -120,7 +121,7 @@ bool TestEnv::OnCreate()
 	cubeMesh->generation = 0;
 	cubeMesh->uniqueId = C3D::Identifier::GetNewId(cubeMesh);
 
-	meshCount++;
+	meshCount++; 
 
 	// Cleanup the allocations that we just did
 	Geometric.DisposeConfig(&gConfig);
@@ -227,12 +228,16 @@ bool TestEnv::OnCreate()
 	Event.Register(C3D::SystemEventCode::ObjectHoverIdChanged, new C3D::EventCallback(this, &TestEnv::OnEvent));
 	// TEMP END
 
+	m_frameData.worldGeometries.SetAllocator(&m_frameAllocator);
+
 	return true;
 }
 
 void TestEnv::OnUpdate(const f64 deltaTime)
 {
-	// Reset our frame allocator
+	// Destroy all our frame data
+	m_frameData.worldGeometries.Destroy();
+	// Reset our frame allocator (freeing all memory used previous frame)
 	m_frameAllocator.FreeAll();
 
 	static u64 allocCount = 0;
@@ -351,22 +356,100 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		m_meshes[3].transform.Rotate(rotation);
 	}
 
+	const auto fWidth = static_cast<f32>(m_state.width);
+	const auto fHeight = static_cast<f32>(m_state.height);
+
 	const auto cam = Cam.GetDefault();
 	const auto pos = cam->GetPosition();
 	const auto rot = cam->GetEulerRotation();
 
 	const auto mouse = Input.GetMousePosition();
 	// Convert to NDC
-	const auto mouseNdcX = C3D::RangeConvert(static_cast<f32>(mouse.x), 0.0f, static_cast<f32>(m_state.width), -1.0f, 1.0f);
-	const auto mouseNdcY = C3D::RangeConvert(static_cast<f32>(mouse.y), 0.0f, static_cast<f32>(m_state.height), -1.0f, 1.0f);
+	const auto mouseNdcX = C3D::RangeConvert(static_cast<f32>(mouse.x), 0.0f, fWidth, -1.0f, 1.0f);
+	const auto mouseNdcY = C3D::RangeConvert(static_cast<f32>(mouse.y), 0.0f, fHeight, -1.0f, 1.0f);
 
 	const auto leftButton = Input.IsButtonDown(C3D::Buttons::ButtonLeft);
 	const auto middleButton = Input.IsButtonDown(C3D::Buttons::ButtonMiddle);
 	const auto rightButton = Input.IsButtonDown(C3D::Buttons::ButtonRight);
 
+	C3D::CString<16> hoveredBuffer;
+	if (m_hoveredObjectId != INVALID_ID)
+	{
+		hoveredBuffer.FromFormat("{}", m_hoveredObjectId);
+	}
+	else
+	{
+		hoveredBuffer = "None";
+	}
+
+	vec3 forward	= m_camera->GetForward();
+	vec3 right		= m_camera->GetRight();
+	vec3 up			= m_camera->GetUp();
+
+	// TODO: Get camera fov, aspect etc.
+	m_cameraFrustum.Create(m_camera->GetPosition(), forward, right, up, fWidth / fHeight, C3D::DegToRad(45.0f), 0.1f, 1000.0f);
+
+	// Reserve a reasonable amount of space for our world geometries
+	m_frameData.worldGeometries.Reserve(512);
+	
+	u32 drawCount = 0;
+	for (auto& mesh : m_meshes)
+	{
+		if (mesh.generation != INVALID_ID_U8)
+		{
+			mat4 model = mesh.transform.GetWorld();
+
+			for (const auto geometry : mesh.geometries)
+			{
+				/*
+				// Bounding sphere calculations
+				vec3 extentsMin = vec4(geometry->extents.min, 1.0f) * model;
+				vec3 extentsMax = vec4(geometry->extents.max, 1.0f) * model;
+
+				f32 min = C3D::Min(extentsMin.x, extentsMin.y, extentsMin.z);
+				f32 max = C3D::Max(extentsMax.x, extentsMax.y, extentsMax.z);
+				f32 diff = C3D::Abs(max - min);
+				f32 radius = diff * 0.5f;
+
+				// Translate / Scale the center
+				const vec3 center = vec4(geometry->center, 1.0f) * model;
+
+				if (m_cameraFrustum.IntersectsWithSphere({ center, radius }))
+				{
+					m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
+					drawCount++;
+				}
+				*/
+
+				// AABB Calculation
+				const vec3 extentsMax = vec4(geometry->extents.max, 1.0f) * model;
+				const vec3 center = vec4(geometry->center, 1.0f) * model;
+
+				vec3 halfExtents =
+				{
+					C3D::Abs(extentsMax.x - center.x),
+					C3D::Abs(extentsMax.y - center.y),
+					C3D::Abs(extentsMax.z - center.z),
+				};
+
+				if (m_cameraFrustum.IntersectsWithAABB({ center, halfExtents }))
+				{
+					m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
+					drawCount++;
+				}
+			}
+		}
+	}
+
 	C3D::CString<256> buffer;
-	buffer.FromFormat("Cam: Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\nMouse: Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}",
-		pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, m_hoveredObjectId);
+	buffer.FromFormat(
+		"{:<10} : Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\n"
+		"{:<10} : Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}\n"
+		"{:<10} : DrawCount: {} banaan",
+		"Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z),
+		"Mouse", mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, hoveredBuffer,
+		"Renderer", drawCount
+	);
 
 	m_testText.SetText(buffer.Data());
 }
@@ -388,17 +471,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 	}
 
 	// World
-	C3D::MeshPacketData worldPacket;
-	// Ensure we have capacity for 10 meshes (while using our frame allocator)
-	worldPacket.meshes = C3D::DynamicArray<C3D::Mesh*, C3D::LinearAllocator>(10, &m_frameAllocator);
-	for (auto& mesh : m_meshes)
-	{
-		if (mesh.generation != INVALID_ID_U8)
-		{
-			worldPacket.meshes.PushBack(&mesh);
-		}
-	}
-	if (!Views.BuildPacket(Views.Get("world"), m_frameAllocator, &worldPacket, &packet.views[1]))
+	if (!Views.BuildPacket(Views.Get("world"), m_frameAllocator, &m_frameData.worldGeometries, &packet.views[1]))
 	{
 		m_logger.Error("Failed to build packet for view: 'world'");
 		return false;
@@ -425,7 +498,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 	// Pick
 	C3D::PickPacketData pickPacket = {};
 	pickPacket.uiMeshData = uiPacket.meshData;
-	pickPacket.worldMeshData = worldPacket;
+	pickPacket.worldMeshData = &m_frameData.worldGeometries;
 	pickPacket.texts = uiPacket.texts;
 	if (!Views.BuildPacket(Views.Get("pick"), m_frameAllocator, &pickPacket, &packet.views[3]))
 	{

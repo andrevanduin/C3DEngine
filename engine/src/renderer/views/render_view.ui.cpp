@@ -8,7 +8,7 @@
 #include "resources/font.h"
 #include "resources/ui_text.h"
 #include "resources/loaders/shader_loader.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/shader_system.h"
 #include "systems/material_system.h"
 #include "systems/render_view_system.h"
@@ -26,7 +26,7 @@ namespace C3D
 		// Builtin skybox shader
 		const auto shaderName = "Shader.Builtin.UI";
 		ShaderResource res;
-		if (!Resources.Load(shaderName, &res))
+		if (!Resources.Load(shaderName, res))
 		{
 			m_logger.Error("OnCreate() - Failed to load ShaderResource");
 			return false;
@@ -38,7 +38,7 @@ namespace C3D
 			return false;
 		}
 
-		Resources.Unload(&res);
+		Resources.Unload(res);
 
 		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
 		m_diffuseMapLocation = Shaders.GetUniformIndex(m_shader, "diffuseTexture");

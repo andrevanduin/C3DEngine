@@ -58,7 +58,7 @@ namespace C3D
 
 		VkPhysicalDeviceProperties properties;
 	private:
-		LoggerInstance m_logger;
+		LoggerInstance<16> m_logger;
 
 		VkPhysicalDeviceFeatures m_features;
 		VkPhysicalDeviceMemoryProperties m_memory;

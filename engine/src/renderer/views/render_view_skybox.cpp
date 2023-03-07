@@ -3,7 +3,7 @@
 #include "render_view_skybox.h"
 
 #include "core/events/event.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "systems/shader_system.h"
 #include "systems/camera_system.h"
@@ -25,7 +25,7 @@ namespace C3D
 		// Builtin skybox shader
 		const auto shaderName = "Shader.Builtin.Skybox";
 		ShaderResource res;
-		if (!Resources.Load(shaderName, &res))
+		if (!Resources.Load(shaderName, res))
 		{
 			m_logger.Error("OnCreate() - Failed to load ShaderResource");
 			return false;
@@ -37,7 +37,7 @@ namespace C3D
 			return false;
 		}
 
-		Resources.Unload(&res);
+		Resources.Unload(res);
 
 		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
 		m_projectionLocation = Shaders.GetUniformIndex(m_shader, "projection");

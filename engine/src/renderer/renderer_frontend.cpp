@@ -7,7 +7,7 @@
 #include "renderer/vulkan/renderer_vulkan.h"
 #include "resources/shader.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "platform/platform.h"
 #include "systems/resource_system.h"
@@ -18,7 +18,7 @@ namespace C3D
 	// TODO: Obtain ambient color from scene instead of hard-coding it here
 	RenderSystem::RenderSystem()
 		: m_logger("RENDERER"), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
-		  m_resizing(false), m_framesSinceResize(0)
+		  m_resizing(false), m_framesSinceResize(0), m_backend(nullptr)
 	{}
 
 	bool RenderSystem::Init(const Engine* application)
@@ -199,7 +199,7 @@ namespace C3D
 		return m_backend->CreateShader(shader, config, pass);
 	}
 
-	void RenderSystem::DestroyShader(Shader* shader) const
+	void RenderSystem::DestroyShader(Shader& shader) const
 	{
 		return m_backend->DestroyShader(shader);
 	}
@@ -339,7 +339,7 @@ namespace C3D
 	{
 		if (m_backend->type == RendererBackendType::Vulkan)
 		{
-			Memory.Free(MemoryType::RenderSystem, m_backend);
+			Memory.Delete(MemoryType::RenderSystem, m_backend);
 			m_backend = nullptr;
 		}
 	}

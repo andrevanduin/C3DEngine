@@ -43,7 +43,7 @@ namespace C3D
 	{
 		if (m_needsUpdate)
 		{
-			const mat4 rotation = glm::eulerAngleXYX(m_eulerRotation.z, m_eulerRotation.y, m_eulerRotation.x);
+			const mat4 rotation = glm::eulerAngleZYX(m_eulerRotation.z, m_eulerRotation.y, m_eulerRotation.x);
 			const mat4 translation = translate(m_position);
 
 			m_viewMatrix = translation * rotation;
@@ -76,6 +76,18 @@ namespace C3D
 	{
 		const mat4 view = GetViewMatrix();
 		return { view[0][0], view[1][0], view[2][0] };
+	}
+
+	vec3 Camera::GetUp()
+	{
+		const mat4 view = GetViewMatrix();
+		return { view[0][1], view[1][1], view[2][1] };
+	}
+
+	vec3 Camera::GetDown()
+	{
+		const mat4 view = GetViewMatrix();
+		return { -view[0][1], -view[1][1], -view[2][1] };
 	}
 
 	void Camera::MoveForward(const f32 amount)

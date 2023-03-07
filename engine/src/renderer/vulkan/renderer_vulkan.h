@@ -8,7 +8,7 @@
 
 namespace C3D
 {
-	class RendererVulkan final : public RendererBackend
+	class RendererVulkan final : public RendererBackend<64>
 	{
 	public:
 		RendererVulkan();
@@ -54,7 +54,7 @@ namespace C3D
 		void DestroyGeometry(Geometry* geometry) override;
 
 		bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const override;
-		void DestroyShader(Shader* shader) override;
+		void DestroyShader(Shader& shader) override;
 
 		bool InitializeShader(Shader* shader) override;
 		bool UseShader(Shader* shader) override;

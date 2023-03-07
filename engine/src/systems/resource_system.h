@@ -1,5 +1,6 @@
 
 #pragma once
+#include "system.h"
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
 #include "core/logger.h"
@@ -15,40 +16,36 @@ namespace C3D
 		const char* assetBasePath; // Relative base path
 	};
 
-	class ResourceSystem
+	class ResourceSystem final : public System<32, ResourceSystemConfig>
 	{
 	public:
 		ResourceSystem();
 
-		bool Init(const ResourceSystemConfig& config);
+		bool Init(const ResourceSystemConfig& config) override;
 
-		void Shutdown();
+		void Shutdown() override;
 
 		C3D_API bool RegisterLoader(IResourceLoader* newLoader);
 
 		template <typename Type>
-		C3D_API bool Load(const char* name, Type* outResource);
+		C3D_API bool Load(const char* name, Type& resource);
 
 		template <typename Type, typename Params>
-		C3D_API bool Load(const char* name, Type* outResource, const Params& params);
+		C3D_API bool Load(const char* name, Type& resource, const Params& params);
 
 		template <typename Type>
-		C3D_API void Unload(Type * resource) const;
+		C3D_API void Unload(Type& resource) const;
 
 		C3D_API const char* GetBasePath() const;
 
 	private:
 		template <typename Type>
-		bool LoadInternal(const char* name, ResourceLoader<Type>* loader, Type* outResource);
+		bool LoadInternal(const char* name, ResourceLoader<Type>* loader, Type& resource);
 
 		template <typename Type, typename Params>
-		bool LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type* outResource, const Params& params);
-
-		LoggerInstance m_logger;
+		bool LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type& resource, const Params& params);
 
 		bool m_initialized;
-
-		ResourceSystemConfig m_config;
 
 		DynamicArray<IResourceLoader*> m_registeredLoaders;
 
@@ -56,7 +53,7 @@ namespace C3D
 	};
 
 	template <typename Type>
-	bool ResourceSystem::Load(const char* name, Type* outResource)
+	bool ResourceSystem::Load(const char* name, Type& resource)
 	{
 		if (m_initialized)
 		{
@@ -67,18 +64,18 @@ namespace C3D
 				if (auto loader = m_registeredLoaders[i]; loader->id != INVALID_ID && typeid(*loader) == typeid(ResourceLoader<Type>))
 				{
 					auto resLoader = dynamic_cast<ResourceLoader<Type>*>(loader);
-					return LoadInternal(name, resLoader, outResource);
+					return LoadInternal(name, resLoader, resource);
 				}
 			}
 		}
 
-		outResource->loaderId = INVALID_ID;
+		resource.loaderId = INVALID_ID;
 		m_logger.Error("Load() No loader for type of resource at '{}' was found", name);
 		return false;
 	}
 
 	template <typename Type, typename Params>
-	bool ResourceSystem::Load(const char* name, Type* outResource, const Params& params)
+	bool ResourceSystem::Load(const char* name, Type& resource, const Params& params)
 	{
 		if (m_initialized)
 		{
@@ -89,24 +86,24 @@ namespace C3D
 				if (auto loader = m_registeredLoaders[i]; loader->id != INVALID_ID && typeid(*loader) == typeid(ResourceLoader<Type>))
 				{
 					auto resLoader = dynamic_cast<ResourceLoader<Type>*>(loader);
-					return LoadInternalParams(name, resLoader, outResource, params);
+					return LoadInternalParams(name, resLoader, resource, params);
 				}
 			}
 		}
 
-		outResource->loaderId = INVALID_ID;
+		resource.loaderId = INVALID_ID;
 		m_logger.Error("Load() No loader for type of resource at '{}' was found", name);
 		return false;
 	}
 
 	template <typename Type>
-	void ResourceSystem::Unload(Type* resource) const
+	void ResourceSystem::Unload(Type& resource) const
 	{
-		if (m_initialized && resource)
+		if (m_initialized)
 		{
-			if (resource->loaderId != INVALID_ID)
+			if (resource.loaderId != INVALID_ID)
 			{
-				if (auto loader = m_registeredLoaders[resource->loaderId]; loader->id != INVALID_ID)
+				if (auto loader = m_registeredLoaders[resource.loaderId]; loader->id != INVALID_ID)
 				{
 					auto pLoader = dynamic_cast<ResourceLoader<Type>*>(loader);
 					pLoader->Unload(resource);
@@ -116,30 +113,30 @@ namespace C3D
 	}
 
 	template <typename Type>
-	bool ResourceSystem::LoadInternal(const char* name, ResourceLoader<Type>* loader, Type* outResource)
+	bool ResourceSystem::LoadInternal(const char* name, ResourceLoader<Type>* loader, Type& resource)
 	{
-		if (std::strlen(name) == 0 || !outResource) return false;
+		if (std::strlen(name) == 0) return false;
 		if (!loader)
 		{
-			outResource->loaderId = INVALID_ID;
+			resource.loaderId = INVALID_ID;
 			return false;
 		}
 
-		outResource->loaderId = loader->id;
-		return loader->Load(name, outResource);
+		resource.loaderId = loader->id;
+		return loader->Load(name, resource);
 	}
 
 	template <typename Type, typename Params>
-	bool ResourceSystem::LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type* outResource, const Params& params)
+	bool ResourceSystem::LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type& resource, const Params& params)
 	{
-		if (std::strlen(name) == 0 || !outResource) return false;
+		if (std::strlen(name) == 0) return false;
 		if (!loader)
 		{
-			outResource->loaderId = INVALID_ID;
+			resource.loaderId = INVALID_ID;
 			return false;
 		}
 
-		outResource->loaderId = loader->id;
-		return loader->Load(name, outResource, params);
+		resource.loaderId = loader->id;
+		return loader->Load(name, resource, params);
 	}
 }

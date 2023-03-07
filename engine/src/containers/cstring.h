@@ -1,6 +1,8 @@
 
 // ReSharper disable CppNonExplicitConvertingConstructor
 #pragma once
+#include <format>
+
 #include "core/defines.h"
 
 namespace C3D
@@ -12,12 +14,14 @@ namespace C3D
 		CString() : m_data{} {}
 
 		constexpr CString(const char* str, const u64 size)
+			: m_data{}
 		{
 			static_assert(size < Capacity);
 			Create(str, size);
 		}
 
 		constexpr CString(const char* str)
+			: m_data{}
 		{
 			const auto size = std::strlen(str);
 			if (size >= CCapacity)
@@ -74,9 +78,14 @@ namespace C3D
 		template <typename... Args>
 		void FromFormat(const char* format, Args&&... args)
 		{
-			auto endIt = fmt::format_to_n(m_data, CCapacity, format, std::forward<Args>(args)...);
+			auto endIt = std::vformat_to(m_data, format, std::make_format_args(args...));
+			// Get the size of the newly created string
+			auto size = endIt - m_data;
+			
+			auto strlen = std::strlen(m_data);
+
 			// Ensure that the string is null terminated
-			m_data[endIt.size] = '\0';
+			m_data[size] = '\0';
 		}
 
 		/* @brief Clears the string. Resulting in an empty null-terminated string. */
@@ -137,7 +146,8 @@ namespace C3D
 		void Create(const char* str, const u64 size)
 		{
 			std::memcpy(m_data, str, size);
-			m_data[size] = '\0';
+			// We end our string with a '\0' character
+			m_data[size + 1] = '\0';
 		}
 
 		char m_data[CCapacity];
@@ -151,15 +161,18 @@ namespace C3D
 	}
 }
 
-template<u64 CCapacity>
-struct fmt::formatter<C3D::CString<CCapacity>>
+template <u64 CCapacity>
+struct std::formatter<C3D::CString<CCapacity>>
 {
 	template<typename ParseContext>
-	static constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
-
-	template<typename FormatContext>
-	auto format(C3D::CString<CCapacity> const& str, FormatContext& ctx)
+	static auto parse(ParseContext& ctx)
 	{
-		return fmt::format_to(ctx.out(), "{}", str.Data());
+		return ctx.begin();
+	}
+
+	template <typename FormatContext>
+	auto format(const C3D::CString<CCapacity>& str, FormatContext& ctx) const
+	{
+		return std::vformat_to(ctx.out(), "{}", std::make_format_args(str.Data()));
 	}
 };

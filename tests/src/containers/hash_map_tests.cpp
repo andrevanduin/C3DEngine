@@ -6,6 +6,7 @@
 #include <core/defines.h>
 
 #include "containers/string.h"
+#include "core/metrics/metrics.h"
 
 u8 HashMapShouldCreateAndDestroy()
 {

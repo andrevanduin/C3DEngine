@@ -1,4 +1,5 @@
 
+#include "core/formatters.h"
 #include "job_system.h"
 
 #include "platform/platform.h"

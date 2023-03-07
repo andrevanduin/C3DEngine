@@ -1,5 +1,5 @@
 
-#include "services.h"
+#include "system_manager.h"
 
 #include "core/engine.h"
 #include "core/input.h"
@@ -20,29 +20,18 @@
 
 namespace C3D
 {
-	LinearAllocator Services::m_allocator;
-	LoggerInstance  Services::m_logger("SERVICES");
+	SystemManager::SystemManager()
+		: m_pInputSystem(nullptr), m_pEventSystem(nullptr), m_pRenderSystem(nullptr), m_pTextureSystem(nullptr),
+	      m_pMaterialSystem(nullptr), m_pGeometrySystem(nullptr), m_pResourceSystem(nullptr), m_pShaderSystem(nullptr),
+		  m_pCameraSystem(nullptr), m_pRenderViewSystem(nullptr), m_pJobSystem(nullptr), m_pFontSystem(nullptr), m_logger("SERVICES")
+	{}
 
-	// Systems
-	InputSystem*		Services::m_pInputSystem	= nullptr;
-	EventSystem*		Services::m_pEventSystem	= nullptr;
-	RenderSystem*		Services::m_pRenderSystem	= nullptr;
-	ResourceSystem*		Services::m_pResourceSystem = nullptr;
-	TextureSystem*		Services::m_pTextureSystem	= nullptr;
-	MaterialSystem*		Services::m_pMaterialSystem = nullptr;
-	GeometrySystem*		Services::m_pGeometrySystem = nullptr;
-	ShaderSystem*		Services::m_pShaderSystem	= nullptr;
-	CameraSystem*		Services::m_pCameraSystem	= nullptr;
-	RenderViewSystem*	Services::m_pViewSystem		= nullptr;
-	JobSystem*			Services::m_pJobSystem		= nullptr;
-	FontSystem*			Services::m_pFontSystem		= nullptr;
-
-	void Services::InitBeforeBoot(const Engine* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig)
+	void SystemManager::InitBeforeBoot(const Engine* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig)
 	{
-		// 32 mb of total space for all our systems
-		constexpr u64 systemsAllocatorTotalSize = MebiBytes(32);
+		// 8 mb of total space for all our systems
+		constexpr u64 systemsAllocatorTotalSize = MebiBytes(8);
 		m_allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
-
+		
 		// Event System
 		m_pEventSystem = m_allocator.New<EventSystem>(MemoryType::CoreSystem);
 		if (!m_pEventSystem->Init())
@@ -79,7 +68,7 @@ namespace C3D
 		}
 	}
 
-	void Services::InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig, 
+	void SystemManager::InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig,
 		const FontSystemConfig& fontSystemConfig, const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& renderViewSystemConfig)
 	{
 		// Job System
@@ -111,14 +100,14 @@ namespace C3D
 		}
 
 		// View System
-		m_pViewSystem = m_allocator.New<RenderViewSystem>(MemoryType::CoreSystem);
-		if (!m_pViewSystem->Init(renderViewSystemConfig))
+		m_pRenderViewSystem = m_allocator.New<RenderViewSystem>(MemoryType::CoreSystem);
+		if (!m_pRenderViewSystem->Init(renderViewSystemConfig))
 		{
 			m_logger.Fatal("ViewSystem failed to be Initialized.");
 		}
 	}
 
-	void Services::FinalInit(const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig)
+	void SystemManager::FinalInit(const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig)
 	{
 		// Material System
 		m_pMaterialSystem = m_allocator.New<MaterialSystem>(MemoryType::CoreSystem);
@@ -135,12 +124,12 @@ namespace C3D
 		}
 	}
 
-	void Services::Shutdown()
+	void SystemManager::Shutdown()
 	{
 		m_logger.Info("Shutting down all services");
 
 		ShutdownSystem(m_pFontSystem);
-		ShutdownSystem(m_pViewSystem);
+		ShutdownSystem(m_pRenderViewSystem);
 		ShutdownSystem(m_pCameraSystem);
 		ShutdownSystem(m_pGeometrySystem);
 		ShutdownSystem(m_pMaterialSystem);
@@ -155,5 +144,71 @@ namespace C3D
 		m_logger.Info("Destroying Linear Allocator");
 		m_allocator.Destroy();
 		m_logger.Info("Shutdown finished");
+	}
+
+	InputSystem& SystemManager::GetInputSystem() const
+	{
+		return *m_pInputSystem;
+	}
+
+	EventSystem& SystemManager::GetEventSystem() const
+	{
+		return *m_pEventSystem;
+	}
+
+	RenderSystem& SystemManager::GetRenderSystem() const
+	{
+		return *m_pRenderSystem;
+	}
+
+	TextureSystem& SystemManager::GetTextureSystem() const
+	{
+		return *m_pTextureSystem;
+	}
+
+	MaterialSystem& SystemManager::GetMaterialSystem() const
+	{
+		return *m_pMaterialSystem;
+	}
+
+	GeometrySystem& SystemManager::GetGeometrySystem() const
+	{
+		return *m_pGeometrySystem;
+	}
+
+	ResourceSystem& SystemManager::GetResourceSystem() const
+	{
+		return *m_pResourceSystem;
+	}
+
+	ShaderSystem& SystemManager::GetShaderSystem() const
+	{
+		return *m_pShaderSystem;
+	}
+
+	CameraSystem& SystemManager::GetCameraSystem() const
+	{
+		return *m_pCameraSystem;
+	}
+
+	RenderViewSystem& SystemManager::GetRenderViewSystem() const
+	{
+		return *m_pRenderViewSystem;
+	}
+
+	JobSystem& SystemManager::GetJobSystem() const
+	{
+		return *m_pJobSystem;
+	}
+
+	FontSystem& SystemManager::GetFontSystem() const
+	{
+		return *m_pFontSystem;
+	}
+
+	SystemManager& SystemManager::GetInstance()
+	{
+		static auto services = new SystemManager();
+		return *services;
 	}
 }

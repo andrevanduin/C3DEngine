@@ -13,7 +13,7 @@ namespace C3D
 		u16 maxViewCount;
 	};
 
-	class C3D_API RenderViewSystem final : public System<RenderViewSystemConfig>
+	class C3D_API RenderViewSystem final : public System<32, RenderViewSystemConfig>
 	{
 	public:
 		RenderViewSystem();

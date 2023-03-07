@@ -47,7 +47,7 @@ namespace C3D
 
 		static constexpr u64 GetMemoryRequirements(u64 usableSize);
 	private:
-		LoggerInstance m_logger;
+		LoggerInstance<32> m_logger;
 
 		bool m_initialized;
 		// The total size including our freelist

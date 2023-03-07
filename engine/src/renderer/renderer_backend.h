@@ -14,10 +14,11 @@ namespace C3D
 	struct ShaderUniform;
 	struct ShaderConfig;
 
+	template <u64 NameSize>
 	class RendererBackend
 	{
 	public:
-		explicit RendererBackend(const std::string& loggerName) : type(), state(), m_logger(loggerName) {}
+		explicit RendererBackend(const CString<NameSize>& loggerName) : type(), state(), m_logger(loggerName) {}
 		RendererBackend(const RendererBackend&) = delete;
 		RendererBackend(RendererBackend&&) = delete;
 
@@ -60,7 +61,7 @@ namespace C3D
 		virtual void DestroyGeometry(Geometry* geometry) = 0;
 
 		virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
-		virtual void DestroyShader(Shader* shader) = 0;
+		virtual void DestroyShader(Shader& shader) = 0;
 
 		virtual bool InitializeShader(Shader* shader) = 0;
 
@@ -101,7 +102,7 @@ namespace C3D
 		RendererBackendState state;
 
 	protected:
-		LoggerInstance m_logger;
+		LoggerInstance<NameSize> m_logger;
 	};
 }
 
