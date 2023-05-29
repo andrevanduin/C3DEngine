@@ -7,8 +7,7 @@
 #include <iostream>
 
 #include "containers/string.h"
-#include "services/services.h"
-#include "memory/global_memory_system.h"
+#include "core/metrics/metrics.h"
 
 u8 StringShouldCreateEmptyWithEmptyCtor()
 {
@@ -55,7 +54,12 @@ u8 StringShouldUseSso()
 	const std::vector<u64> sizes = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 	for (const auto size : sizes)
 	{
-		C3D::String str(std::string(size, 'a').data());
+		// All sizes < 16 characters should not allocate memory
+		const C3D::String str(std::string(size, 'a').data());
+		ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+
+		// Copying should also not result in allocated memory
+		C3D::String otherStr = str;
 		ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 	}
 

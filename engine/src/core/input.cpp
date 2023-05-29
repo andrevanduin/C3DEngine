@@ -4,7 +4,7 @@
 #include "events/event.h"
 #include "logger.h"
 #include "platform/platform.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {
@@ -28,8 +28,8 @@ namespace C3D
 	{
 		if (!m_initialized) return;
 
-		Platform::Copy(&m_state.keyboardPrevious, &m_state.keyboardCurrent, sizeof KeyBoardState);
-		Platform::Copy(&m_state.mousePrevious, &m_state.mouseCurrent, sizeof MouseState);
+		Platform::MemCopy(&m_state.keyboardPrevious, &m_state.keyboardCurrent, sizeof KeyBoardState);
+		Platform::MemCopy(&m_state.mousePrevious, &m_state.mouseCurrent, sizeof MouseState);
 	}
 
 	void InputSystem::ProcessKey(const SDL_Keycode sdlKey, const bool pressed)
@@ -112,7 +112,7 @@ namespace C3D
 			context.data.i16[0] = x;
 			context.data.i16[1] = y;
 
-			Services::GetEvent().Fire(ToUnderlying(SystemEventCode::MouseMoved), nullptr, context);
+			Event.Fire(ToUnderlying(SystemEventCode::MouseMoved), nullptr, context);
 		}
 	}
 
@@ -120,7 +120,7 @@ namespace C3D
 	{
 		EventContext context{};
 		context.data.i8[0] = static_cast<i8>(delta);
-		Services::GetEvent().Fire(ToUnderlying(SystemEventCode::MouseWheel), nullptr, context);
+		Event.Fire(ToUnderlying(SystemEventCode::MouseWheel), nullptr, context);
 	}
 
 	bool InputSystem::IsKeyDown(const u8 key) const
@@ -133,6 +133,12 @@ namespace C3D
 	{
 		if (!m_initialized) return true;
 		return !m_state.keyboardCurrent.keys[key];
+	}
+
+	bool InputSystem::IsKeyPressed(const u8 key) const
+	{
+		if (!m_initialized) return false;
+		return m_state.keyboardCurrent.keys[key] && !m_state.keyboardPrevious.keys[key];
 	}
 
 	bool InputSystem::WasKeyDown(const u8 key) const
@@ -157,6 +163,12 @@ namespace C3D
 	{
 		if (!m_initialized) return true;
 		return !m_state.mouseCurrent.buttons[button];
+	}
+
+	bool InputSystem::IsButtonPressed(const Buttons button) const
+	{
+		if (!m_initialized) return false;
+		return m_state.mouseCurrent.buttons[button] && !m_state.mousePrevious.buttons[button];
 	}
 
 	bool InputSystem::WasButtonDown(const Buttons button) const

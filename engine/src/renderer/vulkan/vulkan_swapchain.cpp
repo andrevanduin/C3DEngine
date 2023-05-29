@@ -7,7 +7,7 @@
 
 #include "core/logger.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/texture_system.h"
 
 namespace C3D
@@ -27,38 +27,70 @@ namespace C3D
 		return context->device.swapChainSupport.formats[0];
 	}
 
-	VkPresentModeKHR GetPresentMode(const VulkanContext* context)
+	VkPresentModeKHR VulkanSwapChain::GetPresentMode(const VulkanContext* context) const
 	{
-		for (u32 i = 0; i < context->device.swapChainSupport.presentModeCount; i++)
+		// VSync is enabled
+		if (m_flags & FlagVSyncEnabled)
 		{
-			const VkPresentModeKHR mode = context->device.swapChainSupport.presentModes[i];
-			if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+			if (!(m_flags & FlagPowerSavingEnabled))
 			{
-				return mode;
+				// If power saving is not enabled we can try to see if Mailbox is supported
+				// this will generate frames as fast as it can (which is less power efficient but it reduces input lag)
+				for (u32 i = 0; i < context->device.swapChainSupport.presentModeCount; i++)
+				{
+					if (const VkPresentModeKHR mode = context->device.swapChainSupport.presentModes[i]; mode == VK_PRESENT_MODE_MAILBOX_KHR)
+					{
+						return mode;
+					}
+				}
 			}
+
+			// If power saving is enabled or mailbox is not supported we fallback to FIFO
+			// which is guaranteed to be supported by all GPUs
+			return VK_PRESENT_MODE_FIFO_KHR;
 		}
-		return VK_PRESENT_MODE_FIFO_KHR;
+
+		// We use immediate mode if VSync is disabled which will render as many fps as possible
+		return VK_PRESENT_MODE_IMMEDIATE_KHR;
 	}
 
 	VulkanSwapChain::VulkanSwapChain()
-		: handle(nullptr), imageFormat(), imageCount(0), maxFramesInFlight(0), renderTextures(nullptr), depthTextures(nullptr), renderTargets{}, m_presentMode()
+		: handle(nullptr), imageFormat(), imageCount(0), maxFramesInFlight(0), renderTextures(nullptr),
+		  depthTextures(nullptr), renderTargets{}, m_flags(0), m_presentMode()
 	{}
 
-	void VulkanSwapChain::Create(VulkanContext* context, const u32 width, const u32 height)
+	void VulkanSwapChain::Create(VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
 	{
-		CreateInternal(context, width, height);
+		CreateInternal(context, width, height, flags);
 	}
 
-	void VulkanSwapChain::Recreate(VulkanContext* context, const u32 width, const u32 height)
+	void VulkanSwapChain::Recreate(VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
 	{
 		DestroyInternal(context);
-		CreateInternal(context, width, height);
+		CreateInternal(context, width, height, flags);
 	}
 
-	void VulkanSwapChain::Destroy(const VulkanContext* context) const
+	void VulkanSwapChain::Destroy(const VulkanContext* context)
 	{
 		Logger::Info("[VULKAN_SWAP_CHAIN] - Destroying SwapChain");
 		DestroyInternal(context);
+
+		// Since we don't destroy our depth and render textures in destroy internal (so we can re-use the textures on a recreate() call)
+		// We still need to cleanup our depth textures
+		Memory.Free(MemoryType::Texture, depthTextures);
+		depthTextures = nullptr;
+
+		// And we also need to cleanup our render textures
+		for (u32 i = 0; i < imageCount; i++)
+		{
+			// We start with the vulkan internal data
+			const auto img = renderTextures[i].internalData;
+			Memory.Delete(MemoryType::Texture, img);
+		}
+
+		// then we cleanup the actual render textures themselves
+		Memory.Free(MemoryType::Texture, renderTextures);
+		renderTextures = nullptr;
 	}
 
 	bool VulkanSwapChain::AcquireNextImageIndex(VulkanContext* context, const u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
@@ -66,7 +98,7 @@ namespace C3D
 		const auto result = vkAcquireNextImageKHR(context->device.logicalDevice, handle, timeoutNs, imageAvailableSemaphore, fence, outImageIndex);
 		if (result == VK_ERROR_OUT_OF_DATE_KHR)
 		{
-			Recreate(context, context->frameBufferWidth, context->frameBufferHeight);
+			Recreate(context, context->frameBufferWidth, context->frameBufferHeight, m_flags);
 			return false;
 		}
 		if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -93,7 +125,7 @@ namespace C3D
 		{
 			// Our SwapChain is out of date, suboptimal or a FrameBuffer resize has occurred.
 			// We trigger a SwapChain recreation.
-			Recreate(context, context->frameBufferWidth, context->frameBufferHeight);
+			Recreate(context, context->frameBufferWidth, context->frameBufferHeight, m_flags);
 			Logger::Debug("[VULKAN_SWAP_CHAIN] - Recreated because SwapChain returned out of date or suboptimal");
 		}
 		else if (result != VK_SUCCESS)
@@ -104,9 +136,10 @@ namespace C3D
 		context->currentFrame = (context->currentFrame + 1) % maxFramesInFlight;
 	}
 
-	void VulkanSwapChain::CreateInternal(VulkanContext* context, const u32 width, const u32 height)
+	void VulkanSwapChain::CreateInternal(VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
 	{
 		VkExtent2D extent = { width, height };
+		m_flags = flags;
 		imageFormat = GetSurfaceFormat(context);
 		m_presentMode = GetPresentMode(context);
 
@@ -170,11 +203,11 @@ namespace C3D
 		VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, nullptr));
 		if (!renderTextures)
 		{
-			renderTextures = Memory.Allocate<Texture>(MemoryType::RenderSystem, imageCount);
+			renderTextures = Memory.Allocate<Texture>(MemoryType::Texture, imageCount);
 			// If creating the array, then the internal texture objects aren't created yet either.
 			for (u32 i = 0; i < imageCount; ++i)
 			{
-				const auto internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
+				const auto internalData = Memory.New<VulkanImage>(MemoryType::Texture);
 
 				char texName[38] = "__internal_vulkan_swapChain_image_0__";
 				texName[34] = '0' + static_cast<char>(i);
@@ -236,7 +269,7 @@ namespace C3D
 		// If we do not have an array for our depth textures yet we allocate it
 		if (!depthTextures)
 		{
-			depthTextures = Memory.Allocate<Texture>(MemoryType::RenderSystem, imageCount);
+			depthTextures = Memory.Allocate<Texture>(MemoryType::Texture, imageCount);
 		}
 
 		for (u32 i = 0; i < imageCount; i++)
@@ -259,17 +292,20 @@ namespace C3D
 	{
 		vkDeviceWaitIdle(context->device.logicalDevice);
 
-		// Destroy our depth textures
+		// Destroy our internal depth textures
 		for (u32 i = 0; i < imageCount; i++)
 		{
+			// First we destroy the internal vulkan specific data for every depth texture
 			const auto image = static_cast<VulkanImage*>(depthTextures[i].internalData);
-			image->Destroy(context);
+			Memory.Delete(MemoryType::Texture, image);
+
 			depthTextures[i].internalData = nullptr;
 		}
 
 		// Destroy our views for our render textures
 		for (u32 i = 0; i < imageCount; i++)
 		{
+			// First we destroy the internal vulkan specific data for every render texture
 			const auto img = static_cast<VulkanImage*>(renderTextures[i].internalData);
 			vkDestroyImageView(context->device.logicalDevice, img->view, context->allocator);
 		}

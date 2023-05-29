@@ -1,7 +1,7 @@
 
 #include "camera_system.h"
 
-#include "core/c3d_string.h"
+#include "core/string_utils.h"
 #include "memory/global_memory_system.h"
 
 namespace C3D
@@ -43,7 +43,7 @@ namespace C3D
 
 	Camera* CameraSystem::Acquire(const char* name)
 	{
-		if (IEquals(name, DEFAULT_CAMERA_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_CAMERA_NAME))
 		{
 			return &m_defaultCamera;
 		}
@@ -78,7 +78,7 @@ namespace C3D
 
 	void CameraSystem::Release(const char* name)
 	{
-		if (IEquals(name, DEFAULT_CAMERA_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_CAMERA_NAME))
 		{
 			m_logger.Trace("Release() - Tried to release default camera. Nothing was done.");
 			return;

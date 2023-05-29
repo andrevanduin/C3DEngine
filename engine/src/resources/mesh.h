@@ -6,10 +6,19 @@
 
 namespace C3D
 {
-	class Mesh
+	struct MeshLoadParams
+	{
+		MeshLoadParams() : outMesh(nullptr) {}
+
+		String resourceName;
+		Mesh* outMesh;
+		MeshResource meshResource;
+	};
+
+	class C3D_API Mesh
 	{
 	public:
-		Mesh() : uniqueId(INVALID_ID), generation(INVALID_ID_U8), geometryCount(0), geometries(nullptr) {}
+		Mesh();
 
 		bool LoadFromResource(const char* resourceName);
 		void Unload();
@@ -17,8 +26,7 @@ namespace C3D
 		u32 uniqueId;
 		u8 generation;
 
-		u16 geometryCount;
-		Geometry** geometries;
+		DynamicArray<Geometry*> geometries;
 
 		Transform transform;
 
@@ -26,12 +34,5 @@ namespace C3D
 		static bool LoadJobEntryPoint(void* data, void* resultData);
 		static void LoadJobSuccess(void* data);
 		static void LoadJobFailure(void* data);
-	};
-
-	struct MeshLoadParams
-	{
-		const char* resourceName;
-		Mesh* outMesh;
-		MeshResource meshResource;
 	};
 }

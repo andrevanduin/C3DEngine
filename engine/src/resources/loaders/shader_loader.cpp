@@ -1,10 +1,9 @@
 
 #include "shader_loader.h"
 
-#include "core/c3d_string.h"
 #include "platform/filesystem.h"
 #include "resources/shader.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/resource_system.h"
 
 namespace C3D
@@ -13,17 +12,15 @@ namespace C3D
 		: IResourceLoader("SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
 	{}
 
-	bool ResourceLoader<ShaderResource>::Load(const char* name, ShaderResource* outResource) const
+	bool ResourceLoader<ShaderResource>::Load(const char* name, ShaderResource& resource) const
 	{
-		if (StringLength(name) == 0 || !outResource)
+		if (std::strlen(name) == 0)
 		{
 			m_logger.Error("Load() - Provided name was empty or no outResource pointer provided");
 			return false;
 		}
 
-		char fullPath[512];
-		const auto formatStr = "%s/%s/%s.%s";
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, "shadercfg");
+		auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, name, "shadercfg");
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead))
@@ -32,11 +29,11 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = fullPath;
-		outResource->config.cullMode = FaceCullMode::Back;
+		resource.fullPath = fullPath;
+		resource.config.cullMode = FaceCullMode::Back;
 
-		outResource->config.attributes.Reserve(4);
-		outResource->config.uniforms.Reserve(8);
+		resource.config.attributes.Reserve(4);
+		resource.config.uniforms.Reserve(8);
 
 		String line;
 		u32 lineNumber = 1;
@@ -82,7 +79,7 @@ namespace C3D
 			}
 			else if (varName.IEquals("name"))
 			{
-				outResource->config.name = value;
+				resource.config.name = value;
 			}
 			else if (varName.IEquals("renderPass"))
 			{
@@ -91,31 +88,35 @@ namespace C3D
 			}
 			else if (varName.IEquals("depthTest"))
 			{
-				outResource->config.depthTest = value.ToBool();
+				resource.config.depthTest = value.ToBool();
 			}
 			else if (varName.IEquals("depthWrite"))
 			{
-				outResource->config.depthWrite = value.ToBool();
+				resource.config.depthWrite = value.ToBool();
 			}
 			else if (varName.IEquals("stages"))
 			{
-				ParseStages(&outResource->config, value);
+				ParseStages(resource.config, value);
 			}
 			else if (varName.IEquals("stageFiles"))
 			{
-				ParseStageFiles(&outResource->config, value);
+				ParseStageFiles(resource.config, value);
 			}
 			else if (varName.IEquals("cullMode"))
 			{
-				ParseCullMode(&outResource->config, value);
+				ParseCullMode(resource.config, value);
 			}
 			else if (varName.IEquals("attribute"))
 			{
-				ParseAttribute(&outResource->config, value);
+				ParseAttribute(resource.config, value);
 			}
 			else if (varName.IEquals("uniform"))
 			{
-				ParseUniform(&outResource->config, value);
+				ParseUniform(resource.config, value);
+			}
+			else if (varName.IEquals("topology"))
+			{
+				ParseTopology(resource.config, value);
 			}
 
 			lineNumber++;
@@ -125,62 +126,56 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<ShaderResource>::Unload(ShaderResource* resource) const
+	void ResourceLoader<ShaderResource>::Unload(ShaderResource& resource) const
 	{
-		if (!resource)
-		{
-			m_logger.Warn("Unload() - Called with nullptr resource");
-			return;
-		}
+		auto& data = resource.config;
 
-		const auto data = &resource->config;
-
-		data->stageFileNames.Clear();
-		data->stageNames.Clear();
-		data->stages.Clear();
+		data.stageFileNames.Destroy();
+		data.stageNames.Destroy();
+		data.stages.Destroy();
 
 		// Cleanup attributes
-		data->attributes.Destroy();
+		data.attributes.Destroy();
 
 		// Cleanup uniforms
-		data->uniforms.Destroy();
+		data.uniforms.Destroy();
 
 		//Memory.Free(data->renderPassName, StringLength(data->renderPassName) + 1, MemoryType::String);
 		//data->renderPassName = nullptr;
 
-		data->name.Destroy();
+		data.name.Destroy();
 
-		resource->name.Destroy();
-		resource->fullPath.Destroy();
+		resource.name.Destroy();
+		resource.fullPath.Destroy();
 	}
 
-	void ResourceLoader<ShaderResource>::ParseStages(ShaderConfig* data, const String& value) const
+	void ResourceLoader<ShaderResource>::ParseStages(ShaderConfig& data, const String& value) const
 	{
-		data->stageNames = value.Split(',');
-		if (!data->stageFileNames.Empty() && data->stageNames.Size() != data->stageFileNames.Size())
+		data.stageNames = value.Split(',');
+		if (!data.stageFileNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
 		{
 			// We already found the stage file names and the lengths don't match
 			m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})",
-				data->stageNames.Size(), data->stageFileNames.Size());
+				data.stageNames.Size(), data.stageFileNames.Size());
 		}
 
-		for (auto& stageName : data->stageNames)
+		for (auto& stageName : data.stageNames)
 		{
 			if (stageName.IEquals("frag") || stageName.IEquals("fragment"))
 			{
-				data->stages.PushBack(ShaderStage::Fragment);
+				data.stages.PushBack(ShaderStage::Fragment);
 			}
 			else if (stageName.IEquals("vert") || stageName.IEquals("vertex"))
 			{
-				data->stages.PushBack(ShaderStage::Vertex);
+				data.stages.PushBack(ShaderStage::Vertex);
 			}
 			else if (stageName.IEquals("geom") || stageName.IEquals("geometry"))
 			{
-				data->stages.PushBack(ShaderStage::Geometry);
+				data.stages.PushBack(ShaderStage::Geometry);
 			}
 			else if (stageName.IEquals("comp") || stageName.IEquals("compute"))
 			{
-				data->stages.PushBack(ShaderStage::Compute);
+				data.stages.PushBack(ShaderStage::Compute);
 			}
 			else
 			{
@@ -189,18 +184,18 @@ namespace C3D
 		}
 	}
 
-	void ResourceLoader<ShaderResource>::ParseStageFiles(ShaderConfig* data, const String& value) const
+	void ResourceLoader<ShaderResource>::ParseStageFiles(ShaderConfig& data, const String& value) const
 	{
-		data->stageFileNames = value.Split(',');
-		if (!data->stageNames.Empty() && data->stageNames.Size() != data->stageFileNames.Size())
+		data.stageFileNames = value.Split(',');
+		if (!data.stageNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
 		{
 			// We already found the stage names and the lengths don't match
 			m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})",
-				data->stageNames.Size(), data->stageFileNames.Size());
+				data.stageNames.Size(), data.stageFileNames.Size());
 		}
 	}
 
-	void ResourceLoader<ShaderResource>::ParseAttribute(ShaderConfig* data, const String& value) const
+	void ResourceLoader<ShaderResource>::ParseAttribute(ShaderConfig& data, const String& value) const
 	{
 		const auto fields = value.Split(',');
 		if (fields.Size() != 2)
@@ -258,10 +253,10 @@ namespace C3D
 		}
 		attribute.name = fields[1];
 
-		data->attributes.PushBack(attribute);
+		data.attributes.PushBack(attribute);
 	}
 
-	void ResourceLoader<ShaderResource>::ParseUniform(ShaderConfig* data, const String& value) const
+	void ResourceLoader<ShaderResource>::ParseUniform(ShaderConfig& data, const String& value) const
 	{
 		const auto fields = value.Split(',');
 		if (fields.Size() != 3)
@@ -347,23 +342,39 @@ namespace C3D
 
 		uniform.name = fields[2];
 
-		data->uniforms.PushBack(uniform);
+		data.uniforms.PushBack(uniform);
 	}
 
-	void ResourceLoader<ShaderResource>::ParseCullMode(ShaderConfig* data, const String& value)
+	void ResourceLoader<ShaderResource>::ParseTopology(ShaderConfig& data, const String& value)
+	{
+		if (value.IEquals("points"))
+		{
+			data.topology = ShaderTopology::Points;
+		}
+		else if (value.IEquals("lines"))
+		{
+			data.topology = ShaderTopology::Lines;
+		}
+		else
+		{
+			data.topology = ShaderTopology::Triangles;
+		}
+	}
+
+	void ResourceLoader<ShaderResource>::ParseCullMode(ShaderConfig& data, const String& value)
 	{
 		if (value.IEquals("front"))
 		{
-			data->cullMode = FaceCullMode::Front;
+			data.cullMode = FaceCullMode::Front;
 		}
 		else if (value.IEquals("front_and_back"))
 		{
-			data->cullMode = FaceCullMode::FrontAndBack;
+			data.cullMode = FaceCullMode::FrontAndBack;
 		}
 		else if (value.IEquals("none"))
 		{
-			data->cullMode = FaceCullMode::None;
+			data.cullMode = FaceCullMode::None;
 		}
-		// Default is BACK so we don't have to do anyting
+		// Default is BACK so we don't have to do anything
 	}
 }

@@ -8,7 +8,7 @@
 
 namespace C3D
 {
-	class RendererVulkan final : public RendererBackend
+	class RendererVulkan final : public RendererBackend<64>
 	{
 	public:
 		RendererVulkan();
@@ -34,6 +34,8 @@ namespace C3D
 		void SetScissor(const ivec4& rect) override;
 		void ResetScissor() override;
 
+		void SetLineWidth(float lineWidth) override;
+
 		bool BeginRenderPass(RenderPass* pass, RenderTarget* target) override;
 		bool EndRenderPass(RenderPass* pass) override;
 
@@ -54,7 +56,7 @@ namespace C3D
 		void DestroyGeometry(Geometry* geometry) override;
 
 		bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const override;
-		void DestroyShader(Shader* shader) override;
+		void DestroyShader(Shader& shader) override;
 
 		bool InitializeShader(Shader* shader) override;
 		bool UseShader(Shader* shader) override;
@@ -89,12 +91,16 @@ namespace C3D
 		u8 GetWindowAttachmentCount() override;
 
 		[[nodiscard]] bool IsMultiThreaded() const override;
+
+		void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) override;
+		[[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const override;
+
 	private:
 		void CreateCommandBuffers();
 
 		bool RecreateSwapChain();
 
-		bool CreateModule(VulkanShaderStageConfig config, VulkanShaderStage* shaderStage) const;
+		bool CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const;
 
 		VkSamplerAddressMode ConvertRepeatType(const char* axis, TextureRepeat repeat) const;
 		VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;

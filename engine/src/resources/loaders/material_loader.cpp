@@ -1,12 +1,11 @@
 
 #include "material_loader.h"
 
-#include "core/c3d_string.h"
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
 #include "resources/material.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "systems/resource_system.h"
 
@@ -18,15 +17,12 @@ namespace C3D
 		: IResourceLoader("MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
 	{}
 
-	bool ResourceLoader<MaterialResource>::Load(const char* name, MaterialResource* outResource) const
+	bool ResourceLoader<MaterialResource>::Load(const char* name, MaterialResource& resource) const
 	{
-		if (StringLength(name) == 0 || !outResource) return false;
-
-		char fullPath[512];
-		const auto formatStr = "%s/%s/%s.%s";
+		if (std::strlen(name) == 0) return false;
 
 		// TODO: try different extensions
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, "mt");
+		auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, name, "mt");
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead))
@@ -35,32 +31,30 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = fullPath;
-		outResource->config.autoRelease = true;
-		outResource->config.diffuseColor = vec4(1); // Default white
-		outResource->config.diffuseMapName[0] = 0;
+		resource.fullPath = fullPath;
+		resource.config.autoRelease = true;
+		resource.config.diffuseColor = vec4(1); // Default white
+		resource.config.name = name;
 
-		StringNCopy(outResource->config.name, name, MATERIAL_NAME_MAX_LENGTH);
-
-		string line;
+		String line;
 		// Prepare for strings of up to 512 characters so we don't needlessly resize
-		line.reserve(512);
+		line.Reserve(512);
 
 		u32 lineNumber = 0;
 		while (file.ReadLine(line))
 		{
-			Trim(line);
+			line.Trim();
 
 			// Skip blank lines and comments
-			if (line.empty() || line[0] == '#')
+			if (line.Empty() || line.First() == '#')
 			{
 				lineNumber++;
 				continue;
 			}
 
 			// Find the '=' symbol
-			const auto equalIndex = line.find('=');
-			if (equalIndex == string::npos)
+			const auto equalIndex = std::find(line.begin(), line.end(), '=');
+			if (equalIndex == line.end())
 			{
 				m_logger.Warn("Potential formatting issue found in file '': '=' token not found. Skipping line {}.", fullPath, lineNumber);
 				lineNumber++;
@@ -68,51 +62,44 @@ namespace C3D
 			}
 
 			// Get the variable name (which is all the characters up to the '=' and trim
-			auto varName = line.substr(0, equalIndex);
-			Trim(varName);
+			auto varName = line.SubStr(line.begin(), equalIndex);
+			varName.Trim();
 
 			// Get the value (which is all the characters after the '=' and trim
-			auto value = line.substr(equalIndex + 1);
-			Trim(value);
+			auto value = line.SubStr(equalIndex + 1, line.end());
+			value.Trim();
 
-			if (IEquals(varName.data(), "version"))
+			if (varName.IEquals("version"))
 			{
 				// TODO: version
 			}
-			else if (IEquals(varName.data(), "name"))
+			else if (varName.IEquals("name"))
 			{
-				StringNCopy(outResource->config.name, value.data(), MATERIAL_NAME_MAX_LENGTH);
+				resource.config.name = value.Data();
 			}
-			else if (IEquals(varName.data(), "diffuseMapName"))
+			else if (varName.IEquals("diffuseMapName"))
 			{
-				StringNCopy(outResource->config.diffuseMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
+				resource.config.diffuseMapName = value.Data();
 			}
-			else if (IEquals(varName.data(), "specularMapName"))
+			else if (varName.IEquals("specularMapName"))
 			{
-				StringNCopy(outResource->config.specularMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
+				resource.config.specularMapName = value.Data();
 			}
-			else if (IEquals(varName.data(), "normalMapName"))
+			else if (varName.IEquals("normalMapName"))
 			{
-				StringNCopy(outResource->config.normalMapName, value.data(), TEXTURE_NAME_MAX_LENGTH);
+				resource.config.normalMapName = value.Data();
 			}
-			else if (IEquals(varName.data(), "diffuseColor"))
+			else if (varName.IEquals("diffuseColor"))
 			{
-				if (!StringToVec4(value.data(), &outResource->config.diffuseColor))
-				{
-					m_logger.Warn("Error parsing diffuseColor in file '{}'. Using default of white instead", fullPath);
-				}
+				resource.config.diffuseColor = value.ToVec4();
 			}
-			else if (IEquals(varName.data(), "shader"))
+			else if (varName.IEquals("shader"))
 			{
-				outResource->config.shaderName = StringDuplicate(value.data());
+				resource.config.shaderName = value;
 			}
-			else if (IEquals(varName.data(), "shininess"))
+			else if (varName.IEquals("shininess"))
 			{
-				if (!StringToF32(value.data(), &outResource->config.shininess))
-				{
-					m_logger.Warn("Error Parsing shininess in file '{}'. Using default of 32.0 instead", fullPath);
-					outResource->config.shininess = 32.0f;
-				}
+				resource.config.shininess = value.ToF32();
 			}
 
 			// TODO: more fields
@@ -122,19 +109,14 @@ namespace C3D
 
 		file.Close();
 
-		outResource->name = name;
+		resource.name = name;
 		return true;
 	}
 
-	void ResourceLoader<MaterialResource>::Unload(MaterialResource* resource)
+	void ResourceLoader<MaterialResource>::Unload(MaterialResource& resource)
 	{
-		if (resource->config.shaderName)
-		{
-			Memory.Free(MemoryType::String, resource->config.shaderName);
-			resource->config.shaderName = nullptr;
-		}
-
-		resource->fullPath.Destroy();
-		resource->name.Destroy();
+		resource.config.shaderName.Destroy();
+		resource.fullPath.Destroy();
+		resource.name.Destroy();
 	}
 }

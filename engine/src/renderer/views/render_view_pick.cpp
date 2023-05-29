@@ -26,7 +26,7 @@ namespace C3D
 		// UI Shader
 		constexpr auto uiShaderName = "Shader.Builtin.UIPick";
 		ShaderResource res;
-		if (!Resources.Load(uiShaderName, &res))
+		if (!Resources.Load(uiShaderName, res))
 		{
 			m_logger.Error("Failed to load builtin UI Pick shader.");
 			return false;
@@ -38,7 +38,7 @@ namespace C3D
 			return false;
 		}
 
-		Resources.Unload(&res);
+		Resources.Unload(res);
 		m_uiShaderInfo.shader = Shaders.Get(uiShaderName);
 
 		// Get the uniform locations
@@ -51,12 +51,12 @@ namespace C3D
 		m_uiShaderInfo.nearClip = -100.0f;
 		m_uiShaderInfo.farClip = 100.0f;
 		m_uiShaderInfo.fov = 0;
-		m_uiShaderInfo.projection = glm::orthoRH_NO(0.0f, 1280.0f, 720.0f, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
+		m_uiShaderInfo.projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
 		m_uiShaderInfo.view = mat4(1.0f);
 
 		// World Shader
 		constexpr auto worldShaderName = "Shader.Builtin.WorldPick";
-		if (!Resources.Load(worldShaderName, &res))
+		if (!Resources.Load(worldShaderName, res))
 		{
 			m_logger.Error("Failed to load builtin World Pick shader.");
 			return false;
@@ -68,7 +68,7 @@ namespace C3D
 			return false;
 		}
 
-		Resources.Unload(&res);
+		Resources.Unload(res);
 		m_worldShaderInfo.shader = Shaders.Get(worldShaderName);
 
 		// Get the uniform locations
@@ -81,7 +81,7 @@ namespace C3D
 		m_worldShaderInfo.nearClip = 0.1f;
 		m_worldShaderInfo.farClip = 1000.0f;
 		m_worldShaderInfo.fov = DegToRad(45.0f);
-		m_worldShaderInfo.projection = glm::perspectiveRH_NO(m_worldShaderInfo.fov, 1280 / 720.0f, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
+		m_worldShaderInfo.projection = glm::perspective(m_worldShaderInfo.fov, 1280 / 720.0f, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
 		m_worldShaderInfo.view = mat4(1.0f);
 
 		m_instanceCount = 0;
@@ -115,11 +115,11 @@ namespace C3D
 		const auto fHeight = static_cast<f32>(m_height);
 		const auto aspect = fWidth / fHeight;
 
-		m_uiShaderInfo.projection = glm::orthoRH_NO(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
-		m_worldShaderInfo.projection = glm::perspectiveRH_NO(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
+		m_uiShaderInfo.projection = glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
+		m_worldShaderInfo.projection = glm::perspective(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
 	}
 
-	bool RenderViewPick::OnBuildPacket(void* data, RenderViewPacket* outPacket)
+	bool RenderViewPick::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -134,38 +134,29 @@ namespace C3D
 		const auto worldCam = Cam.GetDefault();
 		m_worldShaderInfo.view = worldCam->GetViewMatrix();
 
-		packetData->worldGeometryCount = 0;
 		packetData->uiGeometryCount = 0;
-		outPacket->extendedData = data;
+		outPacket->extendedData = frameAllocator.Allocate<PickPacketData>(MemoryType::RenderView);
 
 		u32 highestInstanceId = 0;
-		for (const auto mesh : packetData->worldMeshData.meshes)
-		{
-			for (u32 i = 0; i < mesh->geometryCount; i++)
-			{
-				GeometryRenderData renderData{};
-				renderData.geometry = mesh->geometries[i];
-				renderData.model = mesh->transform.GetWorld();
-				renderData.uniqueId = mesh->uniqueId;
-				outPacket->geometries.PushBack(renderData);
-				packetData->worldGeometryCount++;
-			}
+		// Iterate all geometries in world data
 
-			if (mesh->uniqueId > highestInstanceId)
+		const auto& worldMeshData = *packetData->worldMeshData;
+
+		for (const auto& geometry : worldMeshData)
+		{
+			outPacket->geometries.PushBack(geometry);
+
+			if (geometry.uniqueId > highestInstanceId)
 			{
-				highestInstanceId = mesh->uniqueId;
+				highestInstanceId = geometry.uniqueId;
 			}
 		}
 
 		for (const auto mesh : packetData->uiMeshData.meshes)
 		{
-			for (u32 i = 0; i < mesh->geometryCount; i++)
+			for (const auto geometry : mesh->geometries)
 			{
-				GeometryRenderData renderData{};
-				renderData.geometry = mesh->geometries[i];
-				renderData.model = mesh->transform.GetWorld();
-				renderData.uniqueId = mesh->uniqueId;
-				outPacket->geometries.PushBack(renderData);
+				outPacket->geometries.EmplaceBack(mesh->transform.GetWorld(), geometry, mesh->uniqueId);
 				packetData->uiGeometryCount++;
 			}
 
@@ -192,6 +183,9 @@ namespace C3D
 				AcquireShaderInstances();
 			}
 		}
+
+		// Copy over the packet data
+		Platform::Copy<PickPacketData>(outPacket->extendedData, packetData);
 
 		return true;
 	}
@@ -237,15 +231,21 @@ namespace C3D
 				m_logger.Error("OnRender() - Failed to apply view matrix");
 			}
 
-			Shaders.ApplyGlobal();
+			if (!Shaders.ApplyGlobal())
+			{
+				m_logger.Error("OnRender() - Failed to apply globals");
+			}
 
-			// Draw geometries. Start from 0 since world geometries are added first
-			for (u32 i = 0; i < packetData->worldGeometryCount; i++)
+			// Draw world geometries. Start from 0 since world geometries are added first
+			for (u32 i = 0; i < packetData->worldMeshData->Size(); i++)
 			{
 				auto& geo = packet->geometries[i];
 				currentInstanceId = geo.uniqueId;
 
-				Shaders.BindInstance(currentInstanceId);
+				if (!Shaders.BindInstance(currentInstanceId))
+				{
+					m_logger.Error("OnRender() - Failed to bind instance with id: {}", currentInstanceId);
+				}
 
 				u32 r, g, b;
 				U32ToRgb(geo.uniqueId, &r, &g, &b);
@@ -303,16 +303,21 @@ namespace C3D
 				m_logger.Error("OnRender() - Failed to apply view matrix");
 			}
 
-			Shaders.ApplyGlobal();
+			if (!Shaders.ApplyGlobal())
+			{
+				m_logger.Error("OnRender() - Failed to apply globals");
+			}
 
-			// Draw our geometries. We start where the world geometries left off.
-			const auto uiCount = packetData->worldGeometryCount + packetData->uiGeometryCount;
-			for (u32 i = packetData->worldGeometryCount; i < packet->geometries.Size(); i++)
+			// Draw our ui geometries. We start where the world geometries left off.
+			for (u64 i = packetData->worldMeshData->Size(); i < packet->geometries.Size(); i++)
 			{
 				auto& geo = packet->geometries[i];
 				currentInstanceId = geo.uniqueId;
 
-				Shaders.BindInstance(currentInstanceId);
+				if (!Shaders.BindInstance(currentInstanceId))
+				{
+					m_logger.Error("OnRender() - Failed to bind instance with id: {}", currentInstanceId);
+				}
 
 				u32 r, g, b;
 				U32ToRgb(geo.uniqueId, &r, &g, &b);
@@ -341,7 +346,10 @@ namespace C3D
 			for (const auto text : packetData->texts)
 			{
 				currentInstanceId = text->uniqueId;
-				Shaders.BindInstance(currentInstanceId);
+				if (!Shaders.BindInstance(currentInstanceId))
+				{
+					m_logger.Error("OnRender() - Failed to bind instance with id: {}", currentInstanceId);
+				}
 
 				u32 r, g, b;
 				U32ToRgb(text->uniqueId, &r, &g, &b);
@@ -353,7 +361,10 @@ namespace C3D
 					return false;
 				}
 
-				Shaders.ApplyInstance(true);
+				if (!Shaders.ApplyInstance(true))
+				{
+					m_logger.Error("OnRender() - Failed to apply instance");
+				}
 
 				// Apply the locals
 				mat4 model = text->transform.GetWorld();
@@ -436,7 +447,7 @@ namespace C3D
 
 		attachment->texture->id = INVALID_ID;
 		attachment->texture->type = TextureType::Type2D;
-		StringNCopy(attachment->texture->name, textureNameUUID.value, TEXTURE_NAME_MAX_LENGTH);
+		attachment->texture->name = textureNameUUID.value;
 		attachment->texture->width = width;
 		attachment->texture->height = height;
 		attachment->texture->channelCount = 4; //TODO: Configurable

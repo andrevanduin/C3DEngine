@@ -12,10 +12,11 @@
 #include "vulkan_utils.h"
 
 #include "core/logger.h"
-#include "core/application.h"
-#include "core/c3d_string.h"
+#include "core/engine.h"
 #include "core/events/event.h"
 #include "core/events/event_context.h"
+#include "core/metrics/metrics.h"
+#include "platform/platform.h"
 #include "renderer/renderer_frontend.h"
 
 #include "resources/texture.h"
@@ -24,7 +25,7 @@
 #include "renderer/vertex.h"
 #include "resources/loaders/binary_loader.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/resource_system.h"
 #include "systems/texture_system.h"
 
@@ -72,7 +73,7 @@ namespace C3D
 
 		u64 size;
 		u16 alignment;
-		if (Memory.GetSizeAlignment(memory, &size, &alignment))
+		if (DynamicAllocator::GetSizeAlignment(memory, &size, &alignment))
 		{
 			Memory.Free(MemoryType::Vulkan, memory);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
@@ -102,7 +103,7 @@ namespace C3D
 
 		u64 allocSize;
 		u16 allocAlignment;
-		if (!Memory.GetSizeAlignment(original, &allocSize, &allocAlignment))
+		if (!DynamicAllocator::GetSizeAlignment(original, &allocSize, &allocAlignment))
 		{
 			Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.", fmt::ptr(original));
 			return nullptr;
@@ -125,7 +126,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 			Logger::Trace("[VULKAN_REALLOCATE] - Successfully reallocated to: {}. Copying data.", fmt::ptr(result));
 #endif
-			Platform::Copy(result, original, allocSize);
+			Platform::MemCopy(result, original, allocSize);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 			Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", fmt::ptr(original));
 #endif
@@ -150,7 +151,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 		Logger::Trace("[VULKAN_EXTERNAL_ALLOCATE] - Allocation of size {}.", size);
 #endif
-		Metrics.Allocate(Memory.GetId(), MemoryType::VulkanExternal, size, size);
+		Metrics.AllocateExternal(size);
 	}
 
 	/*
@@ -162,7 +163,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
 		Logger::Trace("[VULKAN_EXTERNAL_FREE] - Free of size {}.", size);
 #endif
-		Metrics.Free(Memory.GetId(), MemoryType::VulkanExternal, size, size);
+		Metrics.FreeExternal(size);
 	}
 
 	bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks)
@@ -203,6 +204,7 @@ namespace C3D
 		// Just set some basic default values. They will be overridden anyway.
 		m_context.frameBufferWidth = 1280;
 		m_context.frameBufferHeight = 720;
+		m_config = config;
 
 		vkb::InstanceBuilder instanceBuilder;
 
@@ -243,7 +245,7 @@ namespace C3D
 			return false;
 		}
 
-		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
+		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, config.flags);
 
 		// Save the number of images we have as a the number of render targets required
 		*outWindowRenderTargetCount = static_cast<u8>(m_context.swapChain.imageCount);
@@ -384,8 +386,8 @@ namespace C3D
 			return false;
 		}
 
-		// If the FrameBuffer was resized we must also create a new SwapChain.
-		if (m_context.frameBufferSizeGeneration != m_context.frameBufferSizeLastGeneration)
+		// If the FrameBuffer was resized or a render flag was changed we must also create a new SwapChain.
+		if (m_context.frameBufferSizeGeneration != m_context.frameBufferSizeLastGeneration || m_context.renderFlagChanged)
 		{
 			// FrameBuffer was resized. We need to recreate it.
 			const auto result = vkDeviceWaitIdle(device.logicalDevice);
@@ -399,6 +401,9 @@ namespace C3D
 			{
 				return false;
 			}
+
+			// Reset our render flag changed flag
+			m_context.renderFlagChanged = false;
 
 			m_logger.Info("SwapChain Resized successfully. Stopping BeginFrame()");
 			return false;
@@ -529,6 +534,12 @@ namespace C3D
 		SetScissor(m_context.scissorRect);
 	}
 
+	void RendererVulkan::SetLineWidth(const float lineWidth)
+	{
+		const auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+		vkCmdSetLineWidth(commandBuffer.handle, lineWidth);
+	}
+
 	void RendererVulkan::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget)
 	{
 		VkImageView attachmentViews[32];
@@ -536,7 +547,7 @@ namespace C3D
 		{
 			attachmentViews[i] = static_cast<VulkanImage*>(attachments[i].texture->internalData)->view;
 		}
-		Platform::Copy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
+		Platform::MemCopy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
 
 		// Setup our frameBuffer creation
 		VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
@@ -630,6 +641,17 @@ namespace C3D
 	bool RendererVulkan::IsMultiThreaded() const
 	{
 		return m_context.multiThreadingEnabled;
+	}
+
+	void RendererVulkan::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled)
+	{
+		m_config.flags = enabled ? m_config.flags | flag : m_config.flags & ~flag;
+		m_context.renderFlagChanged = true;
+	}
+
+	bool RendererVulkan::IsFlagEnabled(const RendererConfigFlagBits flag) const
+	{
+		return m_config.flags & flag;
 	}
 
 	bool RendererVulkan::BeginRenderPass(RenderPass* pass, RenderTarget* target)
@@ -775,7 +797,7 @@ namespace C3D
 		if (texture && texture->internalData)
 		{
 			const auto image = static_cast<VulkanImage*>(texture->internalData);
-			image->Destroy(&m_context);
+			Memory.Delete(MemoryType::Texture, image);
 
 			const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -829,7 +851,7 @@ namespace C3D
 		staging.Destroy();
 	}
 
-	void RendererVulkan::ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba)
+	void RendererVulkan::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba)
 	{
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
 		const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
@@ -879,7 +901,7 @@ namespace C3D
 		const auto data = static_cast<VulkanTextureData*>(texture->internalData);
 		if (data)
 		{
-			data->image.Destroy(&m_context);
+			data->image.Destroy();
 			Platform::Zero(&data->image);
 			Memory.Free(MemoryType::Texture, texture->internalData);
 		}
@@ -1074,7 +1096,7 @@ namespace C3D
 			// Set the stage and increment the stage count
 			const auto stageIndex = vulkanShader->config.stageCount;
 			vulkanShader->config.stages[stageIndex].stage = stageFlag;
-			StringNCopy(vulkanShader->config.stages[stageIndex].fileName, config.stageFileNames[i].Data(), VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH);
+			vulkanShader->config.stages[stageIndex].fileName = config.stageFileNames[i].Data();
 			vulkanShader->config.stageCount++;
 		}
 
@@ -1183,15 +1205,17 @@ namespace C3D
 
 		// Copy over our cull mode
 		vulkanShader->config.cullMode = config.cullMode;
+		vulkanShader->config.topology = config.topology;
+
 		return true;
 	}
 
-	void RendererVulkan::DestroyShader(Shader* shader)
+	void RendererVulkan::DestroyShader(Shader& shader)
 	{
 		// Make sure there is something to destroy
-		if (shader && shader->apiSpecificData)
+		if (shader.apiSpecificData)
 		{
-			const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
+			const auto vulkanShader = static_cast<VulkanShader*>(shader.apiSpecificData);
 
 			VkDevice logicalDevice = m_context.device.logicalDevice;
 			const VkAllocationCallbacks* vkAllocator = m_context.allocator;
@@ -1230,9 +1254,24 @@ namespace C3D
 			Platform::Zero(&vulkanShader->config, sizeof(VulkanShaderConfig));
 
 			// Free the api (Vulkan in this case) specific data from the shader
-			Memory.Free(MemoryType::Shader, shader->apiSpecificData);
-			shader->apiSpecificData = nullptr;
+			Memory.Free(MemoryType::Shader, shader.apiSpecificData);
+			shader.apiSpecificData = nullptr;
 		}
+	}
+
+	VkPrimitiveTopology GetVkPrimitiveTopology(const ShaderTopology topology)
+	{
+		switch (topology)
+		{
+			case ShaderTopology::Triangles:
+				return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			case ShaderTopology::Lines:
+				return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			case ShaderTopology::Points:
+				return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		}
+
+		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	}
 
 	bool RendererVulkan::InitializeShader(Shader* shader)
@@ -1354,6 +1393,7 @@ namespace C3D
 		config.shaderFlags = shader->flags;
 		config.pushConstantRangeCount = shader->pushConstantRangeCount;
 		config.pushConstantRanges = shader->pushConstantRanges;
+		config.topology = GetVkPrimitiveTopology(vulkanShader->config.topology);
 
 		const bool pipelineCreateResult = vulkanShader->pipeline.Create(&m_context, config);
 		if (!pipelineCreateResult)
@@ -1722,7 +1762,7 @@ namespace C3D
 		const VkResult result = vkFreeDescriptorSets(m_context.device.logicalDevice, internal->descriptorPool, 
 		    3, instanceState->descriptorSetState.descriptorSets);
 
-		if (!result == VK_SUCCESS)
+		if (result != VK_SUCCESS)
 		{
 			m_logger.Error("ReleaseShaderInstanceResources() - Error while freeing shader descriptor sets.");
 		}
@@ -1815,7 +1855,7 @@ namespace C3D
 				// Map the appropriate memory location and copy the data over.
 				auto address = static_cast<u8*>(internal->mappedUniformBufferBlock);
 				address += shader->boundUboOffset + uniform->offset;
-				Platform::Copy(address, value, uniform->size);
+				Platform::MemCopy(address, value, uniform->size);
 			}
 		}
 
@@ -1869,7 +1909,7 @@ namespace C3D
 		m_context.device.QuerySwapChainSupport(m_context.surface, &m_context.device.swapChainSupport);
 		m_context.device.DetectDepthFormat();
 
-		m_context.swapChain.Recreate(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
+		m_context.swapChain.Recreate(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, m_config.flags);
 
 		// Update the size generation so that they are in sync again
 		m_context.frameBufferSizeLastGeneration = m_context.frameBufferSizeGeneration;
@@ -1889,11 +1929,11 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::CreateModule(VulkanShaderStageConfig config, VulkanShaderStage* shaderStage) const
+	bool RendererVulkan::CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const
 	{
 		// Read the resource
 		BinaryResource res{};
-		if (!Resources.Load(config.fileName, &res))
+		if (!Resources.Load(config.fileName.Data(), res))
 		{
 			m_logger.Error("CreateModule() - Unable to read shader module: '{}'", config.fileName);
 			return false;
@@ -1906,7 +1946,7 @@ namespace C3D
 		VK_CHECK(vkCreateShaderModule(m_context.device.logicalDevice, &shaderStage->createInfo, m_context.allocator, &shaderStage->handle));
 
 		// Release our resource
-		Resources.Unload(&res);
+		Resources.Unload(res);
 
 		//Shader stage info
 		shaderStage->shaderStageCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };

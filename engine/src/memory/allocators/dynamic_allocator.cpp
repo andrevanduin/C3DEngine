@@ -2,13 +2,14 @@
 #include "dynamic_allocator.h"
 
 #include "core/logger.h"
+#include "core/metrics/metrics.h"
 #include "platform/platform.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {
-	DynamicAllocator::DynamicAllocator()
-		: BaseAllocator(ToUnderlying(AllocatorType::Dynamic)), m_logger("DYNAMIC_ALLOCATOR"),
+	DynamicAllocator::DynamicAllocator(const AllocatorType type)
+		: BaseAllocator(ToUnderlying(type)), m_logger("DYNAMIC_ALLOCATOR"),
 	      m_initialized(false), m_totalSize(0), m_memorySize(0), m_memory(nullptr)
 	{}
 
@@ -35,7 +36,7 @@ namespace C3D
 			usableMemory, usableMemory, freeListMemoryRequirement, totalMemory);
 
 		// Create a metrics object to track the allocations this allocator does
-		m_id = Metrics.CreateAllocator("DYNAMIC_ALLOCATOR", AllocatorType::Dynamic, usableMemory);
+		m_id = Metrics.CreateAllocator("DYNAMIC_ALLOCATOR", static_cast<AllocatorType>(m_type), usableMemory);
 
 		m_initialized = true;
 		return true;
@@ -107,9 +108,8 @@ namespace C3D
 				size, alignment, sizeof(AllocHeader), ALLOC_SIZE_MARKER_SIZE, requiredSize, fmt::ptr(basePtr));
 #endif
 
-#ifdef C3D_DEBUG_MEMORY_USAGE
-			Metrics.Allocate(m_id, type, size, requiredSize);
-#endif
+			MetricsAllocate(m_id, type, size, requiredSize, userDataPtr);
+
 			Platform::Zero(userDataPtr, size);
 			return userDataPtr;
 		}
@@ -163,9 +163,7 @@ namespace C3D
 		m_logger.Trace("FreeAligned() - Freed {} bytes at {}.", requiredSize, fmt::ptr(header->start));
 #endif
 
-#ifdef C3D_DEBUG_MEMORY_USAGE
-		Metrics.Free(m_id, type, *blockSize, requiredSize);
-#endif
+		MetricsFree(m_id, type, *blockSize, requiredSize, userDataPtr);
 	}
 
 	bool DynamicAllocator::GetSizeAlignment(void* block, u64* outSize, u16* outAlignment)

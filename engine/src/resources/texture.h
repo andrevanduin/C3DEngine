@@ -1,7 +1,7 @@
 
 #pragma once
-#include "core/c3d_string.h"
 #include "core/defines.h"
+#include "containers/cstring.h"
 
 namespace C3D
 {
@@ -79,20 +79,20 @@ namespace C3D
 	struct Texture
 	{
 		Texture()
-			: id(0), width(0), height(0), type(), channelCount(0), flags(0), name(), generation(INVALID_ID), internalData(nullptr)
+			: id(0), width(0), height(0), type(), channelCount(0), flags(0), generation(INVALID_ID), internalData(nullptr)
 		{}
 
-		Texture(const char* textureName, TextureType type, const u32 width, const u32 height, const u8 channelCount, const TextureFlagBits flags = 0)
-			: id(INVALID_ID), width(width), height(height), type(type), channelCount(channelCount), flags(flags), name(), generation(INVALID_ID), internalData(nullptr)
+		Texture(const char* textureName, const TextureType type, const u32 width, const u32 height, const u8 channelCount, const TextureFlagBits flags = 0)
+			: id(INVALID_ID), width(width), height(height), type(type), channelCount(channelCount), flags(flags), generation(INVALID_ID), internalData(nullptr)
 		{
-			StringNCopy(name, textureName, TEXTURE_NAME_MAX_LENGTH);
+			name = textureName;
 		}
 
 		void Set(const u32 _id, TextureType _type, const char* _name, u32 _width, u32 _height, u8 _channelCount, TextureFlagBits _flags, void* _internalData = nullptr)
 		{
 			id = _id;
 			type = _type;
-			StringNCopy(name, _name, TEXTURE_NAME_MAX_LENGTH);
+			name = _name;
 			width = _width;
 			height = _height;
 			channelCount = _channelCount;
@@ -117,7 +117,7 @@ namespace C3D
 		u8 channelCount;
 		TextureFlagBits flags;
 
-		char name[TEXTURE_NAME_MAX_LENGTH];
+		CString<TEXTURE_NAME_MAX_LENGTH> name;
 
 		u32 generation;
 		void* internalData;

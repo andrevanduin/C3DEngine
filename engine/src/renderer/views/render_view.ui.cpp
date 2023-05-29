@@ -1,14 +1,13 @@
 
 #include "render_view_ui.h"
 #include "core/events/event.h"
-#include "core/events/event_callback.h"
 
 #include "resources/mesh.h"
 #include "renderer/renderer_frontend.h"
 #include "resources/font.h"
 #include "resources/ui_text.h"
 #include "resources/loaders/shader_loader.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/shader_system.h"
 #include "systems/material_system.h"
 #include "systems/render_view_system.h"
@@ -26,7 +25,7 @@ namespace C3D
 		// Builtin skybox shader
 		const auto shaderName = "Shader.Builtin.UI";
 		ShaderResource res;
-		if (!Resources.Load(shaderName, &res))
+		if (!Resources.Load(shaderName, res))
 		{
 			m_logger.Error("OnCreate() - Failed to load ShaderResource");
 			return false;
@@ -38,7 +37,7 @@ namespace C3D
 			return false;
 		}
 
-		Resources.Unload(&res);
+		Resources.Unload(res);
 
 		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
 		m_diffuseMapLocation = Shaders.GetUniformIndex(m_shader, "diffuseTexture");
@@ -52,17 +51,17 @@ namespace C3D
 		const auto fWidth = static_cast<f32>(m_width);
 		const auto fHeight = static_cast<f32>(m_height);
 
-		m_projectionMatrix = glm::orthoRH_NO(0.0f, fWidth, fHeight, 0.0f, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_nearClip, m_farClip);
 
 		return true;
 	}
 
 	void RenderViewUi::OnResize()
 	{
-		m_projectionMatrix = glm::orthoRH_NO(0.0f, static_cast<f32>(m_width), static_cast<f32>(m_height), 0.0f, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::ortho(0.0f, static_cast<f32>(m_width), static_cast<f32>(m_height), 0.0f, m_nearClip, m_farClip);
 	}
 
-	bool RenderViewUi::OnBuildPacket(void* data, RenderViewPacket* outPacket)
+	bool RenderViewUi::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -75,19 +74,14 @@ namespace C3D
 		outPacket->view = this;
 		outPacket->projectionMatrix = m_projectionMatrix;
 		outPacket->viewMatrix = m_viewMatrix;
-		outPacket->extendedData = data;
+		outPacket->extendedData = frameAllocator.Allocate<UIPacketData>(MemoryType::RenderView);
+		Platform::Copy<UIPacketData>(outPacket->extendedData, data);
 
 		for (const auto mesh : uiData->meshData.meshes)
 		{
-			for (u16 i = 0; i < mesh->geometryCount; i++)
+			for (const auto geometry : mesh->geometries)
 			{
-				GeometryRenderData renderData
-				{
-					mesh->transform.GetWorld(),
-					mesh->geometries[i],
-				};
-
-				outPacket->geometries.PushBack(renderData);
+				outPacket->geometries.EmplaceBack(mesh->transform.GetWorld(), geometry);
 			}
 		}
 

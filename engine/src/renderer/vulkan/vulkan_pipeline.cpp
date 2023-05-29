@@ -4,9 +4,7 @@
 
 #include "core/logger.h"
 
-#include "renderer/vertex.h"
 #include "resources/shader.h"
-#include "services/services.h"
 
 namespace C3D
 {
@@ -120,7 +118,7 @@ namespace C3D
 
 		// Input assembly
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.topology = config.topology;
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		// Pipeline layout create info

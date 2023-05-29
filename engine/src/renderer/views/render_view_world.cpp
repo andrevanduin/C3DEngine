@@ -25,7 +25,7 @@ namespace C3D
 		// Builtin skybox shader
 		const auto shaderName = "Shader.Builtin.Material";
 		ShaderResource res;
-		if (!Resources.Load(shaderName, &res))
+		if (!Resources.Load(shaderName, res))
 		{
 			m_logger.Error("OnCreate() - Failed to load ShaderResource");
 			return false;
@@ -37,14 +37,13 @@ namespace C3D
 			return false;
 		}
 
-		Resources.Unload(&res);
+		Resources.Unload(res);
 
 		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
 
-		const auto fWidth = static_cast<f32>(m_width);
-		const auto fHeight = static_cast<f32>(m_height);
+		const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
+		m_projectionMatrix = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
 
-		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, fWidth / fHeight, m_nearClip, m_farClip);
 		m_camera = Cam.GetDefault();
 
 		// TODO: Obtain from scene
@@ -69,10 +68,10 @@ namespace C3D
 	void RenderViewWorld::OnResize()
 	{
 		const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
-		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
 	}
 
-	bool RenderViewWorld::OnBuildPacket(void* data, RenderViewPacket* outPacket)
+	bool RenderViewWorld::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -80,7 +79,7 @@ namespace C3D
 			return false;
 		}
 
-		const auto meshData = static_cast<MeshPacketData*>(data);
+		const auto& geometryData = *static_cast<DynamicArray<GeometryRenderData, LinearAllocator>*>(data);
 
 		outPacket->view = this;
 		outPacket->projectionMatrix = m_projectionMatrix;
@@ -88,44 +87,31 @@ namespace C3D
 		outPacket->viewPosition = m_camera->GetPosition();
 		outPacket->ambientColor = m_ambientColor;
 
-		for (const auto mesh : meshData->meshes)
+		for (const auto& gData : geometryData)
 		{
-			auto model = mesh->transform.GetWorld();
-
-			for (u16 i = 0; i < mesh->geometryCount; i++)
+			if ((gData.geometry->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
 			{
-				GeometryRenderData renderData
+				// Material has no transparency
+				outPacket->geometries.PushBack(gData);
+			}
+			else
+			{
+				vec3 center = vec4(gData.geometry->center, 1.0f) * gData.model;
+				const f32 distance = glm::distance(center, m_camera->GetPosition());
+
+				GeometryDistance gDistance
 				{
-					model,
-					mesh->geometries[i],
+					gData,
+					Abs(distance)
 				};
-
-				if ((mesh->geometries[i]->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
-				{
-					// Material has no transparency
-					outPacket->geometries.PushBack(renderData);
-				}
-				else
-				{
-					vec3 center = vec4(renderData.geometry->center, 1.0f) * model;
-					const f32 distance = glm::distance(center, m_camera->GetPosition());
-
-					GeometryDistance gDistance
-					{
-						renderData,
-						Abs(distance)
-					};
-					m_distances.PushBack(gDistance);
-				}
+				m_distances.PushBack(gDistance);
 			}
 		}
 
-		std::sort(m_distances.begin(), m_distances.end(),
-			[](const GeometryDistance& a, const GeometryDistance& b)
-			{
-				return a.distance < b.distance;
-			}
-		);
+		std::ranges::sort(m_distances, [](const GeometryDistance& a, const GeometryDistance& b)
+		{
+			return a.distance < b.distance;
+		});
 
 		for (auto& [g, distance] : m_distances)
 		{

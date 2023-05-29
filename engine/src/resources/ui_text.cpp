@@ -4,7 +4,7 @@
 #include "shader.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/font_system.h"
 #include "systems/shader_system.h"
 #include "core/identifier.h"
@@ -15,8 +15,18 @@ namespace C3D
 	static constexpr u64 INDICES_PER_QUAD = 6;
 
 	UIText::UIText()
-		: type(), data(nullptr), instanceId(INVALID_ID), frameNumber(INVALID_ID_U64), m_logger("UI_TEXT"), m_vertexBuffer(nullptr), m_indexBuffer(nullptr), m_text(nullptr)
-	{}
+		: uniqueId(INVALID_ID), type(), data(nullptr), instanceId(INVALID_ID), frameNumber(INVALID_ID_U64), m_logger("UI_TEXT"),
+		  m_vertexBuffer(nullptr), m_indexBuffer(nullptr), m_text(nullptr)
+	{
+	}
+
+	UIText::~UIText()
+	{
+		if (uniqueId != INVALID_ID)
+		{
+			Destroy();
+		}
+	}
 
 	bool UIText::Create(const UITextType fontType, const char* fontName, const u16 fontSize, const char* textContent)
 	{
@@ -49,7 +59,9 @@ namespace C3D
 			return false;
 		}
 
-		const auto textSize = m_text.Size();
+		auto textSize = m_text.SizeUtf8();
+		// Ensure that text size is larger than 0 since we can't create an empty buffer
+		if (textSize < 1) textSize = 0;
 
 		// Generate the vertex buffer
 		static constexpr u64 quad_size = sizeof(Vertex2D) * VERTICES_PER_QUAD;
@@ -118,12 +130,10 @@ namespace C3D
 	void UIText::SetText(const char* text)
 	{
 		// We need some valid text
-		if (!text) 
-			return;
+		if (!text) return;
 
 		// If the new string matches we don't need to do anything
-		if (m_text == text)
-			return;
+		if (m_text == text) return;
 
 		m_text = text;
 
@@ -139,13 +149,13 @@ namespace C3D
 
 	void UIText::Draw() const
 	{
-		// TODO: Utf8 length
-		if (!m_vertexBuffer->Draw(0, static_cast<u32>(m_text.Size() * VERTICES_PER_QUAD), true))
+		const auto size = m_text.SizeUtf8();
+		if (!m_vertexBuffer->Draw(0, static_cast<u32>(size * VERTICES_PER_QUAD), true))
 		{
 			m_logger.Error("Draw() - Failed to draw vertex buffer.");
 		}
 
-		if (!m_indexBuffer->Draw(0, static_cast<u32>(m_text.Size() * INDICES_PER_QUAD), false))
+		if (!m_indexBuffer->Draw(0, static_cast<u32>(size * INDICES_PER_QUAD), false))
 		{
 			m_logger.Error("Draw() - Failed to draw index buffer.");
 		}
@@ -155,6 +165,9 @@ namespace C3D
 	{
 		const u64 utf8Size = m_text.SizeUtf8();
 		const u64 size = m_text.Size();
+
+		// No need to regenerate anything since we don't have any text
+		if (utf8Size < 1) return;
 
 		const u64 vertexCount = VERTICES_PER_QUAD * utf8Size;
 		const u64 indexCount = INDICES_PER_QUAD * utf8Size;
@@ -198,6 +211,7 @@ namespace C3D
 				// If we find a newline we increment the y position and reset the x position
 				x = 0;
 				y += static_cast<f32>(data->lineHeight);
+				utf8CharCount++;
 				continue;
 			}
 
@@ -205,6 +219,7 @@ namespace C3D
 			{
 				// If we find a tab character we increment x by our tabAdvance
 				x += data->tabXAdvance;
+				utf8CharCount++;
 				continue;
 			}
 
@@ -238,6 +253,7 @@ namespace C3D
 			if (!found)
 			{
 				m_logger.Error("RegenerateGeometry() - Unable to find glyph. Unknown codepoint.");
+				utf8CharCount++;
 				continue;
 			}
 

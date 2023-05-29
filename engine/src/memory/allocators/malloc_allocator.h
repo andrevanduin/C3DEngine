@@ -27,11 +27,7 @@ namespace C3D
 
 		void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
 		void Free(MemoryType type, void* block) override;
-
-		[[nodiscard]] u64 GetTotalAllocated() const;
-
 	private:
-		LoggerInstance m_logger;
-		Array<MallocAllocation, 32> m_allocations;
+		LoggerInstance<32> m_logger;
 	};
 }

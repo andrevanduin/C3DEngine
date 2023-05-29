@@ -5,6 +5,7 @@
 #include "containers/string.h"
 #include "core/events/event_context.h"
 #include "math/math_types.h"
+#include "memory/allocators/linear_allocator.h"
 #include "renderer/renderpass.h"
 
 #include "resources/geometry.h"
@@ -16,11 +17,13 @@ namespace C3D
 
 	enum class RenderViewKnownType
 	{
-		World	= 0x01,
-		UI		= 0x02,
-		Skybox	= 0x03,
+		World		= 0x01,
+		UI			= 0x02,
+		Skybox		= 0x03,
 		/* @brief A view that simply only renders ui and world objects for the purpose of mouse picking. */
-		Pick	= 0x04,
+		Pick		= 0x04,
+		/* @brief A view that is used by the primitive renderer (to render lines, rectangles etc.) */
+		Primitives	= 0x05
 	};
 
 	enum class RenderViewViewMatrixSource
@@ -55,7 +58,7 @@ namespace C3D
 		// @brief The number of renderPasses used in this view.
 		u8 passCount;
 		// @brief The configurations for the renderPasses used in this view.
-		RenderPassConfig* passes;
+		DynamicArray<RenderPassConfig> passes;
 	};
 
 	struct RenderViewPacket;
@@ -83,7 +86,9 @@ namespace C3D
 		 */
 		virtual void OnBaseResize(u32 width, u32 height);
 
-		virtual bool OnBuildPacket(void* data, RenderViewPacket* outPacket) = 0;
+		virtual bool OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket) = 0;
+		virtual void OnDestroyPacket(RenderViewPacket& packet);
+
 		virtual bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) = 0;
 
 		virtual bool RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment);
@@ -104,11 +109,19 @@ namespace C3D
 
 		char* m_customShaderName;
 
-		LoggerInstance m_logger;
+		LoggerInstance<64> m_logger;
 	};
 
 	struct GeometryRenderData
 	{
+		explicit GeometryRenderData(Geometry* geometry)
+			: model(), geometry(geometry), uniqueId(INVALID_ID)
+		{}
+
+		GeometryRenderData(const mat4& model, Geometry* geometry, const u32 uniqueId = INVALID_ID)
+			: model(model), geometry(geometry), uniqueId(uniqueId)
+		{}
+
 		mat4 model;
 		Geometry* geometry;
 		u32 uniqueId;
@@ -133,7 +146,7 @@ namespace C3D
 
 	struct MeshPacketData
 	{
-		DynamicArray<Mesh*> meshes;
+		DynamicArray<Mesh*, LinearAllocator> meshes;
 	};
 
 	class UIText;
@@ -142,24 +155,28 @@ namespace C3D
 	{
 		MeshPacketData meshData;
 		// TEMP
-		DynamicArray<UIText*> texts;
+		DynamicArray<UIText*, LinearAllocator> texts;
 		// TEMP END
 	};
 
 	struct PickPacketData
 	{
-		MeshPacketData worldMeshData;
-		u32 worldGeometryCount;
+		DynamicArray<GeometryRenderData, LinearAllocator>* worldMeshData;
 
 		MeshPacketData uiMeshData;
 		u32 uiGeometryCount;
 		// TEMP:
-		DynamicArray<UIText*> texts;
+		DynamicArray<UIText*, LinearAllocator> texts;
 		// TEMP END
 	};
 
 	struct SkyboxPacketData
 	{
 		Skybox* box;
+	};
+
+	struct PrimitivePacketData
+	{
+		DynamicArray<Mesh*, LinearAllocator> meshes;
 	};
 }

@@ -3,6 +3,7 @@
 #include "core/defines.h"
 #include "core/logger.h"
 #include "base_allocator.h"
+#include "core/metrics/metrics.h"
 #include "platform/platform.h"
 
 namespace C3D
@@ -25,7 +26,7 @@ namespace C3D
 		[[nodiscard]] u64 GetAllocated() const { return m_allocated; }
 
 	private:
-		LoggerInstance m_logger;
+		LoggerInstance<32> m_logger;
 
 		Array<char, Size> m_memory;
 		u64 m_allocated;
@@ -61,7 +62,14 @@ namespace C3D
 		const auto dataPtr = &m_memory[m_allocated];
 		m_allocated += size;
 
-		Metrics.Allocate(m_id, type, size);
+#ifdef C3D_MEMORY_METRICS
+#ifdef C3D_MEMORY_METRICS_POINTERS
+		Metrics.Allocate(m_id, Allocation(type, dataPtr, size));
+#endif
+#ifndef C3D_MEMORY_METRICS_POINTERS
+		Metrics.Allocate(m_id, Allocation(type, size));
+#endif
+#endif
 
 		return dataPtr;
 	}

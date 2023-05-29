@@ -1,8 +1,9 @@
 
 #pragma once
 #include "core/defines.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "memory/global_memory_system.h"
+#include "platform/platform.h"
 
 namespace C3D
 {
@@ -77,12 +78,12 @@ namespace C3D
 				return HashMapIterator(m_map, m_index);
 			}
 
-			bool operator== (const HashMapIterator& other)
+			bool operator== (const HashMapIterator& other) const
 			{
 				return m_map == other.m_map && m_index == other.m_index;
 			}
 
-			bool operator!= (const HashMapIterator& other)
+			bool operator!= (const HashMapIterator& other) const
 			{
 				return m_map != other.m_map || m_index != other.m_index;
 			}
@@ -117,7 +118,7 @@ namespace C3D
 		void Delete(const Key& key);
 
 		Value& Get(const Key& key);
-		Value& GetByIndex(u64 index) const;
+		[[nodiscard]] Value& GetByIndex(u64 index) const;
 
 		bool Has(const Key& key);
 

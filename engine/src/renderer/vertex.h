@@ -28,6 +28,20 @@ namespace C3D
 		}
 	};
 
+	struct PrimitiveVertex3D
+	{
+		/* @brief: The position of the vertex. */
+		vec3 position;
+		/* @brief: The color of the vertex. */
+		vec4 color;
+
+		bool operator==(const Vertex3D& other) const
+		{
+			return all(epsilonEqual(position, other.position, FLOAT_EPSILON)) &&
+				all(epsilonEqual(color, other.color, FLOAT_EPSILON));
+		}
+	};
+
 	struct Vertex2D
 	{
 		Vertex2D() = default;
@@ -43,12 +57,10 @@ namespace C3D
 
 namespace std
 {
-	using namespace C3D;
-
 	template <>
-	struct hash<Vertex3D>
+	struct hash<C3D::Vertex3D>
 	{
-		std::size_t operator()(const Vertex3D& vertex) const
+		std::size_t operator()(const C3D::Vertex3D& vertex) const noexcept
 		{
 			return hash<vec3>()(vertex.position) ^ hash<vec3>()(vertex.normal) ^ hash<vec2>()(vertex.texture)
 				^ hash<vec4>()(vertex.color) ^ hash<vec3>()(vertex.tangent);

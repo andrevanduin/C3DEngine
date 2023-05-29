@@ -9,7 +9,7 @@
 
 namespace C3D
 {
-	class Application;
+	class Engine;
 
 	struct Texture;
 	struct Geometry;
@@ -18,12 +18,12 @@ namespace C3D
 
 	class Camera;
 
-	class RenderSystem
+	class C3D_API RenderSystem
 	{
 	public:
 		RenderSystem();
 
-		bool Init(const Application* application);
+		bool Init(const Engine* application);
 		void Shutdown();
 
 		void OnResize(u16 width, u16 height);
@@ -35,6 +35,8 @@ namespace C3D
 
 		void SetScissor(const vec4& rect) const;
 		void ResetScissor() const;
+
+		void SetLineWidth(float lineWidth) const;
 
 		void CreateTexture(const u8* pixels, Texture* texture) const;
 		void CreateWritableTexture(Texture* texture) const;
@@ -55,7 +57,7 @@ namespace C3D
 		bool EndRenderPass(RenderPass* pass) const;
 
 		bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const;
-		void DestroyShader(Shader* shader) const;
+		void DestroyShader(Shader& shader) const;
 
 		bool InitializeShader(Shader* shader) const;
 
@@ -92,11 +94,14 @@ namespace C3D
 
 		[[nodiscard]] bool IsMultiThreaded() const;
 
+		void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) const;
+		[[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const;
+
 	private:
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend();
 
-		LoggerInstance m_logger;
+		LoggerInstance<16> m_logger;
 
 		u8 m_windowRenderTargetCount;
 		u32 m_frameBufferWidth, m_frameBufferHeight;
@@ -104,6 +109,6 @@ namespace C3D
 		bool m_resizing;
 		u8 m_framesSinceResize;
 
-		RendererBackend* m_backend{ nullptr };
+		RendererBackend<64>* m_backend;
 	};
 }

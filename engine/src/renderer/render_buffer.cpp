@@ -2,7 +2,7 @@
 #include "render_buffer.h"
 
 #include "memory/global_memory_system.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {

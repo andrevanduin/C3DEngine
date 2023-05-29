@@ -33,9 +33,7 @@ namespace C3D
 	public:
 		ResourceLoader();
 
-		bool Load(const char* name, SystemFontResource* outResource) const;
-		static void Unload(SystemFontResource* resource);
-
-	private:
+		bool Load(const char* name, SystemFontResource& outResource) const;
+		static void Unload(SystemFontResource& resource);
 	};
 }

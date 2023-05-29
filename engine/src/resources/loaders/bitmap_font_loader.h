@@ -37,22 +37,22 @@ namespace C3D
 	public:
 		ResourceLoader();
 
-		bool Load(const char* name, BitmapFontResource* outResource) const;
-		static void Unload(BitmapFontResource* resource);
+		bool Load(const char* name, BitmapFontResource& resource) const;
+		static void Unload(BitmapFontResource& resource);
 
 	private:
-		bool ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource* data) const;
+		bool ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource& data) const;
 
-		static bool ParseInfoLine(const String& line, BitmapFontResource* res);
-		bool ParseCommonLine(const String& line, BitmapFontResource* res) const;
-		bool ParseCharsLine(const String& line, BitmapFontResource* res) const;
-		static bool ParseCharLine(const String& line, BitmapFontResource* res);
-		static bool ParsePageLine(const String& line, BitmapFontResource* res);
-		bool ParseKerningsLine(const String& line, BitmapFontResource* res) const;
-		static bool ParseKerningLine(const String& line, BitmapFontResource* res);
+		static bool ParseInfoLine(const String& line, BitmapFontResource& res);
+		bool ParseCommonLine(const String& line, BitmapFontResource& res) const;
+		bool ParseCharsLine(const String& line, BitmapFontResource& res) const;
+		static bool ParseCharLine(const String& line, BitmapFontResource& res);
+		static bool ParsePageLine(const String& line, BitmapFontResource& res);
+		bool ParseKerningsLine(const String& line, BitmapFontResource& res) const;
+		static bool ParseKerningLine(const String& line, BitmapFontResource& res);
 
-		bool ReadCbfFile(File& file, BitmapFontResource* res) const;
-		bool WriteCbfFile(const String& path, const BitmapFontResource* res) const;
+		bool ReadCbfFile(File& file, BitmapFontResource& res) const;
+		[[nodiscard]] bool WriteCbfFile(const String& path, const BitmapFontResource& res) const;
 	};
 
 }

@@ -4,6 +4,7 @@
 #include "vulkan_pipeline.h"
 #include "core/defines.h"
 #include "vulkan_types.h"
+#include "resources/shader.h"
 
 namespace C3D
 {
@@ -50,7 +51,7 @@ namespace C3D
 	struct VulkanShaderStageConfig
 	{
 		VkShaderStageFlagBits stage;
-		char fileName[VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH];
+		CString<VULKAN_SHADER_STAGE_CONFIG_FILENAME_MAX_LENGTH> fileName;
 	};
 
 	/* @brief Configuration for a specific descriptor set. */
@@ -88,6 +89,8 @@ namespace C3D
 		VkVertexInputAttributeDescription attributes[VULKAN_SHADER_MAX_ATTRIBUTES];
 		/* @brief Face culling mode, provided by the front end. */
 		FaceCullMode cullMode;
+		/* @brief Topology used by the shader. */
+		ShaderTopology topology;
 	};
 
 	struct VulkanDescriptorState

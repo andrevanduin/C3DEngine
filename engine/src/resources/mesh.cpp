@@ -6,6 +6,10 @@
 
 namespace C3D
 {
+	Mesh::Mesh()
+		: uniqueId(INVALID_ID), generation(INVALID_ID_U8)
+	{}
+
 	bool Mesh::LoadFromResource(const char* resourceName)
 	{
 		generation = INVALID_ID_U8;
@@ -14,11 +18,11 @@ namespace C3D
 		params.resourceName = resourceName;
 		params.outMesh = this;
 
-		JobInfo info;
+		JobInfo<MeshLoadParams, MeshLoadParams> info;
 		info.entryPoint = LoadJobEntryPoint;
 		info.onSuccess = LoadJobSuccess;
 		info.onFailure = LoadJobFailure;
-		info.SetData<MeshLoadParams, MeshLoadParams>(params);
+		info.input = params;
 
 		Jobs.Submit(info);
 		return true;
@@ -26,25 +30,23 @@ namespace C3D
 
 	void Mesh::Unload()
 	{
-		for (u16 i = 0; i < geometryCount; i++)
+		for (const auto geometry : geometries)
 		{
-			Geometric.Release(geometries[i]);
+			Geometric.Release(geometry);
 		}
-
-		Memory.Free(MemoryType::Array, geometries);
-		geometries = nullptr;
-		geometryCount = 0;
 		generation = INVALID_ID_U8;
+		geometries.Clear();
 	}
 
 	bool Mesh::LoadJobEntryPoint(void* data, void* resultData)
 	{
 		const auto loadParams = static_cast<MeshLoadParams*>(data);
 
-		const bool result = Resources.Load(loadParams->resourceName, &loadParams->meshResource);
+		const bool result = Resources.Load(loadParams->resourceName.Data(), loadParams->meshResource);
 
 		// NOTE: The load params are also used as the result data here, only the meshResource field is populated now.
-		Platform::Copy(resultData, loadParams, sizeof(MeshLoadParams));
+		const auto rData = static_cast<MeshLoadParams*>(resultData);
+		*rData = *loadParams;
 
 		return result;
 	}
@@ -57,17 +59,15 @@ namespace C3D
 		auto& configs = meshParams->meshResource.geometryConfigs;
 		const auto configCount = configs.Size();
 
-		meshParams->outMesh->geometryCount = static_cast<u16>(configCount);
-		meshParams->outMesh->geometries = Memory.Allocate<Geometry*>(MemoryType::Array, configCount);
 		for (u64 i = 0; i < configCount; i++)
 		{
-			meshParams->outMesh->geometries[i] = Geometric.AcquireFromConfig(configs[i], true);
+			meshParams->outMesh->geometries.PushBack(Geometric.AcquireFromConfig(configs[i], true));
 		}
 		meshParams->outMesh->generation++;
 
 		Logger::Trace("[MESH] - Successfully loaded: '{}'.", meshParams->resourceName);
 
-		Resources.Unload(&meshParams->meshResource);
+		Resources.Unload(meshParams->meshResource);
 	}
 
 	void Mesh::LoadJobFailure(void* data)
@@ -76,6 +76,6 @@ namespace C3D
 
 		Logger::Error("[MESH] - Failed to load: '{}'.", meshParams->resourceName);
 
-		Resources.Unload(&meshParams->meshResource);
+		Resources.Unload(meshParams->meshResource);
 	}
 }

@@ -1,4 +1,5 @@
 
+// ReSharper disable CppInconsistentNaming
 #pragma once
 #include <iostream>
 #include <ostream>
@@ -6,6 +7,7 @@
 
 #include "core/defines.h"
 #include "containers/dynamic_array.h"
+#include "math/math_types.h"
 
 #include "memory/global_memory_system.h"
 
@@ -25,12 +27,18 @@ namespace C3D
 	constexpr f64 STRING_RESIZE_FACTOR = 1.5;
 
 	template <class Allocator>
-	class BasicString
+	class __declspec(dllexport) BasicString
 	{
 		static_assert(std::is_base_of_v<BaseAllocator, Allocator>, "Allocator needs to be have a base type of BaseAllocator");
 
 	public:
 		using value_type = char;
+		using reference = value_type&;
+		using difference_type = ptrdiff_t;
+		using pointer = value_type*;
+		using const_pointer = const value_type*;
+		using iterator = Iterator<char>;
+		using const_iterator = ConstIterator<char>;
 
 	private:
 		void Init(const u64 length)
@@ -44,7 +52,7 @@ namespace C3D
 				m_sso.capacity = capacity;
 				m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 
-				m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, capacity);
+				m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
 				//Logger::Trace("[STRING] - Init() with capacity = {}", capacity);
 			}
 			else
@@ -67,7 +75,7 @@ namespace C3D
 					//Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
 
 					// Allocate enough space for the new data
-					const auto newData = m_allocator->template Allocate<char>(MemoryType::C3DString, newCapacity);
+					const auto newData = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
 					// Copy over the old data (including the final '0' byte)
 					std::memcpy(newData, m_data, m_size + 1);
 					// Now we free our current pointer
@@ -88,7 +96,7 @@ namespace C3D
 					//Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
 
 					// Allocate enough space for the new capacity
-					m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, newCapacity);
+					m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
 					// Copy over the old data from the stack to the heap (including the final '0' byte)
 					std::memcpy(m_data, m_sso.data, m_size + 1);
 					// Now we set our MEMORY_TYPE to HEAP since we just grew past our stack limit
@@ -119,7 +127,7 @@ namespace C3D
 			if (capacity > SSO_THRESHOLD)
 			{
 				// We need to allocate the memory on the heap.
-				m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, capacity);
+				m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
 				// Keep track of the capacity
 				m_sso.capacity = capacity;
 				// Set the flag bit to Heap
@@ -260,7 +268,7 @@ namespace C3D
 				// Set our MEMORY_TYPE bit to use the heap
 				m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 				// Allocate enough space on the heap for our entire capacity
-				m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, m_sso.capacity);
+				m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, m_sso.capacity);
 				// Copy over the contents from 'other' (we use our capacity instead of our size since we also want the trailing '\0' byte from 'other')
 				std::memcpy(m_data, other.m_data, m_sso.capacity);
 			}
@@ -305,6 +313,9 @@ namespace C3D
 		{
 			if (this == &other) return *this;
 
+			// We need to free this string if there is any dynamically allocated memory
+			Free();
+
 			// Copy over the size
 			m_size = other.m_size;
 			// Copy over the allocator
@@ -318,7 +329,7 @@ namespace C3D
 				// Set our MEMORY_TYPE bit to use the heap
 				m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 				// Allocate enough space on the heap for our entire capacity
-				m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, m_sso.capacity);
+				m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, m_sso.capacity);
 				// Copy over the contents from 'other' (we use our capacity instead of our size since we also want the trailing '\0' byte from 'other')
 				std::memcpy(m_data, other.m_data, m_sso.capacity);
 			}
@@ -386,7 +397,7 @@ namespace C3D
 					// The new capacity is larger than the old so we need to allocate more space
 
 					// Allocate enough space for the new data
-					const auto newData = m_allocator->template Allocate<char>(MemoryType::C3DString, capacity);
+					const auto newData = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
 					// Copy over the old data (including the final '0' byte)
 					if (m_size > 0) std::memcpy(newData, m_data, m_size + 1);
 					// Now we free our current pointer
@@ -403,7 +414,7 @@ namespace C3D
 					// Our new capacity is too large for SSO
 
 					// Allocate enough space for the new capacity
-					m_data = m_allocator->template Allocate<char>(MemoryType::C3DString, capacity);
+					m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
 					// Copy over the old data from the stack to the heap (including the final '0' byte)
 					if (m_size > 0) std::memcpy(m_data, m_sso.data, m_size + 1);
 					// Now we set our MEMORY_TYPE to HEAP since we just grew past our stack limit
@@ -444,7 +455,7 @@ namespace C3D
 		template <typename... Args>
 		void Format(const char* format, Args&&... args)
 		{
-			fmt::format_to(std::back_inserter(*this), format, std::forward<Args>(args)...);
+			std::vformat_to(std::back_inserter(*this), format, std::make_format_args(args...));
 		}
 
 		/* @brief Builds a string from the format and the provided arguments.
@@ -454,7 +465,7 @@ namespace C3D
 		static BasicString<DynamicAllocator> FromFormat(const char* format, Args&&... args)
 		{
 			BasicString<DynamicAllocator> buffer;
-			fmt::format_to(std::back_inserter(buffer), format, std::forward<Args>(args)...);
+			std::vformat_to(std::back_inserter(buffer), format, std::make_format_args(args...));
 			return buffer;
 		}
 
@@ -710,6 +721,33 @@ namespace C3D
 			return -1;
 		}
 
+		/* @brief Gets a substring starting at the provided start iterator until the provided end iterator. */
+		[[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt, const_iterator endIt)
+		{
+			// Calculate the size of our new substring
+			const auto size = endIt - startIt;
+			// Create the new string here on the stack (RVO will make sure this string gets moved)
+			// We increase the capacity by 1 since we need to add a '\0' byte
+			BasicString<Allocator> sub(size, size + 1);
+			// Copy the elements from our current string into the new substring
+			std::copy_n(startIt, size, sub.m_data);
+			// Add the ending '\0' byte
+			sub.m_data[size] = '\0';
+			return sub;
+		}
+
+		/* @brief Gets a substring starting at the provided start iterator until the end of the string. */
+		[[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt)
+		{
+			return SubStr(startIt, cend());
+		}
+
+		/* @brief Converts string to a f32. */
+		[[nodiscard]] f32 ToF32() const
+		{
+			return std::strtof(m_data, nullptr);
+		}
+
 		/* @brief Converts string to an i32 in the provided base. */
 		[[nodiscard]] i32 ToI32(const i32 base = 10) const
 		{
@@ -746,10 +784,22 @@ namespace C3D
 			return static_cast<u8>(std::strtoul(m_data, nullptr, base));
 		}
 
+		/* @brief Converts string to a boolean value. */
 		[[nodiscard]] bool ToBool() const
 		{
 			if (IEquals("1") || IEquals("true")) return true;
 			return false;
+		}
+
+		/* @brief Converts string to a vec4. */
+		[[nodiscard]] vec4 ToVec4() const
+		{
+			vec4 vec{};
+			if (sscanf_s(m_data, "%f %f %f %f", &vec.x, &vec.y, &vec.z, &vec.w) == -1)
+			{
+				throw std::invalid_argument("The string does not contain a valid vec4 representation");
+			}
+			return vec;
 		}
 
 		[[nodiscard]] Allocator* GetAllocator() const
@@ -766,12 +816,12 @@ namespace C3D
 		[[nodiscard]] u64 SizeUtf8() const
 		{
 			u64 size = 0;
-			for (u64 i = 0; i < m_size; i++)
+			for (u64 i = 0; i < m_size; size++)
 			{
-				if (m_data[i] >= 0 && m_data[i] < 127) size++;	// 1-byte character
-				else if ((m_data[i] & 0xE0) == 0xC0) size += 2;	// 2-byte character
-				else if ((m_data[i] & 0xF0) == 0xE0) size += 3; // 3-byte character
-				else if ((m_data[i] & 0xF8) == 0xF0) size += 4; // 4-byte character
+				if (m_data[i] >= 0 && m_data[i] < 127) i++;		// 1-byte character
+				else if ((m_data[i] & 0xE0) == 0xC0) i += 2;	// 2-byte character
+				else if ((m_data[i] & 0xF0) == 0xE0) i += 3;	// 3-byte character
+				else if ((m_data[i] & 0xF8) == 0xF0) i += 4;	// 4-byte character
 				else
 				{
 					Logger::Error("[STRING] - SizeUtf8() - Invalid 5 or 6-byte character in string.");
@@ -794,10 +844,22 @@ namespace C3D
 		[[nodiscard]] char* Data() { return m_data; }
 
 		/* @brief Returns an iterator pointing to the start of the character array. */
-		[[nodiscard]] char* begin() const { return m_data; }
+		[[nodiscard]] iterator begin() noexcept { return iterator(m_data); }
+
+		/* @brief Returns a const_iterator pointing to the start of the character array. */
+		[[nodiscard]] const_iterator begin() const noexcept { return const_iterator(m_data); }
+
+		/* @brief Returns a const_iterator pointing to the start of the character array. */
+		[[nodiscard]] const_iterator cbegin() const noexcept { return const_iterator(m_data); }
 
 		/* @brief Returns an iterator pointing to the element right after the last character in the character array. */
-		[[nodiscard]] char* end() const	{ return m_data + m_size; }
+		[[nodiscard]] iterator end() noexcept { return iterator(m_data + m_size); }
+
+		/* @brief Returns a const_iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] const_iterator end() const noexcept { return const_iterator(m_data + m_size); }
+
+		/* @brief Returns a const_iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] const_iterator cend() const noexcept { return const_iterator(m_data + m_size); }
 
 		/* @brief Returns the first char in the string by reference. */
 		[[nodiscard]] char& First() const { return m_data[0]; }
@@ -999,16 +1061,19 @@ namespace C3D
 	}
 }
 
-template<class Allocator>
-struct fmt::formatter<C3D::BasicString<Allocator>>
+template <class Allocator>
+struct std::formatter<C3D::BasicString<Allocator>>
 {
 	template<typename ParseContext>
-	static constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+	static auto parse(ParseContext& ctx)
+	{
+		return ctx.begin();
+	}
 
 	template<typename FormatContext>
-	auto format(C3D::BasicString<Allocator> const& str, FormatContext& ctx)
+	auto format(const C3D::BasicString<Allocator>& str, FormatContext& ctx)
 	{
-		return fmt::format_to(ctx.out(), "{}", str.Data());
+		return std::vformat_to(ctx.out(), "{}", std::make_format_args(str.Data()));
 	}
 };
 
@@ -1026,3 +1091,4 @@ struct std::hash<C3D::BasicString<Allocator>>
 		return hash;
 	}
 };
+

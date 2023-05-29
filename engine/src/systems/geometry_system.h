@@ -7,7 +7,7 @@
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 #include "resources/geometry.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {
@@ -25,7 +25,7 @@ namespace C3D
 	template<typename VertexType, typename IndexType>
 	struct GeometryConfig
 	{
-		GeometryConfig() : center(), minExtents(), maxExtents(), name(), materialName() {}
+		GeometryConfig() : center(), minExtents(), maxExtents() {}
 
 		DynamicArray<VertexType> vertices;
 		DynamicArray<IndexType> indices;
@@ -34,8 +34,8 @@ namespace C3D
 		vec3 minExtents;
 		vec3 maxExtents;
 
-		char name[GEOMETRY_NAME_MAX_LENGTH];
-		char materialName[MATERIAL_NAME_MAX_LENGTH];
+		CString<GEOMETRY_NAME_MAX_LENGTH> name;
+		CString<MATERIAL_NAME_MAX_LENGTH> materialName;
 
 		[[nodiscard]] static constexpr u32 GetVertexSize() { return sizeof(VertexType); }
 		[[nodiscard]] static constexpr u32 GetIndexSize()  { return sizeof(IndexType);  }
@@ -43,18 +43,20 @@ namespace C3D
 
 	struct GeometryReference
 	{
+		GeometryReference() : referenceCount(0), geometry(), autoRelease(false) {}
+
 		u64 referenceCount;
 		Geometry geometry;
 		bool autoRelease;
 	};
 
-	class GeometrySystem
+	class C3D_API GeometrySystem final : public System<32, GeometrySystemConfig>
 	{
 	public:
 		GeometrySystem();
 
-		bool Init(const GeometrySystemConfig& config);
-		void Shutdown() const;
+		bool Init(const GeometrySystemConfig& config) override;
+		void Shutdown() override;
 
 		[[nodiscard]] Geometry* AcquireById(u32 id) const;
 
@@ -70,9 +72,9 @@ namespace C3D
 		Geometry* GetDefault2D();
 
 		// NOTE: Vertex and index arrays are dynamically allocated so they should be freed by the user
-		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName);
+		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const String& name, const String& materialName);
 
-		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const string& name, const string& materialName);
+		[[nodiscard]] static GeometryConfig<Vertex3D, u32> GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const String& name, const String& materialName);
 
 	private:
 		template<typename VertexType, typename IndexType>
@@ -82,11 +84,7 @@ namespace C3D
 
 		bool CreateDefaultGeometries();
 
-		LoggerInstance m_logger;
-
 		bool m_initialized;
-
-		GeometrySystemConfig m_config;
 
 		Geometry m_defaultGeometry;
 		Geometry m_default2DGeometry;
@@ -155,9 +153,9 @@ namespace C3D
 		g->extents.max = config.maxExtents;
 
 		// Acquire the material
-		if (StringLength(config.materialName) > 0)
+		if (!config.materialName.Empty())
 		{
-			g->material = Materials.Acquire(config.materialName);
+			g->material = Materials.Acquire(config.materialName.Data());
 			if (!g->material)
 			{
 				g->material = Materials.GetDefault();

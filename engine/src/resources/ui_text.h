@@ -16,10 +16,18 @@ namespace C3D
 		System,
 	};
 
-	class UIText
+	class C3D_API UIText
 	{
 	public:
 		UIText();
+
+		UIText(const UIText&) = delete;
+		UIText(UIText&&) = delete;
+
+		UIText& operator=(const UIText&) = delete;
+		UIText& operator=(UIText&&) = delete;
+
+		~UIText();
 
 		bool Create(UITextType fontType, const char* fontName, u16 fontSize, const char* textContent);
 		void Destroy();
@@ -42,7 +50,7 @@ namespace C3D
 	private:
 		void RegenerateGeometry();
 
-		LoggerInstance m_logger;
+		LoggerInstance<16> m_logger;
 
 		RenderBuffer* m_vertexBuffer;
 		RenderBuffer* m_indexBuffer;

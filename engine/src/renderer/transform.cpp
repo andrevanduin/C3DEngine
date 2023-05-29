@@ -115,10 +115,13 @@ namespace C3D
 	{
 		if (m_needsUpdate)
 		{
-			mat4 tr = translate(m_position) * mat4(m_rotation);
-			tr *= scale(m_scale);
-			m_local = tr;
+			const mat4 t = translate(m_position);
+			const mat4 r = mat4_cast(m_rotation);
+			const mat4 s = scale(m_scale);
+
 			m_needsUpdate = false;
+			m_local = t * r * s;
+			return m_local;
 		}
 
 		return m_local;

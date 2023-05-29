@@ -2,12 +2,11 @@
 #include "image_loader.h"
 
 #include "core/logger.h"
-#include "core/c3d_string.h"
 #include "platform/filesystem.h"
 
 #include "resources/resource_types.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 #include "systems/resource_system.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -20,19 +19,19 @@ namespace C3D
 		: IResourceLoader("IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
 	{}
 
-	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource* outResource) const
+	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource& resource) const
 	{
-		return Load(name, outResource, {});
+		return Load(name, resource, {});
 	}
 
-	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource* outResource, const ImageResourceParams& params) const
+	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource& resource, const ImageResourceParams& params) const
 	{
-		if (StringLength(name) == 0 || !outResource) return false;
+		if (std::strlen(name) == 0) return false;
 
 		constexpr i32 requiredChannelCount = 4;
 		stbi_set_flip_vertically_on_load_thread(params.flipY);
 
-		char fullPath[512];
+		String fullPath(512);
 
 		// Try different extensions
 		const char* extensions[IMAGE_LOADER_EXTENSION_COUNT] = { "tga", "png", "jpg", "bmp" };
@@ -40,8 +39,8 @@ namespace C3D
 
 		for (const auto extension : extensions)
 		{
-			const auto formatStr = "%s/%s/%s.%s";
-			StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name, extension);
+			const auto formatStr = "{}/{}/{}.{}";
+			fullPath = String::FromFormat(formatStr, Resources.GetBasePath(), typePath, name, extension);
 			// Check if the requested file exists with the current extension
 			if (File::Exists(fullPath))
 			{
@@ -52,8 +51,8 @@ namespace C3D
 		}
 
 		// Take a copy of the resource path and name
-		outResource->fullPath = fullPath;
-		outResource->name = name;
+		resource.fullPath = fullPath;
+		resource.name = name;
 
 		if (!found)
 		{
@@ -106,20 +105,20 @@ namespace C3D
 
 		Memory.Free(MemoryType::Texture, rawData);
 		
-		outResource->data.pixels = data;
-		outResource->data.width = width;
-		outResource->data.height = height;
-		outResource->data.channelCount = requiredChannelCount;
+		resource.data.pixels = data;
+		resource.data.width = width;
+		resource.data.height = height;
+		resource.data.channelCount = requiredChannelCount;
 
 		return true;
 	}
 
-	void ResourceLoader<ImageResource>::Unload(ImageResource* resource)
+	void ResourceLoader<ImageResource>::Unload(ImageResource& resource)
 	{
 		// Free the pixel data loaded in by STBI
-		stbi_image_free(resource->data.pixels);
+		stbi_image_free(resource.data.pixels);
 
-		resource->fullPath.Destroy();
-		resource->name.Destroy();
+		resource.fullPath.Destroy();
+		resource.name.Destroy();
 	}
 }

@@ -32,7 +32,7 @@ namespace C3D
 		C3D_API bool Fire(u16 code, void* sender, EventContext data) const;
 
 	private:
-		LoggerInstance m_logger;
+		LoggerInstance<16> m_logger;
 
 		EventCodeEntry m_registered[MAX_MESSAGE_CODES];
 	};

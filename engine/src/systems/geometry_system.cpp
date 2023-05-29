@@ -1,7 +1,6 @@
 
 #include "geometry_system.h"
 
-#include "core/c3d_string.h"
 #include "core/logger.h"
 #include "math/geometry_utils.h"
 
@@ -9,12 +8,12 @@
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 
 namespace C3D
 {
 	GeometrySystem::GeometrySystem()
-		: m_logger("GEOMETRY_SYSTEM"), m_initialized(false), m_config(), m_defaultGeometry(),
+		: System("GEOMETRY_SYSTEM"), m_initialized(false), m_defaultGeometry(),
 		  m_default2DGeometry(), m_registeredGeometries(nullptr)
 	{}
 
@@ -42,7 +41,7 @@ namespace C3D
 		return true;
 	}
 
-	void GeometrySystem::Shutdown() const
+	void GeometrySystem::Shutdown()
 	{
 		Memory.Free(MemoryType::Geometry, m_registeredGeometries);
 	}
@@ -66,7 +65,6 @@ namespace C3D
 		{
 			GeometryReference* ref = &m_registeredGeometries[geometry->id];
 
-			const u32 id = geometry->id; // Copy the id
 			if (ref->geometry.id == geometry->id)
 			{
 				if (ref->referenceCount > 0) ref->referenceCount--;
@@ -110,7 +108,7 @@ namespace C3D
 		return &m_default2DGeometry;
 	}
 
-	GeometryConfig<Vertex3D, u32> GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const string& name, const string& materialName)
+	GeometryConfig<Vertex3D, u32> GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY, const String& name, const String& materialName)
 	{
 		if (width == 0.f)	width = 1.0f;
 		if (height == 0.f)	height = 1.0f;
@@ -186,28 +184,28 @@ namespace C3D
 			}
 		}
 
-		if (!name.empty())
+		if (!name.Empty())
 		{
-			StringNCopy(config.name, name.data(), GEOMETRY_NAME_MAX_LENGTH);
+			config.name = name.Data();
 		}
 		else
 		{
-			StringNCopy(config.name, DEFAULT_GEOMETRY_NAME, GEOMETRY_NAME_MAX_LENGTH);
+			config.name = DEFAULT_GEOMETRY_NAME;
 		}
 
-		if (!materialName.empty())
+		if (!materialName.Empty())
 		{
-			StringNCopy(config.materialName, materialName.data(), MATERIAL_NAME_MAX_LENGTH);
+			config.materialName = materialName.Data();
 		}
 		else
 		{
-			StringNCopy(config.materialName, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
+			config.materialName = DEFAULT_MATERIAL_NAME;
 		}
 
 		return config;
 	}
 
-	GeometryConfig<Vertex3D, u32> GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const string& name, const string& materialName)
+	GeometryConfig<Vertex3D, u32> GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const String& name, const String& materialName)
 	{
 		if (width == 0.f)  width = 1.0f;
 		if (height == 0.f) height = 1.0f;
@@ -334,22 +332,22 @@ namespace C3D
 			config.indices[iOffset + 5] = vOffset + 1;
 		}
 
-		if (!name.empty())
+		if (!name.Empty())
 		{
-			StringNCopy(config.name, name.data(), GEOMETRY_NAME_MAX_LENGTH);
+			config.name = name.Data();
 		}
 		else
 		{
-			StringNCopy(config.name, DEFAULT_GEOMETRY_NAME, GEOMETRY_NAME_MAX_LENGTH);
+			config.name = DEFAULT_GEOMETRY_NAME;
 		}
 
-		if (!materialName.empty())
+		if (!materialName.Empty())
 		{
-			StringNCopy(config.materialName, materialName.data(), MATERIAL_NAME_MAX_LENGTH);
+			config.materialName = materialName.Data();
 		}
 		else
 		{
-			StringNCopy(config.materialName, DEFAULT_MATERIAL_NAME, MATERIAL_NAME_MAX_LENGTH);
+			config.materialName = DEFAULT_MATERIAL_NAME;
 		}
 
 		GeometryUtils::GenerateTangents(config.vertices.GetData(), config.indices.Size(), config.indices.GetData());
@@ -362,13 +360,12 @@ namespace C3D
 		g->internalId = INVALID_ID;
 		g->generation = INVALID_ID;
 		g->id = INVALID_ID;
-
-		StringEmpty(g->name);
+		g->name.Clear();
 
 		// Release the material
-		if (g->material && StringLength(g->material->name) > 0)
+		if (g->material && !g->material->name.Empty())
 		{
-			Materials.Release(g->material->name);
+			Materials.Release(g->material->name.Data());
 			g->material = nullptr;
 		}
 	}

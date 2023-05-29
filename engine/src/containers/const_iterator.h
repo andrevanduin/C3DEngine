@@ -23,9 +23,9 @@ namespace C3D
 
 		ConstIterator(const ConstIterator& other) : m_ptr(other.m_ptr) {}
 
-		ConstIterator(ConstIterator&& other) noexcept : m_ptr(other.m_ptr) {}
-
 		ConstIterator(const Iterator<T>& other) : m_ptr(other.GetInternalPointer()) {}
+
+		ConstIterator(ConstIterator&& other) noexcept : m_ptr(other.m_ptr) {}
 
 		ConstIterator& operator=(const ConstIterator& other)
 		{

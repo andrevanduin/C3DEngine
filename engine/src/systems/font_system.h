@@ -25,10 +25,9 @@ namespace C3D
 
 	struct FontSystemConfig
 	{
-		u8 defaultSystemFontCount;
-		SystemFontConfig* systemFontConfigs;
-		u8 defaultBitmapFontCount;
-		BitmapFontConfig* bitmapFontConfigs;
+		DynamicArray<SystemFontConfig> systemFontConfigs;
+		DynamicArray<BitmapFontConfig> bitmapFontConfigs;
+
 		u8 maxSystemFontCount;
 		u8 maxBitmapFontCount;
 		bool autoRelease;
@@ -43,7 +42,7 @@ namespace C3D
 	class UIText;
 	struct FontData;
 
-	class C3D_API FontSystem final : public System<FontSystemConfig>
+	class C3D_API FontSystem final : public System<16, FontSystemConfig>
 	{
 	public:
 		FontSystem();

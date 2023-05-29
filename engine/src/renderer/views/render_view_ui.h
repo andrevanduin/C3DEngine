@@ -1,6 +1,5 @@
 
 #pragma once
-#include "core/events/event_context.h"
 #include "renderer/render_view.h"
 #include "resources/shader.h"
 
@@ -15,7 +14,7 @@ namespace C3D
 
 		void OnResize() override;
 
-		bool OnBuildPacket(void* data, RenderViewPacket* outPacket) override;
+		bool OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket) override;
 
 		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) override;
 

@@ -28,18 +28,25 @@ namespace C3D
 	struct RenderPacket
 	{
 		f32 deltaTime = 0;
-		DynamicArray<RenderViewPacket> views;
+		DynamicArray<RenderViewPacket, LinearAllocator> views;
 	};
+
+	enum RendererConfigFlagBits : u8
+	{
+		/* Sync frame rate to monitor refresh rate. */
+		FlagVSyncEnabled		= 0x1,
+		/* Configure renderer to try to save power wherever possible (useful when on battery power for example). */
+		FlagPowerSavingEnabled	= 0x2,
+	};
+
+	typedef u8 RendererConfigFlags;
 
 	struct RendererBackendConfig
 	{
 		const char* applicationName;
 		u32 applicationVersion;
 
-		//u16 renderPassCount;
-		//RenderPassConfig* passConfigs;
-		//RenderSystem* frontend;
-
+		RendererConfigFlags flags;
 		SDL_Window* window;
 	};
 

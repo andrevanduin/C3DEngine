@@ -8,16 +8,20 @@
 
 namespace C3D
 {
-	class Application;
+	class Engine;
 	struct Texture;
 	struct Shader;
 	struct ShaderUniform;
 	struct ShaderConfig;
 
+	template <u64 NameSize>
 	class RendererBackend
 	{
 	public:
-		explicit RendererBackend(const std::string& loggerName) : type(), state(), m_logger(loggerName) {}
+		explicit RendererBackend(const CString<NameSize>& loggerName)
+			: type(), state(), m_config(), m_logger(loggerName)
+		{}
+
 		RendererBackend(const RendererBackend&) = delete;
 		RendererBackend(RendererBackend&&) = delete;
 
@@ -42,6 +46,8 @@ namespace C3D
 		virtual void SetScissor(const ivec4& rect) = 0;
 		virtual void ResetScissor() = 0;
 
+		virtual void SetLineWidth(float lineWidth) = 0;
+
 		virtual bool BeginRenderPass(RenderPass* pass, RenderTarget* target) = 0;
 		virtual bool EndRenderPass(RenderPass* pass) = 0;
 
@@ -60,7 +66,7 @@ namespace C3D
 		virtual void DestroyGeometry(Geometry* geometry) = 0;
 
 		virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
-		virtual void DestroyShader(Shader* shader) = 0;
+		virtual void DestroyShader(Shader& shader) = 0;
 
 		virtual bool InitializeShader(Shader* shader) = 0;
 
@@ -97,11 +103,15 @@ namespace C3D
 
 		[[nodiscard]] virtual bool IsMultiThreaded() const = 0;
 
+		virtual void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) = 0;
+		[[nodiscard]] virtual bool IsFlagEnabled(RendererConfigFlagBits flag) const = 0;
+
 		RendererBackendType type;
 		RendererBackendState state;
 
 	protected:
-		LoggerInstance m_logger;
+		RendererBackendConfig m_config;
+		LoggerInstance<NameSize> m_logger;
 	};
 }
 

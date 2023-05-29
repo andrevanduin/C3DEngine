@@ -3,7 +3,7 @@
 #include "render_view_skybox.h"
 
 #include "core/events/event.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "systems/shader_system.h"
 #include "systems/camera_system.h"
@@ -25,7 +25,7 @@ namespace C3D
 		// Builtin skybox shader
 		const auto shaderName = "Shader.Builtin.Skybox";
 		ShaderResource res;
-		if (!Resources.Load(shaderName, &res))
+		if (!Resources.Load(shaderName, res))
 		{
 			m_logger.Error("OnCreate() - Failed to load ShaderResource");
 			return false;
@@ -37,7 +37,7 @@ namespace C3D
 			return false;
 		}
 
-		Resources.Unload(&res);
+		Resources.Unload(res);
 
 		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
 		m_projectionLocation = Shaders.GetUniformIndex(m_shader, "projection");
@@ -47,7 +47,7 @@ namespace C3D
 		const auto fWidth = static_cast<f32>(m_width);
 		const auto fHeight = static_cast<f32>(m_height);
 
-		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, fWidth / fHeight, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::perspective(m_fov, fWidth / fHeight, m_nearClip, m_farClip);
 		m_camera = Cam.GetDefault();
 
 		return true;
@@ -56,10 +56,10 @@ namespace C3D
 	void RenderViewSkybox::OnResize()
 	{
 		const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
-		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
 	}
 
-	bool RenderViewSkybox::OnBuildPacket(void* data, RenderViewPacket* outPacket)
+	bool RenderViewSkybox::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
 	{
 		if (!data || !outPacket)
 		{
@@ -67,18 +67,19 @@ namespace C3D
 			return false;
 		}
 
-		auto skyBoxData = static_cast<SkyboxPacketData*>(data);
+		const auto skyboxData = static_cast<SkyboxPacketData*>(data);
 
 		outPacket->view = this;
 		outPacket->projectionMatrix = m_projectionMatrix;
 		outPacket->viewMatrix = m_camera->GetViewMatrix();
 		outPacket->viewPosition = m_camera->GetPosition();
-		outPacket->extendedData = data;
+		outPacket->extendedData = frameAllocator.Allocate<SkyboxPacketData>(MemoryType::RenderView);
+		Platform::Copy<SkyboxPacketData>(outPacket->extendedData, data);
 
 		return true;
 	}
 
-	bool RenderViewSkybox::OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex)
+	bool RenderViewSkybox::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex)
 	{
 		const auto skyBoxData = static_cast<SkyboxPacketData*>(packet->extendedData);
 
@@ -134,8 +135,7 @@ namespace C3D
 			skyBoxData->box->frameNumber = frameNumber;
 
 			// Draw it
-			GeometryRenderData data;
-			data.geometry = skyBoxData->box->g;
+			GeometryRenderData data(skyBoxData->box->g);
 			Renderer.DrawGeometry(data);
 
 			if (!Renderer.EndRenderPass(pass))

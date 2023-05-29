@@ -18,9 +18,9 @@ namespace C3D
 	public:
 		ResourceLoader();
 
-		bool Load(const char* name, ImageResource* outResource) const;
-		bool Load(const char* name, ImageResource* outResource, const ImageResourceParams& params) const;
+		bool Load(const char* name, ImageResource& resource) const;
+		bool Load(const char* name, ImageResource& resource, const ImageResourceParams& params) const;
 
-		static void Unload(ImageResource* resource);
+		static void Unload(ImageResource& resource);
 	};
 }

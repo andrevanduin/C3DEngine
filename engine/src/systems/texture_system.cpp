@@ -2,9 +2,9 @@
 #include "texture_system.h"
 
 #include "core/logger.h"
-#include "core/c3d_string.h"
+#include "core/string_utils.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "renderer/renderer_frontend.h"
 #include "resources/loaders/image_loader.h"
@@ -75,7 +75,7 @@ namespace C3D
 	{
 		// If the default texture is requested we return it. But we warn about it since it should be
 		// retrieved with GetDefault()
-		if (IEquals(name, DEFAULT_TEXTURE_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
 			m_logger.Warn("Acquire() - Called for {} texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
 			return &m_defaultTexture;
@@ -95,7 +95,7 @@ namespace C3D
 	{
 		// If the default texture is requested we return it. But we warn about it since it should be
 		// retrieved with GetDefault()
-		if (IEquals(name, DEFAULT_TEXTURE_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
 			m_logger.Warn("AcquireCube() - Called for {} texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
 			return &m_defaultTexture;
@@ -133,7 +133,7 @@ namespace C3D
 
 	void TextureSystem::Release(const char* name)
 	{
-		if (IEquals(name, DEFAULT_TEXTURE_NAME))
+		if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
 		{
 			m_logger.Warn("Tried to release {}. This happens on shutdown automatically", DEFAULT_TEXTURE_NAME);
 			return;
@@ -276,7 +276,7 @@ namespace C3D
 		constexpr u32 channels = 4;
 		constexpr u32 pixelCount = textureDimensions * textureDimensions;
 
-		const auto pixels = new u8[pixelCount * channels];
+		const auto pixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(pixelCount) * channels);
 		Platform::SetMemory(pixels, 255, sizeof(u8) * pixelCount * channels);
 
 		for (u64 row = 0; row < textureDimensions; row++)
@@ -311,7 +311,7 @@ namespace C3D
 
 		// Diffuse texture
 		m_logger.Trace("Create default diffuse texture...");
-		const auto diffusePixels = new u8[16 * 16 * 4];
+		const auto diffusePixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
 		// Default diffuse texture is all white
 		Platform::SetMemory(diffusePixels, 255, sizeof(u8) * 16 * 16 * 4); // Default diffuse map is all white
 
@@ -322,7 +322,7 @@ namespace C3D
 
 		// Specular texture.
 		m_logger.Trace("Create default specular texture...");
-		const auto specPixels = new u8[16 * 16 * 4];
+		const auto specPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
 		Platform::SetMemory(specPixels, 0, sizeof(u8) * 16 * 16 * 4); // Default specular map is black (no specular)
 
 		m_defaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, TextureType::Type2D, 16, 16, 4);
@@ -332,7 +332,7 @@ namespace C3D
 
 		// Normal texture.
 		m_logger.Trace("Create default normal texture...");
-		const auto normalPixels = new u8[16 * 16 * 4];
+		const auto normalPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
 		Platform::SetMemory(normalPixels, 0, sizeof(u8) * 16 * 16 * 4);
 
 		// Each pixel
@@ -357,10 +357,10 @@ namespace C3D
 		m_defaultNormalTexture.generation = INVALID_ID;
 
 		// Cleanup our pixel arrays
-		delete[] pixels;
-		delete[] diffusePixels;
-		delete[] specPixels;
-		delete[] normalPixels;
+		Memory.Free(MemoryType::Array, pixels);
+		Memory.Free(MemoryType::Array, diffusePixels);
+		Memory.Free(MemoryType::Array, specPixels);
+		Memory.Free(MemoryType::Array, normalPixels);
 
 		return true;
 	}
@@ -380,18 +380,17 @@ namespace C3D
 		params.outTexture = texture;
 		params.currentGeneration = texture->generation;
 
-		JobInfo info;
+		JobInfo<TextureLoadParams, TextureLoadParams> info;
 		info.entryPoint = LoadJobEntryPoint;
 		info.onSuccess = [this](void* r) { LoadJobSuccess(r); };
 		info.onFailure = [this](void* r) { LoadJobFailure(r); };
-
-		info.SetData<TextureLoadParams, TextureLoadParams>(params);
+		info.input = params;
 
 		Jobs.Submit(info);
 		return true;
 	}
 
-	bool TextureSystem::LoadCubeTextures(const char* name, const std::array<char[TEXTURE_NAME_MAX_LENGTH], 6>& textureNames, Texture* texture) const
+	bool TextureSystem::LoadCubeTextures(const char* name, const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames, Texture* texture) const
 	{
 		constexpr ImageResourceParams params { false };
 
@@ -403,7 +402,7 @@ namespace C3D
 			const auto textureName = textureNames[i];
 
 			ImageResource res{};
-			if (!Resources.Load(textureName, &res, params))
+			if (!Resources.Load(textureName.Data(), res, params))
 			{
 				m_logger.Error("LoadCubeTextures() - Failed to load image resource for texture '{}'", textureName);
 				return false;
@@ -422,7 +421,7 @@ namespace C3D
 				texture->channelCount = res.data.channelCount;
 				texture->flags = 0;
 				texture->generation = 0;
-				StringNCopy(texture->name, name, TEXTURE_NAME_MAX_LENGTH);
+				texture->name = name;
 
 				imageSize = static_cast<u64>(texture->width) * texture->height * texture->channelCount;
 				pixels = Memory.Allocate<u8>(MemoryType::Array, imageSize * 6); // 6 textures one for every side of the cube
@@ -439,10 +438,10 @@ namespace C3D
 			}
 
 			// Copy over the pixels to the correct location in the array
-			Platform::Copy(pixels + (imageSize * i), res.data.pixels, imageSize);
+			Platform::MemCopy(pixels + (imageSize * i), res.data.pixels, imageSize);
 
 			// Cleanup our resource
-			Resources.Unload(&res);
+			Resources.Unload(res);
 		}
 
 		// Acquire internal texture resources and upload to the GPU
@@ -460,7 +459,7 @@ namespace C3D
 		Renderer.DestroyTexture(texture);
 
 		// Zero out the memory for the texture
-		Platform::Zero(texture->name, sizeof(char) * TEXTURE_NAME_MAX_LENGTH);
+		texture->name.Clear();
 		Platform::Zero(texture);
 
 		// Invalidate the id and generation
@@ -489,8 +488,7 @@ namespace C3D
 		// Increment / Decrement our reference count
 		ref.referenceCount += referenceDiff;
 
-		char nameCopy[TEXTURE_NAME_MAX_LENGTH];
-		StringNCopy(nameCopy, name, TEXTURE_NAME_MAX_LENGTH);
+		CString<TEXTURE_NAME_MAX_LENGTH> nameCopy = name;
 
 		// If decrementing, this means we want to release
 		if (referenceDiff < 0)
@@ -549,13 +547,13 @@ namespace C3D
 				{
 					if (type == TextureType::TypeCube)
 					{
-						std::array<char[TEXTURE_NAME_MAX_LENGTH], 6> textureNames{};
-						StringFormat(textureNames[0], "%s_r", name); // Right texture
-						StringFormat(textureNames[1], "%s_l", name); // Left texture
-						StringFormat(textureNames[2], "%s_u", name); // Up texture
-						StringFormat(textureNames[3], "%s_d", name); // Down texture
-						StringFormat(textureNames[4], "%s_f", name); // Front texture
-						StringFormat(textureNames[5], "%s_b", name); // Back texture
+						std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6> textureNames{};
+						textureNames[0].FromFormat("{}_r", name); // Right texture
+						textureNames[1].FromFormat("{}_l", name); // Left texture
+						textureNames[2].FromFormat("{}_u", name); // Up texture
+						textureNames[3].FromFormat("{}_d", name); // Down texture
+						textureNames[4].FromFormat("{}_f", name); // Front texture
+						textureNames[5].FromFormat("{}_b", name); // Back texture
 
 						if (!LoadCubeTextures(name, textureNames, texture))
 						{
@@ -597,7 +595,7 @@ namespace C3D
 
 		constexpr ImageResourceParams resourceParams{ true };
 
-		const auto result = Resources.Load(loadParams->resourceName.Data(), &loadParams->imageResource, resourceParams);
+		const auto result = Resources.Load(loadParams->resourceName.Data(), loadParams->imageResource, resourceParams);
 		if (result)
 		{
 			const ImageResourceData& resourceData = loadParams->imageResource.data;
@@ -624,12 +622,12 @@ namespace C3D
 			}
 
 			// Take a copy of the name
-			StringNCopy(loadParams->tempTexture.name, loadParams->resourceName.Data(), TEXTURE_NAME_MAX_LENGTH);
+			loadParams->tempTexture.name = loadParams->resourceName.Data();
 			loadParams->tempTexture.generation = INVALID_ID;
 			loadParams->tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
 
-			// NOTE: The load params are also used as the result data here, only the imageResource field is populated now.
-			Platform::Copy(resultData, loadParams, sizeof(TextureLoadParams));
+			const auto rData = static_cast<TextureLoadParams*>(resultData);
+			*rData = *loadParams;
 		}
 
 		return result;
@@ -663,13 +661,13 @@ namespace C3D
 		m_logger.Trace("LoadJobSuccess() - Successfully loaded texture '{}'.", params->resourceName);
 
 		// Cleanup our data
-		Resources.Unload(&params->imageResource);
+		Resources.Unload(params->imageResource);
 	}
 
 	void TextureSystem::LoadJobFailure(void* data) const
 	{
 		const auto params = static_cast<TextureLoadParams*>(data);
 		m_logger.Error("LoadJobFailure() - Failed to load texture '{}'.", params->resourceName);
-		Resources.Unload(&params->imageResource);
+		Resources.Unload(params->imageResource);
 	}
 }

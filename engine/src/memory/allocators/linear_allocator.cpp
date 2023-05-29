@@ -2,6 +2,7 @@
 #include "linear_allocator.h"
 
 #include "core/logger.h"
+#include "core/metrics/metrics.h"
 #include "memory/global_memory_system.h"
 #include "platform/platform.h"
 
@@ -62,9 +63,7 @@ namespace C3D
 			char* block = m_memoryBlock + m_allocated;
 			m_allocated += size;
 
-#ifdef C3D_DEBUG_MEMORY_USAGE
-			Metrics.Allocate(m_id, type, size, size);
-#endif
+			MetricsAllocate(m_id, type, size, size, block);
 
 			Platform::Zero(block, size);
 			return block;

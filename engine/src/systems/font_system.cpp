@@ -26,11 +26,11 @@ namespace C3D
 		m_bitmapFonts.Create(config.maxBitmapFontCount);
 
 		// Load all our bitmap fonts
-		for (u32 i = 0; i < m_config.defaultBitmapFontCount; i++)
+		for (auto& font : m_config.bitmapFontConfigs)
 		{
-			if (!LoadBitmapFont(m_config.bitmapFontConfigs[i]))
+			if (!LoadBitmapFont(font))
 			{
-				m_logger.Error("Init() - Failed to load bitmap font: '{}'", m_config.bitmapFontConfigs[i].name);
+				m_logger.Error("Init() - Failed to load bitmap font: '{}'", font.name);
 			}
 		}
 
@@ -64,7 +64,7 @@ namespace C3D
 
 		// Load our font resource
 		BitmapFontLookup lookup;
-		if (!Resources.Load(config.resourceName.Data(), &lookup.resource))
+		if (!Resources.Load(config.resourceName.Data(), lookup.resource))
 		{
 			m_logger.Error("LoadBitmapFont() - Failed to load bitmap font resource.");
 			return false;
@@ -72,7 +72,7 @@ namespace C3D
 
 		// Acquire the texture
 		// TODO: This only supports one page at the moment!
-		lookup.resource.data.atlas.texture = Textures.Acquire(lookup.resource.pages[0].file, true);
+		lookup.resource.data.atlas.texture = Textures.Acquire(lookup.resource.pages[0].file.Data(), true);
 
 		const bool result = SetupFontData(lookup.resource.data);
 
@@ -191,7 +191,7 @@ namespace C3D
 		// If it's a bitmap font, we release the reference to it's texture
 		if (font.type == FontType::Bitmap && font.atlas.texture)
 		{
-			Textures.Release(font.atlas.texture->name);
+			Textures.Release(font.atlas.texture->name.Data());
 		}
 		font.atlas.texture = nullptr;
 	}

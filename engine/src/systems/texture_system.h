@@ -45,7 +45,7 @@ namespace C3D
 		ImageResource imageResource;
 	};
 
-	class TextureSystem final : public System<TextureSystemConfig>
+	class C3D_API TextureSystem final : public System<16, TextureSystemConfig>
 	{
 	public:
 		TextureSystem();
@@ -76,7 +76,7 @@ namespace C3D
 		void DestroyDefaultTextures();
 
 		bool LoadTexture(const char* name, Texture* texture) const;
-		bool LoadCubeTextures(const char* name, const std::array<char[TEXTURE_NAME_MAX_LENGTH], 6>& textureNames, Texture* texture) const;
+		bool LoadCubeTextures(const char* name, const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames, Texture* texture) const;
 
 		static void DestroyTexture(Texture* texture);
 

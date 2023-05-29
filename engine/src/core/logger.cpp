@@ -6,26 +6,39 @@
 
 #include <VkBootstrap.h>
 
+#include "console.h"
+#include "console_sink.h"
+
 namespace C3D
 {
-	bool Logger::m_initialized = false;
-
-	std::shared_ptr<spdlog::logger> Logger::s_coreLogger;
-
-	void Logger::Init()
+	void Logger::Init(UIConsole* console)
 	{
-		auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-		consoleSink->set_pattern("%^ [%T] %v%$");
-		consoleSink->set_level(spdlog::level::debug);
+		auto& logger = GetCoreLogger();
+		logger = std::make_shared<spdlog::logger>(spdlog::logger("core"));
+		logger->set_level(spdlog::level::trace);
 
-		auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("console.log", true);
-		consoleSink->set_pattern("%^ [%T] %v%$");
-		consoleSink->set_level(spdlog::level::trace);
+		const auto externalConsoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+		externalConsoleSink->set_pattern("%^ [%T] %v%$");
+		externalConsoleSink->set_level(spdlog::level::trace);
 
-		s_coreLogger = std::make_shared<spdlog::logger>(spdlog::logger("core", { consoleSink, fileSink }));
-		s_coreLogger->set_level(spdlog::level::trace);
+		logger->sinks().push_back(externalConsoleSink);
 
-		m_initialized = true;
+		const auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("console.log", true);
+		fileSink->set_pattern("%^ [%T] %v%$");
+		fileSink->set_level(spdlog::level::trace);
+
+		logger->sinks().push_back(fileSink);
+
+		if (console != nullptr)
+		{
+			const auto consoleSink = std::make_shared<ConsoleSink>(console);
+			consoleSink->set_pattern("%^ [%T] %v%$");
+			consoleSink->set_level(spdlog::level::trace);
+
+			logger->sinks().push_back(consoleSink);
+		}
+
+		GetInitialized() = true;
 	}
 
 	VkBool32 Logger::VkDebugLog(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -52,5 +65,17 @@ namespace C3D
 		}
 
 		return VK_FALSE;
+	}
+
+	bool& Logger::GetInitialized()
+	{
+		static bool initialized = false;
+		return initialized;
+	}
+
+	std::shared_ptr<spdlog::logger>& Logger::GetCoreLogger()
+	{
+		static std::shared_ptr<spdlog::logger> coreLogger;
+		return coreLogger;
 	}
 }

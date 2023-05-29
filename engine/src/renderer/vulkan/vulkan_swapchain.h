@@ -13,11 +13,11 @@ namespace C3D
 	public:
 		VulkanSwapChain();
 
-		void Create(VulkanContext* context, u32 width, u32 height);
+		void Create(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
-		void Recreate(VulkanContext* context, u32 width, u32 height);
+		void Recreate(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
-		void Destroy(const VulkanContext* context) const;
+		void Destroy(const VulkanContext* context);
 
 		bool AcquireNextImageIndex(VulkanContext* context, u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex);
 
@@ -37,10 +37,13 @@ namespace C3D
 		/* @brief Render targets used for on-screen rendering, one per frame. */
 		RenderTarget renderTargets[3];
 	private:
-		void CreateInternal(VulkanContext* context, u32 width, u32 height);
+		void CreateInternal(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
 		void DestroyInternal(const VulkanContext* context) const;
-		
+
+		VkPresentModeKHR GetPresentMode(const VulkanContext* context) const;
+
+		RendererConfigFlags m_flags;
 		VkPresentModeKHR m_presentMode;
 	};
 }

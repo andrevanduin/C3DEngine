@@ -20,7 +20,7 @@ namespace C3D
 		Camera camera;
 	};
 
-	class C3D_API CameraSystem final : public System<CameraSystemConfig>
+	class C3D_API CameraSystem final : public System<16, CameraSystemConfig>
 	{
 	public:
 		CameraSystem();

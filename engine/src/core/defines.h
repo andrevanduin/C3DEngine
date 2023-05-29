@@ -50,6 +50,7 @@ constexpr auto ToUnderlying(E e) noexcept
  */
 #define INVALID_ID_U64	std::numeric_limits<u64>::max()
 #define INVALID_ID		std::numeric_limits<u32>::max()
+#define INVALID_ID_U32  INVALID_ID
 #define INVALID_ID_U16	std::numeric_limits<u16>::max()
 #define INVALID_ID_U8	std::numeric_limits<u8>::max()
 
@@ -117,16 +118,3 @@ C3D_INLINE Range GetAlignedRange(const u64 offset, const u64 size, const u64 gra
 {
 	return { GetAligned(offset, granularity), GetAligned(size, granularity) };
 }
-
-template<>
-struct fmt::formatter<std::thread::id>
-{
-	template<typename ParseContext>
-	constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
-
-	template<typename FormatContext>
-	auto format(std::thread::id const& id, FormatContext& ctx)
-	{
-		return fmt::format_to(ctx.out(), "{}", std::hash<std::thread::id>{}(id));
-	}
-};

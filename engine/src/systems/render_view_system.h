@@ -13,7 +13,7 @@ namespace C3D
 		u16 maxViewCount;
 	};
 
-	class C3D_API RenderViewSystem final : public System<RenderViewSystemConfig>
+	class C3D_API RenderViewSystem final : public System<32, RenderViewSystemConfig>
 	{
 	public:
 		RenderViewSystem();
@@ -27,7 +27,9 @@ namespace C3D
 
 		RenderView* Get(const char* name);
 
-		bool BuildPacket(RenderView* view, void* data, RenderViewPacket* outPacket) const;
+		bool BuildPacket(RenderView* view, LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket) const;
+		void DestroyPacket(RenderView* view, RenderViewPacket& packet) const;
+
 		bool OnRender(RenderView* view, const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const;
 
 		void RegenerateRenderTargets(RenderView* view) const;

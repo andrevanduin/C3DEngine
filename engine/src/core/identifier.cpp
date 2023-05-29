@@ -3,7 +3,12 @@
 
 namespace C3D
 {
-	DynamicArray<void*, MallocAllocator> Identifier::s_owners(100);
+	DynamicArray<void*, MallocAllocator> Identifier::s_owners;
+
+	void Identifier::Init()
+	{
+		s_owners = DynamicArray<void*, MallocAllocator>(100);
+	}
 
 	void Identifier::Destroy()
 	{
@@ -28,7 +33,7 @@ namespace C3D
 		return static_cast<u32>(s_owners.Size()) - 1;
 	}
 
-	void Identifier::ReleaseId(u32 id)
+	void Identifier::ReleaseId(u32& id)
 	{
 		if (id > s_owners.Size())
 		{
@@ -38,5 +43,7 @@ namespace C3D
 		
 		// Free this id so it's usable again
 		s_owners[id] = nullptr;
+		// Ensure the id is set to invalid
+		id = INVALID_ID;
 	}
 }

@@ -1,11 +1,10 @@
 
 #include "text_loader.h"
 
-#include "core/c3d_string.h"
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "systems/resource_system.h"
 
@@ -15,15 +14,12 @@ namespace C3D
 		: IResourceLoader("TEXT_LOADER", MemoryType::String, ResourceType::Text, nullptr, "")
 	{}
 
-	bool ResourceLoader<TextResource>::Load(const char* name, TextResource* outResource) const
+	bool ResourceLoader<TextResource>::Load(const char* name, TextResource& resource) const
 	{
-		if (StringLength(name) == 0 || !outResource) return false;
-
-		char fullPath[512];
-		const auto formatStr = "%s/%s/%s";
+		if (std::strlen(name) == 0) return false;
 
 		// TODO: try different extensions
-		StringFormat(fullPath, formatStr, Resources.GetBasePath(), typePath, name);
+		auto fullPath = String::FromFormat("{}/{}/{}", Resources.GetBasePath(), typePath, name);
 
 		File file;
 		if (!file.Open(fullPath, FileModeRead))
@@ -32,7 +28,7 @@ namespace C3D
 			return false;
 		}
 
-		outResource->fullPath = fullPath;
+		resource.fullPath = fullPath;
 
 		u64 fileSize = 0;
 		if (!file.Size(&fileSize))
@@ -43,10 +39,10 @@ namespace C3D
 		}
 
 		// TODO: should be using an allocator here
-		outResource->text.Reserve(fileSize);
-		outResource->name = name;
+		resource.text.Reserve(fileSize);
+		resource.name = name;
 
-		if (!file.ReadAll(outResource->text))
+		if (!file.ReadAll(resource.text))
 		{
 			m_logger.Error("Unable to read text file: '{}'", fullPath);
 			file.Close();
@@ -57,10 +53,10 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<TextResource>::Unload(TextResource* resource)
+	void ResourceLoader<TextResource>::Unload(TextResource& resource)
 	{
-		resource->text.Destroy();
-		resource->name.Destroy();
-		resource->fullPath.Destroy();
+		resource.text.Destroy();
+		resource.name.Destroy();
+		resource.fullPath.Destroy();
 	}
 }

@@ -4,11 +4,11 @@
 
 namespace C3D
 {
-	template<typename T>
+	template <u64 NameSize, typename T>
 	class System
 	{
 	public:
-		explicit System(const std::string& name) : m_logger(name), m_config{} {}
+		explicit System(const CString<NameSize>& name) : m_logger(name), m_config{} {}
 		System(const System&) = delete;
 		System(System&&) = delete;
 
@@ -21,7 +21,7 @@ namespace C3D
 		virtual void Shutdown() {}
 
 	protected:
-		LoggerInstance m_logger;
+		LoggerInstance<NameSize> m_logger;
 		T m_config;
 	};
 }

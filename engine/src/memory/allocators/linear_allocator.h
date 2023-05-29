@@ -19,19 +19,13 @@ namespace C3D
 
 		void FreeAll();
 
-		template <typename T>
-		T* New(const MemoryType type)
-		{
-			return new(AllocateBlock(type, sizeof(T), alignof(T))) T();
-		}
-
 		[[nodiscard]] u64 GetTotalSize() const { return m_totalSize; }
 		[[nodiscard]] u64 GetAllocated() const { return m_allocated; }
 
 		[[nodiscard]] bool OwnsMemory() const { return m_ownsMemory; }
 
 	private:
-		LoggerInstance m_logger;
+		LoggerInstance<32> m_logger;
 
 		u64 m_totalSize;
 		u64 m_allocated;

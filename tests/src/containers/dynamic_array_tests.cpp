@@ -6,10 +6,70 @@
 
 #include <containers/dynamic_array.h>
 #include <core/defines.h>
-#include <core/metrics.h>
+#include <core/metrics/metrics.h>
 
 #include "containers/string.h"
 #include "renderer/vertex.h"
+
+std::atomic TEST_OBJECT_COUNTER = 0;
+
+struct TestObject
+{
+	TestObject() : mockStr("MOCK-MOCK-MOCK-MOCK"), mockInt(69)
+	{
+		++TEST_OBJECT_COUNTER;
+	}
+
+	TestObject(const TestObject& other)
+	{
+		if (this != &other)
+		{
+			mockStr = other.mockStr;
+			mockInt = other.mockInt;
+
+			++TEST_OBJECT_COUNTER;
+		}
+	}
+
+	TestObject& operator=(const TestObject& other)
+	{
+		if (this != &other)
+		{
+			mockStr = other.mockStr;
+			mockInt = other.mockInt;
+
+			++TEST_OBJECT_COUNTER;
+		}
+		return *this;
+	}
+
+	TestObject(TestObject&& other) noexcept
+	{
+		if (this != &other)
+		{
+			mockStr = std::move(other.mockStr);
+			mockInt = other.mockInt;
+		}
+	}
+
+	TestObject& operator=(TestObject&& other) noexcept
+	{
+		if (this != &other)
+		{
+			mockStr = std::move(other.mockStr);
+			mockInt = other.mockInt;
+		}
+		return *this;
+	}
+
+	~TestObject()
+	{
+		--TEST_OBJECT_COUNTER;
+	}
+
+	std::string mockStr;
+	int mockInt;
+};
 
 u8 DynamicArrayShouldCreateAndDestroy()
 {
@@ -162,6 +222,34 @@ u8 DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize()
 	ExpectShouldBe(0, array.Size());
 	ExpectShouldBe(nullptr, (void*)array.GetData());
 	ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
+
+	return true;
+}
+
+u8 DynamicArrayShouldReallocate()
+{
+	{
+		C3D::DynamicArray<TestObject> array;
+
+		array.PushBack(TestObject());
+		array.PushBack(TestObject());
+		array.PushBack(TestObject());
+		array.PushBack(TestObject());
+
+		ExpectShouldBe(4, TEST_OBJECT_COUNTER.load());
+		ExpectShouldBe(4, array.Size());
+		ExpectShouldBe(4, array.Capacity());
+
+		array.PushBack(TestObject());
+		array.PushBack(TestObject());
+		array.PushBack(TestObject());
+		array.PushBack(TestObject());
+
+		ExpectShouldBe(8, TEST_OBJECT_COUNTER.load());
+		ExpectShouldBe(8, array.Size());
+	}
+
+	ExpectShouldBe(0, TEST_OBJECT_COUNTER.load());
 
 	return true;
 }
@@ -351,6 +439,7 @@ void DynamicArray::RegisterTests(TestManager* manager)
 	manager->Register(DynamicArrayShouldResize, "Dynamic array should Resize() and allocate enough memory with default objects");
 	manager->Register(DynamicArrayShouldAllocateLargeBlocks, "Dynamic array should also work when allocating lots of storage for complex structs");
 	manager->Register(DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize, "Dynamic array should also work when allocating lots of storage for complex structs after at least 1 element is added");
+	manager->Register(DynamicArrayShouldReallocate, "Dynamic array should reallocate whenever there is not enough space and also cleanup the old memory.");
 	manager->Register(DynamicArrayShouldIterate, "Dynamic array should iterate over all it's elements in a foreach loop");
 	manager->Register(DynamicArrayShouldDestroyWhenLeavingScope, "Dynamic array should be automatically destroyed and cleaned up after leaving scope");
 	manager->Register(DynamicArrayShouldCallDestructorsOfElementsWhenDestroyed, "Dynamic array should automatically call the destructor of every element when it is destroyed");

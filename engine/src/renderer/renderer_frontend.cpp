@@ -2,12 +2,12 @@
 #include "renderer_frontend.h"
 
 #include "core/logger.h"
-#include "core/application.h"
+#include "core/engine.h"
 
 #include "renderer/vulkan/renderer_vulkan.h"
 #include "resources/shader.h"
 
-#include "services/services.h"
+#include "services/system_manager.h"
 
 #include "platform/platform.h"
 #include "systems/resource_system.h"
@@ -18,10 +18,10 @@ namespace C3D
 	// TODO: Obtain ambient color from scene instead of hard-coding it here
 	RenderSystem::RenderSystem()
 		: m_logger("RENDERER"), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
-		  m_resizing(false), m_framesSinceResize(0)
+		  m_resizing(false), m_framesSinceResize(0), m_backend(nullptr)
 	{}
 
-	bool RenderSystem::Init(const Application* application)
+	bool RenderSystem::Init(const Engine* application)
 	{
 		// TODO: Make this configurable once we have multiple rendering backend options
 		if (!CreateBackend(RendererBackendType::Vulkan))
@@ -32,9 +32,11 @@ namespace C3D
 
 		m_logger.Info("Created Vulkan Renderer Backend");
 
+		// TODO: Expose this to the application to configure.
 		RendererBackendConfig backendConfig{};
 		backendConfig.applicationName = "TestEnv";
 		backendConfig.window = application->GetWindow();
+		backendConfig.flags = FlagVSyncEnabled | FlagPowerSavingEnabled;
 
 		if (!m_backend->Init(backendConfig, &m_windowRenderTargetCount))
 		{
@@ -133,6 +135,11 @@ namespace C3D
 		m_backend->ResetScissor();
 	}
 
+	void RenderSystem::SetLineWidth(const float lineWidth) const
+	{
+		m_backend->SetLineWidth(lineWidth);
+	}
+
 	void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const
 	{
 		m_backend->CreateTexture(pixels, texture);
@@ -199,7 +206,7 @@ namespace C3D
 		return m_backend->CreateShader(shader, config, pass);
 	}
 
-	void RenderSystem::DestroyShader(Shader* shader) const
+	void RenderSystem::DestroyShader(Shader& shader) const
 	{
 		return m_backend->DestroyShader(shader);
 	}
@@ -323,6 +330,16 @@ namespace C3D
 		return m_backend->IsMultiThreaded();
 	}
 
+	void RenderSystem::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled) const
+	{
+		m_backend->SetFlagEnabled(flag, enabled);
+	}
+
+	bool RenderSystem::IsFlagEnabled(const RendererConfigFlagBits flag) const
+	{
+		return m_backend->IsFlagEnabled(flag);
+	}
+
 	bool RenderSystem::CreateBackend(const RendererBackendType type)
 	{
 		if (type == RendererBackendType::Vulkan)
@@ -339,7 +356,7 @@ namespace C3D
 	{
 		if (m_backend->type == RendererBackendType::Vulkan)
 		{
-			Memory.Free(MemoryType::RenderSystem, m_backend);
+			Memory.Delete(MemoryType::RenderSystem, m_backend);
 			m_backend = nullptr;
 		}
 	}

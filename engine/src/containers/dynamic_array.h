@@ -3,7 +3,6 @@
 #pragma once
 #include "core/defines.h"
 #include "memory/global_memory_system.h"
-#include "platform/platform.h"
 
 #include "iterator.h"
 #include "const_iterator.h"
@@ -15,10 +14,10 @@ namespace C3D
 	{
 		static_assert(std::is_base_of_v<BaseAllocator, Allocator>, "Allocator must derive from BaseAllocator");
 
-	constexpr static auto default_capacity = 4;
-	constexpr static auto resize_factor = 1.5f;
-
 	public:
+		constexpr static auto default_capacity = 4;
+		constexpr static auto resize_factor = 1.5f;
+
 		using value_type = T;
 		using reference = value_type&;
 		using difference_type = ptrdiff_t;
@@ -31,13 +30,13 @@ namespace C3D
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{}
 
-		DynamicArray(const DynamicArray<T, Allocator>& other)
+		DynamicArray(const DynamicArray& other)
 			: m_capacity(0), m_size(0), m_elements(nullptr)
 		{
 			Copy(other);
 		}
 
-		DynamicArray(DynamicArray<T, Allocator>&& other) noexcept
+		DynamicArray(DynamicArray&& other) noexcept
 			: m_capacity(other.Capacity()), m_size(other.Size()), m_elements(other.GetData()), m_allocator(other.m_allocator)
 		{
 			other.m_capacity = 0;
@@ -46,7 +45,7 @@ namespace C3D
 			other.m_elements = nullptr;
 		}
 
-		DynamicArray<T, Allocator>& operator=(const DynamicArray<T, Allocator>& other)
+		DynamicArray& operator=(const DynamicArray& other)
 		{
 			if (this != &other)
 			{
@@ -55,7 +54,7 @@ namespace C3D
 			return *this;
 		}
 
-		DynamicArray<T, Allocator>& operator=(DynamicArray<T, Allocator>&& other) noexcept
+		DynamicArray& operator=(DynamicArray&& other) noexcept
 		{
 			m_elements = other.GetData();
 			m_allocator = other.m_allocator;
@@ -94,7 +93,7 @@ namespace C3D
 
 		~DynamicArray()
 		{
-			Destroy();
+			Free();
 		}
 
 		/*
@@ -113,7 +112,7 @@ namespace C3D
 			//Logger::Trace("[DYNAMIC_ARRAY] - Reserve({})", initialCapacity);
 
 			// We allocate enough memory for the new capacity
-			T* newElements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, initialCapacity);
+			T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, initialCapacity);
 			u64 newSize = 0;
 
 			if (m_elements)
@@ -174,7 +173,7 @@ namespace C3D
 			}
 
 			// Allocate exactly enough space for our current elements
-			T* newElements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, m_size);
+			T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, m_size);
 			// Copy over the elements from our already allocated memory
 			std::copy_n(begin(), m_size, Iterator(newElements));
 			// Free our old memory
@@ -188,11 +187,6 @@ namespace C3D
 		/* @brief Destroys the underlying memory allocated by this dynamic array. */
 		void Destroy()
 		{
-			// Call destructor for all elements
-			for (size_t i = 0; i < m_size; i++)
-			{
-				m_elements[i].~T();
-			}
 			Free();
 		}
 
@@ -380,7 +374,7 @@ namespace C3D
 			Free();
 
 			// We allocate enough memory for the provided count
-			m_elements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, count);
+			m_elements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, count);
 			// Then we copy over the elements from the provided pointer into our newly allocated memory
 			// Note: Again we may not use std::memcpy here since T could have an arbitrarily complex copy constructor
 			for (u64 i = 0; i < count; i++)
@@ -408,7 +402,7 @@ namespace C3D
 			if (other.m_size > 0)
 			{
 				// We allocate enough memory for the provided count
-				m_elements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, other.m_size);
+				m_elements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, other.m_size);
 				// Then we copy over the elements from the provided pointer into our newly allocated memory
 				// Note: Again we may not use std::memcpy here since T could have an arbitrarily complex copy constructor
 				for (u64 i = 0; i < other.m_size; i++)
@@ -458,20 +452,47 @@ namespace C3D
 		}
 
 		/*
+		 * @brief Removes the element at the provided index from the array.
+		 * If you remove an element all elements to the right of it will be copied over
+		 * and moved to the left one spot effectively shrinking the size by 1 but keeping the same capacity.
+		 */
+		void Erase(u64 index)
+		{
+			// Deconstruct the element at the provided index
+			m_elements[index].~T();
+
+			// We need to move all elements after the erased element one spot to the left
+			// in order for the dynamic array to be contiguous again
+			// We start moving from 1 element to the right of our erased element
+			const auto moveStart = begin() + index + 1;
+			// We move them one spot to the left (starting at our erased element)
+			const auto dest = begin() + index;
+			std::move(moveStart, end(), dest);
+
+			// Decrease the size by one for the removed element
+			m_size--;
+		}
+
+		/*
 		 * @brief Set a pointer to an allocator (must have a base type of BaseAllocator)
 		 * This method must be used if the allocator could not be set during initialization
 		 * because the global memory system was not yet setup for example.
 		 * This method can also be used if the user want's to change the underlying allocator used for this dynamic array.
-		 * Keep in mind that this allocator needs to be of the same type as the initial allocator to avoid issues.
+		 * Keep in mind that this allocator needs to be of the same type as the initial allocator.
+		 * Also keep in mind that this is a destructive operation since it will clear and free anything inside the array.
 		 */
 		void SetAllocator(Allocator* allocator)
 		{
+			// Free any memory that is currently in our array since we will swap allocator
+			Free();
 			m_allocator = allocator;
 		}
 
 		[[nodiscard]] T* GetData() const { return m_elements; }
 
 		[[nodiscard]] u64 Size() const noexcept { return m_size; }
+
+		[[nodiscard]] i64 SSize() const noexcept { return static_cast<i64>(m_size); }
 
 		[[nodiscard]] bool Empty() const noexcept { return m_size == 0; }
 
@@ -524,7 +545,7 @@ namespace C3D
 		void ReAlloc(u64 capacity)
 		{
 			// Allocate memory for the new capacity
-			T* newElements = m_allocator->template Allocate<T>(MemoryType::DynamicArray, capacity);
+			T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, capacity);
 			u64 newSize = 0;
 
 			// If there exists an element pointer
@@ -549,7 +570,11 @@ namespace C3D
 		{
 			if (m_elements && m_capacity != 0)
 			{
+				// Call destructor for every element
+				std::destroy_n(m_elements, m_size);
+				// Free the memory
 				m_allocator->Free(MemoryType::DynamicArray, m_elements);
+				// Reset everything to initial values
 				m_elements = nullptr;
 				m_capacity = 0;
 				m_size = 0;

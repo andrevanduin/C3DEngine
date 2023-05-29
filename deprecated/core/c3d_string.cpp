@@ -153,7 +153,7 @@ namespace C3D
 			// Big, but can fit on the stack.
 			char buffer[16000];
 			const auto written = vsnprintf(buffer, sizeof buffer, format, vaList);
-			Platform::Copy(dest, buffer, written + 1);
+			Platform::MemCopy(dest, buffer, written + 1);
 
 			return written;
 		}
@@ -164,7 +164,7 @@ namespace C3D
 	{
 		const u64 length = StringLength(str);
 		char* copy = Memory.Allocate<char>(MemoryType::String, length + 1);
-		Platform::Copy(copy, str, length);
+		Platform::MemCopy(copy, str, length);
 		copy[length] = 0;
 		return copy;
 	}
