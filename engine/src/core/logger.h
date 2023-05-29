@@ -16,12 +16,14 @@
 
 namespace C3D
 {
+	class UIConsole;
+
 	class C3D_API Logger
 	{
 		#define ASSERT_INIT C3D_ASSERT_MSG(GetInitialized(), "Logger was used before it was initialized!")
 
 	public:
-		static void Init();
+		static void Init(UIConsole* console = nullptr);
 
 		template <class... Args>
 		static void Debug(const char* format, Args&& ... args)

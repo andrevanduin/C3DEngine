@@ -1,7 +1,6 @@
 
 #include "render_view_ui.h"
 #include "core/events/event.h"
-#include "core/events/event_callback.h"
 
 #include "resources/mesh.h"
 #include "renderer/renderer_frontend.h"
@@ -52,14 +51,14 @@ namespace C3D
 		const auto fWidth = static_cast<f32>(m_width);
 		const auto fHeight = static_cast<f32>(m_height);
 
-		m_projectionMatrix = glm::orthoRH_NO(0.0f, fWidth, fHeight, 0.0f, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_nearClip, m_farClip);
 
 		return true;
 	}
 
 	void RenderViewUi::OnResize()
 	{
-		m_projectionMatrix = glm::orthoRH_NO(0.0f, static_cast<f32>(m_width), static_cast<f32>(m_height), 0.0f, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::ortho(0.0f, static_cast<f32>(m_width), static_cast<f32>(m_height), 0.0f, m_nearClip, m_farClip);
 	}
 
 	bool RenderViewUi::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)

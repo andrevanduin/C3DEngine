@@ -17,6 +17,7 @@ namespace C3D
 		[[nodiscard]] vec3 GetEulerRotation() const;
 		void SetEulerRotation(const vec3& eulerRotation);
 
+		void SetViewMatrix(const mat4& viewMatrix);
 		mat4 GetViewMatrix();
 
 		vec3 GetForward();

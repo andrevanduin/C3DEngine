@@ -17,11 +17,13 @@ namespace C3D
 
 	enum class RenderViewKnownType
 	{
-		World	= 0x01,
-		UI		= 0x02,
-		Skybox	= 0x03,
+		World		= 0x01,
+		UI			= 0x02,
+		Skybox		= 0x03,
 		/* @brief A view that simply only renders ui and world objects for the purpose of mouse picking. */
-		Pick	= 0x04,
+		Pick		= 0x04,
+		/* @brief A view that is used by the primitive renderer (to render lines, rectangles etc.) */
+		Primitives	= 0x05
 	};
 
 	enum class RenderViewViewMatrixSource
@@ -171,5 +173,10 @@ namespace C3D
 	struct SkyboxPacketData
 	{
 		Skybox* box;
+	};
+
+	struct PrimitivePacketData
+	{
+		DynamicArray<Mesh*, LinearAllocator> meshes;
 	};
 }

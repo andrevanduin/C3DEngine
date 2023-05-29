@@ -51,7 +51,7 @@ namespace C3D
 		m_uiShaderInfo.nearClip = -100.0f;
 		m_uiShaderInfo.farClip = 100.0f;
 		m_uiShaderInfo.fov = 0;
-		m_uiShaderInfo.projection = glm::orthoRH_NO(0.0f, 1280.0f, 720.0f, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
+		m_uiShaderInfo.projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
 		m_uiShaderInfo.view = mat4(1.0f);
 
 		// World Shader
@@ -81,7 +81,7 @@ namespace C3D
 		m_worldShaderInfo.nearClip = 0.1f;
 		m_worldShaderInfo.farClip = 1000.0f;
 		m_worldShaderInfo.fov = DegToRad(45.0f);
-		m_worldShaderInfo.projection = glm::perspectiveRH_NO(m_worldShaderInfo.fov, 1280 / 720.0f, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
+		m_worldShaderInfo.projection = glm::perspective(m_worldShaderInfo.fov, 1280 / 720.0f, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
 		m_worldShaderInfo.view = mat4(1.0f);
 
 		m_instanceCount = 0;
@@ -115,8 +115,8 @@ namespace C3D
 		const auto fHeight = static_cast<f32>(m_height);
 		const auto aspect = fWidth / fHeight;
 
-		m_uiShaderInfo.projection = glm::orthoRH_NO(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
-		m_worldShaderInfo.projection = glm::perspectiveRH_NO(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
+		m_uiShaderInfo.projection = glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
+		m_worldShaderInfo.projection = glm::perspective(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
 	}
 
 	bool RenderViewPick::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)

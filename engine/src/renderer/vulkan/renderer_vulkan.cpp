@@ -204,6 +204,7 @@ namespace C3D
 		// Just set some basic default values. They will be overridden anyway.
 		m_context.frameBufferWidth = 1280;
 		m_context.frameBufferHeight = 720;
+		m_config = config;
 
 		vkb::InstanceBuilder instanceBuilder;
 
@@ -244,7 +245,7 @@ namespace C3D
 			return false;
 		}
 
-		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
+		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, config.flags);
 
 		// Save the number of images we have as a the number of render targets required
 		*outWindowRenderTargetCount = static_cast<u8>(m_context.swapChain.imageCount);
@@ -385,8 +386,8 @@ namespace C3D
 			return false;
 		}
 
-		// If the FrameBuffer was resized we must also create a new SwapChain.
-		if (m_context.frameBufferSizeGeneration != m_context.frameBufferSizeLastGeneration)
+		// If the FrameBuffer was resized or a render flag was changed we must also create a new SwapChain.
+		if (m_context.frameBufferSizeGeneration != m_context.frameBufferSizeLastGeneration || m_context.renderFlagChanged)
 		{
 			// FrameBuffer was resized. We need to recreate it.
 			const auto result = vkDeviceWaitIdle(device.logicalDevice);
@@ -400,6 +401,9 @@ namespace C3D
 			{
 				return false;
 			}
+
+			// Reset our render flag changed flag
+			m_context.renderFlagChanged = false;
 
 			m_logger.Info("SwapChain Resized successfully. Stopping BeginFrame()");
 			return false;
@@ -530,6 +534,12 @@ namespace C3D
 		SetScissor(m_context.scissorRect);
 	}
 
+	void RendererVulkan::SetLineWidth(const float lineWidth)
+	{
+		const auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+		vkCmdSetLineWidth(commandBuffer.handle, lineWidth);
+	}
+
 	void RendererVulkan::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget)
 	{
 		VkImageView attachmentViews[32];
@@ -631,6 +641,17 @@ namespace C3D
 	bool RendererVulkan::IsMultiThreaded() const
 	{
 		return m_context.multiThreadingEnabled;
+	}
+
+	void RendererVulkan::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled)
+	{
+		m_config.flags = enabled ? m_config.flags | flag : m_config.flags & ~flag;
+		m_context.renderFlagChanged = true;
+	}
+
+	bool RendererVulkan::IsFlagEnabled(const RendererConfigFlagBits flag) const
+	{
+		return m_config.flags & flag;
 	}
 
 	bool RendererVulkan::BeginRenderPass(RenderPass* pass, RenderTarget* target)
@@ -830,7 +851,7 @@ namespace C3D
 		staging.Destroy();
 	}
 
-	void RendererVulkan::ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba)
+	void RendererVulkan::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba)
 	{
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
 		const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
@@ -1184,6 +1205,8 @@ namespace C3D
 
 		// Copy over our cull mode
 		vulkanShader->config.cullMode = config.cullMode;
+		vulkanShader->config.topology = config.topology;
+
 		return true;
 	}
 
@@ -1234,6 +1257,21 @@ namespace C3D
 			Memory.Free(MemoryType::Shader, shader.apiSpecificData);
 			shader.apiSpecificData = nullptr;
 		}
+	}
+
+	VkPrimitiveTopology GetVkPrimitiveTopology(const ShaderTopology topology)
+	{
+		switch (topology)
+		{
+			case ShaderTopology::Triangles:
+				return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			case ShaderTopology::Lines:
+				return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			case ShaderTopology::Points:
+				return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		}
+
+		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	}
 
 	bool RendererVulkan::InitializeShader(Shader* shader)
@@ -1355,6 +1393,7 @@ namespace C3D
 		config.shaderFlags = shader->flags;
 		config.pushConstantRangeCount = shader->pushConstantRangeCount;
 		config.pushConstantRanges = shader->pushConstantRanges;
+		config.topology = GetVkPrimitiveTopology(vulkanShader->config.topology);
 
 		const bool pipelineCreateResult = vulkanShader->pipeline.Create(&m_context, config);
 		if (!pipelineCreateResult)
@@ -1870,7 +1909,7 @@ namespace C3D
 		m_context.device.QuerySwapChainSupport(m_context.surface, &m_context.device.swapChainSupport);
 		m_context.device.DetectDepthFormat();
 
-		m_context.swapChain.Recreate(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight);
+		m_context.swapChain.Recreate(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, m_config.flags);
 
 		// Update the size generation so that they are in sync again
 		m_context.frameBufferSizeLastGeneration = m_context.frameBufferSizeGeneration;

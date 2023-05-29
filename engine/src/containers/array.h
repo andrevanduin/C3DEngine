@@ -7,7 +7,7 @@
 namespace C3D
 {
 	template <typename Type, u64 ElementCount>
-	class __declspec(dllexport) Array
+	class C3D_API Array
 	{
 	public:
 		Array() = default;

@@ -15,6 +15,7 @@
 #include "services/system_manager.h"
 
 #include "renderer/renderer_frontend.h"
+#include "renderer/primitives/primitive_renderer.h"
 #include "systems/geometry_system.h"
 #include "systems/material_system.h"
 #include "systems/resource_system.h"
@@ -177,6 +178,8 @@ namespace C3D
 				{
 					m_logger.Warn("DrawFrame() failed");
 				}
+
+				AfterRender();
 
 				// Cleanup our packets
 				for (auto& view : packet.views)

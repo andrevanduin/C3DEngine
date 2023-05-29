@@ -114,6 +114,10 @@ namespace C3D
 			{
 				ParseUniform(resource.config, value);
 			}
+			else if (varName.IEquals("topology"))
+			{
+				ParseTopology(resource.config, value);
+			}
 
 			lineNumber++;
 		}
@@ -339,6 +343,22 @@ namespace C3D
 		uniform.name = fields[2];
 
 		data.uniforms.PushBack(uniform);
+	}
+
+	void ResourceLoader<ShaderResource>::ParseTopology(ShaderConfig& data, const String& value)
+	{
+		if (value.IEquals("points"))
+		{
+			data.topology = ShaderTopology::Points;
+		}
+		else if (value.IEquals("lines"))
+		{
+			data.topology = ShaderTopology::Lines;
+		}
+		else
+		{
+			data.topology = ShaderTopology::Triangles;
+		}
 	}
 
 	void ResourceLoader<ShaderResource>::ParseCullMode(ShaderConfig& data, const String& value)

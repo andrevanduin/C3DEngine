@@ -23,6 +23,7 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
     )
 
 message(STATUS "Building Shaders")
+message(STATUS ${GLSL_VALIDATOR})
 
 ## iterate each shader
 foreach(GLSL ${GLSL_SOURCE_FILES})

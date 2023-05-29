@@ -54,13 +54,35 @@ namespace C3D
 		return radians * static_cast<f64>(RAD_2_DEG_MULTIPLIER);
 	}
 
-	C3D_API f32 Sin(f32 x);
-	C3D_API f32 Cos(f32 x);
-	C3D_API f32 Tan(f32 x);
-	C3D_API f32 ACos(f32 x);
-	C3D_API f32 Sqrt(f32 x);
-	C3D_API f32 Abs(f32 x);
-	C3D_API f64 Abs(f64 x);
+	template <typename T>
+	C3D_INLINE constexpr C3D_API T Sin(T x)
+	{
+		return std::sin(x);
+	}
+
+	template <typename T>
+	C3D_INLINE constexpr C3D_API T Tan(T x)
+	{
+		return std::tan(x);
+	}
+
+	template <typename T>
+	C3D_INLINE constexpr C3D_API T ACos(T x)
+	{
+		return std::acos(x);
+	}
+
+	template <typename T>
+	C3D_INLINE constexpr C3D_API T Sqrt(T x)
+	{
+		return std::sqrt(x);
+	}
+
+	template <typename T>
+	C3D_INLINE constexpr C3D_API T Abs(T x)
+	{
+		return std::abs(x);
+	}
 
 	template <typename T>
 	C3D_API T Min(T a, T b)

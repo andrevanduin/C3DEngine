@@ -11,5 +11,5 @@ add_custom_target(CopyDLLTestEnv
 	DEPENDS C3DEngine
 )
 
-add_dependencies(TestEnv CopyDLLTestEnv)
 add_dependencies(TestEnv Shaders)
+add_dependencies(TestEnv CopyDLLTestEnv)

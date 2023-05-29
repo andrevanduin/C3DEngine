@@ -32,9 +32,11 @@ namespace C3D
 
 		m_logger.Info("Created Vulkan Renderer Backend");
 
+		// TODO: Expose this to the application to configure.
 		RendererBackendConfig backendConfig{};
 		backendConfig.applicationName = "TestEnv";
 		backendConfig.window = application->GetWindow();
+		backendConfig.flags = FlagVSyncEnabled | FlagPowerSavingEnabled;
 
 		if (!m_backend->Init(backendConfig, &m_windowRenderTargetCount))
 		{
@@ -131,6 +133,11 @@ namespace C3D
 	void RenderSystem::ResetScissor() const
 	{
 		m_backend->ResetScissor();
+	}
+
+	void RenderSystem::SetLineWidth(const float lineWidth) const
+	{
+		m_backend->SetLineWidth(lineWidth);
 	}
 
 	void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const
@@ -321,6 +328,16 @@ namespace C3D
 	bool RenderSystem::IsMultiThreaded() const
 	{
 		return m_backend->IsMultiThreaded();
+	}
+
+	void RenderSystem::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled) const
+	{
+		m_backend->SetFlagEnabled(flag, enabled);
+	}
+
+	bool RenderSystem::IsFlagEnabled(const RendererConfigFlagBits flag) const
+	{
+		return m_backend->IsFlagEnabled(flag);
 	}
 
 	bool RenderSystem::CreateBackend(const RendererBackendType type)

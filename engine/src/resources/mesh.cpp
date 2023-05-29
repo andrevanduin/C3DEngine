@@ -35,6 +35,7 @@ namespace C3D
 			Geometric.Release(geometry);
 		}
 		generation = INVALID_ID_U8;
+		geometries.Clear();
 	}
 
 	bool Mesh::LoadJobEntryPoint(void* data, void* resultData)

@@ -13,6 +13,10 @@ namespace C3D
 		distance = dot(normal, p1);
 	}
 
+	Plane3D::Plane3D(const float a, const float b, const float c, const float d)
+		: normal(normalize(vec3(a, b, c))), distance(d)
+	{}
+
 	f32 Plane3D::SignedDistance(const vec3& position) const
 	{
 		return dot(normal, position) - distance;

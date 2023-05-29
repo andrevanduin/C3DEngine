@@ -135,6 +135,12 @@ namespace C3D
 		return !m_state.keyboardCurrent.keys[key];
 	}
 
+	bool InputSystem::IsKeyPressed(const u8 key) const
+	{
+		if (!m_initialized) return false;
+		return m_state.keyboardCurrent.keys[key] && !m_state.keyboardPrevious.keys[key];
+	}
+
 	bool InputSystem::WasKeyDown(const u8 key) const
 	{
 		if (!m_initialized) return false;
@@ -157,6 +163,12 @@ namespace C3D
 	{
 		if (!m_initialized) return true;
 		return !m_state.mouseCurrent.buttons[button];
+	}
+
+	bool InputSystem::IsButtonPressed(const Buttons button) const
+	{
+		if (!m_initialized) return false;
+		return m_state.mouseCurrent.buttons[button] && !m_state.mousePrevious.buttons[button];
 	}
 
 	bool InputSystem::WasButtonDown(const Buttons button) const

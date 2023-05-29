@@ -16,7 +16,10 @@ namespace C3D
 		constexpr CString(const char* str, const u64 size)
 			: m_data{}
 		{
-			static_assert(size < Capacity);
+			if (size >= CCapacity)
+			{
+				throw std::invalid_argument("Provided size is larger then available capacity");
+			}
 			Create(str, size);
 		}
 
@@ -31,7 +34,7 @@ namespace C3D
 			Create(str, size);
 		}
 
-		CString(const u64 value)
+		explicit CString(const u64 value)
 			: m_data{}
 		{
 			const auto str = std::to_string(value);
@@ -53,6 +56,35 @@ namespace C3D
 		{
 			static_assert(first + count < CCapacity);
 			return CString(m_data + first, count);
+		}
+
+		void Append(const char c)
+		{
+			const auto thisSize = Size();
+
+			if (thisSize + 1 >= CCapacity)
+			{
+				throw std::invalid_argument("this.Size() + other.Size() >= Capacity");
+			}
+
+			m_data[thisSize] = c;
+			m_data[thisSize + 1] = '\0';
+		}
+
+		void Append(const char* other)
+		{
+			const auto thisSize = Size();
+			const auto otherSize = std::strlen(other);
+
+			if (thisSize + otherSize >= CCapacity)
+			{
+				throw std::invalid_argument("this.Size() + other.Size() >= Capacity");
+			}
+
+			// Copy over the characters from the other string
+			std::memcpy(m_data + thisSize, other, otherSize);
+			// Ensure that our newly appended string is null-terminated
+			m_data[thisSize + otherSize] = '\0';
 		}
 
 		template <u64 Cap>
@@ -136,7 +168,26 @@ namespace C3D
 			return m_data[index];
 		}
 
+		CString& operator+=(const char c)
+		{
+			Append(c);
+			return *this;
+		} 
+
+		CString& operator+=(const char* other)
+		{
+			Append(other);
+			return *this;
+		}
+
 		CString& operator+=(const CString& other)
+		{
+			Append(other);
+			return *this;
+		}
+
+		template <u64 OtherCapacity>
+		CString& operator+=(const CString<OtherCapacity>& other)
 		{
 			Append(other);
 			return *this;
@@ -147,7 +198,7 @@ namespace C3D
 		{
 			std::memcpy(m_data, str, size);
 			// We end our string with a '\0' character
-			m_data[size + 1] = '\0';
+			m_data[size] = '\0';
 		}
 
 		char m_data[CCapacity];

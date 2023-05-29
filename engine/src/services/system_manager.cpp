@@ -23,7 +23,8 @@ namespace C3D
 	SystemManager::SystemManager()
 		: m_pInputSystem(nullptr), m_pEventSystem(nullptr), m_pRenderSystem(nullptr), m_pTextureSystem(nullptr),
 	      m_pMaterialSystem(nullptr), m_pGeometrySystem(nullptr), m_pResourceSystem(nullptr), m_pShaderSystem(nullptr),
-		  m_pCameraSystem(nullptr), m_pRenderViewSystem(nullptr), m_pJobSystem(nullptr), m_pFontSystem(nullptr), m_logger("SERVICES")
+		  m_pCameraSystem(nullptr), m_pRenderViewSystem(nullptr), m_pJobSystem(nullptr), m_pFontSystem(nullptr),
+	      m_logger("SERVICES")
 	{}
 
 	void SystemManager::InitBeforeBoot(const Engine* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig)
@@ -31,7 +32,7 @@ namespace C3D
 		// 8 mb of total space for all our systems
 		constexpr u64 systemsAllocatorTotalSize = MebiBytes(8);
 		m_allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
-		
+
 		// Event System
 		m_pEventSystem = m_allocator.New<EventSystem>(MemoryType::CoreSystem);
 		if (!m_pEventSystem->Init())
@@ -69,7 +70,8 @@ namespace C3D
 	}
 
 	void SystemManager::InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig,
-		const FontSystemConfig& fontSystemConfig, const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& renderViewSystemConfig)
+		const FontSystemConfig& fontSystemConfig, const CameraSystemConfig& cameraSystemConfig, 
+		const RenderViewSystemConfig& renderViewSystemConfig)
 	{
 		// Job System
 		m_pJobSystem = m_allocator.New<JobSystem>(MemoryType::CoreSystem);

@@ -41,10 +41,9 @@ namespace C3D
 
 		m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
 
-		const auto fWidth = static_cast<f32>(m_width);
-		const auto fHeight = static_cast<f32>(m_height);
+		const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
+		m_projectionMatrix = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
 
-		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, fWidth / fHeight, m_nearClip, m_farClip);
 		m_camera = Cam.GetDefault();
 
 		// TODO: Obtain from scene
@@ -69,7 +68,7 @@ namespace C3D
 	void RenderViewWorld::OnResize()
 	{
 		const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
-		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
 	}
 
 	bool RenderViewWorld::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)

@@ -1,0 +1,19 @@
+# UI Shader config file
+version = 1.0
+name = Shader.Builtin.Primitives
+renderPass = RenderPass.Builtin.Primitives
+stages = vertex, fragment
+stageFiles = shaders/Builtin.PrimitiveShader.vert.spv, shaders/Builtin.PrimitiveShader.frag.spv
+depthTest  = true
+depthWrite = true
+topology = lines
+
+# Attributes
+attribute = vec3, inPosition
+attribute = vec4, inColor
+
+# Uniforms
+uniform = mat4, global, projection
+uniform = mat4, global, view
+uniform = vec3, global, viewPosition
+uniform = mat4, local, model

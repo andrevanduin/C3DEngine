@@ -18,7 +18,10 @@ namespace C3D
 	class RendererBackend
 	{
 	public:
-		explicit RendererBackend(const CString<NameSize>& loggerName) : type(), state(), m_logger(loggerName) {}
+		explicit RendererBackend(const CString<NameSize>& loggerName)
+			: type(), state(), m_config(), m_logger(loggerName)
+		{}
+
 		RendererBackend(const RendererBackend&) = delete;
 		RendererBackend(RendererBackend&&) = delete;
 
@@ -42,6 +45,8 @@ namespace C3D
 		virtual void ResetViewport() = 0;
 		virtual void SetScissor(const ivec4& rect) = 0;
 		virtual void ResetScissor() = 0;
+
+		virtual void SetLineWidth(float lineWidth) = 0;
 
 		virtual bool BeginRenderPass(RenderPass* pass, RenderTarget* target) = 0;
 		virtual bool EndRenderPass(RenderPass* pass) = 0;
@@ -98,10 +103,14 @@ namespace C3D
 
 		[[nodiscard]] virtual bool IsMultiThreaded() const = 0;
 
+		virtual void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) = 0;
+		[[nodiscard]] virtual bool IsFlagEnabled(RendererConfigFlagBits flag) const = 0;
+
 		RendererBackendType type;
 		RendererBackendState state;
 
 	protected:
+		RendererBackendConfig m_config;
 		LoggerInstance<NameSize> m_logger;
 	};
 }

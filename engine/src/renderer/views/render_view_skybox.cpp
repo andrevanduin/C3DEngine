@@ -47,7 +47,7 @@ namespace C3D
 		const auto fWidth = static_cast<f32>(m_width);
 		const auto fHeight = static_cast<f32>(m_height);
 
-		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, fWidth / fHeight, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::perspective(m_fov, fWidth / fHeight, m_nearClip, m_farClip);
 		m_camera = Cam.GetDefault();
 
 		return true;
@@ -56,7 +56,7 @@ namespace C3D
 	void RenderViewSkybox::OnResize()
 	{
 		const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
-		m_projectionMatrix = glm::perspectiveRH_NO(m_fov, aspectRatio, m_nearClip, m_farClip);
+		m_projectionMatrix = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
 	}
 
 	bool RenderViewSkybox::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)

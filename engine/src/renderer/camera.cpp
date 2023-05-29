@@ -39,15 +39,23 @@ namespace C3D
 		m_needsUpdate = true;
 	}
 
+	void Camera::SetViewMatrix(const mat4& viewMatrix)
+	{
+		m_viewMatrix = viewMatrix;
+	}
+
 	mat4 Camera::GetViewMatrix()
 	{
 		if (m_needsUpdate)
 		{
-			const mat4 rotation = glm::eulerAngleZYX(m_eulerRotation.z, m_eulerRotation.y, m_eulerRotation.x);
-			const mat4 translation = translate(m_position);
+			const mat4 rx = glm::eulerAngleX(m_eulerRotation.x);
+			const mat4 ry = glm::eulerAngleY(m_eulerRotation.y);
+			const mat4 rz = glm::eulerAngleZ(m_eulerRotation.z);
 
-			m_viewMatrix = translation * rotation;
-			m_viewMatrix = inverse(m_viewMatrix);
+			const mat4 rotation = rz * ry * rx;//glm::eulerAngleXYZ(m_eulerRotation.x, m_eulerRotation.y, m_eulerRotation.z);
+
+			m_viewMatrix = translate(m_position) * rotation;
+			m_viewMatrix = inverse(m_viewMatrix); 
 
 			m_needsUpdate = false;
 		}
@@ -57,37 +65,37 @@ namespace C3D
 	vec3 Camera::GetForward()
 	{
 		const mat4 view = GetViewMatrix();
-		return { -view[0][2], -view[1][2], -view[2][2] };
+		return normalize(vec3(-view[0][2], -view[1][2], -view[2][2]));
 	}
 
 	vec3 Camera::GetBackward()
 	{
 		const mat4 view = GetViewMatrix();
-		return { view[0][2], view[1][2], view[2][2] };
+		return normalize(vec3(view[0][2], view[1][2], view[2][2]));
 	}
 
 	vec3 Camera::GetLeft()
 	{
 		const mat4 view = GetViewMatrix();
-		return { -view[0][0], -view[1][0], -view[2][0] };
+		return normalize(vec3(-view[0][0], -view[1][0], -view[2][0]));
 	}
 
 	vec3 Camera::GetRight()
 	{
 		const mat4 view = GetViewMatrix();
-		return { view[0][0], view[1][0], view[2][0] };
+		return normalize(vec3(view[0][0], view[1][0], view[2][0]));
 	}
 
 	vec3 Camera::GetUp()
 	{
 		const mat4 view = GetViewMatrix();
-		return { view[0][1], view[1][1], view[2][1] };
+		return normalize(vec3(view[0][1], view[1][1], view[2][1]));
 	}
 
 	vec3 Camera::GetDown()
 	{
 		const mat4 view = GetViewMatrix();
-		return { -view[0][1], -view[1][1], -view[2][1] };
+		return normalize(vec3(-view[0][1], -view[1][1], -view[2][1]));
 	}
 
 	void Camera::MoveForward(const f32 amount)

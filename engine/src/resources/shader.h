@@ -33,6 +33,13 @@ namespace C3D
 		Local,
 	};
 
+	enum class ShaderTopology
+	{
+		Points,
+		Lines,
+		Triangles
+	};
+
 	/* @brief Configuration for an attribute. */
 	struct ShaderAttributeConfig
 	{
@@ -68,6 +75,8 @@ namespace C3D
 
 		DynamicArray<String> stageNames;
 		DynamicArray<String> stageFileNames;
+
+		ShaderTopology topology = ShaderTopology::Triangles;
 
 		// TODO: Convert these bools to flags to save space
 		/* @brief Indicates if depth testing should be done by this shader. */

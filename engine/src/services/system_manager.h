@@ -16,6 +16,7 @@
 #define Views		Systems.GetRenderViewSystem()
 #define Jobs		Systems.GetJobSystem()
 #define Fonts		Systems.GetFontSystem()
+#define Consoles	Systems.GetConsoleSystem()
 
 namespace C3D
 {
@@ -53,6 +54,9 @@ namespace C3D
 	class GeometrySystem;
 	struct GeometrySystemConfig;
 
+	class ConsoleSystem;
+	struct ConsoleSystemConfig;
+
 	class C3D_API SystemManager
 	{
 	public:
@@ -60,7 +64,7 @@ namespace C3D
 
 		void InitBeforeBoot(const Engine* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig);
 
-		void InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig, const FontSystemConfig& fontSystemConfig,
+		void InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig, const FontSystemConfig& fontSystemConfig, 
 			const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& renderViewSystemConfig);
 
 		void FinalInit(const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig);

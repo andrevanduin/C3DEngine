@@ -43,6 +43,8 @@ namespace C3D
 
 	struct GeometryReference
 	{
+		GeometryReference() : referenceCount(0), geometry(), autoRelease(false) {}
+
 		u64 referenceCount;
 		Geometry geometry;
 		bool autoRelease;

@@ -9,6 +9,7 @@
 #include <core/events/event.h>
 #include <core/events/event_context.h>
 #include <core/metrics/metrics.h>
+#include <core/console.h>
 
 #include <containers/cstring.h>
 
@@ -24,8 +25,8 @@
 #include "systems/render_view_system.h"
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
-	: Engine(config), m_camera(nullptr), m_carMesh(nullptr), m_sponzaMesh(nullptr),
-	  m_modelsLoaded(false), m_hoveredObjectId(0)
+	: Engine(config), m_camera(nullptr), m_testCamera(nullptr), m_carMesh(nullptr), m_sponzaMesh(nullptr),
+	  m_primitiveMeshes{}, m_modelsLoaded(false), m_planes(), m_hoveredObjectId(0)
 {}
 
 bool TestEnv::OnBoot()
@@ -74,6 +75,8 @@ bool TestEnv::OnCreate()
 	}
 
 	m_testText.SetPosition({ 10, 640, 0 });
+
+	Console->OnInit();
 
 	auto& cubeMap = m_skybox.cubeMap;
 	cubeMap.magnifyFilter = cubeMap.minifyFilter = C3D::TextureFilter::ModeLinear;
@@ -151,7 +154,7 @@ bool TestEnv::OnCreate()
 	cubeMesh3->transform.SetParent(&cubeMesh2->transform);
 	cubeMesh3->generation = 0;
 	cubeMesh3->uniqueId = C3D::Identifier::GetNewId(cubeMesh3);
-
+	 
 	meshCount++;
 
 	// Cleanup the other allocations that we just did
@@ -213,6 +216,8 @@ bool TestEnv::OnCreate()
 	m_uiMeshes[0].geometries.PushBack(Geometric.AcquireFromConfig(uiConfig, true));
 	m_uiMeshes[0].generation = 0;
 
+	m_primitiveRenderer.OnCreate();
+
 	//auto rotation = angleAxis(C3D::DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
 	//m_uiMeshes[0].transform.Rotate(rotation);
 	//m_uiMeshes[0].transform.SetPosition({ 0})
@@ -220,6 +225,10 @@ bool TestEnv::OnCreate()
 	// TEMP END
 
 	m_camera = Cam.GetDefault();
+	m_testCamera = new C3D::Camera();
+	m_testCamera->SetPosition({ 10.5f, 5.0f, 9.5f });
+
+
 	m_camera->SetPosition({ 10.5f, 5.0f, 9.5f });
 
 	// TEMP
@@ -227,6 +236,14 @@ bool TestEnv::OnCreate()
 	Event.Register(C3D::SystemEventCode::Debug1, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
 	Event.Register(C3D::SystemEventCode::ObjectHoverIdChanged, new C3D::EventCallback(this, &TestEnv::OnEvent));
 	// TEMP END
+
+	for (auto& mesh : m_primitiveMeshes)
+	{
+		mesh = nullptr;
+	}
+
+	//m_primitiveMeshes[0] = m_primitiveRenderer.AddBox({ 0, 0, 0 }, { 5, 5, 5 });
+	//m_primitiveMeshes[0]->transform.SetParent(&cubeMesh->transform);
 
 	m_frameData.worldGeometries.SetAllocator(&m_frameAllocator);
 
@@ -244,106 +261,117 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	const u64 prevAllocCount = allocCount;
 	allocCount = Metrics.GetAllocCount();
 
-	if (Input.IsKeyUp(C3D::KeyM) && Input.WasKeyDown('m'))
+	if (!Console->IsOpen())
 	{
-		C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
-		Metrics.PrintMemoryUsage();
+		if (Input.IsKeyUp(C3D::KeyM) && Input.WasKeyDown('m'))
+		{
+			C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
+			Metrics.PrintMemoryUsage();
+		}
+
+		if (Input.IsKeyUp('p') && Input.WasKeyDown('p'))
+		{
+			const auto pos = m_camera->GetPosition();
+			C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
+		}
+
+		if (Input.IsKeyUp('v') && Input.WasKeyDown('v'))
+		{
+			const auto current = Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled);
+			Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, !current);
+		}
+
+		// Renderer Debug functions
+		if (Input.IsKeyPressed('1'))
+		{
+			C3D::EventContext context = {};
+			context.data.i32[0] = C3D::RendererViewMode::Default;
+			Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
+		}
+
+		if (Input.IsKeyPressed('2'))
+		{
+			C3D::EventContext context = {};
+			context.data.i32[0] = C3D::RendererViewMode::Lighting;
+			Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
+		}
+
+		if (Input.IsKeyPressed('3'))
+		{
+			C3D::EventContext context = {};
+			context.data.i32[0] = C3D::RendererViewMode::Normals;
+			Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
+		}
+
+		if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyLeft))
+		{
+			m_camera->AddYaw(1.0 * deltaTime);
+		}
+
+		if (Input.IsKeyDown('d') || Input.IsKeyDown(C3D::KeyRight))
+		{
+			m_camera->AddYaw(-1.0 * deltaTime);
+		}
+
+		if (Input.IsKeyDown(C3D::KeyUp))
+		{
+			m_camera->AddPitch(1.0 * deltaTime);
+		}
+
+		if (Input.IsKeyDown(C3D::KeyDown))
+		{
+			m_camera->AddPitch(-1.0 * deltaTime);
+		}
+
+		static constexpr f64 temp_move_speed = 50.0;
+
+		if (Input.IsKeyDown('w'))
+		{
+			m_camera->MoveForward(temp_move_speed * deltaTime);
+		}
+
+		// TEMP
+		if (Input.IsKeyPressed('t'))
+		{
+			C3D::Logger::Debug("Swapping Texture");
+			C3D::EventContext context = {};
+			Event.Fire(C3D::SystemEventCode::Debug0, this, context);
+		}
+
+		if (Input.IsKeyPressed('l'))
+		{
+			C3D::EventContext context = {};
+			Event.Fire(C3D::SystemEventCode::Debug1, this, context);
+		}
+		// TEMP END
+
+		if (Input.IsKeyDown('s'))
+		{
+			m_camera->MoveBackward(temp_move_speed * deltaTime);
+		}
+
+		if (Input.IsKeyDown('q'))
+		{
+			m_camera->MoveLeft(temp_move_speed * deltaTime);
+		}
+
+		if (Input.IsKeyDown('e'))
+		{
+			m_camera->MoveRight(temp_move_speed * deltaTime);
+		}
+
+		if (Input.IsKeyDown(C3D::KeySpace))
+		{
+			m_camera->MoveUp(temp_move_speed * deltaTime);
+		}
+
+		if (Input.IsKeyDown(C3D::KeyX))
+		{
+			m_camera->MoveDown(temp_move_speed * deltaTime);
+		}
 	}
 
-	if (Input.IsKeyUp('p') && Input.WasKeyDown('p'))
-	{
-		const auto pos = m_camera->GetPosition();
-		C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
-	}
-
-	// Renderer Debug functions
-	if (Input.IsKeyUp('1') && Input.WasKeyDown('1'))
-	{
-		C3D::EventContext context = {};
-		context.data.i32[0] = C3D::RendererViewMode::Default;
-		Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
-	}
-
-	if (Input.IsKeyUp('2') && Input.WasKeyDown('2'))
-	{
-		C3D::EventContext context = {};
-		context.data.i32[0] = C3D::RendererViewMode::Lighting;
-		Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
-	}
-
-	if (Input.IsKeyUp('3') && Input.WasKeyDown('3'))
-	{
-		C3D::EventContext context = {};
-		context.data.i32[0] = C3D::RendererViewMode::Normals;
-		Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
-	}
-
-	if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyLeft))
-	{
-		m_camera->AddYaw(1.0 * deltaTime);
-	}
-
-	if (Input.IsKeyDown('d') || Input.IsKeyDown(C3D::KeyRight))
-	{
-		m_camera->AddYaw(-1.0 * deltaTime);
-	}
-
-	if (Input.IsKeyDown(C3D::KeyUp))
-	{
-		m_camera->AddPitch(1.0 * deltaTime);
-	}
-
-	if (Input.IsKeyDown(C3D::KeyDown))
-	{
-		m_camera->AddPitch(-1.0 * deltaTime);
-	}
-
-	static constexpr f64 temp_move_speed = 50.0;
-
-	if (Input.IsKeyDown('w'))
-	{
-		m_camera->MoveForward(temp_move_speed * deltaTime);
-	}
-
-	// TEMP
-	if (Input.IsKeyUp('t') && Input.WasKeyDown('t'))
-	{
-		C3D::Logger::Debug("Swapping Texture");
-		C3D::EventContext context = {};
-		Event.Fire(C3D::SystemEventCode::Debug0, this, context);
-	}
-
-	if (Input.IsKeyUp('l') && Input.WasKeyDown('l'))
-	{
-		C3D::EventContext context = {};
-		Event.Fire(C3D::SystemEventCode::Debug1, this, context);
-	}
-	// TEMP END
-
-	if (Input.IsKeyDown('s'))
-	{
-		m_camera->MoveBackward(temp_move_speed * deltaTime);
-	}
-
-	if (Input.IsKeyDown('q'))
-	{
-		m_camera->MoveLeft(temp_move_speed * deltaTime);
-	}
-
-	if (Input.IsKeyDown('e'))
-	{
-		m_camera->MoveRight(temp_move_speed * deltaTime);
-	}
-
-	if (Input.IsKeyDown(C3D::KeySpace))
-	{
-		m_camera->MoveUp(temp_move_speed * deltaTime);
-	}
-
-	if (Input.IsKeyDown(C3D::KeyX))
-	{
-		m_camera->MoveDown(temp_move_speed * deltaTime);
-	}
+	Console->OnUpdate();
 
 	// Rotate 
 	quat rotation = angleAxis(0.5f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
@@ -382,25 +410,44 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		hoveredBuffer = "None";
 	}
 
-	vec3 forward	= m_camera->GetForward();
-	vec3 right		= m_camera->GetRight();
-	vec3 up			= m_camera->GetUp();
+	// x, y and z
+	vec3 forward	= m_testCamera->GetForward();
+	vec3 right		= m_testCamera->GetRight();
+	vec3 up			= m_testCamera->GetUp();
 
 	// TODO: Get camera fov, aspect etc.
-	m_cameraFrustum.Create(m_camera->GetPosition(), forward, right, up, fWidth / fHeight, C3D::DegToRad(45.0f), 0.1f, 1000.0f);
+	mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), fWidth / fHeight, 1.0f, 1000.0f);
+	mat4 viewMatrix = m_camera->GetViewMatrix();
+
+	m_cameraFrustum.Create(m_camera->GetPosition(), forward, right, up, fWidth / fHeight, glm::radians(45.0f), 1.0f, 1000.0f);
+
+	//static C3D::Plane3D p = { { 5.0f, 10.0f, 1.0f }, { 0.5f, 1.0f, 0.f } };
+	/*m_planes[0] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[0], { 1, 0, 0, 1 });
+	m_planes[1] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[1], { 0, 1, 0, 1 });
+	m_planes[2] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[2], { 0, 0, 1, 1 });
+	m_planes[3] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[3], { 1, 1, 0, 1 });
+	m_planes[4] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[4], { 1, 1, 1, 1 });
+	m_planes[5] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[5], { 0, 1, 1, 1 });*/
 
 	// Reserve a reasonable amount of space for our world geometries
 	m_frameData.worldGeometries.Reserve(512);
-	
+
 	u32 drawCount = 0;
+	u32 count = 0;
+
 	for (auto& mesh : m_meshes)
 	{
+		//auto meshSet = false;
+
 		if (mesh.generation != INVALID_ID_U8)
 		{
 			mat4 model = mesh.transform.GetWorld();
-
+			
 			for (const auto geometry : mesh.geometries)
 			{
+				m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
+				drawCount++;
+
 				/*
 				// Bounding sphere calculations
 				vec3 extentsMin = vec4(geometry->extents.min, 1.0f) * model;
@@ -419,36 +466,54 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 					m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
 					drawCount++;
 				}
-				*/
 
 				// AABB Calculation
-				const vec3 extentsMax = vec4(geometry->extents.max, 1.0f) * model;
-				const vec3 center = vec4(geometry->center, 1.0f) * model;
+				const vec3 extentsMin = vec4(geometry->extents.min, 1.0f);
+				const vec3 extentsMax = vec4(geometry->extents.max, 1.0f);
+				const vec3 center = vec4(geometry->center, 1.0f);
 
-				vec3 halfExtents =
+				const vec3 halfExtents = 
 				{
 					C3D::Abs(extentsMax.x - center.x),
 					C3D::Abs(extentsMax.y - center.y),
 					C3D::Abs(extentsMax.z - center.z),
 				};
 
-				if (m_cameraFrustum.IntersectsWithAABB({ center, halfExtents }))
+				if (!m_hasPrimitives[count])
+				{
+					// Only add primitives for the mesh once
+					auto pMesh = m_primitiveRenderer.AddBox(geometry->center, halfExtents);
+					pMesh->transform.SetParent(&mesh.transform);
+
+					m_primitiveMeshes[m_primitiveMeshCount] = pMesh;
+					m_primitiveMeshCount++;
+					meshSet = true;
+				}
+
+				if (m_cameraFrustum.IntersectsWithAABB({ geometry->center, halfExtents }))
 				{
 					m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
 					drawCount++;
-				}
+				}*/
 			}
 		}
+
+		/*
+		if (meshSet)
+		{
+			m_hasPrimitives[count] = true;
+		}*/
+		count++;
 	}
 
 	C3D::CString<256> buffer;
 	buffer.FromFormat(
 		"{:<10} : Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\n"
 		"{:<10} : Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}\n"
-		"{:<10} : DrawCount: {} banaan",
+		"{:<10} : DrawCount: {} FPS: {} FrameTime: {:.3f}ms VSync: {}",
 		"Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z),
 		"Mouse", mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, hoveredBuffer,
-		"Renderer", drawCount
+		"Renderer", drawCount, Metrics.GetFps(), Metrics.GetFrameTime(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No"
 	);
 
 	m_testText.SetText(buffer.Data());
@@ -459,7 +524,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 	// TEMP
 	// Ensure that we will be using our frame allocator for this packet's view
 	packet.views.SetAllocator(&m_frameAllocator);
-	// Pre-Allocate enough space for 4 views (and default initialize them)
+	// Pre-Allocate enough space for 5 views (and default initialize them)
 	packet.views.Resize(4);
 
 	// Skybox
@@ -489,6 +554,9 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 	}
 	uiPacket.texts.SetAllocator(&m_frameAllocator);
 	uiPacket.texts.PushBack(&m_testText);
+
+	Console->OnRender(uiPacket);
+
 	if (!Views.BuildPacket(Views.Get("ui"), m_frameAllocator, &uiPacket, &packet.views[2]))
 	{
 		m_logger.Error("Failed to build packet for view: 'ui'");
@@ -510,6 +578,14 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 	return true;
 }
 
+void TestEnv::AfterRender()
+{
+	for (const auto mesh : m_planes)
+	{
+		if (mesh && mesh->generation != INVALID_ID_U8) C3D::PrimitiveRenderer::Dispose(mesh);
+	}
+}
+
 void TestEnv::OnResize(const u16 width, const u16 height)
 {
 	m_state.width = width;
@@ -524,6 +600,8 @@ void TestEnv::OnResize(const u16 width, const u16 height)
 void TestEnv::OnShutdown()
 {
 	// TEMP
+	Console->OnShutDown();
+
 	m_skybox.Destroy();
 	m_testText.Destroy();
 

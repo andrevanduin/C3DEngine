@@ -1,12 +1,10 @@
 
 #pragma once
-#include <vector>
 #include <vulkan/vulkan.h>
 
 #include "vulkan_renderpass.h"
 #include "vulkan_swapchain.h"
 #include "vulkan_device.h"
-#include "containers/hash_table.h"
 
 #include "core/defines.h"
 #include "core/asserts.h"
@@ -44,11 +42,6 @@ namespace C3D
 
 	struct VulkanContext
 	{
-		~VulkanContext()
-		{
-			Logger::Debug("~VulkanContext() called");
-		}
-
 		f32 frameDeltaTime;
 
 		VkInstance instance;
@@ -86,6 +79,7 @@ namespace C3D
 		/* @brief Indicates if multiThreading is supported by this device. */
 		bool multiThreadingEnabled;
 		bool recreatingSwapChain;
+		bool renderFlagChanged;
 
 		[[nodiscard]] i32 FindMemoryIndex(const u32 typeFilter, const u32 propertyFlags) const
 		{

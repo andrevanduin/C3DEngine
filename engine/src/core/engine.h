@@ -1,5 +1,6 @@
 
 #pragma once
+#include "console.h"
 #include "defines.h"
 #include "logger.h"
 #include "renderer/renderer_types.h"
@@ -20,6 +21,8 @@ namespace C3D
 		String name;
 		i32 x, y;
 		i32 width, height;
+
+		bool enablePrimitiveRenderer = true;
 
 		FontSystemConfig fontConfig;
 		DynamicArray<RenderViewConfig> renderViews;
@@ -65,8 +68,17 @@ namespace C3D
 		virtual bool OnBoot()	{ return true; }
 		virtual bool OnCreate() { return true; }
 
-		virtual void OnUpdate(f64 deltaTime) {}
-		virtual bool OnRender(RenderPacket& packet, f64 deltaTime) { return true; }
+		virtual void OnUpdate(f64 deltaTime)
+		{
+			Console->OnUpdate();
+		}
+
+		virtual bool OnRender(RenderPacket& packet, f64 deltaTime)
+		{
+			return true;
+		}
+
+		virtual void AfterRender() {}
 
 		virtual void OnResize(u16 width, u16 height) {}
 

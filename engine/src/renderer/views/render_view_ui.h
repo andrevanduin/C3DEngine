@@ -1,6 +1,5 @@
 
 #pragma once
-#include "core/events/event_context.h"
 #include "renderer/render_view.h"
 #include "resources/shader.h"
 

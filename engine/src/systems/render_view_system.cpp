@@ -3,6 +3,7 @@
 
 #include "renderer/renderer_frontend.h"
 #include "renderer/views/render_view_pick.h"
+#include "renderer/views/render_view_primitives.h"
 
 #include "renderer/views/render_view_ui.h"
 #include "renderer/views/render_view_world.h"
@@ -75,6 +76,9 @@ namespace C3D
 				break;
 			case RenderViewKnownType::Pick:
 				view = new RenderViewPick(config);
+				break;
+			case RenderViewKnownType::Primitives:
+				view = new RenderViewPrimitives(config);
 				break;
 		}
 

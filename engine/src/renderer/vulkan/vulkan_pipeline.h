@@ -27,6 +27,8 @@ namespace C3D
 
 		u32 pushConstantRangeCount;
 		Range* pushConstantRanges;
+
+		VkPrimitiveTopology topology;
 	};
 
 	class VulkanPipeline

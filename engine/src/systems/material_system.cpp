@@ -17,8 +17,10 @@
 namespace C3D
 {
 	MaterialSystem::MaterialSystem()
-		: System("MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_registeredMaterials(nullptr), m_materialShaderId(0), m_uiShaderId(0)
-	{}
+		: System("MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_registeredMaterials(nullptr),
+		  m_materialShaderId(0), m_uiShaderId(0)
+	{
+	}
 
 	bool MaterialSystem::Init(const MaterialSystemConfig& config)
 	{
@@ -258,16 +260,16 @@ namespace C3D
 
 		if (shaderId == m_materialShaderId)
 		{
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.projection, projection))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.view, view))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.ambientColor, ambientColor))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.viewPosition, viewPosition))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.renderMode, &renderMode))
+			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.projection, projection));
+			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.view, view));
+			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.ambientColor, ambientColor));
+			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.viewPosition, viewPosition));
+			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.renderMode, &renderMode));
 		}
 		else if (shaderId == m_uiShaderId)
 		{
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.projection, projection))
-			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.view, view))
+			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.projection, projection));
+			MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.view, view));
 		}
 		else
 		{
@@ -289,16 +291,16 @@ namespace C3D
 		{
 			if (material->shaderId == m_materialShaderId)
 			{
-				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseColor, &material->diffuseColor))
-				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.shininess, &material->shininess))
-				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseTexture, &material->diffuseMap))
-				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.specularTexture, &material->specularMap))
-				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.normalTexture, &material->normalMap))
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseColor, &material->diffuseColor));
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.shininess, &material->shininess));
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseTexture, &material->diffuseMap));
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.specularTexture, &material->specularMap));
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.normalTexture, &material->normalMap));
 			}
 			else if (material->shaderId == m_uiShaderId)
 			{
-				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseColor, &material->diffuseColor))
-				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseTexture, &material->diffuseMap))
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseColor, &material->diffuseColor));
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseTexture, &material->diffuseMap));
 			}
 			else
 			{

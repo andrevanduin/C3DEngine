@@ -143,6 +143,8 @@ namespace C3D
 
         /** @Brief The Sleep Key. */
         KeySleep = 0x5f,
+        /** @Brief The Grave Key. */
+        KeyGrave = SDLK_BACKQUOTE,
 
         /** @Brief The NumberPad 0 Key. */
         KeyNumpad0 = 0x60,
@@ -260,11 +262,7 @@ namespace C3D
         KeyPeriod = 0xbe,
         /** @Brief The Slash Key. */
         KeySlash = 0xbf,
-
-        /** @Brief The Grave Key. */
-        KeyGrave = 0xc0,
-
-        MaxKeys
+        MaxKeys,
 	};
 
 	enum Buttons : u8
@@ -313,15 +311,17 @@ namespace C3D
 
 		C3D_API [[nodiscard]] bool IsKeyDown(u8 key) const;
         C3D_API [[nodiscard]] bool IsKeyUp(u8 key) const;
+        C3D_API [[nodiscard]] bool IsKeyPressed(u8 key) const;
 
         C3D_API [[nodiscard]] bool WasKeyDown(u8 key) const;
         C3D_API [[nodiscard]] bool WasKeyUp(u8 key) const;
-
+        
         C3D_API [[nodiscard]] bool IsButtonDown(Buttons button) const;
         C3D_API [[nodiscard]] bool IsButtonUp(Buttons button) const;
+        C3D_API [[nodiscard]] bool IsButtonPressed(Buttons button) const;
 
-        C3D_API [[nodiscard]] bool WasButtonDown(Buttons button) const;
-        C3D_API [[nodiscard]] bool WasButtonUp(Buttons button) const;
+		C3D_API [[nodiscard]] bool WasButtonDown(Buttons button) const;
+		C3D_API [[nodiscard]] bool WasButtonUp(Buttons button) const;
 
         C3D_API ivec2 GetMousePosition();
         C3D_API ivec2 GetPreviousMousePosition();

@@ -34,6 +34,8 @@ namespace C3D
 		void SetScissor(const ivec4& rect) override;
 		void ResetScissor() override;
 
+		void SetLineWidth(float lineWidth) override;
+
 		bool BeginRenderPass(RenderPass* pass, RenderTarget* target) override;
 		bool EndRenderPass(RenderPass* pass) override;
 
@@ -89,6 +91,10 @@ namespace C3D
 		u8 GetWindowAttachmentCount() override;
 
 		[[nodiscard]] bool IsMultiThreaded() const override;
+
+		void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) override;
+		[[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const override;
+
 	private:
 		void CreateCommandBuffers();
 

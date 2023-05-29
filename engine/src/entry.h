@@ -1,14 +1,15 @@
 
 #pragma once
+#include "core/console.h"
 #include "core/engine.h"
 #include "core/identifier.h"
 #include "core/metrics/metrics.h"
 #include "memory/global_memory_system.h"
 
-int main(int argc, char** argv)
+inline int main(int argc, char** argv)
 {
 	// Initialize our logger which we should do first to ensure we can log errors everywhere
-	C3D::Logger::Init();
+	C3D::Logger::Init(Console);
 
 	// Initialize our metrics to track our memory usage and other stats
 	Metrics.Init();
