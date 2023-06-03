@@ -1,6 +1,6 @@
 
 #pragma once
-#include "console.h"
+#include "console/console.h"
 #include "defines.h"
 #include "logger.h"
 #include "renderer/renderer_types.h"
@@ -103,9 +103,9 @@ namespace C3D
 		void Shutdown();
 		void HandleSdlEvents();
 
-		bool OnResizeEvent(u16 code, void* sender, EventContext context);
-		bool OnMinimizeEvent(u16 code, void* sender, EventContext context);
-		bool OnFocusGainedEvent(u16 code, void* sender, EventContext context);
+		bool OnResizeEvent(u16 code, void* sender, const EventContext& context);
+		bool OnMinimizeEvent(u16 code, void* sender, const EventContext& context);
+		bool OnFocusGainedEvent(u16 code, void* sender, const EventContext& context);
 
 		SDL_Window* m_window{ nullptr };
 		

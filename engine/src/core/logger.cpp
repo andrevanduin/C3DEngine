@@ -6,8 +6,8 @@
 
 #include <VkBootstrap.h>
 
-#include "console.h"
-#include "console_sink.h"
+#include "console/console.h"
+#include "console/console_sink.h"
 
 namespace C3D
 {

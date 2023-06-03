@@ -147,14 +147,24 @@ namespace C3D
 		RegenerateGeometry();
 	}
 
+	u32 UIText::GetMaxX() const
+	{
+		return static_cast<u32>(m_maxX);
+	}
+
+	u32 UIText::GetMaxY() const
+	{
+		return static_cast<u32>(m_maxY);
+	}
+
 	void UIText::Draw() const
 	{
-		if (!m_vertexBuffer->Draw(0, m_vertexData.Size(), true))
+		if (!m_vertexBuffer->Draw(0, static_cast<u32>(m_vertexData.Size()), true))
 		{
 			m_logger.Error("Draw() - Failed to draw vertex buffer.");
 		}
 
-		if (!m_indexBuffer->Draw(0, m_indexData.Size(), false))
+		if (!m_indexBuffer->Draw(0, static_cast<u32>(m_indexData.Size()), false))
 		{
 			m_logger.Error("Draw() - Failed to draw index buffer.");
 		}
@@ -191,6 +201,9 @@ namespace C3D
 				return;
 			}
 		}
+
+		m_maxX = 0;
+		m_maxY = 0;
 
 		f32 x = 0, y = 0;
 
@@ -237,6 +250,9 @@ namespace C3D
 				const f32 maxX = minX + static_cast<f32>(glyph->width);
 				const f32 maxY = minY + static_cast<f32>(glyph->height);
 
+				if (maxX > m_maxX) m_maxX = maxX;
+				if (maxY > m_maxY) m_maxY = maxY;
+
 				const f32 atlasSizeX = static_cast<f32>(data->atlasSizeX);
 				const f32 atlasSizeY = static_cast<f32>(data->atlasSizeY);
 
@@ -277,130 +293,6 @@ namespace C3D
 			c += advance - 1;
 			uc++;
 		}
-
-
-		/*
-
-		// Generate new geometry for each character
-		f32 x = 0, y = 0;
-
-		// Make sure we have enough storage for our temp data
-		m_vertexData.Resize(vertexCount);
-		m_indexData.Resize(indexCount);
-
-		u64 advance = 1;
-		u32 utf8CharCount = 0;
-		for (u64 index = 0; index < size; index += advance)
-		{
-			auto codepoint = m_text.ToCodepoint(index, advance);
-			if (codepoint == '\n')
-			{
-				// If we find a newline we increment the y position and reset the x position
-				x = 0;
-				y += static_cast<f32>(data->lineHeight);
-				utf8CharCount++;
-				continue;
-			}
-
-			if (codepoint == '\t')
-			{
-				// If we find a tab character we increment x by our tabAdvance
-				x += data->tabXAdvance;
-				utf8CharCount++;
-				continue;
-			}
-
-			FontGlyph glyph = {};
-			auto found = false;
-			for (const auto& g : data->glyphs)
-			{
-				if (g.codepoint == codepoint)
-				{
-					glyph = g;
-					found = true;
-					break;
-				}
-			}
-
-			if (!found)
-			{
-				// If we can't find the glyph we look for codepoint = -1
-				codepoint = -1;
-				for (const auto& g : data->glyphs)
-				{
-					if (g.codepoint == codepoint)
-					{
-						glyph = g;
-						found = true;
-						break;
-					}
-				}
-			}
-
-			if (!found)
-			{
-				m_logger.Error("RegenerateGeometry() - Unable to find glyph. Unknown codepoint.");
-				utf8CharCount++;
-				continue;
-			}
-
-			const f32 minX = x + static_cast<f32>(glyph.xOffset);
-			const f32 minY = y + static_cast<f32>(glyph.yOffset);
-
-			const f32 maxX = minX + static_cast<f32>(glyph.width);
-			const f32 maxY = minY + static_cast<f32>(glyph.height);
-
-			const auto fAtlasSizeX = static_cast<f32>(data->atlasSizeX);
-			const auto fAtlasSizeY = static_cast<f32>(data->atlasSizeY);
-
-			const f32 tMinX = static_cast<f32>(glyph.x) / fAtlasSizeX;
-			f32 tMinY = static_cast<f32>(glyph.y) / fAtlasSizeY;
-
-			const f32 tMaxX = static_cast<f32>(glyph.x + glyph.width) / fAtlasSizeX;
-			f32 tMaxY = static_cast<f32>(glyph.y + glyph.height) / fAtlasSizeY;
-
-			// Flip the y-axis for system text
-			if (type == UITextType::System)
-			{
-				tMinY = 1.0f - tMinY;
-				tMaxY = 1.0f - tMaxY;
-			}
-
-			m_vertexData.EmplaceBack(vec2(minX, minY), vec2(tMinX, tMinY));
-			m_vertexData.EmplaceBack(vec2(maxX, maxY), vec2(tMaxX, tMaxY));
-			m_vertexData.EmplaceBack(vec2(minX, maxY), vec2(tMinX, tMaxY));
-			m_vertexData.EmplaceBack(vec2(maxX, minY), vec2(tMaxX, tMinY));
-
-			i32 kerning = 0;
-
-			const u64 nextIndex = index + advance;
-			if (nextIndex < utf8Size)
-			{
-				u64 nextAdvance = 0;
-				const i32 nextCodepoint = m_text.ToCodepoint(nextIndex, nextAdvance);
-
-				for (const auto& k : data->kernings)
-				{
-					if (k.codepoint0 == codepoint && k.codepoint1 == nextCodepoint)
-					{
-						kerning = k.amount;
-						break;
-					}
-				}
-			}
-
-			x += static_cast<f32>(glyph.xAdvance) + static_cast<f32>(kerning);
-
-			m_indexData.EmplaceBack(utf8CharCount * 4 + 2);
-			m_indexData.EmplaceBack(utf8CharCount * 4 + 1);
-			m_indexData.EmplaceBack(utf8CharCount * 4 + 0);
-			m_indexData.EmplaceBack(utf8CharCount * 4 + 3);
-			m_indexData.EmplaceBack(utf8CharCount * 4 + 0);
-			m_indexData.EmplaceBack(utf8CharCount * 4 + 1);
-
-			utf8CharCount++;
-		*/
-
 
 		// Load up our vertex and index buffer data
 		if (!m_vertexBuffer->LoadRange(0, m_vertexData.Size() * sizeof(Vertex2D), m_vertexData.GetData()))

@@ -9,7 +9,7 @@
 #include <core/events/event.h>
 #include <core/events/event_context.h>
 #include <core/metrics/metrics.h>
-#include <core/console.h>
+#include <core/console/console.h>
 
 #include <containers/cstring.h>
 
@@ -303,22 +303,22 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 			Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
 		}
 
-		if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyLeft))
+		if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyArrowLeft))
 		{
 			m_camera->AddYaw(1.0 * deltaTime);
 		}
 
-		if (Input.IsKeyDown('d') || Input.IsKeyDown(C3D::KeyRight))
+		if (Input.IsKeyDown('d') || Input.IsKeyDown(C3D::KeyArrowRight))
 		{
 			m_camera->AddYaw(-1.0 * deltaTime);
 		}
 
-		if (Input.IsKeyDown(C3D::KeyUp))
+		if (Input.IsKeyDown(C3D::KeyArrowUp))
 		{
 			m_camera->AddPitch(1.0 * deltaTime);
 		}
 
-		if (Input.IsKeyDown(C3D::KeyDown))
+		if (Input.IsKeyDown(C3D::KeyArrowDown))
 		{
 			m_camera->AddPitch(-1.0 * deltaTime);
 		}
@@ -791,7 +791,7 @@ bool TestEnv::ConfigureRenderViews()
 	return true;
 }
 
-bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext context)
+bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext& context)
 {
 	switch (code)
 	{
@@ -803,7 +803,7 @@ bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext cont
 	}
 }
 
-bool TestEnv::OnDebugEvent(const u16 code, void* sender, C3D::EventContext context)
+bool TestEnv::OnDebugEvent(const u16 code, void* sender, const C3D::EventContext& context)
 {
 	if (code == C3D::SystemEventCode::Debug0)
 	{

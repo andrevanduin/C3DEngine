@@ -98,11 +98,11 @@ namespace C3D
 
 		// Report the freeing of the memory.
 		const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		const auto size = m_memoryRequirements.size;
-		MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
+		MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size, m_memoryRequirements.size, m_memory);
 
 		if (m_memory)
 		{
+			vkDeviceWaitIdle(m_context->device.logicalDevice);
 			vkFreeMemory(m_context->device.logicalDevice, m_memory, m_context->allocator);
 			m_memory = nullptr;
 		}

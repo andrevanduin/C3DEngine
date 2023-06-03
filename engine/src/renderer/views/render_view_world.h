@@ -29,7 +29,7 @@ namespace C3D
 		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) override;
 		
 	private:
-		bool OnEvent(u16 code, void* sender, EventContext context);
+		bool OnEvent(u16 code, void* sender, const EventContext& context);
 
 		DynamicArray<GeometryDistance> m_distances;
 

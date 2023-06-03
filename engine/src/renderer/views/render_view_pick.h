@@ -44,7 +44,7 @@ namespace C3D
 		bool RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment) override;
 
 	private:
-		bool OnMouseMovedEvent(u16 code, void* sender, EventContext context);
+		bool OnMouseMovedEvent(u16 code, void* sender, const EventContext& context);
 
 		void AcquireShaderInstances();
 		void ReleaseShaderInstances();

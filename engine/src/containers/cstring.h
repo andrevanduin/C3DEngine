@@ -1,5 +1,6 @@
 
 // ReSharper disable CppNonExplicitConvertingConstructor
+// ReSharper disable CppInconsistentNaming
 #pragma once
 #include <format>
 
@@ -193,6 +194,24 @@ namespace C3D
 			return *this;
 		}
 
+		/* @brief Returns an iterator pointing to the start of the character array. */
+		[[nodiscard]] char* begin() noexcept { return m_data; }
+
+		/* @brief Returns a const_iterator pointing to the start of the character array. */
+		[[nodiscard]] const char* begin() const noexcept { return m_data; }
+
+		/* @brief Returns a const_iterator pointing to the start of the character array. */
+		[[nodiscard]] const char* cbegin() const noexcept { return m_data; }
+
+		/* @brief Returns an iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] char* end() noexcept { return m_data + Size(); }
+
+		/* @brief Returns a const_iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] const char* end() const noexcept { return m_data + Size(); }
+
+		/* @brief Returns a const_iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] const char* cend() const noexcept { return m_data + Size(); }
+
 	private:
 		void Create(const char* str, const u64 size)
 		{
@@ -225,5 +244,20 @@ struct std::formatter<C3D::CString<CCapacity>>
 	auto format(const C3D::CString<CCapacity>& str, FormatContext& ctx) const
 	{
 		return std::vformat_to(ctx.out(), "{}", std::make_format_args(str.Data()));
+	}
+};
+
+template <u64 CCapacity>
+struct std::hash<C3D::CString<CCapacity>>
+{
+	size_t operator() (const C3D::CString<CCapacity>& key) const noexcept
+	{
+		size_t hash = 0;
+		for (const auto c : key)
+		{
+			hash ^= static_cast<size_t>(c);
+			hash *= std::_FNV_prime;
+		}
+		return hash;
 	}
 };

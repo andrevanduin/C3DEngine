@@ -2,7 +2,6 @@
 // ReSharper disable CppInconsistentNaming
 #pragma once
 #include <iostream>
-#include <ostream>
 #include <fmt/core.h>
 
 #include "core/defines.h"

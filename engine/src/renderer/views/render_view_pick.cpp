@@ -464,7 +464,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RenderViewPick::OnMouseMovedEvent(u16 code, void* sender, EventContext context)
+	bool RenderViewPick::OnMouseMovedEvent(u16 code, void* sender, const EventContext& context)
 	{
 		if (code == SystemEventCode::MouseMoved)
 		{

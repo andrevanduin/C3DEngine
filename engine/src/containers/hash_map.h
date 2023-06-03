@@ -48,13 +48,13 @@ namespace C3D
 
 			HashMapIterator() : m_index(0), m_map(nullptr) {}
 
-			explicit HashMapIterator(const HashMap<Key, Value, HashFunc>* map)
+			explicit HashMapIterator(const HashMap* map)
 				: m_index(INVALID_ID_U64), m_map(map)
 			{
 				FindNextOccupiedIndex();
 			}
 
-			HashMapIterator(const HashMap<Key, Value, HashFunc>* map, const u64 currentIndex)
+			HashMapIterator(const HashMap* map, const u64 currentIndex)
 				: m_index(currentIndex), m_map(map)
 			{
 				FindNextOccupiedIndex();

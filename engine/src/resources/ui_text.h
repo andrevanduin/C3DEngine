@@ -37,6 +37,9 @@ namespace C3D
 		void SetPosition(const vec3& pos);
 		void SetText(const char* text);
 
+		[[nodiscard]] u32 GetMaxX() const;
+		[[nodiscard]] u32 GetMaxY() const;
+
 		void Draw() const;
 
 		u32 uniqueId;
@@ -62,7 +65,8 @@ namespace C3D
 		DynamicArray<Vertex2D> m_vertexData;
 		DynamicArray<u32> m_indexData;
 
+		f32 m_maxX, m_maxY;
+
 		String m_text;
-		u32 m_textSize;
 	};
 }

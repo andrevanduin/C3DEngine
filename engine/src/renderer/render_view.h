@@ -99,7 +99,7 @@ namespace C3D
 		RenderViewKnownType type;
 		DynamicArray<RenderPass*> passes;
 	protected:
-		bool OnRenderTargetRefreshRequired(u16 code, void* sender, EventContext context);
+		bool OnRenderTargetRefreshRequired(u16 code, void* sender, const EventContext& context);
 
 		/* @brief Method that gets called by OnBaseResize() where you can put your basic extra OnResize behaviour. */
 		virtual void OnResize();
