@@ -9,6 +9,8 @@
 namespace C3D
 {
 	struct FontData;
+	struct FontGlyph;
+	struct FontKerning;
 
 	enum class UITextType
 	{
@@ -49,6 +51,8 @@ namespace C3D
 
 	private:
 		void RegenerateGeometry();
+		[[nodiscard]] FontGlyph* GetFontGlyph(i32 codepoint) const;
+		[[nodiscard]] f32 GetFontKerningAmount(i32 codepoint, u32 offset, u64 utf8Size) const;
 
 		LoggerInstance<16> m_logger;
 
@@ -59,5 +63,6 @@ namespace C3D
 		DynamicArray<u32> m_indexData;
 
 		String m_text;
+		u32 m_textSize;
 	};
 }
