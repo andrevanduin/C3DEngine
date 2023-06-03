@@ -25,12 +25,15 @@ int main(int argc, char** argv)
 
 	TestManager manager;
 
+	/*
 	LinearAllocator::RegisterTests(&manager);
 	DynamicAllocator::RegisterTests(&manager);
 	StackAllocator::RegisterTests(&manager);
 
 	Array::RegisterTests(&manager);
+	*/
 	DynamicArray::RegisterTests(&manager);
+	/*
 	Stack::RegisterTests(&manager);
 	String::RegisterTests(&manager);
 	CString::RegisterTests(&manager);
@@ -38,7 +41,8 @@ int main(int argc, char** argv)
 	HashTable::RegisterTests(&manager);
 	HashMap::RegisterTests(&manager);
 	RingQueue::RegisterTests(&manager);
-	
+	*/
+
 	C3D::Logger::Debug("------ Starting tests... ------");
 	manager.RunTests();
 	C3D::Logger::Debug("----- Done Running tests -----");

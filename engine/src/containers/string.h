@@ -679,7 +679,7 @@ namespace C3D
 		/* @brief Returns the utf8 codepoint at the given index.
 		 * Will set advance to the amount of characters that need to be skipped to get the next character
 		 */
-		[[nodiscard]] i32 ToCodepoint(const u64 index, u64& advance) const
+		[[nodiscard]] i32 ToCodepoint(const u64 index, u8& advance) const
 		{
 			const int codepoint = static_cast<u8>(m_data[index]);
 			if (codepoint >= 0 && codepoint < 0x7F)
@@ -818,10 +818,12 @@ namespace C3D
 			u64 size = 0;
 			for (u64 i = 0; i < m_size; size++)
 			{
-				if (m_data[i] >= 0 && m_data[i] < 127) i++;		// 1-byte character
-				else if ((m_data[i] & 0xE0) == 0xC0) i += 2;	// 2-byte character
-				else if ((m_data[i] & 0xF0) == 0xE0) i += 3;	// 3-byte character
-				else if ((m_data[i] & 0xF8) == 0xF0) i += 4;	// 4-byte character
+				const i32 c = m_data[i];
+
+				if (c >= 0 && c < 127) i++;				// 1-byte character
+				else if ((c & 0xE0) == 0xC0) i += 2;	// 2-byte character
+				else if ((c & 0xF0) == 0xE0) i += 3;	// 3-byte character
+				else if ((c & 0xF8) == 0xF0) i += 4;	// 4-byte character
 				else
 				{
 					Logger::Error("[STRING] - SizeUtf8() - Invalid 5 or 6-byte character in string.");

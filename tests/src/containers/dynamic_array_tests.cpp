@@ -429,6 +429,47 @@ u8 DynamicArrayShouldShrinkCorrectly()
 
 	return true;
 }
+ 
+u8 DynamicArrayShouldClearCorrectly()
+{
+	C3D::DynamicArray<TestObject> array;
+
+	array.EmplaceBack();
+	array.EmplaceBack();
+	array.EmplaceBack();
+	array.EmplaceBack();
+
+	array.Clear();
+
+	ExpectShouldBe(0, array.Size());
+	ExpectShouldBe(4, array.Capacity());
+
+	return true;
+}
+
+u8 DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize()
+{
+	C3D::DynamicArray<int> array;
+	array.Reserve(20);
+
+	array.PushBack(1);
+	array.PushBack(2);
+	array.PushBack(3);
+	array.PushBack(4);
+
+	array.Resize(5);
+
+	ExpectShouldBe(20, array.Capacity());
+	ExpectShouldBe(5, array.Size());
+
+	ExpectShouldBe(1, array[0]);
+	ExpectShouldBe(2, array[1]);
+	ExpectShouldBe(3, array[2]);
+	ExpectShouldBe(4, array[3]);
+	ExpectShouldBe(0, array[4]);
+
+	return true;
+}
 
 void DynamicArray::RegisterTests(TestManager* manager)
 {
@@ -449,4 +490,6 @@ void DynamicArray::RegisterTests(TestManager* manager)
 	manager->Register(DynamicArrayShouldInsertRange, "Dynamic array should insert range of elements at a random iterator location");
 	manager->Register(DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled, "If you call reserve on a dynamic array with elements already present they should be preserved");
 	manager->Register(DynamicArrayShouldShrinkCorrectly, "Dynamic array should shrink correctly");
+	manager->Register(DynamicArrayShouldClearCorrectly, "Dynamic array should have size == 0 and capacity == unchanged after a Clear()");
+	manager->Register(DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize, "Dynamic array should not do anything when resize is called with a smaller size then current capacity");
 }

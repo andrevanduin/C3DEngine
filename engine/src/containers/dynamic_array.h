@@ -113,7 +113,6 @@ namespace C3D
 
 			// We allocate enough memory for the new capacity
 			T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, initialCapacity);
-			u64 newSize = 0;
 
 			if (m_elements)
 			{
@@ -122,9 +121,7 @@ namespace C3D
 				{
 					// We have elements in our array already which we need to copy over
 					// Since T can have an arbitrarily complex copy constructor we need to copy all elements over
-					std::copy_n(begin(), m_size, Iterator(newElements));
-					// Our new size will be equal to the size of whatever we had before the Reserve() call
-					newSize = m_size;
+					std::copy_n(begin(), m_size, iterator(newElements));
 				}
 
 				// We delete our old memory
@@ -133,8 +130,6 @@ namespace C3D
 
 			// We set our new capacity
 			m_capacity = initialCapacity;
-			// We copy over our size (since it might have been cleared by our Free() call
-			m_size = newSize;
 			// We set our elements pointer to the newly allocated memory
 			m_elements = newElements;
 		}
@@ -147,10 +142,11 @@ namespace C3D
 		{
 			// Reserve enough capacity
 			Reserve(size);
-			// All new empty slots up to capacity should be filled with default elements
-			std::uninitialized_default_construct_n(begin(), m_capacity);
-			// Since we default constructed all elements up-to capacity we now also have capacity elements
-			m_size = m_capacity;
+			// All new empty slots (from m_size onwards) up to the new size should be filled with default elements
+			const auto extraCount = size - m_size;
+			std::uninitialized_default_construct_n(begin() + m_size, extraCount);
+			// Since we default constructed all elements up-to provided size we now also have size elements
+			m_size = size;
 		}
 
 		/*
@@ -175,7 +171,7 @@ namespace C3D
 			// Allocate exactly enough space for our current elements
 			T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, m_size);
 			// Copy over the elements from our already allocated memory
-			std::copy_n(begin(), m_size, Iterator(newElements));
+			std::copy_n(begin(), m_size, iterator(newElements));
 			// Free our old memory
 			m_allocator->Free(MemoryType::DynamicArray, m_elements);
 			// Our element pointer can now be copied over
@@ -376,11 +372,7 @@ namespace C3D
 			// We allocate enough memory for the provided count
 			m_elements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, count);
 			// Then we copy over the elements from the provided pointer into our newly allocated memory
-			// Note: Again we may not use std::memcpy here since T could have an arbitrarily complex copy constructor
-			for (u64 i = 0; i < count; i++)
-			{
-				m_elements[i] = elements[i];
-			}
+			std::copy_n(elements, count, m_elements);
 
 			m_size = count;
 			m_capacity = count;
@@ -391,7 +383,7 @@ namespace C3D
 		 * This is a destructive operation that will first delete all the memory in the
 		 * dynamic array if there is any and resize the dynamic array to the capacity and size of the provided array 
 		 */
-		void Copy(const DynamicArray<T, Allocator>& other)
+		void Copy(const DynamicArray& other)
 		{
 			// If we have any memory allocated we have to free it first
 			Free();
@@ -404,11 +396,7 @@ namespace C3D
 				// We allocate enough memory for the provided count
 				m_elements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, other.m_size);
 				// Then we copy over the elements from the provided pointer into our newly allocated memory
-				// Note: Again we may not use std::memcpy here since T could have an arbitrarily complex copy constructor
-				for (u64 i = 0; i < other.m_size; i++)
-				{
-					m_elements[i] = other[i];
-				}
+				std::copy_n(other.begin(), other.m_size, begin());
 			}
 
 			m_size = other.m_size;
