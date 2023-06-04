@@ -10,13 +10,19 @@
 namespace C3D
 {
 	constexpr auto MAX_LINES = 512;
-	constexpr auto MAX_HISTORY = 64;
+	constexpr i8 MAX_HISTORY = 64;
 	constexpr auto SHOWN_LINES = 10;
 
 #define Console C3D::UIConsole::GetBaseConsole()
 
 	class C3D_API UIConsole
 	{
+		enum class LogType
+		{
+			Info,
+			Error,
+		};
+
 	public:
 		UIConsole();
 
@@ -59,12 +65,11 @@ namespace C3D
 		bool OnParseCommand();
 
 		template <typename... Args>
-		void PrintCommandMessage(const char* format, Args&&... args)
+		void PrintCommandMessage(const LogType type, const char* format, Args&&... args)
 		{
-			CString<256> warning;
-			warning.FromFormat(format, args...);
+			if (type == LogType::Info) m_logger.Info(format, args...);
+			else m_logger.Error(format, args...);
 
-			WriteLineInternal(warning);
 			m_current = "";
 			m_isEntryDirty = true;
 		}
@@ -74,6 +79,10 @@ namespace C3D
 
 		u8 m_cursorCounter, m_scrollCounter;
 		u32 m_startIndex, m_endIndex, m_nextLine;
+
+		// History
+		i8 m_currentHistory;
+		i8 m_endHistory, m_nextHistory;
 
 		CircularBuffer<CString<256>, MAX_LINES> m_lines;
 		CircularBuffer<CString<256>, MAX_HISTORY> m_history;

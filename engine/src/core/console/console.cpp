@@ -4,7 +4,6 @@
 #include "core/input.h"
 #include "core/string_utils.h"
 #include "core/events/event.h"
-#include "core/events/event_callback.h"
 #include "renderer/render_view.h"
 #include "resources/font.h"
 #include "services/system_manager.h"
@@ -13,7 +12,7 @@ namespace C3D
 {
 	UIConsole::UIConsole()
 		: m_isOpen(false), m_initialized(false), m_isTextDirty(true), m_isEntryDirty(true), m_cursorCounter(0), m_scrollCounter(0),
-		  m_startIndex(0), m_endIndex(SHOWN_LINES), m_nextLine(0), m_logger("CONSOLE")
+		  m_startIndex(0), m_endIndex(SHOWN_LINES), m_nextLine(0), m_currentHistory(-1), m_endHistory(0), m_nextHistory(0), m_logger("CONSOLE")
 	{}
 
 	void UIConsole::OnInit()
@@ -69,25 +68,6 @@ namespace C3D
 			m_cursorCounter %= 180;
 
 			if (m_scrollCounter > 0) m_scrollCounter--;
-			// Our minimum start index value depends on if we wrapped around in our circular buffer yet
-			// > If we have not wrapped around the value is simply 0 (first index into our circular buffer)
-			// > If we did wrap around it must be larger than the end index % MAX_LINES since that is the end index of
-			// were we store our lines. Everything beyond that index is actually the newest lines again
-			const auto minStartIndex = m_endIndex > MAX_LINES ? m_endIndex % MAX_LINES : 0;
-			if (Input.IsKeyDown(KeyArrowUp) && m_scrollCounter == 0 && m_startIndex> minStartIndex)
-			{
-				m_scrollCounter = 15;
-				m_startIndex--;
-				m_endIndex--;
-				m_isTextDirty = true;
-			}
-			if (Input.IsKeyDown(KeyArrowDown) && m_scrollCounter == 0 && m_endIndex < m_nextLine)
-			{
-				m_scrollCounter = 15;
-				m_startIndex++;
-				m_endIndex++;
-				m_isTextDirty = true;
-			}
 		}
 	}
 
@@ -197,6 +177,47 @@ namespace C3D
 		if (!m_isOpen) return false;
 
 		const u16 keyCode = context.data.u16[0];
+		if (keyCode == KeyArrowUp)
+		{
+			// Our minimum start index value depends on if we wrapped around in our circular buffer yet
+			// > If we have not wrapped around the value is simply 0 (first index into our circular buffer)
+			// > If we did wrap around it must be larger than the end index % MAX_HISTORY since that is the end index of
+			// were we store our lines. Everything beyond that index is actually the wrapped around newer lines
+			const i8 minStartIndex = m_endHistory > MAX_HISTORY ? m_endHistory % MAX_HISTORY : 0;
+			if (m_currentHistory > minStartIndex)
+			{
+				m_currentHistory--;
+			}
+			else if (m_currentHistory == -1 && m_endHistory != 0)
+			{
+				m_currentHistory = m_endHistory - 1;
+			}
+
+			if (m_currentHistory == -1)
+			{
+				// There is no history yet
+				return false;
+			}
+
+			m_isEntryDirty = true;
+			m_current = m_history[m_currentHistory];
+			return true;
+		}
+
+		if (keyCode == KeyArrowDown)
+		{
+			if (m_currentHistory != -1 && m_currentHistory < m_nextHistory)
+			{
+				m_currentHistory++;
+				m_isEntryDirty = true;
+				m_current = m_history[m_currentHistory];
+				return true;
+				
+			}
+
+			return false;
+		}
+
 		if (keyCode == KeyEnter)
 		{
 			return OnParseCommand();
@@ -284,7 +305,26 @@ namespace C3D
 		if (!m_isOpen) return false;
 
 		const auto scrollAmount = context.data.i8[0];
-
+		
+		// Our minimum start index value depends on if we wrapped around in our circular buffer yet
+		// > If we have not wrapped around the value is simply 0 (first index into our circular buffer)
+		// > If we did wrap around it must be larger than the end index % MAX_LINES since that is the end index of
+		// were we store our lines. Everything beyond that index is actually the wrapped around newer lines
+		const auto minStartIndex = m_endIndex > MAX_LINES ? m_endIndex % MAX_LINES : 0;
+		if (scrollAmount > 0 && m_scrollCounter == 0 && m_startIndex > minStartIndex)
+		{
+			m_scrollCounter = 10;
+			m_startIndex--;
+			m_endIndex--;
+			m_isTextDirty = true;
+		}
+		if (scrollAmount < 0 && m_scrollCounter == 0 && m_endIndex < m_nextLine)
+		{
+			m_scrollCounter = 10;
+			m_startIndex++;
+			m_endIndex++;
+			m_isTextDirty = true;
+		}
 		return true;
 	}
 
@@ -297,10 +337,15 @@ namespace C3D
 			return true;
 		}
 
+		m_history[m_nextHistory] = m_current;
+		m_nextHistory++;
+		m_endHistory = m_nextHistory;
+		m_currentHistory = -1;
+
 		const auto args = StringUtils::Split<256, 128>(m_current, ' ');
 		if (args.Empty())
 		{
-			PrintCommandMessage("The input: \'{}\' failed to be parsed!", m_current);
+			PrintCommandMessage(LogType::Error, "The input: \'{}\' failed to be parsed!", m_current);
 			return false;
 		}
 
@@ -310,7 +355,7 @@ namespace C3D
 		if (!m_commands.Has(commandName))
 		{
 			// Not a command let's warn the user
-			PrintCommandMessage("The command: \'{}\' does not exist!", commandName);
+			PrintCommandMessage(LogType::Error, "The command: \'{}\' does not exist!", commandName);
 			return false;
 		}
 
@@ -320,13 +365,13 @@ namespace C3D
 
 		if (!command->Invoke(args, output))
 		{
-			PrintCommandMessage("\'{}\' failed to execute:", commandName);
-			WriteLineInternal(output);
+			PrintCommandMessage(LogType::Error, "The command \'{}\' failed to execute:", commandName);
+			m_logger.Error(output.Data());
 		}
 		else
 		{
-			PrintCommandMessage("\'{}\' executed successfully:", commandName);
-			WriteLineInternal(output);
+			PrintCommandMessage(LogType::Info, "The command \'{}\' executed successfully:", commandName);
+			m_logger.Info(output.Data());
 		}
 
 		m_current = "";
