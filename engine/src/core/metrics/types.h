@@ -39,6 +39,7 @@ namespace C3D
 		C3DString,
 		Engine,
 		ResourceLoader,
+		EventSystem,
 		Job,
 		Texture,
 		MaterialInstance,
@@ -60,6 +61,7 @@ namespace C3D
 		BitmapFont,
 		SystemFont,
 		Test,
+		DebugConsole,
 		MaxType,
 	};
 

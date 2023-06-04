@@ -26,7 +26,8 @@ namespace C3D
 		m_entry.SetPosition( { 5, 30, 0 });
 		m_cursor.SetPosition({ 5, 30, 0 });
 
-		Event.Register(KeyDown, new EventCallback(this, &UIConsole::OnKeyDownEvent));
+		Event.Register(KeyDown, this, &UIConsole::OnKeyDownEvent);
+		Event.Register(MouseScrolled, this, &UIConsole::OnMouseScrollEvent);
 
 		m_commands.Create(377);
 
@@ -37,9 +38,16 @@ namespace C3D
 	{
 		if (m_initialized)
 		{
+			// Make sure all commands that haven't been manually unregistered are unregistered to avoid leaking memory
+			for (const auto command : m_commands)
+			{
+				UnRegisterCommand(command->name);
+			}
+			// Then we simply destroy our commands hashmap to free it's internal memory
 			m_commands.Destroy();
 
-			Event.UnRegister(KeyDown, new EventCallback(this, &UIConsole::OnKeyDownEvent));
+			Event.UnRegister(KeyDown, this, &UIConsole::OnKeyDownEvent);
+			Event.UnRegister(MouseScrolled, this, &UIConsole::OnMouseScrollEvent);
 
 			m_text.Destroy();
 			m_entry.Destroy();
@@ -61,7 +69,6 @@ namespace C3D
 			m_cursorCounter %= 180;
 
 			if (m_scrollCounter > 0) m_scrollCounter--;
-
 			// Our minimum start index value depends on if we wrapped around in our circular buffer yet
 			// > If we have not wrapped around the value is simply 0 (first index into our circular buffer)
 			// > If we did wrap around it must be larger than the end index % MAX_LINES since that is the end index of
@@ -123,7 +130,9 @@ namespace C3D
 
 	void UIConsole::RegisterCommand(const CString<128>& name, const pStaticCommandFunc function)
 	{
-		m_commands.Set(name, new StaticCommand(name, function));
+		const auto pStaticCommand = Memory.New<StaticCommand>(MemoryType::DebugConsole, name, function);
+
+		m_commands.Set(name, pStaticCommand);
 		m_logger.Info("Registered command: \'{}\'", name);
 	}
 
@@ -131,6 +140,9 @@ namespace C3D
 	{
 		if (m_commands.Has(name))
 		{
+			const auto command = m_commands.Get(name);
+			Memory.Delete(MemoryType::DebugConsole, command);
+
 			m_commands.Delete(name);
 			m_logger.Info("UnRegistered command: \'{}\'", name);
 		}
@@ -264,6 +276,15 @@ namespace C3D
 		
 		m_current.Append(typedChar);
 		m_isEntryDirty = true;
+		return true;
+	}
+
+	bool UIConsole::OnMouseScrollEvent(u16 code, void* sender, const EventContext& context)
+	{
+		if (!m_isOpen) return false;
+
+		const auto scrollAmount = context.data.i8[0];
+
 		return true;
 	}
 

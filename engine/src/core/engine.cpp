@@ -110,9 +110,9 @@ namespace C3D
 
 		Systems.InitAfterBoot(jobSystemConfig, textureSystemConfig, m_config.fontConfig, cameraSystemConfig, viewSystemConfig);
 
-		Event.Register(SystemEventCode::Resized, new EventCallback(this, &Engine::OnResizeEvent));
-		Event.Register(SystemEventCode::Minimized, new EventCallback(this, &Engine::OnMinimizeEvent));
-		Event.Register(SystemEventCode::FocusGained, new EventCallback(this, &Engine::OnFocusGainedEvent));
+		Event.Register(SystemEventCode::Resized,		this, &Engine::OnResizeEvent);
+		Event.Register(SystemEventCode::Minimized,		this, &Engine::OnMinimizeEvent);
+		Event.Register(SystemEventCode::FocusGained,	this, &Engine::OnFocusGainedEvent);
 
 		// Load render views
 		for (auto& view : m_config.renderViews)
@@ -243,9 +243,9 @@ namespace C3D
 		m_logger.Info("Shutdown()");
 		m_logger.Info("UnRegistering events");
 
-		Event.UnRegister(SystemEventCode::Resized, new EventCallback(this, &Engine::OnResizeEvent));
-		Event.UnRegister(SystemEventCode::Minimized, new EventCallback(this, &Engine::OnMinimizeEvent));
-		Event.UnRegister(SystemEventCode::FocusGained, new EventCallback(this, &Engine::OnFocusGainedEvent));
+		Event.UnRegister(SystemEventCode::Resized,		this, &Engine::OnResizeEvent);
+		Event.UnRegister(SystemEventCode::Minimized,	this, &Engine::OnMinimizeEvent);
+		Event.UnRegister(SystemEventCode::FocusGained,	this, &Engine::OnFocusGainedEvent);
 
 		Systems.Shutdown();
 

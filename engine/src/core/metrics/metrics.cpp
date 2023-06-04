@@ -24,6 +24,7 @@ namespace C3D
 		"C3DString",
 		"Engine",
 		"ResourceLoader",
+		"Event",
 		"Job",
 		"Texture",
 		"MaterialInstance",
@@ -45,6 +46,7 @@ namespace C3D
 		"BitmapFont",
 		"SystemFont",
 		"Test",
+		"Console"
 	};
 
 	MetricSystem* MetricSystem::s_instance;

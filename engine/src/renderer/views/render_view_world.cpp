@@ -50,7 +50,7 @@ namespace C3D
 		m_ambientColor = vec4(0.25f, 0.25f, 0.25f, 1.0f);
 
 		// Register our render mode change event listener
-		if (!Event.Register(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderViewWorld::OnEvent)))
+		if (!Event.Register(SystemEventCode::SetRenderMode, this, &RenderViewWorld::OnEvent))
 		{
 			m_logger.Error("OnCreate() - Failed to register render mode set event.");
 			return false;
@@ -62,7 +62,7 @@ namespace C3D
 	void RenderViewWorld::OnDestroy()
 	{
 		RenderView::OnDestroy();
-		Event.UnRegister(SystemEventCode::SetRenderMode, new EventCallback(this, &RenderViewWorld::OnEvent));
+		Event.UnRegister(SystemEventCode::SetRenderMode, this, &RenderViewWorld::OnEvent);
 	}
 
 	void RenderViewWorld::OnResize()

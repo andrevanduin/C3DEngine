@@ -24,14 +24,17 @@ namespace C3D
 		}
 	}
 
-	bool EventSystem::Register(u16 code, IEventCallback* onEvent)
+	bool EventSystem::Register(u16 code, const StaticEventFunc function)
 	{
+		const auto onEvent = Memory.New<StaticEventCallback>(MemoryType::EventSystem, function);
+
 		auto& events = m_registered[code].events;
 		for (const auto& event : events)
 		{
 			if (event->Equals(onEvent))
 			{
 				m_logger.Warn("This listener has already been Registered for {}", code);
+				Memory.Delete(MemoryType::EventSystem, onEvent);
 				return false;
 			}
 		}
@@ -40,7 +43,7 @@ namespace C3D
 		return true;
 	}
 
-	bool EventSystem::UnRegister(const u16 code, IEventCallback* onEvent)
+	bool EventSystem::UnRegister(const u16 code, const StaticEventFunc function)
 	{
 		auto& events = m_registered[code].events;
 		if (events.Empty())
@@ -49,10 +52,12 @@ namespace C3D
 			return false;
 		}
 
-		const auto it = std::find_if(events.begin(), events.end(), [&](IEventCallback* e) { return e->Equals(onEvent); });
+		const auto searchCallback = StaticEventCallback(function);
+		const auto it = std::ranges::find_if(events, [&](IEventCallback* e) { return e->Equals(&searchCallback); });
 		if (it != events.end())
 		{
 			events.Erase(it);
+			Memory.Delete(MemoryType::EventSystem, *it);
 			return true;
 		}
 
@@ -67,6 +72,6 @@ namespace C3D
 		{
 			return false;
 		}
-		return std::any_of(events.begin(), events.end(), [&](IEventCallback* e){ return e->Invoke(code, sender, data); });
+		return std::ranges::any_of(events, [&](IEventCallback* e){ return e->Invoke(code, sender, data); });
 	}
 }

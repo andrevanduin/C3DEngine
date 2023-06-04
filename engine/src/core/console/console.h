@@ -10,6 +10,7 @@
 namespace C3D
 {
 	constexpr auto MAX_LINES = 512;
+	constexpr auto MAX_HISTORY = 64;
 	constexpr auto SHOWN_LINES = 10;
 
 #define Console C3D::UIConsole::GetBaseConsole()
@@ -30,7 +31,9 @@ namespace C3D
 		template <class T>
 		void RegisterCommand(const CString<128>& name, T* classPtr, pCommandFunc<T> function)
 		{
-			m_commands.Set(name, new InstanceCommand<T>(name, classPtr, function));
+			const auto command = Memory.New<InstanceCommand<T>>(MemoryType::DebugConsole, name, classPtr, function);
+
+			m_commands.Set(name, command);
 			m_logger.Info("Registered command: \'{}\'", name);
 		}
 
@@ -51,6 +54,8 @@ namespace C3D
 		void WriteLineInternal(const CString<256>& line);
 
 		bool OnKeyDownEvent(u16 code, void* sender, const EventContext& context);
+		bool OnMouseScrollEvent(u16 code, void* sender, const EventContext& context);
+
 		bool OnParseCommand();
 
 		template <typename... Args>
@@ -71,6 +76,7 @@ namespace C3D
 		u32 m_startIndex, m_endIndex, m_nextLine;
 
 		CircularBuffer<CString<256>, MAX_LINES> m_lines;
+		CircularBuffer<CString<256>, MAX_HISTORY> m_history;
 
 		UIText m_text, m_entry, m_cursor;
 		CString<256> m_current;

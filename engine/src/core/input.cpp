@@ -126,7 +126,7 @@ namespace C3D
 	{
 		EventContext context{};
 		context.data.i8[0] = static_cast<i8>(delta);
-		Event.Fire(ToUnderlying(SystemEventCode::MouseWheel), nullptr, context);
+		Event.Fire(ToUnderlying(SystemEventCode::MouseScrolled), nullptr, context);
 	}
 
 	bool InputSystem::IsKeyDown(const u8 key) const
