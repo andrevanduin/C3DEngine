@@ -20,8 +20,12 @@ namespace C3D
 	public:
 		Mesh();
 
-		bool LoadFromResource(const char* resourceName);
+		bool LoadCube(const Engine* engine, f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const String& name, const String& materialName);
+		bool LoadFromResource(const Engine* engine, const char* resourceName);
+
 		void Unload();
+
+		void SetEngine(const Engine* engine);
 
 		u32 uniqueId;
 		u8 generation;
@@ -31,8 +35,10 @@ namespace C3D
 		Transform transform;
 
 	private:
-		static bool LoadJobEntryPoint(void* data, void* resultData);
-		static void LoadJobSuccess(void* data);
-		static void LoadJobFailure(void* data);
+		bool LoadJobEntryPoint(void* data, void* resultData) const;
+		void LoadJobSuccess(void* data) const;
+		void LoadJobFailure(void* data) const;
+
+		const Engine* m_engine;
 	};
 }

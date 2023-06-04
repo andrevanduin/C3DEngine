@@ -6,12 +6,14 @@
 
 namespace C3D
 {
+	class Engine;
+
 	class C3D_API Skybox
 	{
 	public:
 		Skybox();
 
-		bool Create(const char* cubeMapName);
+		bool Create(const Engine* engine, const char* cubeMapName);
 
 		void Destroy();
 
@@ -22,5 +24,8 @@ namespace C3D
 		/* @brief Synced to the renderer's current frame number
 		 * when the material has been applied for that frame. */
 		u64 frameNumber;
+
+	private:
+		const Engine* m_engine;
 	};
 }

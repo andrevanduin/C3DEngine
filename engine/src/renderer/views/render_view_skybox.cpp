@@ -1,18 +1,20 @@
 
 #include "math/c3d_math.h"
+
 #include "render_view_skybox.h"
 
-#include "core/events/event.h"
-#include "systems/system_manager.h"
-
-#include "systems/shader_system.h"
-#include "systems/camera_system.h"
+#include "core/engine.h"
 #include "renderer/renderer_frontend.h"
-#include "resources/resource_types.h"
-#include "resources/loaders/shader_loader.h"
-#include "systems/render_view_system.h"
-#include "systems/resource_system.h"
 
+#include "systems/events/event_system.h"
+#include "systems/system_manager.h"
+#include "systems/shaders/shader_system.h"
+#include "systems/cameras/camera_system.h"
+
+#include "systems/render_views/render_view_system.h"
+#include "systems/resources/resource_system.h"
+
+#include "resources/loaders/shader_loader.h"
 namespace C3D 
 {
 	RenderViewSkybox::RenderViewSkybox(const RenderViewConfig& config)

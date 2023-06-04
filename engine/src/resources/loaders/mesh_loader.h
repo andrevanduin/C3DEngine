@@ -3,7 +3,7 @@
 #include "resource_loader.h"
 #include "containers/dynamic_array.h"
 #include "renderer/vertex.h"
-#include "systems/geometry_system.h"
+#include "systems/geometry/geometry_system.h"
 
 #include "platform/filesystem.h"
 
@@ -55,10 +55,10 @@ namespace C3D
 	class ResourceLoader<MeshResource> final : public IResourceLoader
 	{
 	public:
-		ResourceLoader();
+		explicit ResourceLoader(const Engine* engine);
 
 		bool Load(const char* name, MeshResource& resource) const;
-		static void Unload(MeshResource& resource);
+		void Unload(MeshResource& resource) const;
 
 	private:
 		bool ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const;

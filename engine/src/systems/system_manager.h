@@ -1,117 +1,111 @@
 
 #pragma once
+#include <type_traits>
+
+#include "system.h"
 #include "core/defines.h"
 #include "memory/allocators/linear_allocator.h"
 
-#define Systems		C3D::SystemManager::GetInstance()
-#define Input		Systems.GetInputSystem()
-#define Event		Systems.GetEventSystem()
-#define Renderer	Systems.GetRenderSystem()
-#define Textures	Systems.GetTextureSystem()
-#define Materials	Systems.GetMaterialSystem()
-#define Geometric	Systems.GetGeometrySystem()
-#define Resources	Systems.GetResourceSystem()
-#define Shaders		Systems.GetShaderSystem()
-#define Cam			Systems.GetCameraSystem()
-#define Views		Systems.GetRenderViewSystem()
-#define Jobs		Systems.GetJobSystem()
-#define Fonts		Systems.GetFontSystem()
-#define Consoles	Systems.GetConsoleSystem()
+#define Input		m_engine->GetSystem<C3D::InputSystem>(C3D::SystemType::InputSystemType)
+#define Event		m_engine->GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
+#define Renderer	m_engine->GetSystem<C3D::RenderSystem>(C3D::SystemType::RenderSystemType)
+#define Textures	m_engine->GetSystem<C3D::TextureSystem>(C3D::SystemType::TextureSystemType)
+#define Materials	m_engine->GetSystem<C3D::MaterialSystem>(C3D::SystemType::MaterialSystemType)
+#define Geometric	m_engine->GetSystem<C3D::GeometrySystem>(C3D::SystemType::GeometrySystemType)
+#define Resources	m_engine->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
+#define Shaders		m_engine->GetSystem<C3D::ShaderSystem>(C3D::SystemType::ShaderSystemType)
+#define Cam			m_engine->GetSystem<C3D::CameraSystem>(C3D::SystemType::CameraSystemType)
+#define Views		m_engine->GetSystem<C3D::RenderViewSystem>(C3D::SystemType::RenderViewSystemType)
+#define Jobs		m_engine->GetSystem<C3D::JobSystem>(C3D::SystemType::JobSystemType)
+#define Fonts		m_engine->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
 
 namespace C3D
 {
+	enum SystemType
+	{
+		FontSystemType = 0,
+		RenderViewSystemType,
+		CameraSystemType,
+		GeometrySystemType,
+		MaterialSystemType,
+		TextureSystemType,
+		ShaderSystemType,
+		RenderSystemType,
+		ResourceSystemType,
+		InputSystemType,
+		EventSystemType,
+		JobSystemType,
+		MaxKnownSystemType
+	};
+
 	class Engine;
-
-	class EventSystem;
-	class InputSystem;
-
-	class ResourceSystem;
-	struct ResourceSystemConfig;
-
-	class ShaderSystem;
-	struct ShaderSystemConfig;
-
-	class RenderSystem;
-
-	class JobSystem;
-	struct JobSystemConfig;
-
-	class TextureSystem;
-	struct TextureSystemConfig;
-
-	class FontSystem;
-	struct FontSystemConfig;
-
-	class CameraSystem;
-	struct CameraSystemConfig;
-
-	class RenderViewSystem;
-	struct RenderViewSystemConfig;
-
-	class MaterialSystem;
-	struct MaterialSystemConfig;
-
-	class GeometrySystem;
-	struct GeometrySystemConfig;
-
-	class ConsoleSystem;
-	struct ConsoleSystemConfig;
 
 	class C3D_API SystemManager
 	{
 	public:
 		SystemManager();
 
-		void InitBeforeBoot(const Engine* application, const ResourceSystemConfig& resourceSystemConfig, const ShaderSystemConfig& shaderSystemConfig);
+		void Init(const Engine* engine);
 
-		void InitAfterBoot(const JobSystemConfig& jobSystemConfig, const TextureSystemConfig& textureSystemConfig, const FontSystemConfig& fontSystemConfig, 
-			const CameraSystemConfig& cameraSystemConfig, const RenderViewSystemConfig& renderViewSystemConfig);
+		template <class System>
+		bool RegisterSystem(const u16 systemType)
+		{
+			static_assert(std::is_base_of_v<BaseSystem, System>, "The provided system does not derive from the ISystem class");
 
-		void FinalInit(const MaterialSystemConfig& materialSystemConfig, const GeometrySystemConfig& geometrySystemConfig);
+			if (systemType > MaxKnownSystemType)
+			{
+				m_logger.Error("RegisterSystem() - The provided systemType should be 0 <= {} < {}", systemType, ToUnderlying(MaxKnownSystemType));
+				return false;
+			}
+
+			auto s = m_allocator.New<System>(MemoryType::CoreSystem, m_engine);
+			if (!s->Init())
+			{
+				m_logger.Fatal("RegisterSystem() - Failed to initialize system");
+				return false;
+			}
+
+			m_systems[systemType] = s;
+			return true;
+		}
+
+		template <class System, typename Config>
+		bool RegisterSystem(const u16 systemType, const Config& config)
+		{
+			static_assert(std::is_base_of_v<SystemWithConfig<Config>, System>, "The provided system does not derive from the ISystem class");
+
+			if (systemType > MaxKnownSystemType)
+			{
+				m_logger.Error("RegisterSystem() - The provided systemType should be 0 <= {} < {}", systemType, ToUnderlying(MaxKnownSystemType));
+				return false;
+			}
+
+			auto s = m_allocator.New<System>(MemoryType::CoreSystem, m_engine);
+			if (!s->Init(config))
+			{
+				m_logger.Fatal("RegisterSystem() - Failed to initialize system");
+				return false;
+			}
+
+			m_systems[systemType] = s;
+			return true;
+		}
+
+		template<class SystemType>
+		SystemType& GetSystem(const u16 type) const
+		{
+			return *reinterpret_cast<SystemType*>(m_systems[type]);
+		}
 
 		void Shutdown();
 
-		[[nodiscard]] InputSystem&			GetInputSystem()		const;
-		[[nodiscard]] EventSystem&			GetEventSystem()		const;
-		[[nodiscard]] RenderSystem&			GetRenderSystem()		const;
-		[[nodiscard]] TextureSystem&		GetTextureSystem()		const;
-		[[nodiscard]] MaterialSystem&		GetMaterialSystem()		const;
-		[[nodiscard]] GeometrySystem&		GetGeometrySystem()		const;
-		[[nodiscard]] ResourceSystem&		GetResourceSystem()		const;
-		[[nodiscard]] ShaderSystem&			GetShaderSystem()		const;
-		[[nodiscard]] CameraSystem&			GetCameraSystem()		const;
-		[[nodiscard]] RenderViewSystem&		GetRenderViewSystem()	const;
-		[[nodiscard]] JobSystem&			GetJobSystem()			const;
-		[[nodiscard]] FontSystem&			GetFontSystem()			const;
-
-		static SystemManager& GetInstance();
-
 	private:
-		template <class System>
-		void ShutdownSystem(System* system);
-
-		InputSystem*		m_pInputSystem;
-		EventSystem*		m_pEventSystem;
-		RenderSystem*		m_pRenderSystem;
-		TextureSystem*		m_pTextureSystem;
-		MaterialSystem*		m_pMaterialSystem;
-		GeometrySystem*		m_pGeometrySystem;
-		ResourceSystem*		m_pResourceSystem;
-		ShaderSystem*		m_pShaderSystem;
-		CameraSystem*		m_pCameraSystem;
-		RenderViewSystem*	m_pRenderViewSystem;
-		JobSystem*			m_pJobSystem;
-		FontSystem*			m_pFontSystem;
-
+		Array<ISystem*, MaxKnownSystemType> m_systems;
+		
 		LinearAllocator		m_allocator;
 		LoggerInstance<16>	m_logger;
-	};
 
-	template <class System>
-	void SystemManager::ShutdownSystem(System* system)
-	{
-		system->Shutdown();
-		m_allocator.Delete(MemoryType::CoreSystem, system);
-	}
+		const Engine* m_engine;
+	};
 }
 

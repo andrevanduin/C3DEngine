@@ -1,15 +1,16 @@
 
 #include "shader_loader.h"
 
+#include "core/engine.h"
 #include "platform/filesystem.h"
 #include "resources/shader.h"
 #include "systems/system_manager.h"
-#include "systems/resource_system.h"
+#include "systems/resources/resource_system.h"
 
 namespace C3D
 {
-	ResourceLoader<ShaderResource>::ResourceLoader()
-		: IResourceLoader("SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
+	ResourceLoader<ShaderResource>::ResourceLoader(const Engine* engine)
+		: IResourceLoader(engine, "SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
 	{}
 
 	bool ResourceLoader<ShaderResource>::Load(const char* name, ShaderResource& resource) const

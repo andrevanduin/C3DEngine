@@ -1,6 +1,6 @@
 
 #pragma once
-#include "system.h"
+#include "systems/system.h"
 #include "containers/hash_table.h"
 #include "renderer/camera.h"
 
@@ -20,10 +20,10 @@ namespace C3D
 		Camera camera;
 	};
 
-	class C3D_API CameraSystem final : public System<16, CameraSystemConfig>
+	class C3D_API CameraSystem final : public SystemWithConfig<CameraSystemConfig>
 	{
 	public:
-		CameraSystem();
+		explicit CameraSystem(const Engine* engine);
 
 		bool Init(const CameraSystemConfig& config) override;
 		void Shutdown() override;

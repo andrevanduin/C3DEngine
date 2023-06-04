@@ -1,6 +1,7 @@
 
 #include "texture_system.h"
 
+#include "core/engine.h"
 #include "core/logger.h"
 #include "core/string_utils.h"
 
@@ -9,15 +10,15 @@
 #include "renderer/renderer_frontend.h"
 #include "resources/loaders/image_loader.h"
 
-#include "systems/resource_system.h"
+#include "systems/resources/resource_system.h"
 
-#include "jobs/job.h"
-#include "jobs/job_system.h"
+#include "core/jobs/job.h"
+#include "systems/jobs/job_system.h"
 
 namespace C3D
 {
-	TextureSystem::TextureSystem()
-		: System("TEXTURE_SYSTEM"), m_initialized(false), m_registeredTextures(nullptr)
+	TextureSystem::TextureSystem(const Engine* engine)
+		: SystemWithConfig(engine, "TEXTURE_SYSTEM"), m_initialized(false), m_registeredTextures(nullptr)
 	{}
 
 	bool TextureSystem::Init(const TextureSystemConfig& config)
@@ -217,7 +218,7 @@ namespace C3D
 		return false;
 	}
 
-	bool TextureSystem::WriteData(Texture* t, const u32 offset, const u32 size, const u8* data)
+	bool TextureSystem::WriteData(Texture* t, const u32 offset, const u32 size, const u8* data) const
 	{
 		if (t)
 		{
@@ -381,9 +382,9 @@ namespace C3D
 		params.currentGeneration = texture->generation;
 
 		JobInfo<TextureLoadParams, TextureLoadParams> info;
-		info.entryPoint = LoadJobEntryPoint;
-		info.onSuccess = [this](void* r) { LoadJobSuccess(r); };
-		info.onFailure = [this](void* r) { LoadJobFailure(r); };
+		info.entryPoint = [this](void* d, void* r) { return LoadJobEntryPoint(d, r); };
+		info.onSuccess  = [this](void* r) { LoadJobSuccess(r); };
+		info.onFailure  = [this](void* r) { LoadJobFailure(r); };
 		info.input = params;
 
 		Jobs.Submit(info);
@@ -453,7 +454,7 @@ namespace C3D
 		return true;
 	}
 
-	void TextureSystem::DestroyTexture(Texture* texture)
+	void TextureSystem::DestroyTexture(Texture* texture) const
 	{
 		// Cleanup the backend resources for this texture
 		Renderer.DestroyTexture(texture);
@@ -589,7 +590,7 @@ namespace C3D
 		return true;
 	}
 
-	bool TextureSystem::LoadJobEntryPoint(void* data, void* resultData)
+	bool TextureSystem::LoadJobEntryPoint(void* data, void* resultData) const
 	{
 		const auto loadParams = static_cast<TextureLoadParams*>(data);
 

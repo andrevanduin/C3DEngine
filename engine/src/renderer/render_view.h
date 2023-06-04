@@ -14,6 +14,7 @@
 namespace C3D
 {
 	class Mesh;
+	class Engine;
 
 	enum class RenderViewKnownType
 	{
@@ -22,8 +23,6 @@ namespace C3D
 		Skybox		= 0x03,
 		/* @brief A view that simply only renders ui and world objects for the purpose of mouse picking. */
 		Pick		= 0x04,
-		/* @brief A view that is used by the primitive renderer (to render lines, rectangles etc.) */
-		Primitives	= 0x05
 	};
 
 	enum class RenderViewViewMatrixSource
@@ -59,6 +58,8 @@ namespace C3D
 		u8 passCount;
 		// @brief The configurations for the renderPasses used in this view.
 		DynamicArray<RenderPassConfig> passes;
+		// @brief A const pointer to our engine
+		const Engine* engine;
 	};
 
 	struct RenderViewPacket;
@@ -110,6 +111,8 @@ namespace C3D
 		char* m_customShaderName;
 
 		LoggerInstance<64> m_logger;
+
+		const Engine* m_engine;
 	};
 
 	struct GeometryRenderData

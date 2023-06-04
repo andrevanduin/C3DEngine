@@ -1,14 +1,15 @@
 
 #include "shader_system.h"
 
+#include "core/engine.h"
 #include "systems/system_manager.h"
 #include "renderer/renderer_frontend.h"
-#include "systems/texture_system.h"
+#include "systems/textures/texture_system.h"
 
 namespace C3D
 {
-	ShaderSystem::ShaderSystem()
-		: System("SHADER_SYSTEM"), m_currentShaderId(0)
+	ShaderSystem::ShaderSystem(const Engine* engine)
+		: SystemWithConfig(engine, "SHADER_SYSTEM"), m_currentShaderId(0)
 	{}
 
 	bool ShaderSystem::Init(const ShaderSystemConfig& config)
@@ -413,7 +414,7 @@ namespace C3D
 		return true;
 	}
 
-	void ShaderSystem::ShaderDestroy(Shader& shader)
+	void ShaderSystem::ShaderDestroy(Shader& shader) const
 	{
 		Renderer.DestroyShader(shader);
 

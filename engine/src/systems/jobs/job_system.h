@@ -3,7 +3,7 @@
 #include "core/defines.h"
 #include "systems/system.h"
 
-#include "job.h"
+#include "core/jobs/job.h"
 #include "containers/dynamic_array.h"
 #include "containers/ring_queue.h"
 
@@ -23,15 +23,15 @@ namespace C3D
 		u32* typeMasks;
 	};
 
-	class JobSystem final : public System<16, JobSystemConfig>
+	class JobSystem final : public SystemWithConfig<JobSystemConfig>
 	{
 	public:
-		JobSystem();
+		explicit JobSystem(const Engine* engine);
 
 		bool Init(const JobSystemConfig& config) override;
 		void Shutdown() override;
 
-		void Update();
+		void Update(f64 deltaTime) override;
 
 		template <typename InputType, typename OutputType>
 		C3D_API void Submit(const JobInfo<InputType, OutputType>& info)

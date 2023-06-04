@@ -4,11 +4,12 @@
 #include "vulkan_device.h"
 #include "vulkan_image.h"
 #include "vulkan_types.h"
+#include "core/engine.h"
 
 #include "core/logger.h"
 
 #include "systems/system_manager.h"
-#include "systems/texture_system.h"
+#include "systems/textures/texture_system.h"
 
 namespace C3D
 {
@@ -56,18 +57,18 @@ namespace C3D
 
 	VulkanSwapChain::VulkanSwapChain()
 		: handle(nullptr), imageFormat(), imageCount(0), maxFramesInFlight(0), renderTextures(nullptr),
-		  depthTextures(nullptr), renderTargets{}, m_flags(0), m_presentMode()
+		  depthTextures(nullptr), renderTargets{}, m_flags(0), m_presentMode(), m_engine(nullptr)
 	{}
 
-	void VulkanSwapChain::Create(VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
+	void VulkanSwapChain::Create(const Engine* engine, VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
 	{
-		CreateInternal(context, width, height, flags);
+		CreateInternal(engine, context, width, height, flags);
 	}
 
 	void VulkanSwapChain::Recreate(VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
 	{
 		DestroyInternal(context);
-		CreateInternal(context, width, height, flags);
+		CreateInternal(m_engine, context, width, height, flags);
 	}
 
 	void VulkanSwapChain::Destroy(const VulkanContext* context)
@@ -136,8 +137,10 @@ namespace C3D
 		context->currentFrame = (context->currentFrame + 1) % maxFramesInFlight;
 	}
 
-	void VulkanSwapChain::CreateInternal(VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
+	void VulkanSwapChain::CreateInternal(const Engine* engine, VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
 	{
+		m_engine = engine;
+
 		VkExtent2D extent = { width, height };
 		m_flags = flags;
 		imageFormat = GetSurfaceFormat(context);

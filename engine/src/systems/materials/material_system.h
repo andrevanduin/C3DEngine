@@ -2,7 +2,7 @@
 #pragma once
 #include <unordered_map>
 
-#include "system.h"
+#include "systems/system.h"
 #include "containers/hash_map.h"
 #include "containers/hash_table.h"
 #include "core/defines.h"
@@ -53,10 +53,10 @@ namespace C3D
 		u16 model			= INVALID_ID_U16;
 	};
 
-	class C3D_API MaterialSystem final : System<32, MaterialSystemConfig>
+	class C3D_API MaterialSystem final : public SystemWithConfig<MaterialSystemConfig>
 	{
 	public:
-		MaterialSystem();
+		explicit MaterialSystem(const Engine* engine);
 
 		bool Init(const MaterialSystemConfig& config) override;
 

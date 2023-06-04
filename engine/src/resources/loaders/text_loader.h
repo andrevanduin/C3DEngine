@@ -13,7 +13,7 @@ namespace C3D
 	class ResourceLoader<TextResource> final : public IResourceLoader
 	{
 	public:
-		ResourceLoader();
+		explicit ResourceLoader(const Engine* engine);
 
 		bool Load(const char* name, TextResource& resource) const;
 		static void Unload(TextResource& resource);

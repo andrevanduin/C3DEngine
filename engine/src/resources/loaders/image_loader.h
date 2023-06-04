@@ -16,7 +16,7 @@ namespace C3D
 	class ResourceLoader<ImageResource> final : public IResourceLoader
 	{
 	public:
-		ResourceLoader();
+		explicit ResourceLoader(const Engine* engine);
 
 		bool Load(const char* name, ImageResource& resource) const;
 		bool Load(const char* name, ImageResource& resource, const ImageResourceParams& params) const;

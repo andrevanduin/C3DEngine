@@ -1,6 +1,7 @@
 
 #include "material_system.h"
 
+#include "core/engine.h"
 #include "core/logger.h"
 #include "core/string_utils.h"
 
@@ -10,14 +11,14 @@
 #include "resources/loaders/material_loader.h"
 
 #include "systems/system_manager.h"
-#include "systems/shader_system.h"
-#include "systems/resource_system.h"
-#include "systems/texture_system.h"
+#include "systems/shaders/shader_system.h"
+#include "systems/resources/resource_system.h"
+#include "systems/textures/texture_system.h"
 
 namespace C3D
 {
-	MaterialSystem::MaterialSystem()
-		: System("MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_registeredMaterials(nullptr),
+	MaterialSystem::MaterialSystem(const Engine* engine)
+		: SystemWithConfig(engine, "MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_registeredMaterials(nullptr),
 		  m_materialShaderId(0), m_uiShaderId(0)
 	{
 	}

@@ -4,7 +4,7 @@
 #include "core/logger.h"
 #include "math/geometry_utils.h"
 
-#include "systems/material_system.h"
+#include "systems/materials/material_system.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 
@@ -12,8 +12,8 @@
 
 namespace C3D
 {
-	GeometrySystem::GeometrySystem()
-		: System("GEOMETRY_SYSTEM"), m_initialized(false), m_defaultGeometry(),
+	GeometrySystem::GeometrySystem(const Engine* engine)
+		: SystemWithConfig(engine, "GEOMETRY_SYSTEM"), m_defaultGeometry(),
 		  m_default2DGeometry(), m_registeredGeometries(nullptr)
 	{}
 
@@ -354,7 +354,7 @@ namespace C3D
 		return config;
 	}
 
-	void GeometrySystem::DestroyGeometry(Geometry* g)
+	void GeometrySystem::DestroyGeometry(Geometry* g) const
 	{
 		Renderer.DestroyGeometry(g);
 		g->internalId = INVALID_ID;

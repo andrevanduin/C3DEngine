@@ -5,8 +5,6 @@
 
 #include <core/identifier.h>
 #include <core/logger.h>
-#include <core/input.h>
-#include <core/events/event.h>
 #include <core/events/event_context.h>
 #include <core/metrics/metrics.h>
 #include <core/console/console.h>
@@ -14,19 +12,20 @@
 #include <containers/cstring.h>
 
 #include <systems/system_manager.h>
-
-#include <systems/camera_system.h>
-#include <systems/shader_system.h>
-#include <systems/texture_system.h>
+#include <systems/input/input_system.h>
+#include <systems/events/event_system.h>
+#include <systems/cameras/camera_system.h>
+#include <systems/render_views/render_view_system.h>
+#include <systems/shaders/shader_system.h>
+#include <systems/textures/texture_system.h>
 
 #include <renderer/renderer_types.h>
 
-#include "math/frustum.h"
-#include "systems/render_view_system.h"
+#include <math/frustum.h>
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
-	: Engine(config), m_camera(nullptr), m_testCamera(nullptr), m_carMesh(nullptr), m_sponzaMesh(nullptr),
-	  m_primitiveMeshes{}, m_modelsLoaded(false), m_planes(), m_hoveredObjectId(0)
+	: Engine(config), m_camera(nullptr), m_testCamera(nullptr), m_carMesh(nullptr),
+	  m_sponzaMesh(nullptr), m_modelsLoaded(false), m_planes(), m_hoveredObjectId(0)
 {}
 
 bool TestEnv::OnBoot()
@@ -69,43 +68,18 @@ bool TestEnv::OnCreate()
 {
 	// TEMP
 	// Create test ui text objects
-	if (!m_testText.Create(C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21, "Some test text 123,\nyesyes!\n\tKaas!"))
+	if (!m_testText.Create(m_engine, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21, "Some test text 123,\nyesyes!\n\tKaas!"))
 	{
 		m_logger.Fatal("Failed to load basic ui bitmap text.");
 	}
 
 	m_testText.SetPosition({ 10, 640, 0 });
 	
-	Console->OnInit();
+	Console->OnInit(m_engine);
 	Console->RegisterCommand("exit", this, &TestEnv::ShutdownCommand);
-	Console->RegisterCommand("vsync", &VSyncCommand);
+	Console->RegisterCommand("vsync", this, &TestEnv::VSyncCommand);
 
-	auto& cubeMap = m_skybox.cubeMap;
-	cubeMap.magnifyFilter = cubeMap.minifyFilter = C3D::TextureFilter::ModeLinear;
-	cubeMap.repeatU = cubeMap.repeatV = cubeMap.repeatW = C3D::TextureRepeat::ClampToEdge;
-	cubeMap.use = C3D::TextureUse::CubeMap;
-	if (!Renderer.AcquireTextureMapResources(&cubeMap))
-	{
-		m_logger.Fatal("Unable to acquire resources for cube map texture.");
-		return false;
-	}
-	cubeMap.texture = Textures.AcquireCube("skybox", true);
-
-	C3D::GeometryConfig skyboxCubeConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "skybox_cube", "");
-	skyboxCubeConfig.materialName[0] = '\0';
-
-	m_skybox.g = Geometric.AcquireFromConfig(skyboxCubeConfig, true);
-	m_skybox.frameNumber = INVALID_ID_U64;
-
-	Geometric.DisposeConfig(&skyboxCubeConfig);
-
-	C3D::Shader* skyboxShader = Shaders.Get("Shader.Builtin.Skybox");
-	C3D::TextureMap* maps[1] = { &m_skybox.cubeMap };
-	if (!Renderer.AcquireShaderInstanceResources(skyboxShader, maps, &m_skybox.instanceId))
-	{
-		m_logger.Fatal("Unable to acquire shader resources for skybox texture.");
-		return false;
-	}
+	m_skybox.Create(m_engine, "skybox_cube");
 
 	// World meshes
 	for (u32 i = 0; i < 10; i++)
@@ -118,49 +92,24 @@ bool TestEnv::OnCreate()
 
 	// Our First cube
 	// Load up a cube configuration, and load geometry for it
-	C3D::GeometryConfig gConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
-
 	C3D::Mesh* cubeMesh = &m_meshes[meshCount];
-	cubeMesh->geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
-	cubeMesh->transform = C3D::Transform();
-	cubeMesh->generation = 0;
-	cubeMesh->uniqueId = C3D::Identifier::GetNewId(cubeMesh);
-
+	cubeMesh->LoadCube(m_engine, 10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
 	meshCount++; 
-
-	// Cleanup the allocations that we just did
-	Geometric.DisposeConfig(&gConfig);
 
 	// A second cube
 	// Load up a cube configuration, and load geometry for it
-	gConfig = Geometric.GenerateCubeConfig(5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube_2", "test_material");
-
 	C3D::Mesh* cubeMesh2 = &m_meshes[meshCount];
-	cubeMesh2->geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
+	cubeMesh2->LoadCube(m_engine, 5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube_2", "test_material");
 	cubeMesh2->transform = C3D::Transform(vec3(0.0f, 10.0f, 0.0f));
 	cubeMesh2->transform.SetParent(&cubeMesh->transform);
-	cubeMesh2->generation = 0;
-	cubeMesh2->uniqueId = C3D::Identifier::GetNewId(cubeMesh2);
-
 	meshCount++;
-
-	// Cleanup the other allocations that we just did
-	Geometric.DisposeConfig(&gConfig);
 
 	// A third cube
-	gConfig = Geometric.GenerateCubeConfig(2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube_3", "test_material");
-
 	C3D::Mesh* cubeMesh3 = &m_meshes[meshCount];
-	cubeMesh3->geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
+	cubeMesh3->LoadCube(m_engine, 2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube_3", "test_material");
 	cubeMesh3->transform = C3D::Transform(vec3(0.0f, 5.0f, 0.0f));
 	cubeMesh3->transform.SetParent(&cubeMesh2->transform);
-	cubeMesh3->generation = 0;
-	cubeMesh3->uniqueId = C3D::Identifier::GetNewId(cubeMesh3);
-	 
 	meshCount++;
-
-	// Cleanup the other allocations that we just did
-	Geometric.DisposeConfig(&gConfig);
 
 	m_carMesh = &m_meshes[meshCount];
 	m_carMesh->transform = C3D::Transform({ 15.0f, 0.0f, 1.0f });
@@ -217,8 +166,7 @@ bool TestEnv::OnCreate()
 	m_uiMeshes[0].uniqueId = C3D::Identifier::GetNewId(&m_uiMeshes[0]);
 	m_uiMeshes[0].geometries.PushBack(Geometric.AcquireFromConfig(uiConfig, true));
 	m_uiMeshes[0].generation = 0;
-
-	m_primitiveRenderer.OnCreate();
+	m_uiMeshes[0].SetEngine(m_engine);
 
 	//auto rotation = angleAxis(C3D::DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
 	//m_uiMeshes[0].transform.Rotate(rotation);
@@ -230,7 +178,6 @@ bool TestEnv::OnCreate()
 	m_testCamera = new C3D::Camera();
 	m_testCamera->SetPosition({ 10.5f, 5.0f, 9.5f });
 
-
 	m_camera->SetPosition({ 10.5f, 5.0f, 9.5f });
 
 	// TEMP
@@ -238,14 +185,6 @@ bool TestEnv::OnCreate()
 	Event.Register(C3D::SystemEventCode::Debug1, this, &TestEnv::OnDebugEvent);
 	Event.Register(C3D::SystemEventCode::ObjectHoverIdChanged, this, &TestEnv::OnEvent);
 	// TEMP END
-
-	for (auto& mesh : m_primitiveMeshes)
-	{
-		mesh = nullptr;
-	}
-
-	//m_primitiveMeshes[0] = m_primitiveRenderer.AddBox({ 0, 0, 0 }, { 5, 5, 5 });
-	//m_primitiveMeshes[0]->transform.SetParent(&cubeMesh->transform);
 
 	m_frameData.worldGeometries.SetAllocator(&m_frameAllocator);
 
@@ -413,23 +352,15 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	}
 
 	// x, y and z
-	vec3 forward	= m_testCamera->GetForward();
-	vec3 right		= m_testCamera->GetRight();
-	vec3 up			= m_testCamera->GetUp();
+	//vec3 forward	= m_testCamera->GetForward();
+	//vec3 right		= m_testCamera->GetRight();
+	//vec3 up			= m_testCamera->GetUp();
 
 	// TODO: Get camera fov, aspect etc.
-	mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), fWidth / fHeight, 1.0f, 1000.0f);
-	mat4 viewMatrix = m_camera->GetViewMatrix();
+	//mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), fWidth / fHeight, 1.0f, 1000.0f);
+	//mat4 viewMatrix = m_camera->GetViewMatrix();
 
-	m_cameraFrustum.Create(m_camera->GetPosition(), forward, right, up, fWidth / fHeight, glm::radians(45.0f), 1.0f, 1000.0f);
-
-	//static C3D::Plane3D p = { { 5.0f, 10.0f, 1.0f }, { 0.5f, 1.0f, 0.f } };
-	/*m_planes[0] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[0], { 1, 0, 0, 1 });
-	m_planes[1] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[1], { 0, 1, 0, 1 });
-	m_planes[2] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[2], { 0, 0, 1, 1 });
-	m_planes[3] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[3], { 1, 1, 0, 1 });
-	m_planes[4] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[4], { 1, 1, 1, 1 });
-	m_planes[5] = m_primitiveRenderer.AddPlane(m_cameraFrustum.sides[5], { 0, 1, 1, 1 });*/
+	//m_cameraFrustum.Create(m_camera->GetPosition(), forward, right, up, fWidth / fHeight, glm::radians(45.0f), 1.0f, 1000.0f);
 
 	// Reserve a reasonable amount of space for our world geometries
 	m_frameData.worldGeometries.Reserve(512);
@@ -578,14 +509,6 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 
 	// TEMP END
 	return true;
-}
-
-void TestEnv::AfterRender()
-{
-	for (const auto mesh : m_planes)
-	{
-		if (mesh && mesh->generation != INVALID_ID_U8) C3D::PrimitiveRenderer::Dispose(mesh);
-	}
 }
 
 void TestEnv::OnResize(const u16 width, const u16 height)
@@ -839,11 +762,11 @@ bool TestEnv::OnDebugEvent(const u16 code, void* sender, const C3D::EventContext
 			m_logger.Debug("OnDebugEvent() - Loading models...");
 			m_modelsLoaded = true;
 
-			if (!m_carMesh->LoadFromResource("falcon"))
+			if (!m_carMesh->LoadFromResource(m_engine, "falcon"))
 			{
 				m_logger.Error("OnDebugEvent() - Failed to load falcon mesh!");
 			}
-			if (!m_sponzaMesh->LoadFromResource("sponza"))
+			if (!m_sponzaMesh->LoadFromResource(m_engine, "sponza"))
 			{
 				m_logger.Error("OnDebugEvent() - Failed to load sponza mesh!");
 			}

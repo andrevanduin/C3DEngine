@@ -2,11 +2,12 @@
 #include "ui_text.h"
 
 #include "shader.h"
+#include "core/engine.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 #include "systems/system_manager.h"
-#include "systems/font_system.h"
-#include "systems/shader_system.h"
+#include "systems/fonts/font_system.h"
+#include "systems/shaders/shader_system.h"
 #include "core/identifier.h"
 
 namespace C3D
@@ -16,9 +17,8 @@ namespace C3D
 
 	UIText::UIText()
 		: uniqueId(INVALID_ID), type(), data(nullptr), instanceId(INVALID_ID), frameNumber(INVALID_ID_U64), m_logger("UI_TEXT"),
-		  m_vertexBuffer(nullptr), m_indexBuffer(nullptr), m_text(nullptr)
-	{
-	}
+		  m_vertexBuffer(nullptr), m_indexBuffer(nullptr), m_maxX(0), m_maxY(0), m_text(nullptr), m_engine(nullptr)
+	{}
 
 	UIText::~UIText()
 	{
@@ -28,7 +28,7 @@ namespace C3D
 		}
 	}
 
-	bool UIText::Create(const UITextType fontType, const char* fontName, const u16 fontSize, const char* textContent)
+	bool UIText::Create(const Engine* engine, const UITextType fontType, const char* fontName, const u16 fontSize, const char* textContent)
 	{
 		if (!fontName || !textContent)
 		{
@@ -36,6 +36,7 @@ namespace C3D
 			return false;
 		}
 
+		m_engine = engine;
 		type = fontType;
 
 		// Acquire our font and assign it's internal data

@@ -1,17 +1,18 @@
 
 #include "text_loader.h"
 
+#include "core/engine.h"
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
 #include "systems/system_manager.h"
 
-#include "systems/resource_system.h"
+#include "systems/resources/resource_system.h"
 
 namespace C3D
 {
-	ResourceLoader<TextResource>::ResourceLoader()
-		: IResourceLoader("TEXT_LOADER", MemoryType::String, ResourceType::Text, nullptr, "")
+	ResourceLoader<TextResource>::ResourceLoader(const Engine* engine)
+		: IResourceLoader(engine, "TEXT_LOADER", MemoryType::String, ResourceType::Text, nullptr, "")
 	{}
 
 	bool ResourceLoader<TextResource>::Load(const char* name, TextResource& resource) const

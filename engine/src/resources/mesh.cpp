@@ -1,17 +1,35 @@
 
 #include "mesh.h"
 
-#include "systems/resource_system.h"
+#include "core/identifier.h"
+#include "systems/resources/resource_system.h"
 #include "systems/jobs/job_system.h"
 
 namespace C3D
 {
 	Mesh::Mesh()
-		: uniqueId(INVALID_ID), generation(INVALID_ID_U8)
+		: uniqueId(INVALID_ID), generation(INVALID_ID_U8), m_engine(nullptr)
 	{}
 
-	bool Mesh::LoadFromResource(const char* resourceName)
+	bool Mesh::LoadCube(const Engine* engine, const f32 width, const f32 height, const f32 depth, const f32 tileX, const f32 tileY, const String& name, const String& materialName)
 	{
+		m_engine = engine;
+		
+		auto cubeConfig = Geometric.GenerateCubeConfig(width, height, depth, tileX, tileY, name, materialName);
+
+		geometries.PushBack(Geometric.AcquireFromConfig(cubeConfig, true));
+		transform = Transform();
+		generation = 0;
+		uniqueId = Identifier::GetNewId(this);
+
+		Geometric.DisposeConfig(&cubeConfig);
+
+		return true;
+	}
+
+	bool Mesh::LoadFromResource(const Engine* engine, const char* resourceName)
+	{
+		m_engine = engine;
 		generation = INVALID_ID_U8;
 
 		MeshLoadParams params;
@@ -19,9 +37,9 @@ namespace C3D
 		params.outMesh = this;
 
 		JobInfo<MeshLoadParams, MeshLoadParams> info;
-		info.entryPoint = LoadJobEntryPoint;
-		info.onSuccess = LoadJobSuccess;
-		info.onFailure = LoadJobFailure;
+		info.entryPoint = [this](void* data, void* resultData) { return LoadJobEntryPoint(data, resultData); };
+		info.onSuccess  = [this](void* data) { LoadJobSuccess(data); };
+		info.onFailure  = [this](void* data) { LoadJobFailure(data); };
 		info.input = params;
 
 		Jobs.Submit(info);
@@ -38,7 +56,12 @@ namespace C3D
 		geometries.Clear();
 	}
 
-	bool Mesh::LoadJobEntryPoint(void* data, void* resultData)
+	void Mesh::SetEngine(const Engine* engine)
+	{
+		m_engine = engine;
+	}
+
+	bool Mesh::LoadJobEntryPoint(void* data, void* resultData) const
 	{
 		const auto loadParams = static_cast<MeshLoadParams*>(data);
 
@@ -51,7 +74,7 @@ namespace C3D
 		return result;
 	}
 
-	void Mesh::LoadJobSuccess(void* data)
+	void Mesh::LoadJobSuccess(void* data) const
 	{
 		const auto meshParams = static_cast<MeshLoadParams*>(data);
 
@@ -70,7 +93,7 @@ namespace C3D
 		Resources.Unload(meshParams->meshResource);
 	}
 
-	void Mesh::LoadJobFailure(void* data)
+	void Mesh::LoadJobFailure(void* data) const
 	{
 		const auto meshParams = static_cast<MeshLoadParams*>(data);
 

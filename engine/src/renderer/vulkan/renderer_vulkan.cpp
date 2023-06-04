@@ -13,7 +13,7 @@
 
 #include "core/logger.h"
 #include "core/engine.h"
-#include "core/events/event.h"
+
 #include "core/events/event_context.h"
 #include "core/metrics/metrics.h"
 #include "platform/platform.h"
@@ -26,8 +26,9 @@
 #include "resources/loaders/binary_loader.h"
 
 #include "systems/system_manager.h"
-#include "systems/resource_system.h"
-#include "systems/texture_system.h"
+#include "systems/events/event_system.h"
+#include "systems/resources/resource_system.h"
+#include "systems/textures/texture_system.h"
 
 #ifndef C3D_VULKAN_ALLOCATOR_TRACE
 #undef C3D_VULKAN_ALLOCATOR_TRACE
@@ -183,7 +184,8 @@ namespace C3D
 #endif
 
 	RendererVulkan::RendererVulkan()
-		: RendererBackend("VULKAN_RENDERER"), m_context(), m_objectVertexBuffer(&m_context), m_objectIndexBuffer(&m_context), m_geometries{}
+		: RendererBackend("VULKAN_RENDERER"), m_context(), m_objectVertexBuffer(&m_context),
+	      m_objectIndexBuffer(&m_context), m_geometries{}, m_engine(nullptr)
 	{}
 
 	bool RendererVulkan::Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount)
@@ -205,6 +207,7 @@ namespace C3D
 		m_context.frameBufferWidth = 1280;
 		m_context.frameBufferHeight = 720;
 		m_config = config;
+		m_engine = config.engine;
 
 		vkb::InstanceBuilder instanceBuilder;
 
@@ -232,7 +235,7 @@ namespace C3D
 		// TODO: Implement multiThreading
 		m_context.multiThreadingEnabled = false;
 
-		if (!SDL_Vulkan_CreateSurface(config.window, m_context.instance, &m_context.surface))
+		if (!SDL_Vulkan_CreateSurface(config.engine->GetWindow(), m_context.instance, &m_context.surface))
 		{
 			m_logger.Error("Init() - Failed to create Vulkan Surface.");
 			return false;
@@ -245,7 +248,7 @@ namespace C3D
 			return false;
 		}
 
-		m_context.swapChain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, config.flags);
+		m_context.swapChain.Create(m_engine, &m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, config.flags);
 
 		// Save the number of images we have as a the number of render targets required
 		*outWindowRenderTargetCount = static_cast<u8>(m_context.swapChain.imageCount);

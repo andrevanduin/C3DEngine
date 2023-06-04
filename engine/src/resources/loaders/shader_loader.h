@@ -16,7 +16,7 @@ namespace C3D
 	class ResourceLoader<ShaderResource> final : public IResourceLoader
 	{
 	public:
-		ResourceLoader();
+		explicit ResourceLoader(const Engine* engine);
 
 		bool Load(const char* name, ShaderResource& resource) const;
 

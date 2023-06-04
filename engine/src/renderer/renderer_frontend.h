@@ -18,13 +18,13 @@ namespace C3D
 
 	class Camera;
 
-	class C3D_API RenderSystem
+	class C3D_API RenderSystem final : public BaseSystem
 	{
 	public:
-		RenderSystem();
+		explicit RenderSystem(const Engine* engine);
 
-		bool Init(const Engine* application);
-		void Shutdown();
+		bool Init() override;
+		void Shutdown() override;
 
 		void OnResize(u16 width, u16 height);
 
@@ -100,8 +100,6 @@ namespace C3D
 	private:
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend();
-
-		LoggerInstance<16> m_logger;
 
 		u8 m_windowRenderTargetCount;
 		u32 m_frameBufferWidth, m_frameBufferHeight;

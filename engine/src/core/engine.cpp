@@ -1,7 +1,6 @@
 
 #include "engine.h"
 #include "logger.h"
-#include "input.h"
 #include "clock.h"
 
 #include <SDL2/SDL.h>
@@ -9,26 +8,26 @@
 #include "platform/platform.h"
 #include "containers/string.h"
 
-#include "events/event.h"
 #include "metrics/metrics.h"
 
-#include "systems/system_manager.h"
-
 #include "renderer/renderer_frontend.h"
-#include "renderer/primitives/primitive_renderer.h"
-#include "systems/geometry_system.h"
-#include "systems/material_system.h"
-#include "systems/resource_system.h"
-#include "systems/shader_system.h"
-#include "systems/texture_system.h"
-#include "systems/camera_system.h"
-#include "systems/render_view_system.h"
+
+#include "systems/system_manager.h"
+#include "systems/events/event_system.h"
+#include "systems/geometry/geometry_system.h"
+#include "systems/materials/material_system.h"
+#include "systems/resources/resource_system.h"
+#include "systems/shaders/shader_system.h"
+#include "systems/textures/texture_system.h"
+#include "systems/cameras/camera_system.h"
+#include "systems/input/input_system.h"
+#include "systems/render_views/render_view_system.h"
 #include "systems/jobs/job_system.h"
 
 namespace C3D
 {
 	Engine::Engine(ApplicationConfig config)
-		: m_logger("APPLICATION"), m_config(std::move(config))
+		: m_logger("APPLICATION"), m_config(std::move(config)), m_engine(this), m_console(nullptr)
 	{}
 
 	Engine::~Engine() = default;
@@ -69,10 +68,17 @@ namespace C3D
 			m_logger.Info("System reported {} threads (including main thread).", threadCount);
 		}
 
-		constexpr ResourceSystemConfig		resourceSystemConfig{ 32, "../../../../assets" };
-		constexpr ShaderSystemConfig		shaderSystemConfig{ 128, 128, 31, 31 };
+		m_systemsManager.Init(this);
 
-		Systems.InitBeforeBoot(this, resourceSystemConfig, shaderSystemConfig);
+		constexpr ResourceSystemConfig	resourceSystemConfig { 32, "../../../../assets" };
+		constexpr ShaderSystemConfig	shaderSystemConfig   { 128, 128, 31, 31			};
+
+		// Init before boot systems
+		m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);								// Event System
+		m_systemsManager.RegisterSystem<InputSystem>(InputSystemType);								// Input System
+		m_systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);	// Resource System
+		m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);		// Shader System
+		m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType);							// Render System
 
 		const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
@@ -108,7 +114,11 @@ namespace C3D
 		constexpr CameraSystemConfig		cameraSystemConfig { 61 };
 		constexpr RenderViewSystemConfig	viewSystemConfig { 251 };
 
-		Systems.InitAfterBoot(jobSystemConfig, textureSystemConfig, m_config.fontConfig, cameraSystemConfig, viewSystemConfig);
+		m_systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);					// Job System
+		m_systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);		// Texture System
+		m_systemsManager.RegisterSystem<FontSystem>(FontSystemType, m_config.fontConfig);			// Font System
+		m_systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);		// Camera System
+		m_systemsManager.RegisterSystem<RenderViewSystem>(RenderViewSystemType, viewSystemConfig);  // Render View System
 
 		Event.Register(SystemEventCode::Resized,		this, &Engine::OnResizeEvent);
 		Event.Register(SystemEventCode::Minimized,		this, &Engine::OnMinimizeEvent);
@@ -126,7 +136,8 @@ namespace C3D
 		constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
 		constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
-		Systems.FinalInit(materialSystemConfig, geometrySystemConfig);
+		m_systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig); // Material System
+		m_systemsManager.RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig); // Geometry System
 
 		m_state.initialized = true;
 		m_state.lastTime = 0;
@@ -165,7 +176,7 @@ namespace C3D
 				const f64 delta = currentTime - m_state.lastTime;
 				const f64 frameStartTime = Platform::GetAbsoluteTime();
 
-				Jobs.Update();
+				Jobs.Update(delta);
 				Metrics.Update(frameElapsedTime);
 
 				OnUpdate(delta);
@@ -247,7 +258,7 @@ namespace C3D
 		Event.UnRegister(SystemEventCode::Minimized,	this, &Engine::OnMinimizeEvent);
 		Event.UnRegister(SystemEventCode::FocusGained,	this, &Engine::OnFocusGainedEvent);
 
-		Systems.Shutdown();
+		m_systemsManager.Shutdown();
 
 		SDL_DestroyWindow(m_window);
 

@@ -6,7 +6,7 @@
 #include "renderer/renderer_types.h"
 #include "renderer/render_view.h"
 
-#include "systems/font_system.h"
+#include "systems/fonts/font_system.h"
 
 int main(int argc, char** argv);
 
@@ -65,12 +65,28 @@ namespace C3D
 		void Run();
 		void Quit();
 
+		template<class SystemType>
+		[[nodiscard]] SystemType& GetSystem(const u16 type) const
+		{
+			return m_systemsManager.GetSystem<SystemType>(type);
+		}
+
+		void SetBaseConsole(UIConsole* console)
+		{
+			m_console = console;
+		}
+
+		[[nodiscard]] UIConsole* GetBaseConsole() const
+		{
+			return m_console;
+		}
+
 		virtual bool OnBoot()	{ return true; }
 		virtual bool OnCreate() { return true; }
 
-		virtual void OnUpdate(f64 deltaTime)
+		virtual void OnUpdate(const f64 deltaTime)
 		{
-			Console->OnUpdate();
+			m_console->OnUpdate();
 		}
 
 		virtual bool OnRender(RenderPacket& packet, f64 deltaTime)
@@ -98,6 +114,11 @@ namespace C3D
 
 		ApplicationConfig m_config;
 		EngineState m_state;
+
+		SystemManager m_systemsManager;
+
+		const Engine* m_engine;
+		UIConsole* m_console;
 
 	private:
 		void Shutdown();
