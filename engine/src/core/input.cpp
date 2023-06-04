@@ -32,16 +32,22 @@ namespace C3D
 		Platform::MemCopy(&m_state.mousePrevious, &m_state.mouseCurrent, sizeof MouseState);
 	}
 
-	void InputSystem::ProcessKey(const SDL_Keycode sdlKey, const bool pressed)
+	void InputSystem::ProcessKey(const SDL_Keycode sdlKey, const bool down)
 	{
 		u16 key;
 		switch (sdlKey)
 		{
 			case SDLK_UP:
-				key = KeyUp;
+				key = KeyArrowUp;
 				break;
 			case SDLK_DOWN:
-				key = KeyDown;
+				key = KeyArrowDown;
+				break;
+			case SDLK_LEFT:
+				key = KeyArrowLeft;
+				break;
+			case SDLK_RIGHT:
+				key = KeyArrowRight;
 				break;
 			case SDLK_LALT:
 				key = KeyLAlt;
@@ -68,18 +74,18 @@ namespace C3D
 
 		if (key >= Keys::MaxKeys)
 		{
-			m_logger.Warn("Key that was {} was larger than expected {}", pressed ? "pressed" : "released", key);
+			m_logger.Warn("Key{} keycode was larger than expected {}", down ? "Down" : "Up", key);
 			return;
 		}
 
-		if (m_state.keyboardCurrent.keys[key] != pressed)
+		if (m_state.keyboardCurrent.keys[key] != down)
 		{
-			m_state.keyboardCurrent.keys[key] = pressed;
+			m_state.keyboardCurrent.keys[key] = down;
 
 			EventContext context{};
 			context.data.u16[0] = static_cast<u16>(key);
 			
-			const auto code = pressed ? SystemEventCode::KeyPressed : SystemEventCode::KeyReleased;
+			const auto code = down ? SystemEventCode::KeyDown : SystemEventCode::KeyUp;
 			Event.Fire(static_cast<u16>(code), nullptr, context);
 		}
 	}
@@ -93,7 +99,7 @@ namespace C3D
 			EventContext context{};
 			context.data.u16[0] = button;
 
-			const auto code = pressed ? SystemEventCode::ButtonPressed : SystemEventCode::ButtonReleased;
+			const auto code = pressed ? SystemEventCode::ButtonDown : SystemEventCode::ButtonUp;
 			Event.Fire(ToUnderlying(code), nullptr, context);
 		}
 	}
@@ -181,6 +187,12 @@ namespace C3D
 	{
 		if (!m_initialized) return true;
 		return !m_state.mousePrevious.buttons[button];
+	}
+
+	bool InputSystem::IsShiftHeld() const
+	{
+		if (!m_initialized) return false;
+		return m_state.keyboardCurrent.keys[KeyShift] || m_state.keyboardCurrent.keys[KeyLShift] || m_state.keyboardCurrent.keys[KeyRShift];
 	}
 
 	ivec2 InputSystem::GetMousePosition()

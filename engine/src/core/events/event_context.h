@@ -29,10 +29,10 @@ namespace C3D
 	enum SystemEventCode : u16
 	{
 		ApplicationQuit = 0x01,
-		KeyPressed = 0x02,
-		KeyReleased = 0x03,
-		ButtonPressed = 0x04,
-		ButtonReleased = 0x05,
+		KeyDown = 0x02,
+		KeyUp = 0x03,
+		ButtonDown = 0x04,
+		ButtonUp = 0x05,
 		MouseMoved = 0x06,
 		MouseWheel = 0x07,
 		Resized = 0x08,

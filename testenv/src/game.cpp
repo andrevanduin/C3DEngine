@@ -9,7 +9,7 @@
 #include <core/events/event.h>
 #include <core/events/event_context.h>
 #include <core/metrics/metrics.h>
-#include <core/console.h>
+#include <core/console/console.h>
 
 #include <containers/cstring.h>
 
@@ -75,8 +75,10 @@ bool TestEnv::OnCreate()
 	}
 
 	m_testText.SetPosition({ 10, 640, 0 });
-
+	
 	Console->OnInit();
+	Console->RegisterCommand("exit", this, &TestEnv::ShutdownCommand);
+	Console->RegisterCommand("vsync", &VSyncCommand);
 
 	auto& cubeMap = m_skybox.cubeMap;
 	cubeMap.magnifyFilter = cubeMap.minifyFilter = C3D::TextureFilter::ModeLinear;
@@ -275,7 +277,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 			C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
 		}
 
-		if (Input.IsKeyUp('v') && Input.WasKeyDown('v'))
+		if (Input.IsKeyPressed('v'))
 		{
 			const auto current = Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled);
 			Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, !current);
@@ -303,22 +305,22 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 			Event.Fire(C3D::SystemEventCode::SetRenderMode, this, context);
 		}
 
-		if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyLeft))
+		if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyArrowLeft))
 		{
 			m_camera->AddYaw(1.0 * deltaTime);
 		}
 
-		if (Input.IsKeyDown('d') || Input.IsKeyDown(C3D::KeyRight))
+		if (Input.IsKeyDown('d') || Input.IsKeyDown(C3D::KeyArrowRight))
 		{
 			m_camera->AddYaw(-1.0 * deltaTime);
 		}
 
-		if (Input.IsKeyDown(C3D::KeyUp))
+		if (Input.IsKeyDown(C3D::KeyArrowUp))
 		{
 			m_camera->AddPitch(1.0 * deltaTime);
 		}
 
-		if (Input.IsKeyDown(C3D::KeyDown))
+		if (Input.IsKeyDown(C3D::KeyArrowDown))
 		{
 			m_camera->AddPitch(-1.0 * deltaTime);
 		}
@@ -791,7 +793,7 @@ bool TestEnv::ConfigureRenderViews()
 	return true;
 }
 
-bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext context)
+bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext& context)
 {
 	switch (code)
 	{
@@ -803,7 +805,7 @@ bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext cont
 	}
 }
 
-bool TestEnv::OnDebugEvent(const u16 code, void* sender, C3D::EventContext context)
+bool TestEnv::OnDebugEvent(const u16 code, void* sender, const C3D::EventContext& context)
 {
 	if (code == C3D::SystemEventCode::Debug0)
 	{
@@ -850,5 +852,38 @@ bool TestEnv::OnDebugEvent(const u16 code, void* sender, C3D::EventContext conte
 		return true;
 	}
 		
+	return false;
+}
+
+bool TestEnv::ShutdownCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output)
+{
+	Quit();
+	output = "Shutting down!";
+	return true;
+}
+
+bool TestEnv::VSyncCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output)
+{
+	if (args.Size() != 2)
+	{
+		output.FromFormat("Invalid number of arguments provided: {}", args.Size());
+		return false;
+	}
+
+	if (args[1] == "on")
+	{
+		Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, true);
+		output = "VSync is set to enabled";
+		return true;
+	}
+
+	if (args[1] == "off")
+	{
+		Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, false);
+		output = "VSync is set to disabled";
+		return true;
+	}
+
+	output.FromFormat("Invalid argument provided \'{}\'", args[1]);
 	return false;
 }

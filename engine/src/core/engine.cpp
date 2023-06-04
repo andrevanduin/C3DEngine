@@ -311,7 +311,7 @@ namespace C3D
 		}
 	}
 
-	bool Engine::OnResizeEvent(const u16 code, void* sender, const EventContext context)
+	bool Engine::OnResizeEvent(const u16 code, void* sender, const EventContext& context)
 	{
 		if (code == SystemEventCode::Resized)
 		{
@@ -340,7 +340,7 @@ namespace C3D
 		return false;
 	}
 
-	bool Engine::OnMinimizeEvent(const u16 code, void* sender, EventContext context)
+	bool Engine::OnMinimizeEvent(const u16 code, void* sender, const EventContext& context)
 	{
 		if (code == SystemEventCode::Minimized)
 		{
@@ -351,7 +351,7 @@ namespace C3D
 		return false;
 	}
 
-	bool Engine::OnFocusGainedEvent(const u16 code, void* sender, const EventContext context)
+	bool Engine::OnFocusGainedEvent(const u16 code, void* sender, const EventContext& context)
 	{
 		if (code == SystemEventCode::FocusGained)
 		{

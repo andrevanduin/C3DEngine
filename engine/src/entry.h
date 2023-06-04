@@ -1,6 +1,6 @@
 
 #pragma once
-#include "core/console.h"
+#include "core/console/console.h"
 #include "core/engine.h"
 #include "core/identifier.h"
 #include "core/metrics/metrics.h"

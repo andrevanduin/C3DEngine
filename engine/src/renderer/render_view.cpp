@@ -54,7 +54,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RenderView::OnRenderTargetRefreshRequired(u16 code, void* sender, EventContext context)
+	bool RenderView::OnRenderTargetRefreshRequired(u16 code, void* sender, const EventContext& context)
 	{
 		if (code == SystemEventCode::DefaultRenderTargetRefreshRequired)
 		{

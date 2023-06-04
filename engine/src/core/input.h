@@ -44,13 +44,13 @@ namespace C3D
         /** @Brief The Home Key. */
         KeyHome = 0x24,
         /** @Brief The Left Arrow Key. */
-        KeyLeft = 0x25,
+        KeyArrowLeft = 0x25,
         /** @Brief The Up Arrow Key. */
-        KeyUp = 0x26,
+        KeyArrowUp = 0x26,
         /** @Brief The Right Arrow Key. */
-        KeyRight = 0x27,
+        KeyArrowRight = 0x27,
         /** @Brief The Down Arrow Key. */
-        KeyDown = 0x28,
+        KeyArrowDown = 0x28,
         KeySelect = 0x29,
         KeyPrint = 0x2a,
         KeyExecute = 0x2b,
@@ -304,7 +304,7 @@ namespace C3D
 
 		void Update(f64 deltaTime);
 
-		void ProcessKey(SDL_Keycode sdlKey, bool pressed);
+		void ProcessKey(SDL_Keycode sdlKey, bool down);
 		void ProcessButton(u8 button, bool pressed);
 		void ProcessMouseMove(i32 sdlX, i32 sdlY);
 		void ProcessMouseWheel(i32 delta);
@@ -322,6 +322,8 @@ namespace C3D
 
 		C3D_API [[nodiscard]] bool WasButtonDown(Buttons button) const;
 		C3D_API [[nodiscard]] bool WasButtonUp(Buttons button) const;
+
+        C3D_API [[nodiscard]] bool IsShiftHeld() const;
 
         C3D_API ivec2 GetMousePosition();
         C3D_API ivec2 GetPreviousMousePosition();

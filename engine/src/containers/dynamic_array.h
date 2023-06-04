@@ -10,7 +10,7 @@
 namespace C3D
 {
 	template<class T, class Allocator = DynamicAllocator>
-	class __declspec(dllexport) DynamicArray
+	class C3D_API DynamicArray
 	{
 		static_assert(std::is_base_of_v<BaseAllocator, Allocator>, "Allocator must derive from BaseAllocator");
 

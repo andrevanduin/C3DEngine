@@ -91,7 +91,7 @@ namespace C3D
 			}
 		}
 
-		Metrics.SetAllocatorAvailableSpace(GPU_ALLOCATOR_ID, GibiBytes(gpuMemory));
+		Metrics.SetAllocatorAvailableSpace(GPU_ALLOCATOR_ID, GibiBytes(static_cast<u32>(gpuMemory)));
 
 		m_logger.Info("GPU            - {}", properties.deviceName);
 		m_logger.Info("GPU Memory     - {:.2f}GiB", gpuMemory);

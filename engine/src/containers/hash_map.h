@@ -48,13 +48,13 @@ namespace C3D
 
 			HashMapIterator() : m_index(0), m_map(nullptr) {}
 
-			explicit HashMapIterator(const HashMap<Key, Value, HashFunc>* map)
+			explicit HashMapIterator(const HashMap* map)
 				: m_index(INVALID_ID_U64), m_map(map)
 			{
 				FindNextOccupiedIndex();
 			}
 
-			HashMapIterator(const HashMap<Key, Value, HashFunc>* map, const u64 currentIndex)
+			HashMapIterator(const HashMap* map, const u64 currentIndex)
 				: m_index(currentIndex), m_map(map)
 			{
 				FindNextOccupiedIndex();
@@ -201,10 +201,7 @@ namespace C3D
 	void HashMap<Key, Value, HashFunc>::Destroy()
 	{
 		// Call the destructor for all elements
-		for (u64 i = 0; i < m_size; i++)
-		{
-			m_nodes[i].element.~Value();
-		}
+		std::destroy_n(m_nodes, m_size);
 
 		// If this HashMap is created we free all it's dynamically allocated memory
 		if (m_size > 0 && m_nodes)

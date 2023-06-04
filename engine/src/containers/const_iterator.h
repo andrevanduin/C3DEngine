@@ -21,6 +21,8 @@ namespace C3D
 
 		ConstIterator(pointer ptr) : m_ptr(ptr) {}
 
+		ConstIterator(const_pointer ptr) : m_ptr(ptr) {}
+
 		ConstIterator(const ConstIterator& other) : m_ptr(other.m_ptr) {}
 
 		ConstIterator(const Iterator<T>& other) : m_ptr(other.GetInternalPointer()) {}

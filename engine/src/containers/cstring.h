@@ -1,5 +1,6 @@
 
 // ReSharper disable CppNonExplicitConvertingConstructor
+// ReSharper disable CppInconsistentNaming
 #pragma once
 #include <format>
 
@@ -113,11 +114,54 @@ namespace C3D
 			auto endIt = std::vformat_to(m_data, format, std::make_format_args(args...));
 			// Get the size of the newly created string
 			auto size = endIt - m_data;
-			
-			auto strlen = std::strlen(m_data);
-
 			// Ensure that the string is null terminated
 			m_data[size] = '\0';
+		}
+
+		/* @brief Removes all starting whitespace characters from the string. */
+		void TrimLeft()
+		{
+			u64 size = Size();
+			u64 newStart = 0;
+			
+			// Find the first non-space character
+			while (std::isspace(m_data[newStart]))
+			{
+				++newStart;
+			}
+			// If the first character is a non-space character we do nothing
+			if (newStart == 0) return;
+			// Decrement the size by however many characters we have removed
+			size -= newStart;
+			// Copy over the remaining characters
+			std::memcpy(m_data, m_data + newStart, size);
+			// Add a null termination character
+			m_data[size] = '\0';
+		}
+
+		/* @brief Removes all the trailing whitespace characters from the string. */
+		void TrimRight()
+		{
+			u64 size = Size();
+			u64 newSize = size;
+			// Find the first no-space character at the end
+			while (std::isspace(m_data[newSize - 1]))
+			{
+				--newSize;
+			}
+			// If the last character is a non-space character we do nothing
+			if (newSize == size) return;
+			// We save off our new size
+			size = newSize;
+			// Set the null termination character to end our string
+			m_data[size] = '\0';
+		}
+
+		/* @brief Remove all the starting and trailing whitespace characters from the string. */
+		void Trim()
+		{
+			TrimLeft();
+			TrimRight();
 		}
 
 		/* @brief Clears the string. Resulting in an empty null-terminated string. */
@@ -132,10 +176,24 @@ namespace C3D
 			return std::strcmp(m_data, other) == 0;
 		}
 
+		/* @brief Check if CString matches case-sensitive. */
+		template <u64 OtherCapacity>
+		[[nodiscard]] bool Equals(const CString<OtherCapacity>& other) const
+		{
+			return std::strcmp(m_data, other.m_data) == 0;
+		}
+
 		/* @brief Check if const char pointer matches case-insensitive. */
 		[[nodiscard]] bool IEquals(const char* other) const
 		{
 			return _stricmp(m_data, other) == 0;
+		}
+
+		/* @brief Check if CString matches case-insensitive. */
+		template <u64 OtherCapacity>
+		[[nodiscard]] bool IEquals(const CString<OtherCapacity>& other) const
+		{
+			return std::strcmp(m_data, other.m_data) == 0;
 		}
 
 		[[nodiscard]] bool Empty() const
@@ -168,6 +226,11 @@ namespace C3D
 			return m_data[index];
 		}
 
+		const char& operator[](const u64 index) const
+		{
+			return m_data[index];
+		}
+
 		CString& operator+=(const char c)
 		{
 			Append(c);
@@ -192,6 +255,35 @@ namespace C3D
 			Append(other);
 			return *this;
 		}
+
+		bool operator==(const char* other) const
+		{
+			return Equals(other);
+		}
+
+		template <u64 OtherCapacity>
+		bool operator==(const CString<OtherCapacity>& other)
+		{
+			return Equals(other);
+		}
+
+		/* @brief Returns an iterator pointing to the start of the character array. */
+		[[nodiscard]] char* begin() noexcept { return m_data; }
+
+		/* @brief Returns a const_iterator pointing to the start of the character array. */
+		[[nodiscard]] const char* begin() const noexcept { return m_data; }
+
+		/* @brief Returns a const_iterator pointing to the start of the character array. */
+		[[nodiscard]] const char* cbegin() const noexcept { return m_data; }
+
+		/* @brief Returns an iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] char* end() noexcept { return m_data + Size(); }
+
+		/* @brief Returns a const_iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] const char* end() const noexcept { return m_data + Size(); }
+
+		/* @brief Returns a const_iterator pointing to the element right after the last character in the character array. */
+		[[nodiscard]] const char* cend() const noexcept { return m_data + Size(); }
 
 	private:
 		void Create(const char* str, const u64 size)
@@ -225,5 +317,20 @@ struct std::formatter<C3D::CString<CCapacity>>
 	auto format(const C3D::CString<CCapacity>& str, FormatContext& ctx) const
 	{
 		return std::vformat_to(ctx.out(), "{}", std::make_format_args(str.Data()));
+	}
+};
+
+template <u64 CCapacity>
+struct std::hash<C3D::CString<CCapacity>>
+{
+	size_t operator() (const C3D::CString<CCapacity>& key) const noexcept
+	{
+		size_t hash = 0;
+		for (const auto c : key)
+		{
+			hash ^= static_cast<size_t>(c);
+			hash *= std::_FNV_prime;
+		}
+		return hash;
 	}
 };

@@ -1,7 +1,6 @@
 
 #pragma once
 #include <core/engine.h>
-#include <core/console.h>
 
 #include <resources/mesh.h>
 
@@ -33,8 +32,11 @@ public:
 private:
 	bool ConfigureRenderViews();
 
-	bool OnEvent(u16 code, void* sender, C3D::EventContext context);
-	bool OnDebugEvent(u16 code, void* sender, C3D::EventContext context);
+	bool OnEvent(u16 code, void* sender, const C3D::EventContext& context);
+	bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context);
+
+	bool ShutdownCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output);
+	static bool VSyncCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output);
 
 	C3D::Camera* m_camera;
 	C3D::Camera* m_testCamera;

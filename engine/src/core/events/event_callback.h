@@ -4,15 +4,22 @@
 
 namespace C3D
 {
-	typedef bool (*pStaticFunc)(u16 code, void* sender, EventContext context);
+	typedef bool (*pStaticFunc)(u16 code, void* sender, const EventContext& context);
 
 	class IEventCallback
 	{
 	public:
 		IEventCallback() = default;
+
+		IEventCallback(const IEventCallback&) = delete;
+		IEventCallback(IEventCallback&&) = delete;
+
+		IEventCallback& operator=(const IEventCallback&) = delete;
+		IEventCallback& operator=(IEventCallback&&) = delete;
+
 		virtual ~IEventCallback() = default;
 
-		virtual bool Invoke(u16 code, void* sender, EventContext context) = 0;
+		virtual bool Invoke(u16 code, void* sender, const EventContext& context) = 0;
 
 		virtual bool Equals(IEventCallback* other) = 0;
 		virtual bool Equals(const IEventCallback* other) = 0;
@@ -21,11 +28,11 @@ namespace C3D
 	class StaticEventCallback final : public IEventCallback
 	{
 	public:
-		explicit StaticEventCallback(const pStaticFunc func) : function(func) {}
+		explicit StaticEventCallback(const pStaticFunc func)
+			: function(func)
+		{}
 
-		~StaticEventCallback() override = default;
-
-		bool Invoke(const u16 code, void* sender, const EventContext context) override
+		bool Invoke(const u16 code, void* sender, const EventContext& context) override
 		{
 			return function(code, sender, context);
 		}
@@ -51,11 +58,11 @@ namespace C3D
 	class EventCallback final : public IEventCallback
 	{
 	public:
-		EventCallback(T* instance, bool (T::* function)(u16 code, void* sender, EventContext context)) : instance(instance), function(function) {}
+		EventCallback(T* instance, bool (T::* function)(u16 code, void* sender, const EventContext& context))
+			: instance(instance), function(function)
+		{}
 
-		~EventCallback() override = default;
-
-		bool Invoke(u16 code, void* sender, EventContext context) override
+		bool Invoke(u16 code, void* sender, const EventContext& context) override
 		{
 			return (instance->*function)(code, sender, context);
 		}
@@ -77,7 +84,7 @@ namespace C3D
 		}
 
 		T* instance;
-		bool (T::* function)(u16 code, void* sender, EventContext context);
+		bool (T::* function)(u16 code, void* sender, const EventContext& context);
 	};
 }
 

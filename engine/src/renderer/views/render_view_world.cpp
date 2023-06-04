@@ -176,7 +176,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RenderViewWorld::OnEvent(const u16 code, void* sender, const EventContext context)
+	bool RenderViewWorld::OnEvent(const u16 code, void* sender, const EventContext& context)
 	{
 		if (code == SystemEventCode::SetRenderMode)
 		{
