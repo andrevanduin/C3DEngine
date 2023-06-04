@@ -1,11 +1,8 @@
 
 #pragma once
 #include <SDL2/SDL_keycode.h>
-#include <SDL2/SDL_mouse.h>
 
-#include "defines.h"
-#include "logger.h"
-#include "math/math_types.h"
+#include "core/defines.h"
 
 namespace C3D
 {
@@ -145,7 +142,6 @@ namespace C3D
         KeySleep = 0x5f,
         /** @Brief The Grave Key. */
         KeyGrave = SDLK_BACKQUOTE,
-
         /** @Brief The NumberPad 0 Key. */
         KeyNumpad0 = 0x60,
         /** @Brief The NumberPad 1 Key. */
@@ -263,74 +259,5 @@ namespace C3D
         /** @Brief The Slash Key. */
         KeySlash = 0xbf,
         MaxKeys,
-	};
-
-	enum Buttons : u8
-	{
-		ButtonLeft = SDL_BUTTON_LEFT,
-        ButtonMiddle = SDL_BUTTON_MIDDLE,
-		ButtonRight = SDL_BUTTON_RIGHT,
-
-        MaxButtons
-	};
-
-    struct KeyBoardState
-    {
-        bool keys[static_cast<u8>(Keys::MaxKeys)];
     };
-
-    struct MouseState
-    {
-        i16 x, y;
-        bool buttons[static_cast<u8>(Buttons::MaxButtons)];
-    };
-
-    struct InputState
-    {
-        KeyBoardState keyboardCurrent;
-        KeyBoardState keyboardPrevious;
-
-        MouseState mouseCurrent;
-        MouseState mousePrevious;
-    };
-
-	class InputSystem
-	{
-	public:
-        InputSystem();
-
-		bool Init();
-		void Shutdown();
-
-		void Update(f64 deltaTime);
-
-		void ProcessKey(SDL_Keycode sdlKey, bool down);
-		void ProcessButton(u8 button, bool pressed);
-		void ProcessMouseMove(i32 sdlX, i32 sdlY);
-		void ProcessMouseWheel(i32 delta);
-
-		C3D_API [[nodiscard]] bool IsKeyDown(u8 key) const;
-        C3D_API [[nodiscard]] bool IsKeyUp(u8 key) const;
-        C3D_API [[nodiscard]] bool IsKeyPressed(u8 key) const;
-
-        C3D_API [[nodiscard]] bool WasKeyDown(u8 key) const;
-        C3D_API [[nodiscard]] bool WasKeyUp(u8 key) const;
-        
-        C3D_API [[nodiscard]] bool IsButtonDown(Buttons button) const;
-        C3D_API [[nodiscard]] bool IsButtonUp(Buttons button) const;
-        C3D_API [[nodiscard]] bool IsButtonPressed(Buttons button) const;
-
-		C3D_API [[nodiscard]] bool WasButtonDown(Buttons button) const;
-		C3D_API [[nodiscard]] bool WasButtonUp(Buttons button) const;
-
-        C3D_API [[nodiscard]] bool IsShiftHeld() const;
-
-        C3D_API ivec2 GetMousePosition();
-        C3D_API ivec2 GetPreviousMousePosition();
-	private:
-        LoggerInstance<16> m_logger;
-
-        bool m_initialized;
-		InputState m_state;
-	};
 }

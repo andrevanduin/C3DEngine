@@ -1,8 +1,9 @@
 
 #pragma once
-#include "material_system.h"
+#include "systems/materials/material_system.h"
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
+#include "core/engine.h"
 #include "core/logger.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
@@ -50,10 +51,10 @@ namespace C3D
 		bool autoRelease;
 	};
 
-	class C3D_API GeometrySystem final : public System<32, GeometrySystemConfig>
+	class C3D_API GeometrySystem final : public SystemWithConfig<GeometrySystemConfig>
 	{
 	public:
-		GeometrySystem();
+		explicit GeometrySystem(const Engine* engine);
 
 		bool Init(const GeometrySystemConfig& config) override;
 		void Shutdown() override;
@@ -80,11 +81,9 @@ namespace C3D
 		template<typename VertexType, typename IndexType>
 		bool CreateGeometry(const GeometryConfig<VertexType, IndexType>& config, Geometry* g) const;
 
-		static void DestroyGeometry(Geometry* g);
+		void DestroyGeometry(Geometry* g) const;
 
 		bool CreateDefaultGeometries();
-
-		bool m_initialized;
 
 		Geometry m_defaultGeometry;
 		Geometry m_default2DGeometry;

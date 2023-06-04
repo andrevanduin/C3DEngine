@@ -6,8 +6,8 @@
 
 namespace C3D
 {
-	JobSystem::JobSystem()
-		: System("JOB_SYSTEM"), m_running(false), m_threadCount(0), m_jobThreads{}, m_pendingResults{}
+	JobSystem::JobSystem(const Engine* engine)
+		: SystemWithConfig(engine, "JOB_SYSTEM"), m_running(false), m_threadCount(0), m_jobThreads{}, m_pendingResults{}
 	{}
 
 	bool JobSystem::Init(const JobSystemConfig& config)
@@ -63,7 +63,7 @@ namespace C3D
 		m_highPriorityQueue.Destroy();
 	}
 
-	void JobSystem::Update()
+	void JobSystem::Update(f64 deltaTime)
 	{
 		// Process all our queues
 		ProcessQueue(m_highPriorityQueue, m_highPriorityMutex);

@@ -10,18 +10,18 @@
 #include "systems/system_manager.h"
 
 #include "platform/platform.h"
-#include "systems/resource_system.h"
-#include "systems/render_view_system.h"
+
+#include "systems/resources/resource_system.h"
+#include "systems/render_views/render_view_system.h"
 
 namespace C3D
 {
-	// TODO: Obtain ambient color from scene instead of hard-coding it here
-	RenderSystem::RenderSystem()
-		: m_logger("RENDERER"), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
+	RenderSystem::RenderSystem(const Engine* engine)
+		: BaseSystem(engine, "RENDERER"), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
 		  m_resizing(false), m_framesSinceResize(0), m_backend(nullptr)
 	{}
 
-	bool RenderSystem::Init(const Engine* application)
+	bool RenderSystem::Init()
 	{
 		// TODO: Make this configurable once we have multiple rendering backend options
 		if (!CreateBackend(RendererBackendType::Vulkan))
@@ -35,7 +35,7 @@ namespace C3D
 		// TODO: Expose this to the application to configure.
 		RendererBackendConfig backendConfig{};
 		backendConfig.applicationName = "TestEnv";
-		backendConfig.window = application->GetWindow();
+		backendConfig.engine = m_engine;
 		backendConfig.flags = FlagVSyncEnabled | FlagPowerSavingEnabled;
 
 		if (!m_backend->Init(backendConfig, &m_windowRenderTargetCount))

@@ -5,10 +5,10 @@
 
 #include <array>
 
-#include "system.h"
 #include "containers/hash_table.h"
 #include "core/logger.h"
 #include "resources/loaders/image_loader.h"
+#include "systems/system.h"
 
 namespace C3D
 {
@@ -45,10 +45,10 @@ namespace C3D
 		ImageResource imageResource;
 	};
 
-	class C3D_API TextureSystem final : public System<16, TextureSystemConfig>
+	class C3D_API TextureSystem final : public SystemWithConfig<TextureSystemConfig>
 	{
 	public:
-		TextureSystem();
+		TextureSystem(const Engine* engine);
 
 		bool Init(const TextureSystemConfig& config) override;
 		void Shutdown() override;
@@ -64,7 +64,7 @@ namespace C3D
 		static bool SetInternal(Texture* t, void* internalData);
 
 		bool Resize(Texture* t, u32 width, u32 height, bool regenerateInternalData) const;
-		static bool WriteData(Texture* t, u32 offset, u32 size, const u8* data);
+		bool WriteData(Texture* t, u32 offset, u32 size, const u8* data) const;
 
 		Texture* GetDefault();
 		Texture* GetDefaultDiffuse();
@@ -78,11 +78,11 @@ namespace C3D
 		bool LoadTexture(const char* name, Texture* texture) const;
 		bool LoadCubeTextures(const char* name, const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames, Texture* texture) const;
 
-		static void DestroyTexture(Texture* texture);
+		void DestroyTexture(Texture* texture) const;
 
 		bool ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease, bool skipLoad, u32* outTextureId);
 
-		static bool LoadJobEntryPoint(void* data, void* resultData);
+		bool LoadJobEntryPoint(void* data, void* resultData) const;
 		void LoadJobSuccess(void* data) const;
 		void LoadJobFailure(void* data) const;
 

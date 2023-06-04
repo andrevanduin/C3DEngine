@@ -13,7 +13,7 @@ namespace C3D
 	constexpr i8 MAX_HISTORY = 64;
 	constexpr auto SHOWN_LINES = 10;
 
-#define Console C3D::UIConsole::GetBaseConsole()
+#define Console m_engine->GetBaseConsole()
 
 	class C3D_API UIConsole
 	{
@@ -26,7 +26,7 @@ namespace C3D
 	public:
 		UIConsole();
 
-		void OnInit();
+		void OnInit(const Engine* engine);
 		void OnShutDown();
 
 		void OnUpdate();
@@ -49,12 +49,6 @@ namespace C3D
 
 		[[nodiscard]] bool IsInitialized() const;
 		[[nodiscard]] bool IsOpen() const;
-
-		static UIConsole* GetBaseConsole()
-		{
-			static UIConsole console;
-			return &console;
-		}
 
 	private:
 		void WriteLineInternal(const CString<256>& line);
@@ -93,5 +87,7 @@ namespace C3D
 		LoggerInstance<16> m_logger;
 
 		HashMap<CString<128>, ICommand*> m_commands;
+
+		const Engine* m_engine;
 	};
 }

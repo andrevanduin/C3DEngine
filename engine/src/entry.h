@@ -8,8 +8,11 @@
 
 inline int main(int argc, char** argv)
 {
+	// Create our console just so the logger can already have a handle to it
+	C3D::UIConsole console;
+
 	// Initialize our logger which we should do first to ensure we can log errors everywhere
-	C3D::Logger::Init(Console);
+	C3D::Logger::Init(&console);
 
 	// Initialize our metrics to track our memory usage and other stats
 	Metrics.Init();
@@ -20,17 +23,19 @@ inline int main(int argc, char** argv)
 	// Create our identifiers
 	C3D::Identifier::Init();
 
-	// Create our application (game) by calling the user supplied method
-	const auto app = C3D::CreateApplication();
+	// Create our instance of the engine by calling the user supplied method
+	const auto engine = C3D::CreateApplication();
+	// Set the Base Console for our engine so the user can start using it
+	engine->SetBaseConsole(&console);
 
-	// Initialize our application
-	app->Init();
+	// Initialize our engine
+	engine->Init();
 
-	// Run our application's game loop
-	app->Run();
+	// Run our engine's game loop
+	engine->Run();
 
-	// Cleanup the main application which was created by the user in the CreateApplication
-	delete app;
+	// Cleanup the main engine which was created by the user in the CreateApplication
+	delete engine;
 
 	// Destroy our identifiers
 	C3D::Identifier::Destroy();

@@ -14,8 +14,8 @@
 
 namespace C3D
 {
-	ResourceSystem::ResourceSystem()
-		: System("RESOURCE_SYSTEM"), m_initialized(false), m_loaderTypes{}
+	ResourceSystem::ResourceSystem(const Engine* engine)
+		: SystemWithConfig(engine, "RESOURCE_SYSTEM"), m_loaderTypes{}
 	{
 		m_loaderTypes[ToUnderlying(ResourceType::None)]			= "None";
 		m_loaderTypes[ToUnderlying(ResourceType::Text)]			= "Text";
@@ -40,15 +40,15 @@ namespace C3D
 		m_config = config;
 		m_initialized = true;
 
-		// NOTE: Auto-register known loader types here
-		// NOTE: Different way of allocating this???
-		IResourceLoader* loaders[] =
-		{
-			new ResourceLoader<TextResource>(), new ResourceLoader<BinaryResource>(), new ResourceLoader<ImageResource>(), new ResourceLoader<MaterialResource>(),
-			new ResourceLoader<ShaderResource>(), new ResourceLoader<MeshResource>(), new ResourceLoader<BitmapFontResource>()
-		};
+		const auto textLoader		= Memory.New<ResourceLoader<TextResource>>(MemoryType::ResourceLoader, m_engine);
+		const auto binaryLoader		= Memory.New<ResourceLoader<BinaryResource>>(MemoryType::ResourceLoader, m_engine);
+		const auto imageLoader		= Memory.New<ResourceLoader<ImageResource>>(MemoryType::ResourceLoader, m_engine);
+		const auto materialLoader	= Memory.New<ResourceLoader<MaterialResource>>(MemoryType::ResourceLoader, m_engine);
+		const auto shaderLoader		= Memory.New<ResourceLoader<ShaderResource>>(MemoryType::ResourceLoader, m_engine);
+		const auto meshLoader		= Memory.New<ResourceLoader<MeshResource>>(MemoryType::ResourceLoader, m_engine);
+		const auto bitmapFontLoader = Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader, m_engine);
 
-		for (const auto loader : loaders)
+		for (IResourceLoader* loaders[7] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader, meshLoader, bitmapFontLoader }; const auto loader : loaders)
 		{
 			if (!RegisterLoader(loader))
 			{
@@ -65,7 +65,7 @@ namespace C3D
 	{
 		for (const auto loader : m_registeredLoaders)
 		{
-			delete loader;
+			Memory.Delete(MemoryType::ResourceLoader, loader);
 		}
 		m_registeredLoaders.Destroy();
 	}

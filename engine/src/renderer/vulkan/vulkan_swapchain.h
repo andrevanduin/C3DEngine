@@ -11,9 +11,9 @@ namespace C3D
 	class VulkanSwapChain
 	{
 	public:
-		VulkanSwapChain();
+		explicit VulkanSwapChain();
 
-		void Create(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
+		void Create(const Engine* engine, VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
 		void Recreate(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
@@ -37,7 +37,7 @@ namespace C3D
 		/* @brief Render targets used for on-screen rendering, one per frame. */
 		RenderTarget renderTargets[3];
 	private:
-		void CreateInternal(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
+		void CreateInternal(const Engine* engine, VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
 		void DestroyInternal(const VulkanContext* context) const;
 
@@ -45,5 +45,7 @@ namespace C3D
 
 		RendererConfigFlags m_flags;
 		VkPresentModeKHR m_presentMode;
+
+		const Engine* m_engine;
 	};
 }

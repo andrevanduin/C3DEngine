@@ -8,6 +8,7 @@
 
 namespace C3D
 {
+	class Engine;
 	struct FontData;
 	struct FontGlyph;
 	struct FontKerning;
@@ -31,7 +32,7 @@ namespace C3D
 
 		~UIText();
 
-		bool Create(UITextType fontType, const char* fontName, u16 fontSize, const char* textContent);
+		bool Create(const Engine* engine, UITextType fontType, const char* fontName, u16 fontSize, const char* textContent);
 		void Destroy();
 
 		void SetPosition(const vec3& pos);
@@ -68,5 +69,7 @@ namespace C3D
 		f32 m_maxX, m_maxY;
 
 		String m_text;
+
+		const Engine* m_engine;
 	};
 }

@@ -1,5 +1,5 @@
 
-#include "event.h"
+#include "event_system.h"
 
 #include <algorithm>
 
@@ -7,13 +7,7 @@
 
 namespace C3D
 {
-	EventSystem::EventSystem() : m_logger("EVENT"), m_registered{} {}
-
-	bool EventSystem::Init() const
-	{
-		m_logger.Info("Init()");
-		return true;
-	}
+	EventSystem::EventSystem(const Engine* engine) : BaseSystem(engine, "EVENT"), m_registered{} {}
 
 	void EventSystem::Shutdown()
 	{

@@ -6,13 +6,13 @@
 #include "platform/filesystem.h"
 #include "renderer/renderer_types.h"
 #include "renderer/vertex.h"
-#include "systems/geometry_system.h"
-#include "systems/resource_system.h"
+#include "systems/geometry/geometry_system.h"
+#include "systems/resources/resource_system.h"
 
 namespace C3D
 {
-	ResourceLoader<MeshResource>::ResourceLoader()
-		: IResourceLoader("MESH_LOADER", MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
+	ResourceLoader<MeshResource>::ResourceLoader(const Engine* engine)
+		: IResourceLoader(engine, "MESH_LOADER", MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
 	{}
 
 	bool ResourceLoader<MeshResource>::Load(const char* name, MeshResource& resource) const
@@ -92,7 +92,7 @@ namespace C3D
 		return true;
 	}
 
-	void ResourceLoader<MeshResource>::Unload(MeshResource& resource)
+	void ResourceLoader<MeshResource>::Unload(MeshResource& resource) const
 	{
 		for (auto& config : resource.geometryConfigs)
 		{

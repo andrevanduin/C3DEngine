@@ -6,8 +6,8 @@
 
 namespace C3D
 {
-	CameraSystem::CameraSystem()
-		: System("CAMERA_SYSTEM"), m_cameras(nullptr)
+	CameraSystem::CameraSystem(const Engine* engine)
+		: SystemWithConfig(engine, "CAMERA_SYSTEM"), m_cameras(nullptr)
 	{}
 
 	bool CameraSystem::Init(const CameraSystemConfig& config)

@@ -1,10 +1,11 @@
 
 #include "bitmap_font_loader.h"
 
+#include "core/engine.h"
 #include "containers/string.h"
 #include "platform/filesystem.h"
 #include "systems/system_manager.h"
-#include "systems/resource_system.h"
+#include "systems/resources/resource_system.h"
 
 namespace C3D
 {
@@ -15,8 +16,8 @@ namespace C3D
 		{ ".fnt", BitmapFontFileType::FNT, false },
 	};
 
-	ResourceLoader<BitmapFontResource>::ResourceLoader()
-		: IResourceLoader("BITMAP_FONT_LOADER", MemoryType::BitmapFont, ResourceType::BitmapFont, nullptr, "fonts")
+	ResourceLoader<BitmapFontResource>::ResourceLoader(const Engine* engine)
+		: IResourceLoader(engine, "BITMAP_FONT_LOADER", MemoryType::BitmapFont, ResourceType::BitmapFont, nullptr, "fonts")
 	{}
 
 	bool ResourceLoader<BitmapFontResource>::Load(const char* name, BitmapFontResource& resource) const

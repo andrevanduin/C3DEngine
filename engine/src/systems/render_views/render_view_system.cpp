@@ -1,9 +1,9 @@
 
 #include "render_view_system.h"
 
+#include "core/engine.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/views/render_view_pick.h"
-#include "renderer/views/render_view_primitives.h"
 
 #include "renderer/views/render_view_ui.h"
 #include "renderer/views/render_view_world.h"
@@ -12,10 +12,9 @@
 
 namespace C3D
 {
-	RenderViewSystem::RenderViewSystem()
-		: System("RENDER_VIEW_SYSTEM")
-	{
-	}
+	RenderViewSystem::RenderViewSystem(const Engine* engine)
+		: SystemWithConfig(engine, "RENDER_VIEW_SYSTEM")
+	{}
 
 	bool RenderViewSystem::Init(const RenderViewSystemConfig& config)
 	{
@@ -42,7 +41,7 @@ namespace C3D
 		m_registeredViews.Destroy();
 	}
 
-	bool RenderViewSystem::Create(const RenderViewConfig& config)
+	bool RenderViewSystem::Create(RenderViewConfig& config)
 	{
 		if (config.passCount == 0)
 		{
@@ -62,6 +61,8 @@ namespace C3D
 			return false;
 		}
 
+		config.engine = m_engine;
+
 		RenderView* view = nullptr;
 		switch (config.type)
 		{
@@ -76,9 +77,6 @@ namespace C3D
 				break;
 			case RenderViewKnownType::Pick:
 				view = new RenderViewPick(config);
-				break;
-			case RenderViewKnownType::Primitives:
-				view = new RenderViewPrimitives(config);
 				break;
 		}
 

@@ -114,5 +114,7 @@ namespace C3D
 #ifdef _DEBUG
 		VkDebugUtilsMessengerEXT m_debugMessenger{ nullptr };
 #endif
+
+		const Engine* m_engine;
 	};
 }

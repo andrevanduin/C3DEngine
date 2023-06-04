@@ -1,21 +1,23 @@
 
 #include "render_view_world.h"
 
-#include "core/events/event.h"
+#include "core/engine.h"
 #include "math/c3d_math.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/renderer_types.h"
-#include "systems/camera_system.h"
-#include "systems/material_system.h"
-#include "systems/shader_system.h"
+
 #include "resources/mesh.h"
 #include "resources/loaders/shader_loader.h"
-#include "systems/render_view_system.h"
-#include "systems/resource_system.h"
+
+#include "systems/cameras/camera_system.h"
+#include "systems/materials/material_system.h"
+#include "systems/shaders/shader_system.h"
+#include "systems/events/event_system.h"
+#include "systems/resources/resource_system.h"
 
 namespace C3D
 {
-	RenderViewWorld::RenderViewWorld(const RenderViewConfig& config) // TODO: Set from configuration
+	RenderViewWorld::RenderViewWorld(const RenderViewConfig& config)
 		: RenderView(ToUnderlying(RenderViewKnownType::World), config), m_shader(nullptr), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
 			m_projectionMatrix(), m_camera(nullptr), m_ambientColor(), m_renderMode(0)
 	{}

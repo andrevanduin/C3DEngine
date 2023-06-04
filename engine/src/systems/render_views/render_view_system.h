@@ -1,8 +1,7 @@
 
 #pragma once
-#include "system.h"
+#include "systems/system.h"
 #include "containers/hash_map.h"
-#include "containers/hash_table.h"
 
 #include "renderer/render_view.h"
 
@@ -13,15 +12,15 @@ namespace C3D
 		u16 maxViewCount;
 	};
 
-	class C3D_API RenderViewSystem final : public System<32, RenderViewSystemConfig>
+	class C3D_API RenderViewSystem final : public SystemWithConfig<RenderViewSystemConfig>
 	{
 	public:
-		RenderViewSystem();
+		explicit RenderViewSystem(const Engine* engine);
 
 		bool Init(const RenderViewSystemConfig& config) override;
 		void Shutdown() override;
 
-		bool Create(const RenderViewConfig& config);
+		bool Create(RenderViewConfig& config);
 
 		void OnWindowResize(u32 width, u32 height) const;
 

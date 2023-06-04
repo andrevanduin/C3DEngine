@@ -1,19 +1,18 @@
 
 #pragma once
-#include <vector>
-
-#include "event_callback.h"
-#include "event_context.h"
-#include "containers/dynamic_array.h"
-
 #include "core/defines.h"
 #include "core/logger.h"
+#include "core/events/event_callback.h"
+#include "core/events/event_context.h"
+
+#include "systems/system.h"
+#include "containers/dynamic_array.h"
 
 namespace C3D
 {
 	constexpr auto MAX_MESSAGE_CODES = 4096;
 
-	class EventSystem
+	class EventSystem final : public BaseSystem
 	{
 		struct EventCodeEntry
 		{
@@ -21,10 +20,9 @@ namespace C3D
 		};
 
 	public:
-		EventSystem();
+		explicit EventSystem(const Engine* engine);
 
-		[[nodiscard]] bool Init() const;
-		void Shutdown();
+		void Shutdown() override;
 
 		template <class T>
 		C3D_API bool Register(u16 code, T* classPtr, const EventFunc<T> function)
@@ -77,8 +75,6 @@ namespace C3D
 		C3D_API bool Fire(u16 code, void* sender, EventContext data) const;
 
 	private:
-		LoggerInstance<16> m_logger;
-
 		EventCodeEntry m_registered[MAX_MESSAGE_CODES];
 	};
 }

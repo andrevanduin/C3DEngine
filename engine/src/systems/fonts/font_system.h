@@ -1,8 +1,7 @@
 
 #pragma once
-#include "system.h"
+#include "systems/system.h"
 #include "containers/hash_map.h"
-#include "containers/hash_table.h"
 #include "core/defines.h"
 #include "containers/string.h"
 #include "resources/loaders/bitmap_font_loader.h"
@@ -42,10 +41,10 @@ namespace C3D
 	class UIText;
 	struct FontData;
 
-	class C3D_API FontSystem final : public System<16, FontSystemConfig>
+	class C3D_API FontSystem final : public SystemWithConfig<FontSystemConfig>
 	{
 	public:
-		FontSystem();
+		explicit FontSystem(const Engine* engine);
 
 		bool Init(const FontSystemConfig& config) override;
 		void Shutdown() override;
@@ -60,7 +59,7 @@ namespace C3D
 
 	private:
 		bool SetupFontData(FontData& font) const;
-		static void CleanupFontData(FontData& font);
+		void CleanupFontData(FontData& font) const;
 
 		HashMap<const char*, BitmapFontLookup> m_bitmapFonts;
 	};

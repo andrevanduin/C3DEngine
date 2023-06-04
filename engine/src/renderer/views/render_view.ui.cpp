@@ -1,17 +1,18 @@
 
 #include "render_view_ui.h"
-#include "core/events/event.h"
+#include "core/engine.h"
+#include "renderer/renderer_frontend.h"
 
 #include "resources/mesh.h"
-#include "renderer/renderer_frontend.h"
 #include "resources/font.h"
 #include "resources/ui_text.h"
 #include "resources/loaders/shader_loader.h"
+
+#include "systems/events/event_system.h"
 #include "systems/system_manager.h"
-#include "systems/shader_system.h"
-#include "systems/material_system.h"
-#include "systems/render_view_system.h"
-#include "systems/resource_system.h"
+#include "systems/shaders/shader_system.h"
+#include "systems/materials/material_system.h"
+#include "systems/resources/resource_system.h"
 
 namespace C3D
 {

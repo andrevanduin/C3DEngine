@@ -1,6 +1,6 @@
 
 #pragma once
-#include "system.h"
+#include "systems/system.h"
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
 #include "core/logger.h"
@@ -16,10 +16,10 @@ namespace C3D
 		const char* assetBasePath; // Relative base path
 	};
 
-	class ResourceSystem final : public System<32, ResourceSystemConfig>
+	class ResourceSystem final : public SystemWithConfig<ResourceSystemConfig>
 	{
 	public:
-		ResourceSystem();
+		explicit ResourceSystem(const Engine* engine);
 
 		bool Init(const ResourceSystemConfig& config) override;
 
@@ -40,12 +40,10 @@ namespace C3D
 
 	private:
 		template <typename Type>
-		bool LoadInternal(const char* name, ResourceLoader<Type>* loader, Type& resource);
+		static bool LoadInternal(const char* name, ResourceLoader<Type>* loader, Type& resource);
 
 		template <typename Type, typename Params>
-		bool LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type& resource, const Params& params);
-
-		bool m_initialized;
+		static bool LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type& resource, const Params& params);
 
 		DynamicArray<IResourceLoader*> m_registeredLoaders;
 

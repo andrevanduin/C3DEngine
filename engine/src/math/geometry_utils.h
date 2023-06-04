@@ -1,9 +1,8 @@
 
 #pragma once
-#include "containers/dynamic_array.h"
 #include "core/defines.h"
 #include "renderer/vertex.h"
-#include "systems/geometry_system.h"
+#include "systems/geometry/geometry_system.h"
 
 namespace C3D::GeometryUtils
 {

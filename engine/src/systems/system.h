@@ -4,24 +4,78 @@
 
 namespace C3D
 {
-	template <u64 NameSize, typename T>
-	class System
+	class Engine;
+
+	class ISystem
 	{
 	public:
-		explicit System(const CString<NameSize>& name) : m_logger(name), m_config{} {}
-		System(const System&) = delete;
-		System(System&&) = delete;
+		explicit ISystem(const Engine* engine) : m_initialized(false), m_engine(engine) {}
 
-		System& operator=(const System&) = delete;
-		System& operator=(System&&) = delete;
+		ISystem(const ISystem&) = delete;
+		ISystem(ISystem&&) = delete;
 
-		virtual ~System() = default;
+		ISystem& operator=(const ISystem&) = delete;
+		ISystem& operator=(ISystem&&) = delete;
 
-		virtual bool Init(const T& config) { return false; }
-		virtual void Shutdown() {}
+		virtual ~ISystem() = default;
+
+		virtual void Shutdown() = 0;
+		virtual void Update(f64 deltaTime) = 0;
 
 	protected:
-		LoggerInstance<NameSize> m_logger;
+		bool m_initialized;
+
+		const Engine* m_engine;
+	};
+
+	class BaseSystem : public ISystem
+	{
+	public:
+		explicit BaseSystem(const Engine* engine, const CString<32>& name) : ISystem(engine), m_logger(name) {}
+		
+		virtual bool Init()
+		{
+			m_logger.Info("Init()");
+			m_initialized = true;
+			return true;
+		}
+
+		void Shutdown() override
+		{
+			m_logger.Info("Shutdown()");
+			m_initialized = false;
+		}
+
+		void Update(const f64 deltaTime) override {}
+
+	protected:
+		LoggerInstance<32> m_logger;
+	};
+
+	template <typename T>
+	class SystemWithConfig : public ISystem
+	{
+	public:
+		explicit SystemWithConfig(const Engine* engine, const CString<32>& name) : ISystem(engine), m_logger(name), m_config{} {}
+
+		virtual bool Init(const T& config = {})
+		{
+			m_logger.Info("Init()");
+			m_initialized = true;
+			m_config = config;
+			return true;
+		}
+
+		void Shutdown() override
+		{
+			m_logger.Info("Shutdown()");
+			m_initialized = false;
+		}
+
+		void Update(const f64 deltaTime) override {}
+
+	protected:
+		LoggerInstance<32> m_logger;
 		T m_config;
 	};
 }

@@ -47,7 +47,8 @@ namespace C3D
 		u32 applicationVersion;
 
 		RendererConfigFlags flags;
-		SDL_Window* window;
+
+		const Engine* engine;
 	};
 
 	struct RendererBackendState

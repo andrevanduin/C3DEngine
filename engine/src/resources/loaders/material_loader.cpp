@@ -1,20 +1,21 @@
 
 #include "material_loader.h"
 
+#include "core/engine.h"
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
 #include "resources/material.h"
 #include "systems/system_manager.h"
 
-#include "systems/resource_system.h"
+#include "systems/resources/resource_system.h"
 
 namespace C3D
 {
 	constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
 
-	ResourceLoader<MaterialResource>::ResourceLoader()
-		: IResourceLoader("MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
+	ResourceLoader<MaterialResource>::ResourceLoader(const Engine* engine)
+		: IResourceLoader(engine, "MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
 	{}
 
 	bool ResourceLoader<MaterialResource>::Load(const char* name, MaterialResource& resource) const

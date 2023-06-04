@@ -3,18 +3,19 @@
 
 #include "renderer/renderer_frontend.h"
 #include "systems/system_manager.h"
-#include "systems/geometry_system.h"
-#include "systems/shader_system.h"
-#include "systems/texture_system.h"
+#include "systems/geometry/geometry_system.h"
+#include "systems/shaders/shader_system.h"
+#include "systems/textures/texture_system.h"
 
 namespace C3D
 {
 	Skybox::Skybox()
-		: g(nullptr), instanceId(INVALID_ID), frameNumber(INVALID_ID_U64)
+		: g(nullptr), instanceId(INVALID_ID), frameNumber(INVALID_ID_U64), m_engine(nullptr)
 	{}
 
-	bool Skybox::Create(const char* cubeMapName)
+	bool Skybox::Create(const Engine* engine, const char* cubeMapName)
 	{
+		m_engine = engine;
 		cubeMap = TextureMap(TextureUse::CubeMap, TextureFilter::ModeLinear, TextureRepeat::ClampToEdge);
 
 		// Acquire resources for our cube map

@@ -1,14 +1,16 @@
 
 #include "render_view.h"
 
+#include "core/engine.h"
 #include "renderer_frontend.h"
-#include "core/events/event.h"
-#include "systems/render_view_system.h"
+#include "systems/events/event_system.h"
+#include "systems/render_views/render_view_system.h"
 
 namespace C3D
 {
 	RenderView::RenderView(const u16 _id, const RenderViewConfig& config)
-		: id(_id), name(config.name), type(), m_width(config.width), m_height(config.height), m_customShaderName(nullptr), m_logger(config.name.Data())
+		: id(_id), name(config.name), type(), m_width(config.width), m_height(config.height), m_customShaderName(nullptr),
+	      m_logger(config.name.Data()), m_engine(config.engine)
 	{
 		if (!Event.Register(SystemEventCode::DefaultRenderTargetRefreshRequired, this, &RenderView::OnRenderTargetRefreshRequired))
 		{

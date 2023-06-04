@@ -7,16 +7,17 @@
 #include "resources/resource_types.h"
 
 #include "systems/system_manager.h"
-#include "systems/resource_system.h"
+#include "systems/resources/resource_system.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
 #include "stb_image.h"
+#include "core/engine.h"
 
 namespace C3D
 {
-	ResourceLoader<ImageResource>::ResourceLoader()
-		: IResourceLoader("IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
+	ResourceLoader<ImageResource>::ResourceLoader(const Engine* engine)
+		: IResourceLoader(engine, "IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
 	{}
 
 	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource& resource) const

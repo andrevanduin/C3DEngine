@@ -4,9 +4,8 @@
 
 #include <resources/mesh.h>
 
-#include "math/frustum.h"
-#include "renderer/primitives/primitive_renderer.h"
-#include "resources/ui_text.h"
+#include <math/frustum.h>
+#include <resources/ui_text.h>
 
 namespace C3D
 {
@@ -23,7 +22,6 @@ public:
 
 	void OnUpdate(f64 deltaTime) override;
 	bool OnRender(C3D::RenderPacket& packet, f64 deltaTime) override;
-	void AfterRender() override;
 
 	void OnResize(u16 width, u16 height) override;
 
@@ -36,14 +34,12 @@ private:
 	bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context);
 
 	bool ShutdownCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output);
-	static bool VSyncCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output);
+	bool VSyncCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output);
 
 	C3D::Camera* m_camera;
 	C3D::Camera* m_testCamera;
 
 	C3D::Frustum m_cameraFrustum;
-
-	C3D::PrimitiveRenderer m_primitiveRenderer;
 
 	// TEMP
 	C3D::Skybox m_skybox;
@@ -51,10 +47,6 @@ private:
 	C3D::Mesh m_meshes[10];
 	C3D::Mesh* m_carMesh;
 	C3D::Mesh* m_sponzaMesh;
-
-	C3D::Mesh* m_primitiveMeshes[500];
-	u32 m_primitiveMeshCount = 0;
-	bool m_hasPrimitives[10]{};
 
 	bool m_modelsLoaded;
 

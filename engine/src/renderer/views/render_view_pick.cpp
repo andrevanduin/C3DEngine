@@ -2,15 +2,18 @@
 #include "render_view_pick.h"
 
 #include "core/uuid.h"
-#include "core/events/event.h"
+
 #include "math/c3d_math.h"
 #include "renderer/renderer_frontend.h"
+
 #include "resources/mesh.h"
 #include "resources/ui_text.h"
 #include "resources/loaders/shader_loader.h"
-#include "systems/camera_system.h"
-#include "systems/resource_system.h"
-#include "systems/shader_system.h"
+
+#include "systems/events/event_system.h"
+#include "systems/cameras/camera_system.h"
+#include "systems/resources/resource_system.h"
+#include "systems/shaders/shader_system.h"
 
 namespace C3D
 {

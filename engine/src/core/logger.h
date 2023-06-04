@@ -84,51 +84,50 @@ namespace C3D
 	class LoggerInstance
 	{
 	public:
-		explicit LoggerInstance(CString<PrefixSize> prefix) : m_prefix(std::move(prefix)) {}
+		explicit LoggerInstance(CString<PrefixSize> prefix) : prefix(std::move(prefix)) {}
 
 		template <class... Args>
 		void Debug(const char* format, Args&& ... args) const
 		{
-			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(m_prefix, format));
+			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
 			Logger::Debug(formatStr.data(), std::forward<Args>(args)...);
 		}
 
 		template <class... Args>
 		void Trace(const char* format, Args&& ... args) const
 		{
-			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(m_prefix, format));
+			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
 			Logger::Trace(formatStr.data(), std::forward<Args>(args)...);
 		}
 
 		template <class... Args>
 		void Info(const char* format, Args&& ... args) const
 		{
-			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(m_prefix, format));
+			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
 			Logger::Info(formatStr.data(), std::forward<Args>(args)...);
 		}
 
 		template <class... Args>
 		void Warn(const char* format, Args&& ... args) const
 		{
-			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(m_prefix, format));
+			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
 			Logger::Warn(formatStr.data(), std::forward<Args>(args)...);
 		}
 
 		template <class... Args>
 		void Error(const char* format, Args&& ... args) const
 		{
-			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(m_prefix, format));
+			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
 			Logger::Error(formatStr.data(), std::forward<Args>(args)...);
 		}
 
 		template <class... Args>
 		void Fatal(const char* format, Args&& ... args) const
 		{
-			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(m_prefix, format));
+			const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
 			Logger::Fatal(formatStr.data(), std::forward<Args>(args)...);
 		}
 
-	private:
-		CString<PrefixSize> m_prefix;
+		CString<PrefixSize> prefix;
 	};
 }

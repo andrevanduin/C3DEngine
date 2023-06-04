@@ -1,17 +1,18 @@
 
 #include "binary_loader.h"
 
+#include "core/engine.h"
 #include "core/logger.h"
 
 #include "platform/filesystem.h"
 
 #include "systems/system_manager.h"
-#include "systems/resource_system.h"
+#include "systems/resources/resource_system.h"
 
 namespace C3D
 {
-	ResourceLoader<BinaryResource>::ResourceLoader()
-		: IResourceLoader("BINARY_LOADER", MemoryType::Array, ResourceType::Binary, nullptr, "")
+	ResourceLoader<BinaryResource>::ResourceLoader(const Engine* engine)
+		: IResourceLoader(engine, "BINARY_LOADER", MemoryType::Array, ResourceType::Binary, nullptr, "")
 	{}
 
 	bool ResourceLoader<BinaryResource>::Load(const char* name, BinaryResource& resource) const

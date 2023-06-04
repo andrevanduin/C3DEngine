@@ -1,16 +1,18 @@
 
 #include "font_system.h"
 
-#include "resource_system.h"
-#include "texture_system.h"
+#include "core/engine.h"
 #include "renderer/renderer_frontend.h"
 #include "resources/ui_text.h"
 #include "math/c3d_math.h"
 
+#include "systems/resources/resource_system.h"
+#include "systems/textures/texture_system.h"
+
 namespace C3D
 {
-	FontSystem::FontSystem()
-		: System("FONT_SYSTEM")
+	FontSystem::FontSystem(const Engine* engine)
+		: SystemWithConfig(engine, "FONT_SYSTEM")
 	{}
 
 	bool FontSystem::Init(const FontSystemConfig& config)
@@ -184,7 +186,7 @@ namespace C3D
 		return true;
 	}
 
-	void FontSystem::CleanupFontData(FontData& font)
+	void FontSystem::CleanupFontData(FontData& font) const
 	{
 		// Release our texture map resources
 		Renderer.ReleaseTextureMapResources(&font.atlas);

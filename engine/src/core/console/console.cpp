@@ -1,25 +1,28 @@
 
 #include "console.h"
 
-#include "core/input.h"
+#include "core/engine.h"
 #include "core/string_utils.h"
-#include "core/events/event.h"
 #include "renderer/render_view.h"
-#include "resources/font.h"
+
 #include "systems/system_manager.h"
+#include "systems/events/event_system.h"
+#include "systems/input/input_system.h"
 
 namespace C3D
 {
 	UIConsole::UIConsole()
-		: m_isOpen(false), m_initialized(false), m_isTextDirty(true), m_isEntryDirty(true), m_cursorCounter(0), m_scrollCounter(0),
-		  m_startIndex(0), m_endIndex(SHOWN_LINES), m_nextLine(0), m_currentHistory(-1), m_endHistory(0), m_nextHistory(0), m_logger("CONSOLE")
+		: m_isOpen(false), m_initialized(false), m_isTextDirty(true), m_isEntryDirty(true), m_cursorCounter(0), m_scrollCounter(0), m_startIndex(0),
+		  m_endIndex(SHOWN_LINES), m_nextLine(0), m_currentHistory(-1), m_endHistory(0), m_nextHistory(0), m_logger("CONSOLE"), m_engine(nullptr)
 	{}
 
-	void UIConsole::OnInit()
+	void UIConsole::OnInit(const Engine* engine)
 	{
-		m_text.Create(UITextType::Bitmap, "Ubuntu Mono 21px", 21, "-");
-		m_entry.Create(UITextType::Bitmap, "Ubuntu Mono 21px", 21, " ");
-		m_cursor.Create(UITextType::Bitmap, "Ubuntu Mono 21px", 21, "|");
+		m_engine = engine;
+
+		m_text.Create(m_engine,   UITextType::Bitmap, "Ubuntu Mono 21px", 21, "-");
+		m_entry.Create(m_engine,  UITextType::Bitmap, "Ubuntu Mono 21px", 21, " ");
+		m_cursor.Create(m_engine, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "|");
 
 		m_text.SetPosition(	 { 5,  5, 0	});
 		m_entry.SetPosition( { 5, 30, 0 });
