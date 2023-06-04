@@ -6,7 +6,7 @@
 #include "core/events/event.h"
 #include "renderer/render_view.h"
 #include "resources/font.h"
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {

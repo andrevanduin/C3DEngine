@@ -13,7 +13,7 @@
 
 #include <containers/cstring.h>
 
-#include <services/system_manager.h>
+#include <systems/system_manager.h>
 
 #include <systems/camera_system.h>
 #include <systems/shader_system.h>

@@ -12,7 +12,7 @@
 #include "events/event.h"
 #include "metrics/metrics.h"
 
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 
 #include "renderer/renderer_frontend.h"
 #include "renderer/primitives/primitive_renderer.h"

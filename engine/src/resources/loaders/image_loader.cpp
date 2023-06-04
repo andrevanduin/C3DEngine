@@ -6,7 +6,7 @@
 
 #include "resources/resource_types.h"
 
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 #include "systems/resource_system.h"
 
 #define STB_IMAGE_IMPLEMENTATION

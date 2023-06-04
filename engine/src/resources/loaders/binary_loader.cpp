@@ -5,7 +5,7 @@
 
 #include "platform/filesystem.h"
 
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 #include "systems/resource_system.h"
 
 namespace C3D

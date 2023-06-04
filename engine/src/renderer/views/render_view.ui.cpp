@@ -7,7 +7,7 @@
 #include "resources/font.h"
 #include "resources/ui_text.h"
 #include "resources/loaders/shader_loader.h"
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 #include "systems/shader_system.h"
 #include "systems/material_system.h"
 #include "systems/render_view_system.h"

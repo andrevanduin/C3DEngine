@@ -5,7 +5,7 @@
 #include "resources/mesh.h"
 #include "renderer/renderer_frontend.h"
 #include "resources/loaders/shader_loader.h"
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 #include "systems/camera_system.h"
 #include "systems/shader_system.h"
 #include "systems/material_system.h"

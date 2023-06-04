@@ -4,7 +4,7 @@
 #include "events/event.h"
 #include "logger.h"
 #include "platform/platform.h"
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {
