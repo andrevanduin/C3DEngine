@@ -5,10 +5,14 @@
 
 namespace C3D
 {
+	using pStaticCommandFunc = bool (*)(const DynamicArray<CString<128>>& args, CString<256>& output);
+	template <class T>
+	using pCommandFunc = bool(T::*)(const DynamicArray<CString<128>>& args, CString<256>& output);
+
 	class ICommand
 	{
 	public:
-		explicit ICommand(const CString<128> name) : name(name) {}
+		explicit ICommand(const CString<128>& name) : name(name) {}
 
 		ICommand(const ICommand&) = delete;
 		ICommand(ICommand&&) = delete;
@@ -20,21 +24,19 @@ namespace C3D
 
 		CString<128> name;
 
-		virtual bool Invoke(String* args) = 0;
+		virtual bool Invoke(const DynamicArray<CString<128>>& args, CString<256>& output) = 0;
 	};
-
-	typedef bool (*pStaticCommandFunc)(String* args);
 
 	class StaticCommand final : public ICommand
 	{
 	public:
-		StaticCommand(const CString<128> commandName, const pStaticCommandFunc function)
+		StaticCommand(const CString<128>& commandName, const pStaticCommandFunc function)
 			: ICommand(commandName), m_function(function)
 		{}
 
-		bool Invoke(String* args) override
+		bool Invoke(const DynamicArray<CString<128>>& args, CString<256>& output) override
 		{
-			return m_function(args);
+			return m_function(args, output);
 		}
 
 	private:
@@ -45,17 +47,17 @@ namespace C3D
 	class InstanceCommand final : public ICommand
 	{
 	public:
-		InstanceCommand(const CString<128> commandName, T* instance, bool (T::* function)(String* args))
+		InstanceCommand(const CString<128>& commandName, T* instance, const pCommandFunc<T> function)
 			: ICommand(commandName), m_instance(instance), m_function(function)
 		{}
 
-		bool Invoke(String* args) override
+		bool Invoke(const DynamicArray<CString<128>>& args, CString<256>& output) override
 		{
-			return (m_instance->*m_function)(args);
+			return (m_instance->*m_function)(args, output);
 		}
 
 	private:
 		T* m_instance;
-		bool (T::* m_function)(String* args);
+		pCommandFunc<T> m_function;
 	};
 }

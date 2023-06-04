@@ -9,7 +9,7 @@
 
 namespace C3D
 {
-	constexpr auto MAX_LINES = 1024;
+	constexpr auto MAX_LINES = 512;
 	constexpr auto SHOWN_LINES = 10;
 
 #define Console C3D::UIConsole::GetBaseConsole()
@@ -24,6 +24,17 @@ namespace C3D
 
 		void OnUpdate();
 		void OnRender(UIPacketData& packet);
+
+		void RegisterCommand(const CString<128>& name, pStaticCommandFunc function);
+
+		template <class T>
+		void RegisterCommand(const CString<128>& name, T* classPtr, pCommandFunc<T> function)
+		{
+			m_commands.Set(name, new InstanceCommand<T>(name, classPtr, function));
+			m_logger.Info("Registered command: \'{}\'", name);
+		}
+
+		void UnRegisterCommand(const CString<128>& name);
 
 		void WriteLine(const char* line);
 
@@ -40,6 +51,18 @@ namespace C3D
 		void WriteLineInternal(const CString<256>& line);
 
 		bool OnKeyDownEvent(u16 code, void* sender, const EventContext& context);
+		bool OnParseCommand();
+
+		template <typename... Args>
+		void PrintCommandMessage(const char* format, Args&&... args)
+		{
+			CString<256> warning;
+			warning.FromFormat(format, args...);
+
+			WriteLineInternal(warning);
+			m_current = "";
+			m_isEntryDirty = true;
+		}
 
 		bool m_isOpen, m_initialized;
 		bool m_isTextDirty, m_isEntryDirty;
@@ -54,6 +77,6 @@ namespace C3D
 
 		LoggerInstance<16> m_logger;
 
-		HashMap<CString<256>, ICommand*> m_commands;
+		HashMap<CString<128>, ICommand*> m_commands;
 	};
 }

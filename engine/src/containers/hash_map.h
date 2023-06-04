@@ -201,10 +201,7 @@ namespace C3D
 	void HashMap<Key, Value, HashFunc>::Destroy()
 	{
 		// Call the destructor for all elements
-		for (u64 i = 0; i < m_size; i++)
-		{
-			m_nodes[i].element.~Value();
-		}
+		std::destroy_n(m_nodes, m_size);
 
 		// If this HashMap is created we free all it's dynamically allocated memory
 		if (m_size > 0 && m_nodes)

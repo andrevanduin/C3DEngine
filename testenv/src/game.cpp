@@ -75,8 +75,10 @@ bool TestEnv::OnCreate()
 	}
 
 	m_testText.SetPosition({ 10, 640, 0 });
-
+	
 	Console->OnInit();
+	Console->RegisterCommand("exit", this, &TestEnv::ShutdownCommand);
+	Console->RegisterCommand("vsync", &VSyncCommand);
 
 	auto& cubeMap = m_skybox.cubeMap;
 	cubeMap.magnifyFilter = cubeMap.minifyFilter = C3D::TextureFilter::ModeLinear;
@@ -275,7 +277,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 			C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
 		}
 
-		if (Input.IsKeyUp('v') && Input.WasKeyDown('v'))
+		if (Input.IsKeyPressed('v'))
 		{
 			const auto current = Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled);
 			Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, !current);
@@ -850,5 +852,38 @@ bool TestEnv::OnDebugEvent(const u16 code, void* sender, const C3D::EventContext
 		return true;
 	}
 		
+	return false;
+}
+
+bool TestEnv::ShutdownCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output)
+{
+	Quit();
+	output = "Shutting down!";
+	return true;
+}
+
+bool TestEnv::VSyncCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output)
+{
+	if (args.Size() != 2)
+	{
+		output.FromFormat("Invalid number of arguments provided: {}", args.Size());
+		return false;
+	}
+
+	if (args[1] == "on")
+	{
+		Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, true);
+		output = "VSync is set to enabled";
+		return true;
+	}
+
+	if (args[1] == "off")
+	{
+		Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, false);
+		output = "VSync is set to disabled";
+		return true;
+	}
+
+	output.FromFormat("Invalid argument provided \'{}\'", args[1]);
 	return false;
 }

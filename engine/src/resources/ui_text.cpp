@@ -174,6 +174,9 @@ namespace C3D
 	{
 		const u64 utf8Size = m_text.SizeUtf8();
 
+		m_maxX = 0;
+		m_maxY = 0;
+
 		// No need to regenerate anything since we don't have any text
 		if (utf8Size < 1) return;
 
@@ -201,9 +204,6 @@ namespace C3D
 				return;
 			}
 		}
-
-		m_maxX = 0;
-		m_maxY = 0;
 
 		f32 x = 0, y = 0;
 

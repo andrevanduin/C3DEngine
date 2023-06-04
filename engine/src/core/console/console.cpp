@@ -2,6 +2,7 @@
 #include "console.h"
 
 #include "core/input.h"
+#include "core/string_utils.h"
 #include "core/events/event.h"
 #include "core/events/event_callback.h"
 #include "renderer/render_view.h"
@@ -61,27 +62,24 @@ namespace C3D
 
 			if (m_scrollCounter > 0) m_scrollCounter--;
 
-			if (Input.IsKeyDown(KeyArrowUp) && m_scrollCounter == 0)
+			// Our minimum start index value depends on if we wrapped around in our circular buffer yet
+			// > If we have not wrapped around the value is simply 0 (first index into our circular buffer)
+			// > If we did wrap around it must be larger than the end index % MAX_LINES since that is the end index of
+			// were we store our lines. Everything beyond that index is actually the newest lines again
+			const auto minStartIndex = m_endIndex > MAX_LINES ? m_endIndex % MAX_LINES : 0;
+			if (Input.IsKeyDown(KeyArrowUp) && m_scrollCounter == 0 && m_startIndex> minStartIndex)
 			{
-				m_scrollCounter = 10;
-
-				if (m_startIndex % MAX_LINES > 0)
-				{
-					m_startIndex--;
-					m_endIndex--;
-					m_isTextDirty = true;
-				}
+				m_scrollCounter = 15;
+				m_startIndex--;
+				m_endIndex--;
+				m_isTextDirty = true;
 			}
-			if (Input.IsKeyDown(KeyArrowDown) && m_scrollCounter == 0)
+			if (Input.IsKeyDown(KeyArrowDown) && m_scrollCounter == 0 && m_endIndex < m_nextLine)
 			{
-				m_scrollCounter = 20;
-
-				if (m_endIndex < m_nextLine)
-				{
-					m_startIndex++;
-					m_endIndex++;
-					m_isTextDirty = true;
-				}
+				m_scrollCounter = 15;
+				m_startIndex++;
+				m_endIndex++;
+				m_isTextDirty = true;
 			}
 		}
 	}
@@ -120,6 +118,25 @@ namespace C3D
 
 			if (!m_current.Empty())		packet.texts.PushBack(&m_entry);
 			if (m_cursorCounter >= 90)	packet.texts.PushBack(&m_cursor);
+		}
+	}
+
+	void UIConsole::RegisterCommand(const CString<128>& name, const pStaticCommandFunc function)
+	{
+		m_commands.Set(name, new StaticCommand(name, function));
+		m_logger.Info("Registered command: \'{}\'", name);
+	}
+
+	void UIConsole::UnRegisterCommand(const CString<128>& name)
+	{
+		if (m_commands.Has(name))
+		{
+			m_commands.Delete(name);
+			m_logger.Info("UnRegistered command: \'{}\'", name);
+		}
+		else
+		{
+			m_logger.Warn("No command with name \'{}\' is registered", name);
 		}
 	}
 
@@ -170,35 +187,30 @@ namespace C3D
 		const u16 keyCode = context.data.u16[0];
 		if (keyCode == KeyEnter)
 		{
-			if (!m_commands.Has(m_current))
-			{
-				CString<256> text = "The command: \'";
-				text += m_current;
-				text += "\' does not exist!";
-				WriteLineInternal(text);
-			}
-			else
-			{
-				// WriteLineInternal(m_current);
-				m_current = "";
-			}
-			return true;
+			return OnParseCommand();
 		}
-
 		if (keyCode == KeyBackspace)
 		{
-			if (!m_current.Empty()) m_current[m_current.Size() - 1] = '\0';
+			if (!m_current.Empty())
+			{
+				m_current[m_current.Size() - 1] = '\0';
+				m_isEntryDirty = true;
+			}
 			return true;
 		}
-
+		
 		const auto shiftHeld = Input.IsShiftHeld();
-		char typedChar = '\0';
+		char typedChar;
 
 		if (keyCode >= KeyA && keyCode <= KeyZ)
 		{
 			// Characters
 			typedChar = static_cast<char>(keyCode);
 			if (shiftHeld) typedChar -= 32; // If shift is held we want capital letters
+		}
+		else if (keyCode == KeySpace)
+		{
+			typedChar = static_cast<char>(keyCode);
 		}
 		else if (keyCode >= Key0 && keyCode <= Key9)
 		{
@@ -251,6 +263,52 @@ namespace C3D
 		}
 		
 		m_current.Append(typedChar);
+		m_isEntryDirty = true;
+		return true;
+	}
+
+	bool UIConsole::OnParseCommand()
+	{
+		if (StringUtils::IsEmptyOrWhitespaceOnly(m_current))
+		{
+			m_current = "";
+			m_isEntryDirty = true;
+			return true;
+		}
+
+		const auto args = StringUtils::Split<256, 128>(m_current, ' ');
+		if (args.Empty())
+		{
+			PrintCommandMessage("The input: \'{}\' failed to be parsed!", m_current);
+			return false;
+		}
+
+		// The first argument is the command
+		const auto commandName = args[0];
+		// Check if the command actually exists
+		if (!m_commands.Has(commandName))
+		{
+			// Not a command let's warn the user
+			PrintCommandMessage("The command: \'{}\' does not exist!", commandName);
+			return false;
+		}
+
+		// A valid command let's try to run the associated logic
+		const auto command = m_commands[commandName];
+		CString<256> output = "";
+
+		if (!command->Invoke(args, output))
+		{
+			PrintCommandMessage("\'{}\' failed to execute:", commandName);
+			WriteLineInternal(output);
+		}
+		else
+		{
+			PrintCommandMessage("\'{}\' executed successfully:", commandName);
+			WriteLineInternal(output);
+		}
+
+		m_current = "";
 		m_isEntryDirty = true;
 		return true;
 	}
