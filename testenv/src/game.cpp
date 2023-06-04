@@ -13,7 +13,7 @@
 
 #include <containers/cstring.h>
 
-#include <services/system_manager.h>
+#include <systems/system_manager.h>
 
 #include <systems/camera_system.h>
 #include <systems/shader_system.h>
@@ -234,9 +234,9 @@ bool TestEnv::OnCreate()
 	m_camera->SetPosition({ 10.5f, 5.0f, 9.5f });
 
 	// TEMP
-	Event.Register(C3D::SystemEventCode::Debug0, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
-	Event.Register(C3D::SystemEventCode::Debug1, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
-	Event.Register(C3D::SystemEventCode::ObjectHoverIdChanged, new C3D::EventCallback(this, &TestEnv::OnEvent));
+	Event.Register(C3D::SystemEventCode::Debug0, this, &TestEnv::OnDebugEvent);
+	Event.Register(C3D::SystemEventCode::Debug1, this, &TestEnv::OnDebugEvent);
+	Event.Register(C3D::SystemEventCode::ObjectHoverIdChanged, this, &TestEnv::OnEvent);
 	// TEMP END
 
 	for (auto& mesh : m_primitiveMeshes)
@@ -265,10 +265,10 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 
 	if (!Console->IsOpen())
 	{
-		if (Input.IsKeyUp(C3D::KeyM) && Input.WasKeyDown('m'))
+		if (Input.IsKeyPressed(C3D::KeyM))
 		{
 			C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
-			Metrics.PrintMemoryUsage();
+			Metrics.PrintMemoryUsage(true);
 		}
 
 		if (Input.IsKeyUp('p') && Input.WasKeyDown('p'))
@@ -623,9 +623,9 @@ void TestEnv::OnShutdown()
 		}
 	}
 
-	Event.UnRegister(C3D::SystemEventCode::Debug0, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
-	Event.UnRegister(C3D::SystemEventCode::Debug1, new C3D::EventCallback(this, &TestEnv::OnDebugEvent));
-	Event.UnRegister(C3D::SystemEventCode::ObjectHoverIdChanged, new C3D::EventCallback(this, &TestEnv::OnEvent));
+	Event.UnRegister(C3D::SystemEventCode::Debug0, this, &TestEnv::OnDebugEvent);
+	Event.UnRegister(C3D::SystemEventCode::Debug1, this, &TestEnv::OnDebugEvent);
+	Event.UnRegister(C3D::SystemEventCode::ObjectHoverIdChanged, this, &TestEnv::OnEvent);
 
 	m_frameAllocator.Destroy();
 	// TEMP END

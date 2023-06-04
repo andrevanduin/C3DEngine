@@ -2,7 +2,7 @@
 #include "skybox.h"
 
 #include "renderer/renderer_frontend.h"
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 #include "systems/geometry_system.h"
 #include "systems/shader_system.h"
 #include "systems/texture_system.h"

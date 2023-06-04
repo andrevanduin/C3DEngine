@@ -4,7 +4,9 @@
 
 namespace C3D
 {
-	typedef bool (*pStaticFunc)(u16 code, void* sender, const EventContext& context);
+	using StaticEventFunc = bool (*)(u16 code, void* sender, const EventContext& context);
+	template <class T>
+	using EventFunc = bool (T::*)(u16 code, void* sender, const EventContext& context);
 
 	class IEventCallback
 	{
@@ -28,43 +30,44 @@ namespace C3D
 	class StaticEventCallback final : public IEventCallback
 	{
 	public:
-		explicit StaticEventCallback(const pStaticFunc func)
-			: function(func)
+		explicit StaticEventCallback(const StaticEventFunc func)
+			: m_function(func)
 		{}
 
 		bool Invoke(const u16 code, void* sender, const EventContext& context) override
 		{
-			return function(code, sender, context);
+			return m_function(code, sender, context);
 		}
 
 		bool Equals(IEventCallback* other) override
 		{
 			const auto* otherEventCallback = dynamic_cast<StaticEventCallback*>(other);
 			if (otherEventCallback == nullptr) return false;
-			return otherEventCallback->function == function;
+			return otherEventCallback->m_function == m_function;
 		}
 
 		bool Equals(const IEventCallback* other) override
 		{
 			const auto* otherEventCallback = dynamic_cast<const StaticEventCallback*>(other);
 			if (otherEventCallback == nullptr) return false;
-			return otherEventCallback->function == function;
+			return otherEventCallback->m_function == m_function;
 		}
 
-		pStaticFunc function;
+	private:
+		StaticEventFunc m_function;
 	};
 
 	template<typename T>
 	class EventCallback final : public IEventCallback
 	{
 	public:
-		EventCallback(T* instance, bool (T::* function)(u16 code, void* sender, const EventContext& context))
-			: instance(instance), function(function)
+		EventCallback(T* instance, const EventFunc<T> function)
+			: m_instance(instance), m_function(function)
 		{}
 
 		bool Invoke(u16 code, void* sender, const EventContext& context) override
 		{
-			return (instance->*function)(code, sender, context);
+			return (m_instance->*m_function)(code, sender, context);
 		}
 
 		bool Equals(IEventCallback* other) override
@@ -72,7 +75,7 @@ namespace C3D
 			const auto* otherEventCallback = dynamic_cast<EventCallback*>(other);
 			if (otherEventCallback == nullptr) return false;
 
-			return otherEventCallback->instance == instance && otherEventCallback->function == function;
+			return otherEventCallback->m_instance == m_instance && otherEventCallback->m_function == m_function;
 		}
 
 		bool Equals(const IEventCallback* other) override
@@ -80,11 +83,13 @@ namespace C3D
 			const auto* otherEventCallback = dynamic_cast<const EventCallback*>(other);
 			if (otherEventCallback == nullptr) return false;
 
-			return otherEventCallback->instance == instance && otherEventCallback->function == function;
+			return otherEventCallback->m_instance == m_instance && otherEventCallback->m_function == m_function;
 		}
 
-		T* instance;
-		bool (T::* function)(u16 code, void* sender, const EventContext& context);
+	private:
+
+		T* m_instance;
+		EventFunc<T> m_function;
 	};
 }
 

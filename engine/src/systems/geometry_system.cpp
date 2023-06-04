@@ -8,7 +8,7 @@
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {

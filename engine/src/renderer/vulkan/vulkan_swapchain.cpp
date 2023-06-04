@@ -7,7 +7,7 @@
 
 #include "core/logger.h"
 
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 #include "systems/texture_system.h"
 
 namespace C3D

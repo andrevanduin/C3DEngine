@@ -5,7 +5,7 @@
 #include "core/logger.h"
 #include "core/metrics/metrics.h"
 
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {

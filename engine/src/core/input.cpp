@@ -4,7 +4,7 @@
 #include "events/event.h"
 #include "logger.h"
 #include "platform/platform.h"
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {
@@ -126,7 +126,7 @@ namespace C3D
 	{
 		EventContext context{};
 		context.data.i8[0] = static_cast<i8>(delta);
-		Event.Fire(ToUnderlying(SystemEventCode::MouseWheel), nullptr, context);
+		Event.Fire(ToUnderlying(SystemEventCode::MouseScrolled), nullptr, context);
 	}
 
 	bool InputSystem::IsKeyDown(const u8 key) const

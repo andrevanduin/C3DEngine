@@ -34,7 +34,7 @@ namespace C3D
 		ButtonDown = 0x04,
 		ButtonUp = 0x05,
 		MouseMoved = 0x06,
-		MouseWheel = 0x07,
+		MouseScrolled = 0x07,
 		Resized = 0x08,
 		Minimized = 0x09,
 		FocusGained = 0x0a,

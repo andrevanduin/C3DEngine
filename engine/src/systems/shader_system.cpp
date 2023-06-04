@@ -1,7 +1,7 @@
 
 #include "shader_system.h"
 
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/texture_system.h"
 

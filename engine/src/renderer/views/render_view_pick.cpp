@@ -89,7 +89,7 @@ namespace C3D
 		Platform::Zero(&m_colorTargetAttachmentTexture);
 		Platform::Zero(&m_depthTargetAttachmentTexture);
 
-		if (!Event.Register(SystemEventCode::MouseMoved, new EventCallback(this, &RenderViewPick::OnMouseMovedEvent)))
+		if (!Event.Register(SystemEventCode::MouseMoved, this, &RenderViewPick::OnMouseMovedEvent))
 		{
 			m_logger.Error("Unable to listen for mouse moved event.");
 			return false;
@@ -101,7 +101,7 @@ namespace C3D
 	void RenderViewPick::OnDestroy()
 	{
 		RenderView::OnDestroy();
-		Event.UnRegister(SystemEventCode::MouseMoved, new EventCallback(this, &RenderViewPick::OnMouseMovedEvent));
+		Event.UnRegister(SystemEventCode::MouseMoved, this, &RenderViewPick::OnMouseMovedEvent);
 
 		ReleaseShaderInstances();
 

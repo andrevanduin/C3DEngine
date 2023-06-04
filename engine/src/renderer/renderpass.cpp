@@ -1,7 +1,7 @@
 #include "renderpass.h"
 
 #include "memory/global_memory_system.h"
-#include "services/system_manager.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {
