@@ -18,6 +18,7 @@
 #define Views		m_engine->GetSystem<C3D::RenderViewSystem>(C3D::SystemType::RenderViewSystemType)
 #define Jobs		m_engine->GetSystem<C3D::JobSystem>(C3D::SystemType::JobSystemType)
 #define Fonts		m_engine->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
+#define CVars		m_engine->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
 
 namespace C3D
 {
@@ -35,6 +36,7 @@ namespace C3D
 		InputSystemType,
 		EventSystemType,
 		JobSystemType,
+		CVarSystemType,
 		MaxKnownSystemType
 	};
 
@@ -92,7 +94,7 @@ namespace C3D
 		}
 
 		template<class SystemType>
-		SystemType& GetSystem(const u16 type) const
+		[[nodiscard]] SystemType& GetSystem(const u16 type) const
 		{
 			return *reinterpret_cast<SystemType*>(m_systems[type]);
 		}

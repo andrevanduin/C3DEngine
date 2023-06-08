@@ -5,6 +5,7 @@
 #include "renderer_types.h"
 #include "renderer_backend.h"
 #include "render_buffer.h"
+#include "core/cvars/cvar.h"
 #include "resources/shader.h"
 
 namespace C3D
@@ -98,6 +99,8 @@ namespace C3D
 		[[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const;
 
 	private:
+		bool OnVSyncChanged(const bool& value) const;
+
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend();
 

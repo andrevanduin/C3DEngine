@@ -170,6 +170,55 @@ namespace C3D
 			m_data[0] = '\0';
 		}
 
+		/* @brief Converts string to a f32. */
+		[[nodiscard]] f32 ToF32() const
+		{
+			return std::strtof(m_data, nullptr);
+		}
+
+		/* @brief Converts string to an i32 in the provided base. */
+		[[nodiscard]] i32 ToI32(const i32 base = 10) const
+		{
+			return std::strtol(m_data, nullptr, base);
+		}
+
+		/* @brief Converts string to an u32 in the provided base. */
+		[[nodiscard]] u32 ToU32(const i32 base = 10) const
+		{
+			return std::strtoul(m_data, nullptr, base);
+		}
+
+		/* @brief Converts string to an i16 in the provided base. */
+		[[nodiscard]] i16 ToI16(const i32 base = 10) const
+		{
+			return static_cast<i16>(std::strtol(m_data, nullptr, base));
+		}
+
+		/* @brief Converts string to an u16 in the provided base. */
+		[[nodiscard]] u16 ToU16(const i32 base = 10) const
+		{
+			return static_cast<u16>(std::strtoul(m_data, nullptr, base));
+		}
+
+		/* @brief Converts string to an i8 in the provided base. */
+		[[nodiscard]] i8 ToI8(const i32 base = 10) const
+		{
+			return static_cast<i8>(std::strtol(m_data, nullptr, base));
+		}
+
+		/* @brief Converts string to an u8 in the provided base. */
+		[[nodiscard]] u8 ToU8(const i32 base = 10) const
+		{
+			return static_cast<u8>(std::strtoul(m_data, nullptr, base));
+		}
+
+		/* @brief Converts string to a boolean value. */
+		[[nodiscard]] bool ToBool() const
+		{
+			if (IEquals("1") || IEquals("true")) return true;
+			return false;
+		}
+
 		/* @brief Check if const char pointer matches case-sensitive. */
 		[[nodiscard]] bool Equals(const char* other) const
 		{

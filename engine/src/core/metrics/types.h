@@ -41,6 +41,7 @@ namespace C3D
 		ResourceLoader,
 		EventSystem,
 		Job,
+		Callable,
 		Texture,
 		MaterialInstance,
 		Geometry,
@@ -52,6 +53,7 @@ namespace C3D
 		Entity,
 		EntityNode,
 		Scene,
+		CVar,
 		Shader,
 		Resource,
 		Vulkan,
@@ -62,6 +64,7 @@ namespace C3D
 		SystemFont,
 		Test,
 		DebugConsole,
+		Command,
 		MaxType,
 	};
 

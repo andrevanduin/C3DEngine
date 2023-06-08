@@ -483,6 +483,24 @@ namespace C3D
 			m_size = requiredSize;
 		}
 
+		/* @brief Append the provided string to the end of this string. */
+		template <u64 CCapacity>
+		void Append(const CString<CCapacity>& other)
+		{
+			// Get size of other
+			const u64 otherSize = other.Size();
+			// Calculate the totalSize that we will require for our appended string
+			const u64 requiredSize = m_size + otherSize;
+			// Resize our internal buffer if it is needed (including '\0' byte)
+			Resize(requiredSize + 1);
+			// Copy data from the other string into our newly allocated buffer
+			std::memcpy(m_data + m_size, other.Data(), otherSize);
+			// Add '\0' character at the end
+			m_data[requiredSize] = '\0';
+			// Store our new size
+			m_size = requiredSize;
+		}
+
 		/* @brief Append the provided const char* to the end of this string. */
 		void Append(const char* other)
 		{
@@ -920,6 +938,13 @@ namespace C3D
 
 		/* @brief Operator overload for appending another string to this string. */
 		BasicString& operator+= (const BasicString& other)
+		{
+			Append(other);
+			return *this;
+		}
+
+		template <u64 CCapacity>
+		BasicString& operator+= (const CString<CCapacity>& other)
 		{
 			Append(other);
 			return *this;

@@ -1,6 +1,8 @@
 
 #include "renderer_frontend.h"
 
+#include "platform/platform.h"
+
 #include "core/logger.h"
 #include "core/engine.h"
 
@@ -8,11 +10,8 @@
 #include "resources/shader.h"
 
 #include "systems/system_manager.h"
-
-#include "platform/platform.h"
-
-#include "systems/resources/resource_system.h"
 #include "systems/render_views/render_view_system.h"
+#include "systems/cvars/cvar_system.h"
 
 namespace C3D
 {
@@ -43,6 +42,9 @@ namespace C3D
 			m_logger.Error("Init() - Failed to Initialize Renderer Backend.");
 			return false;
 		}
+
+		auto& vSync = CVars.Get<bool>("vsync");
+		vSync.AddOnChangedCallback(Memory.New<CVarCInstanceCallable<RenderSystem, bool>>(MemoryType::CVar, this, &RenderSystem::OnVSyncChanged));
 
 		m_logger.Info("Initialized Vulkan Renderer Backend");
 		return true;
@@ -338,6 +340,12 @@ namespace C3D
 	bool RenderSystem::IsFlagEnabled(const RendererConfigFlagBits flag) const
 	{
 		return m_backend->IsFlagEnabled(flag);
+	}
+
+	bool RenderSystem::OnVSyncChanged(const bool& value) const
+	{
+		SetFlagEnabled(FlagVSyncEnabled, value);
+		return true;
 	}
 
 	bool RenderSystem::CreateBackend(const RendererBackendType type)

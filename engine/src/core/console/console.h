@@ -1,11 +1,11 @@
 
 #pragma once
-#include "console_command.h"
 #include "core/defines.h"
 #include "renderer/render_view.h"
 #include "resources/ui_text.h"
 #include "containers/circular_buffer.h"
 #include "containers/hash_map.h"
+#include "core/callable/callable.h"
 
 namespace C3D
 {
@@ -14,6 +14,8 @@ namespace C3D
 	constexpr auto SHOWN_LINES = 10;
 
 #define Console m_engine->GetBaseConsole()
+
+	REGISTER_CALLABLE(Command, const DynamicArray<CString<128>>&, String&)
 
 	class C3D_API UIConsole
 	{
@@ -26,22 +28,13 @@ namespace C3D
 	public:
 		UIConsole();
 
-		void OnInit(const Engine* engine);
+		void OnInit(Engine* engine);
 		void OnShutDown();
 
 		void OnUpdate();
 		void OnRender(UIPacketData& packet);
 
-		void RegisterCommand(const CString<128>& name, pStaticCommandFunc function);
-
-		template <class T>
-		void RegisterCommand(const CString<128>& name, T* classPtr, pCommandFunc<T> function)
-		{
-			const auto command = Memory.New<InstanceCommand<T>>(MemoryType::DebugConsole, name, classPtr, function);
-
-			m_commands.Set(name, command);
-			m_logger.Info("Registered command: \'{}\'", name);
-		}
+		void RegisterCommand(const CString<128>& name, CommandCallable* func);
 
 		void UnRegisterCommand(const CString<128>& name);
 
@@ -49,6 +42,9 @@ namespace C3D
 
 		[[nodiscard]] bool IsInitialized() const;
 		[[nodiscard]] bool IsOpen() const;
+
+		static bool StaticShutdownCommand(int& jan, const float& bert);
+		bool ShutdownCommand(const DynamicArray<CString<128>>& args, String& output) const;
 
 	private:
 		void WriteLineInternal(const CString<256>& line);
@@ -86,8 +82,8 @@ namespace C3D
 
 		LoggerInstance<16> m_logger;
 
-		HashMap<CString<128>, ICommand*> m_commands;
+		HashMap<CString<128>, CommandCallable*> m_commands;
 
-		const Engine* m_engine;
+		Engine* m_engine;
 	};
 }

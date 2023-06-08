@@ -100,37 +100,192 @@ namespace C3D
 		};
 
 	public:
-		HashMap();
+		HashMap() : m_nodes(nullptr), m_size(0), m_count(0) {}
 
 		HashMap(const HashMap&) = delete;
 		HashMap(HashMap&&) = delete;
 
-		HashMap& operator=(const HashMap& other);
+		HashMap& operator=(const HashMap& other)
+		{
+			if (this != &other)
+			{
+				// Allocate enough space for the same amount of nodes as other has
+				m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, other.m_size);
+				// Copy over the values from other
+				m_size = other.m_size;
+				m_count = other.m_count;
+				m_hashCompute = other.m_hashCompute;
+
+				// Invalidate all nodes in our array except if at this location other has an occupied element
+				for (u64 i = 0; i < other.m_size; i++)
+				{
+					const auto otherNode = other.m_nodes[i];
+					if (otherNode.occupied)
+					{
+						// The other node is occupied so we need to copy over this node
+						m_nodes[i].occupied = true;
+						m_nodes[i].element = otherNode.element;
+					}
+					else
+					{
+						// The other node is empty so we don't need to do anything here
+						m_nodes[i].occupied = false;
+					}
+				}
+
+			}
+			return *this;
+		}
+
 		HashMap& operator=(HashMap&&) = delete;
 
-		~HashMap();
+		~HashMap()
+		{
+			Destroy();
+		}
 
-		void Create(u64 size);
-		void Destroy();
+		void Create(const u64 size)
+		{
+			// Allocate enough memory for all the elements and indices pointing to them
+			m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, size);
+			m_size = size;
 
-		void Set(const Key& key, const Value& value);
+			// Invalidate all entries
+			for (u64 i = 0; i < m_size; i++)
+			{
+				m_nodes[i].occupied = false;
+			}
+		}
 
-		void Delete(const Key& key);
+		void Destroy()
+		{
+			// Call the destructor for all elements
+			std::destroy_n(m_nodes, m_size);
 
-		Value& Get(const Key& key);
-		[[nodiscard]] Value& GetByIndex(u64 index) const;
+			// If this HashMap is created we free all it's dynamically allocated memory
+			if (m_size > 0 && m_nodes)
+			{
+				Memory.Free(MemoryType::HashMap, m_nodes);
+				m_nodes = nullptr;
 
-		bool Has(const Key& key);
+				m_size = 0;
+				m_count = 0;
+			}
+		}
 
-		Value& operator[] (const Key& key);
+		void Set(const Key& key, const Value& value)
+		{
+			const auto hash = m_hashCompute(key, m_size);
+			auto& node = m_nodes[hash];
 
-		[[nodiscard]] HashMapIterator begin() const;
-		[[nodiscard]] HashMapIterator end() const;
+			// If the slot was not occupied yet we increment the count
+			if (!node.occupied)
+			{
+				m_count++;
+			}
 
-		[[nodiscard]] u64 Size() const	{ return m_size;	}
-		[[nodiscard]] u64 Count() const { return m_count;	}
+			node.occupied = true;
+			node.element = value;
+		}
 
-		[[nodiscard]] u64 GetIndex(const Key& key) const;
+		void Delete(const Key& key)
+		{
+			const auto hash = m_hashCompute(key, m_size);
+			if (!m_nodes[hash].occupied)
+			{
+				throw std::invalid_argument("Key could not be found");
+			}
+
+			// Set the occupied flag to false
+			m_nodes[hash].occupied = false;
+			// Call the destructor for the element
+			m_nodes[hash].element.~Value();
+			// Zero out the memory
+			Platform::Zero(&m_nodes[hash].element);
+			// Decrement the count to keep track of how many elements we are currently storing
+			m_count--;
+		}
+
+		Value& Get(const Key& key)
+		{
+			const auto hash = m_hashCompute(key, m_size);
+			if (!m_nodes[hash].occupied)
+			{
+				throw std::invalid_argument("Key could not be found");
+			}
+			return m_nodes[hash].element;
+		}
+
+		[[nodiscard]] const Value& Get(const Key& key) const
+		{
+			const auto hash = m_hashCompute(key, m_size);
+			if (!m_nodes[hash].occupied)
+			{
+				throw std::invalid_argument("Key could not be found");
+			}
+			return m_nodes[hash].element;
+		}
+
+		Value& GetByIndex(u64 index)
+		{
+			return m_nodes[index].element;
+		}
+
+		[[nodiscard]] const Value& GetByIndex(u64 index) const
+		{
+			return m_nodes[index].element;
+		}
+
+		[[nodiscard]] bool Has(const Key& key) const
+		{
+			const auto hash = m_hashCompute(key, m_size);
+			return m_nodes[hash].occupied;
+		}
+
+		Value& operator[] (const Key& key)
+		{
+			const auto hash = m_hashCompute(key, m_size);
+			if (!m_nodes[hash].occupied)
+			{
+				throw std::invalid_argument("Key could not be found");
+			}
+			return m_nodes[hash].element;
+		}
+
+		[[nodiscard]] const Value& operator[] (const Key& key) const
+		{
+			const auto hash = m_hashCompute(key, m_size);
+			if (!m_nodes[hash].occupied)
+			{
+				throw std::invalid_argument("Key could not be found");
+			}
+			return m_nodes[hash].element;
+		}
+
+		[[nodiscard]] HashMapIterator begin() const
+		{
+			return HashMapIterator(this);
+		}
+
+		[[nodiscard]] HashMapIterator end() const
+		{
+			return HashMapIterator(this, m_size);
+		}
+
+		[[nodiscard]] u64 Size() const
+		{
+			return m_size;
+		}
+
+		[[nodiscard]] u64 Count() const
+		{
+			return m_count;
+		}
+
+		[[nodiscard]] u64 GetIndex(const Key& key) const
+		{
+			return m_hashCompute(key, m_size);
+		}
 	private:
 		HashMapNode* m_nodes;
 
@@ -138,169 +293,6 @@ namespace C3D
 		u64 m_count;
 		HashFunc m_hashCompute;
 	};
-
-	template <class Key, class Value, class HashFunc>
-	HashMap<Key, Value, HashFunc>::HashMap()
-		: m_nodes(nullptr), m_size(0), m_count(0)
-	{}
-
-	template <class Key, class Value, class HashFunc>
-	HashMap<Key, Value, HashFunc>& HashMap<Key, Value, HashFunc>::operator=(const HashMap& other)
-	{
-		if (this != &other)
-		{
-			// Allocate enough space for the same amount of nodes as other has
-			m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, other.m_size);
-			// Copy over the values from other
-			m_size = other.m_size;
-			m_count = other.m_count;
-			m_hashCompute = other.m_hashCompute;
-
-			// Invalidate all nodes in our array except if at this location other has an occupied element
-			for (u64 i = 0; i < other.m_size; i++)
-			{
-				const auto otherNode = other.m_nodes[i];
-				if (otherNode.occupied)
-				{
-					// The other node is occupied so we need to copy over this node
-					m_nodes[i].occupied = true;
-					m_nodes[i].element = otherNode.element;
-				}
-				else
-				{
-					// The other node is empty so we don't need to do anything here
-					m_nodes[i].occupied = false;
-				}
-			}
-
-		}
-		return *this;
-	}
-
-	template <class Key, class Value, class HashFunc>
-	HashMap<Key, Value, HashFunc>::~HashMap()
-	{
-		Destroy();
-	}
-
-	template<class Key, class Value, class HashFunc>
-	void HashMap<Key, Value, HashFunc>::Create(const u64 size)
-	{
-		// Allocate enough memory for all the elements and indices pointing to them
-		m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, size);
-		m_size = size;
-
-		// Invalidate all entries
-		for (u64 i = 0; i < m_size; i++)
-		{
-			m_nodes[i].occupied = false;
-		}
-	}
-
-	template <class Key, class Value, class HashFunc>
-	void HashMap<Key, Value, HashFunc>::Destroy()
-	{
-		// Call the destructor for all elements
-		std::destroy_n(m_nodes, m_size);
-
-		// If this HashMap is created we free all it's dynamically allocated memory
-		if (m_size > 0 && m_nodes)
-		{
-			Memory.Free(MemoryType::HashMap, m_nodes);
-			m_nodes = nullptr;
-
-			m_size = 0;
-			m_count = 0;
-		}
-	}
-
-	template <class Key, class Value, class HashFunc>
-	void HashMap<Key, Value, HashFunc>::Set(const Key& key, const Value& value)
-	{
-		const auto hash = m_hashCompute(key, m_size);
-		auto& node = m_nodes[hash];
-
-		// If the slot was not occupied yet we increment the count
-		if (!node.occupied)
-		{
-			m_count++;
-		}
-
-		node.occupied = true;
-		node.element = value;
-	}
-
-	template <class Key, class Value, class HashFunc>
-	void HashMap<Key, Value, HashFunc>::Delete(const Key& key)
-	{
-		const auto hash = m_hashCompute(key, m_size);
-		if (!m_nodes[hash].occupied)
-		{
-			throw std::invalid_argument("Key could not be found");
-		}
-
-		// Set the occupied flag to false
-		m_nodes[hash].occupied = false;
-		// Call the destructor for the element
-		m_nodes[hash].element.~Value();
-		// Zero out the memory
-		Platform::Zero(&m_nodes[hash].element);
-		// Decrement the count to keep track of how many elements we are currently storing
-		m_count--;
-	}
-
-	template <class Key, class Value, class HashFunc>
-	Value& HashMap<Key, Value, HashFunc>::Get(const Key& key)
-	{
-		const auto hash = m_hashCompute(key, m_size);
-		if (!m_nodes[hash].occupied)
-		{
-			throw std::invalid_argument("Key could not be found");
-		}
-		return m_nodes[hash].element;
-	}
-
-	template <class Key, class Value, class HashFunc>
-	Value& HashMap<Key, Value, HashFunc>::GetByIndex(const u64 index) const
-	{
-		return m_nodes[index].element;
-	}
-
-	template <class Key, class Value, class HashFunc>
-	u64 HashMap<Key, Value, HashFunc>::GetIndex(const Key& key) const
-	{
-		return m_hashCompute(key, m_size);
-	}
-
-	template <class Key, class Value, class HashFunc>
-	bool HashMap<Key, Value, HashFunc>::Has(const Key& key)
-	{
-		const auto hash = m_hashCompute(key, m_size);
-		return m_nodes[hash].occupied;
-	}
-
-	template <class Key, class Value, class HashFunc>
-	Value& HashMap<Key, Value, HashFunc>::operator[](const Key& key)
-	{
-		const auto hash = m_hashCompute(key, m_size);
-		if (!m_nodes[hash].occupied)
-		{
-			throw std::invalid_argument("Key could not be found");
-		}
-		return m_nodes[hash].element;
-	}
-
-	template <class Key, class Value, class HashFunc>
-	typename HashMap<Key, Value, HashFunc>::HashMapIterator HashMap<Key, Value, HashFunc>::begin() const
-	{
-		return HashMapIterator(this);
-	}
-
-	template <class Key, class Value, class HashFunc>
-	typename HashMap<Key, Value, HashFunc>::HashMapIterator HashMap<Key, Value, HashFunc>::end() const
-	{
-		return HashMapIterator(this, m_size);
-	}
 }
 
 template <>

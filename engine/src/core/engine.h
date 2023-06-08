@@ -76,9 +76,9 @@ namespace C3D
 			m_console = console;
 		}
 
-		[[nodiscard]] UIConsole* GetBaseConsole() const
+		[[nodiscard]] UIConsole& GetBaseConsole() const
 		{
-			return m_console;
+			return *m_console;
 		}
 
 		virtual bool OnBoot()	{ return true; }

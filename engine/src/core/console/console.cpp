@@ -8,6 +8,7 @@
 #include "systems/system_manager.h"
 #include "systems/events/event_system.h"
 #include "systems/input/input_system.h"
+#include "systems/cvars/cvar_system.h"
 
 namespace C3D
 {
@@ -16,7 +17,7 @@ namespace C3D
 		  m_endIndex(SHOWN_LINES), m_nextLine(0), m_currentHistory(-1), m_endHistory(0), m_nextHistory(0), m_logger("CONSOLE"), m_engine(nullptr)
 	{}
 
-	void UIConsole::OnInit(const Engine* engine)
+	void UIConsole::OnInit(Engine* engine)
 	{
 		m_engine = engine;
 
@@ -32,8 +33,10 @@ namespace C3D
 		Event.Register(MouseScrolled, this, &UIConsole::OnMouseScrollEvent);
 
 		m_commands.Create(377);
-
 		m_initialized = true;
+
+		Console.RegisterCommand("exit", MakeCommandCallable<UIConsole>(this, &UIConsole::ShutdownCommand));
+		CVars.RegisterDefaultCommands();
 	}
 
 	void UIConsole::OnShutDown()
@@ -43,7 +46,7 @@ namespace C3D
 			// Make sure all commands that haven't been manually unregistered are unregistered to avoid leaking memory
 			for (const auto command : m_commands)
 			{
-				UnRegisterCommand(command->name);
+				Memory.Delete(MemoryType::Callable, command);
 			}
 			// Then we simply destroy our commands hashmap to free it's internal memory
 			m_commands.Destroy();
@@ -54,6 +57,8 @@ namespace C3D
 			m_text.Destroy();
 			m_entry.Destroy();
 			m_cursor.Destroy();
+
+			m_initialized = false;
 		}
 	}
 
@@ -111,27 +116,28 @@ namespace C3D
 		}
 	}
 
-	void UIConsole::RegisterCommand(const CString<128>& name, const pStaticCommandFunc function)
+	void UIConsole::RegisterCommand(const CString<128>& name, CommandCallable* func)
 	{
-		const auto pStaticCommand = Memory.New<StaticCommand>(MemoryType::DebugConsole, name, function);
-
-		m_commands.Set(name, pStaticCommand);
+		m_commands.Set(name, func);
 		m_logger.Info("Registered command: \'{}\'", name);
 	}
 
 	void UIConsole::UnRegisterCommand(const CString<128>& name)
 	{
-		if (m_commands.Has(name))
+		if (m_initialized)
 		{
-			const auto command = m_commands.Get(name);
-			Memory.Delete(MemoryType::DebugConsole, command);
+			if (m_commands.Has(name))
+			{
+				const auto command = m_commands.Get(name);
+				Memory.Delete(MemoryType::Command, command);
 
-			m_commands.Delete(name);
-			m_logger.Info("UnRegistered command: \'{}\'", name);
-		}
-		else
-		{
-			m_logger.Warn("No command with name \'{}\' is registered", name);
+				m_commands.Delete(name);
+				m_logger.Info("UnRegistered command: \'{}\'", name);
+			}
+			else
+			{
+				m_logger.Warn("No command with name \'{}\' is registered", name);
+			}
 		}
 	}
 
@@ -364,7 +370,7 @@ namespace C3D
 
 		// A valid command let's try to run the associated logic
 		const auto command = m_commands[commandName];
-		CString<256> output = "";
+		String output = "";
 
 		if (!command->Invoke(args, output))
 		{
@@ -390,5 +396,17 @@ namespace C3D
 	bool UIConsole::IsOpen() const
 	{
 		return m_isOpen;
+	}
+
+	bool UIConsole::StaticShutdownCommand(int& jan, const float& bert)
+	{
+		return true;
+	}
+
+	bool UIConsole::ShutdownCommand(const DynamicArray<CString<128>>& args, String& output) const
+	{
+		m_engine->Quit();
+		output += "Shutting down";
+		return true;
 	}
 }
