@@ -31,6 +31,16 @@ static_assert(sizeof(i16) == 2, "Expected i16 to be 2 bytes");
 static_assert(sizeof(i32) == 4, "Expected i32 to be 4 bytes");
 static_assert(sizeof(i64) == 8, "Expected i64 to be 8 bytes");
 
+template <typename T>
+constexpr const char* TypeToString(T)
+{
+	return "";
+}
+
+template <>
+constexpr const char* TypeToString(u8) { return "u8"; }
+
+
 /* @brief A Range, typically of memory. */
 struct Range
 {

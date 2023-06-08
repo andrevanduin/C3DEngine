@@ -66,6 +66,7 @@ namespace C3D
 		{
 			return false;
 		}
+
 		return std::ranges::any_of(events, [&](IEventCallback* e){ return e->Invoke(code, sender, data); });
 	}
 }

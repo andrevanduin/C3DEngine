@@ -126,7 +126,7 @@ namespace C3D
 		return nullptr;
 	}
 
-	Shader* ShaderSystem::GetById(const u32 shaderId) const
+	Shader* ShaderSystem::GetById(const u32 shaderId)
 	{
 		return &m_shaders.GetByIndex(shaderId);
 	}
@@ -176,7 +176,7 @@ namespace C3D
 		return static_cast<u16>(shader->uniforms.GetIndex(name));
 	}
 
-	bool ShaderSystem::SetUniform(const char* name, const void* value) const
+	bool ShaderSystem::SetUniform(const char* name, const void* value)
 	{
 		if (m_currentShaderId == INVALID_ID)
 		{
@@ -193,7 +193,7 @@ namespace C3D
 		return SetUniformByIndex(index, value);
 	}
 
-	bool ShaderSystem::SetUniformByIndex(const u16 index, const void* value) const
+	bool ShaderSystem::SetUniformByIndex(const u16 index, const void* value)
 	{
 		Shader* shader = &m_shaders.GetByIndex(m_currentShaderId);
 		const ShaderUniform* uniform = &shader->uniforms.GetByIndex(index);
@@ -212,27 +212,27 @@ namespace C3D
 		return Renderer.SetUniform(shader, uniform, value);
 	}
 
-	bool ShaderSystem::SetSampler(const char* name, const Texture* t) const
+	bool ShaderSystem::SetSampler(const char* name, const Texture* t)
 	{
 		return SetUniform(name, t);
 	}
 
-	bool ShaderSystem::SetSamplerByIndex(const u16 index, const Texture* t) const
+	bool ShaderSystem::SetSamplerByIndex(const u16 index, const Texture* t)
 	{
 		return SetUniformByIndex(index, t);
 	}
 
-	bool ShaderSystem::ApplyGlobal() const
+	bool ShaderSystem::ApplyGlobal()
 	{
 		return Renderer.ShaderApplyGlobals(&m_shaders.GetByIndex(m_currentShaderId));
 	}
 
-	bool ShaderSystem::ApplyInstance(const bool needsUpdate) const
+	bool ShaderSystem::ApplyInstance(const bool needsUpdate)
 	{
 		return Renderer.ShaderApplyInstance(&m_shaders.GetByIndex(m_currentShaderId), needsUpdate);
 	}
 
-	bool ShaderSystem::BindInstance(const u32 instanceId) const
+	bool ShaderSystem::BindInstance(const u32 instanceId)
 	{
 		Shader* shader = &m_shaders.GetByIndex(m_currentShaderId);
 		shader->boundInstanceId = instanceId;

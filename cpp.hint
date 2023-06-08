@@ -16,3 +16,4 @@
 #define Resources C3D::Services::GetResourceSystem()
 #define Renderer C3D::Services::GetRenderer()
 #define Memory C3D::Services::GetMemory()
+#define MAKE_CALLBACK_FUNCTIONS(returnType, name, __VA_ARGS__) using name##StaticFunc = bool (*)(__VA_ARGS__); template<typename T> using name##InstanceFunc = bool (T* ::)(__VA_ARGS__);

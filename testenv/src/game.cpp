@@ -74,11 +74,6 @@ bool TestEnv::OnCreate()
 	}
 
 	m_testText.SetPosition({ 10, 640, 0 });
-	
-	Console->OnInit(m_engine);
-	Console->RegisterCommand("exit", this, &TestEnv::ShutdownCommand);
-	Console->RegisterCommand("vsync", this, &TestEnv::VSyncCommand);
-
 	m_skybox.Create(m_engine, "skybox_cube");
 
 	// World meshes
@@ -202,7 +197,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	const u64 prevAllocCount = allocCount;
 	allocCount = Metrics.GetAllocCount();
 
-	if (!Console->IsOpen())
+	if (!Console.IsOpen())
 	{
 		if (Input.IsKeyPressed(C3D::KeyM))
 		{
@@ -312,7 +307,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		}
 	}
 
-	Console->OnUpdate();
+	Console.OnUpdate();
 
 	// Rotate 
 	quat rotation = angleAxis(0.5f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
@@ -488,7 +483,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 	uiPacket.texts.SetAllocator(&m_frameAllocator);
 	uiPacket.texts.PushBack(&m_testText);
 
-	Console->OnRender(uiPacket);
+	Console.OnRender(uiPacket);
 
 	if (!Views.BuildPacket(Views.Get("ui"), m_frameAllocator, &uiPacket, &packet.views[2]))
 	{
@@ -525,8 +520,6 @@ void TestEnv::OnResize(const u16 width, const u16 height)
 void TestEnv::OnShutdown()
 {
 	// TEMP
-	Console->OnShutDown();
-
 	m_skybox.Destroy();
 	m_testText.Destroy();
 
@@ -775,38 +768,5 @@ bool TestEnv::OnDebugEvent(const u16 code, void* sender, const C3D::EventContext
 		return true;
 	}
 		
-	return false;
-}
-
-bool TestEnv::ShutdownCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output)
-{
-	Quit();
-	output = "Shutting down!";
-	return true;
-}
-
-bool TestEnv::VSyncCommand(const C3D::DynamicArray<C3D::CString<128>>& args, C3D::CString<256>& output)
-{
-	if (args.Size() != 2)
-	{
-		output.FromFormat("Invalid number of arguments provided: {}", args.Size());
-		return false;
-	}
-
-	if (args[1] == "on")
-	{
-		Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, true);
-		output = "VSync is set to enabled";
-		return true;
-	}
-
-	if (args[1] == "off")
-	{
-		Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, false);
-		output = "VSync is set to disabled";
-		return true;
-	}
-
-	output.FromFormat("Invalid argument provided \'{}\'", args[1]);
 	return false;
 }

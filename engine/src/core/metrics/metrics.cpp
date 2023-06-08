@@ -26,6 +26,7 @@ namespace C3D
 		"ResourceLoader",
 		"Event",
 		"Job",
+		"Callable",
 		"Texture",
 		"MaterialInstance",
 		"Geometry",
@@ -37,6 +38,7 @@ namespace C3D
 		"Entity",
 		"EntityNode",
 		"Scene",
+		"CVar",
 		"Shader",
 		"Resource",
 		"Vulkan",
@@ -46,7 +48,8 @@ namespace C3D
 		"BitmapFont",
 		"SystemFont",
 		"Test",
-		"Console"
+		"Console",
+		"Command"
 	};
 
 	MetricSystem* MetricSystem::s_instance;

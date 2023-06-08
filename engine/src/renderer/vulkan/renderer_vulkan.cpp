@@ -1,8 +1,8 @@
 
 #include "renderer_vulkan.h"
 
-#include <VkBootstrap.h>
 #include <SDL2/SDL_vulkan.h>
+#include <VkBootstrap/VkBootstrap.h>
 
 #include "vulkan_device.h"
 #include "vulkan_swapchain.h"

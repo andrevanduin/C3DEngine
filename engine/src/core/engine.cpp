@@ -20,6 +20,7 @@
 #include "systems/shaders/shader_system.h"
 #include "systems/textures/texture_system.h"
 #include "systems/cameras/camera_system.h"
+#include "systems/cvars/cvar_system.h"
 #include "systems/input/input_system.h"
 #include "systems/render_views/render_view_system.h"
 #include "systems/jobs/job_system.h"
@@ -70,11 +71,13 @@ namespace C3D
 
 		m_systemsManager.Init(this);
 
-		constexpr ResourceSystemConfig	resourceSystemConfig { 32, "../../../../assets" };
-		constexpr ShaderSystemConfig	shaderSystemConfig   { 128, 128, 31, 31			};
+		constexpr ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../assets"	};
+		constexpr ShaderSystemConfig	shaderSystemConfig		{ 128, 128, 31, 31			};
+		constexpr CVarSystemConfig		cVarSystemConfig		{ 31						};
 
 		// Init before boot systems
 		m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);								// Event System
+		m_systemsManager.RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);				// CVar System
 		m_systemsManager.RegisterSystem<InputSystem>(InputSystemType);								// Input System
 		m_systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);	// Resource System
 		m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);		// Shader System
@@ -144,6 +147,8 @@ namespace C3D
 
 		OnResize(m_state.width, m_state.height);
 		Renderer.OnResize(m_state.width, m_state.height);
+
+		Console.OnInit(this);
 	}
 
 	void Engine::Run()
@@ -258,8 +263,10 @@ namespace C3D
 		Event.UnRegister(SystemEventCode::Minimized,	this, &Engine::OnMinimizeEvent);
 		Event.UnRegister(SystemEventCode::FocusGained,	this, &Engine::OnFocusGainedEvent);
 
-		m_systemsManager.Shutdown();
+		Console.OnShutDown();
 
+		m_systemsManager.Shutdown();
+		
 		SDL_DestroyWindow(m_window);
 
 		m_state.initialized = false;

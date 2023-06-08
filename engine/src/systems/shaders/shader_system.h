@@ -27,23 +27,23 @@ namespace C3D
 		u32 GetId(const char* name);
 
 		Shader* Get(const char* name);
-		[[nodiscard]] Shader* GetById(u32 shaderId) const;
+		Shader* GetById(u32 shaderId);
 
 		bool Use(const char* name);
 		bool UseById(u32 shaderId);
 
 		u16 GetUniformIndex(Shader* shader, const char* name) const;
 
-		bool SetUniform(const char* name, const void* value) const;
-		bool SetUniformByIndex(u16 index, const void* value) const;;
+		bool SetUniform(const char* name, const void* value);
+		bool SetUniformByIndex(u16 index, const void* value);
 
-		bool SetSampler(const char* name, const Texture* t) const;
-		bool SetSamplerByIndex(u16 index, const Texture* t) const;
+		bool SetSampler(const char* name, const Texture* t);
+		bool SetSamplerByIndex(u16 index, const Texture* t);
 
-		bool ApplyGlobal() const;
-		bool ApplyInstance(bool needsUpdate) const;
+		bool ApplyGlobal();
+		bool ApplyInstance(bool needsUpdate);
 
-		bool BindInstance(u32 instanceId) const;
+		bool BindInstance(u32 instanceId);
 
 	private:
 		bool AddAttribute(Shader* shader, const ShaderAttributeConfig* config) const;
