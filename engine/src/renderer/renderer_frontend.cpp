@@ -12,6 +12,7 @@
 #include "systems/system_manager.h"
 #include "systems/render_views/render_view_system.h"
 #include "systems/cvars/cvar_system.h"
+#include <core/function/function.h>
 
 namespace C3D
 {
@@ -44,7 +45,15 @@ namespace C3D
 		}
 
 		auto& vSync = CVars.Get<bool>("vsync");
-		vSync.AddOnChangedCallback(Memory.New<CVarCInstanceCallable<RenderSystem, bool>>(MemoryType::CVar, this, &RenderSystem::OnVSyncChanged));
+		vSync.AddOnChangedCallback([this](const bool& b) { SetFlagEnabled(FlagVSyncEnabled, b); });
+
+		auto lambda = [](const int a) { printf("format: %d", a); };
+
+		const StackFunction<void(int), 16> jan = lambda;
+		constexpr auto klaas = sizeof(jan);
+
+		sizeof (lambda)
+
 
 		m_logger.Info("Initialized Vulkan Renderer Backend");
 		return true;
@@ -340,12 +349,6 @@ namespace C3D
 	bool RenderSystem::IsFlagEnabled(const RendererConfigFlagBits flag) const
 	{
 		return m_backend->IsFlagEnabled(flag);
-	}
-
-	bool RenderSystem::OnVSyncChanged(const bool& value) const
-	{
-		SetFlagEnabled(FlagVSyncEnabled, value);
-		return true;
 	}
 
 	bool RenderSystem::CreateBackend(const RendererBackendType type)

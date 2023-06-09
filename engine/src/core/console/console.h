@@ -5,7 +5,7 @@
 #include "resources/ui_text.h"
 #include "containers/circular_buffer.h"
 #include "containers/hash_map.h"
-#include "core/callable/callable.h"
+#include "core/function/function.h"
 
 namespace C3D
 {

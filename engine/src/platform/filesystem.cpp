@@ -5,7 +5,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <string>
 
 #include "containers/string.h"
 
@@ -58,13 +57,6 @@ namespace C3D
 			return true;
 		}
 		return false;
-	}
-
-	bool File::ReadLine(string& line)
-	{
-		if (!isValid) return false;
-		if (!std::getline(m_file, line)) return false;
-		return true;
 	}
 
 	bool File::ReadLine(String& line, const char delimiter)
