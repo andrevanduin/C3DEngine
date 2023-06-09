@@ -29,31 +29,21 @@ namespace C3D
 		m_entry.SetPosition( { 5, 30, 0 });
 		m_cursor.SetPosition({ 5, 30, 0 });
 
-		Event.Register(KeyDown, this, &UIConsole::OnKeyDownEvent);
-		Event.Register(MouseScrolled, this, &UIConsole::OnMouseScrollEvent);
+		Event.Register(KeyDown, [this](const u16 code, void* sender, const EventContext& context) { return OnKeyDownEvent(code, sender, context); });
+		Event.Register(MouseScrolled, [this](const u16 code, void* sender, const EventContext& context) { return OnMouseScrollEvent(code, sender, context); });
 
 		m_commands.Create(377);
 		m_initialized = true;
 
-		Console.RegisterCommand("exit", MakeCommandCallable<UIConsole>(this, &UIConsole::ShutdownCommand));
-		CVars.RegisterDefaultCommands();
+		RegisterDefaultCommands();
 	}
 
 	void UIConsole::OnShutDown()
 	{
 		if (m_initialized)
 		{
-			// Make sure all commands that haven't been manually unregistered are unregistered to avoid leaking memory
-			for (const auto command : m_commands)
-			{
-				Memory.Delete(MemoryType::Callable, command);
-			}
-			// Then we simply destroy our commands hashmap to free it's internal memory
+			// Clear our commands
 			m_commands.Destroy();
-
-			Event.UnRegister(KeyDown, this, &UIConsole::OnKeyDownEvent);
-			Event.UnRegister(MouseScrolled, this, &UIConsole::OnMouseScrollEvent);
-
 			m_text.Destroy();
 			m_entry.Destroy();
 			m_cursor.Destroy();
@@ -116,21 +106,18 @@ namespace C3D
 		}
 	}
 
-	void UIConsole::RegisterCommand(const CString<128>& name, CommandCallable* func)
+	void UIConsole::RegisterCommand(const CommandName& name, const CommandCallback& func)
 	{
 		m_commands.Set(name, func);
 		m_logger.Info("Registered command: \'{}\'", name);
 	}
 
-	void UIConsole::UnRegisterCommand(const CString<128>& name)
+	void UIConsole::UnRegisterCommand(const CommandName& name)
 	{
 		if (m_initialized)
 		{
 			if (m_commands.Has(name))
 			{
-				const auto command = m_commands.Get(name);
-				Memory.Delete(MemoryType::Command, command);
-
 				m_commands.Delete(name);
 				m_logger.Info("UnRegistered command: \'{}\'", name);
 			}
@@ -254,6 +241,25 @@ namespace C3D
 		{
 			typedChar = static_cast<char>(keyCode);
 		}
+		else if (keyCode == KeyMinus || keyCode == KeyEquals)
+		{
+			typedChar = static_cast<char>(keyCode);
+			if (shiftHeld)
+			{
+				switch (keyCode)
+				{
+					case KeyMinus:
+						typedChar = '_';
+						break;
+					case KeyEquals:
+						typedChar = '+';
+						break;
+					default:
+						m_logger.Fatal("Unknown char found while trying to parse key for console {}", keyCode);
+						break;
+				}
+			}
+		}
 		else if (keyCode >= Key0 && keyCode <= Key9)
 		{
 			// Numbers
@@ -369,10 +375,8 @@ namespace C3D
 		}
 
 		// A valid command let's try to run the associated logic
-		const auto command = m_commands[commandName];
-		String output = "";
-
-		if (!command->Invoke(args, output))
+		const CommandCallback& command = m_commands[commandName];
+		if (String output = ""; !command.operator()(args, output))
 		{
 			PrintCommandMessage(LogType::Error, "The command \'{}\' failed to execute:", commandName);
 			m_logger.Error(output.Data());
@@ -398,15 +402,14 @@ namespace C3D
 		return m_isOpen;
 	}
 
-	bool UIConsole::StaticShutdownCommand(int& jan, const float& bert)
+	void UIConsole::RegisterDefaultCommands() const
 	{
-		return true;
-	}
-
-	bool UIConsole::ShutdownCommand(const DynamicArray<CString<128>>& args, String& output) const
-	{
-		m_engine->Quit();
-		output += "Shutting down";
-		return true;
+		Console.RegisterCommand("exit", [this](const DynamicArray<ArgName>&, String& output)
+		{
+			m_engine->Quit();
+			output += "Shutting down";
+			return true;
+		});
+		CVars.RegisterDefaultCommands();
 	}
 }

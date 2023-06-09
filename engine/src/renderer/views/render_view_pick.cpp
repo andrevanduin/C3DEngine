@@ -18,7 +18,8 @@
 namespace C3D
 {
 	RenderViewPick::RenderViewPick(const RenderViewConfig& config)
-		: RenderView(ToUnderlying(RenderViewKnownType::Pick), config), m_uiShaderInfo(), m_worldShaderInfo(), m_instanceCount(0), m_mouseX(0),m_mouseY(0)
+		: RenderView(ToUnderlying(RenderViewKnownType::Pick), config), m_uiShaderInfo(), m_worldShaderInfo(), m_instanceCount(0),
+	      m_onMouseMovedCallbackId(INVALID_CALLBACK), m_mouseX(0), m_mouseY(0)
 	{}
 
 	bool RenderViewPick::OnCreate()
@@ -92,19 +93,14 @@ namespace C3D
 		Platform::Zero(&m_colorTargetAttachmentTexture);
 		Platform::Zero(&m_depthTargetAttachmentTexture);
 
-		if (!Event.Register(SystemEventCode::MouseMoved, this, &RenderViewPick::OnMouseMovedEvent))
-		{
-			m_logger.Error("Unable to listen for mouse moved event.");
-			return false;
-		}
-
+		m_onMouseMovedCallbackId = Event.Register(SystemEventCode::MouseMoved, [this](const u16 code, void* sender, const EventContext& context) { return OnMouseMovedEvent(code, sender, context); });
 		return true;
 	}
 
 	void RenderViewPick::OnDestroy()
 	{
 		RenderView::OnDestroy();
-		Event.UnRegister(SystemEventCode::MouseMoved, this, &RenderViewPick::OnMouseMovedEvent);
+		Event.Unregister(SystemEventCode::MouseMoved, m_onMouseMovedCallbackId);
 
 		ReleaseShaderInstances();
 

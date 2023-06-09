@@ -5,6 +5,7 @@
 
 #include "containers/hash_map.h"
 #include "containers/string.h"
+#include "core/console/console.h"
 #include "core/cvars/cvar.h"
 
 namespace C3D
@@ -72,7 +73,7 @@ namespace C3D
 		}
 
 
-		bool OnCVarCommand(const DynamicArray<CString<128>>& args, String& output);
+		bool OnCVarCommand(const DynamicArray<ArgName>& args, String& output);
 
 		HashMap<CVarName, ICVar*> m_cVars;
 		DynamicArray<ICVarChangedCallback*> m_cVarChangedCallbacks;

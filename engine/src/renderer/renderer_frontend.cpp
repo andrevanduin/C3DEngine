@@ -47,14 +47,6 @@ namespace C3D
 		auto& vSync = CVars.Get<bool>("vsync");
 		vSync.AddOnChangedCallback([this](const bool& b) { SetFlagEnabled(FlagVSyncEnabled, b); });
 
-		auto lambda = [](const int a) { printf("format: %d", a); };
-
-		const StackFunction<void(int), 16> jan = lambda;
-		constexpr auto klaas = sizeof(jan);
-
-		sizeof (lambda)
-
-
 		m_logger.Info("Initialized Vulkan Renderer Backend");
 		return true;
 	}
@@ -83,7 +75,7 @@ namespace C3D
 		{
 			m_framesSinceResize++;
 
-			if (m_framesSinceResize >= 30)
+			if (m_framesSinceResize >= 5)
 			{
 				// Notify our views of the resize
 				Views.OnWindowResize(m_frameBufferWidth, m_frameBufferHeight);

@@ -18,45 +18,53 @@ namespace C3D
 		}
 	}
 
-	bool EventSystem::Register(u16 code, const StaticEventFunc function)
+	EventCallbackId EventSystem::Register(const u16 code, const EventCallbackFunc& callback)
 	{
-		const auto onEvent = Memory.New<StaticEventCallback>(MemoryType::EventSystem, function);
+		static EventCallbackId UNIQUE_ID = 0;
 
 		auto& events = m_registered[code].events;
-		for (const auto& event : events)
-		{
-			if (event->Equals(onEvent))
-			{
-				m_logger.Warn("This listener has already been Registered for {}", code);
-				Memory.Delete(MemoryType::EventSystem, onEvent);
-				return false;
-			}
-		}
-
-		events.PushBack(onEvent);
-		return true;
+		events.EmplaceBack(UNIQUE_ID, callback);
+		return UNIQUE_ID++;
 	}
 
-	bool EventSystem::UnRegister(const u16 code, const StaticEventFunc function)
+	bool EventSystem::Unregister(const u16 code, EventCallbackId& callbackId)
+	{
+		if (code > MAX_MESSAGE_CODES)
+		{
+			m_logger.Warn("Unregister() - Tried to Unregister Event for invalid code: '{}'", code);
+			return false;
+		}
+
+		auto& events = m_registered[code].events;
+		if (events.Empty())
+		{
+			m_logger.Warn("Unregister() - Tried to Unregister Event for code: '{}' that has no events", code);
+			return false;
+		}
+
+		const auto it = std::ranges::find_if(events, [&](const EventCallback& e) { return e.id == callbackId; });
+		if (it != events.end())
+		{
+			events.Erase(it);
+			callbackId = INVALID_ID_U16;
+			return true;
+		}
+
+		m_logger.Warn("Unregister() - Tried to Unregister Event that did not exist");
+		return false;
+	}
+
+	bool EventSystem::UnregisterAll(u16 code)
 	{
 		auto& events = m_registered[code].events;
 		if (events.Empty())
 		{
-			m_logger.Warn("Tried to UnRegister Event for a code that has no events");
+			m_logger.Warn("UnRegisterAll() - Tried to UnRegister all Events for code: '{}' that has no events", code);
 			return false;
 		}
 
-		const auto searchCallback = StaticEventCallback(function);
-		const auto it = std::ranges::find_if(events, [&](IEventCallback* e) { return e->Equals(&searchCallback); });
-		if (it != events.end())
-		{
-			events.Erase(it);
-			Memory.Delete(MemoryType::EventSystem, *it);
-			return true;
-		}
-
-		m_logger.Warn("Tried to UnRegister Event that did not exist");
-		return false;
+		events.Clear();
+		return true;
 	}
 
 	bool EventSystem::Fire(const u16 code, void* sender, const EventContext data) const
@@ -67,6 +75,6 @@ namespace C3D
 			return false;
 		}
 
-		return std::ranges::any_of(events, [&](IEventCallback* e){ return e->Invoke(code, sender, data); });
+		return std::ranges::any_of(events, [&](const EventCallback& e){ return e.func(code, sender, data); });
 	}
 }

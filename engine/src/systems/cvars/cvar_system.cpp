@@ -1,8 +1,6 @@
 
 #include "cvar_system.h"
-
 #include "core/engine.h"
-#include "core/console/console.h"
 
 namespace C3D
 {
@@ -84,7 +82,7 @@ namespace C3D
 
 	void CVarSystem::RegisterDefaultCommands()
 	{
-		Console.RegisterCommand("cvar", Memory.New<CommandInstanceCallable<CVarSystem>>(MemoryType::Command, this, &CVarSystem::OnCVarCommand));
+		Console.RegisterCommand("cvar", [this](const DynamicArray<ArgName>& args, String& output) { return OnCVarCommand(args, output); });
 	}
 
 	bool CVarSystem::CreateDefaultCVars()
@@ -94,7 +92,7 @@ namespace C3D
 		return true;
 	}
 
-	bool CVarSystem::OnCVarCommand(const DynamicArray<CString<128>>& args, String& output)
+	bool CVarSystem::OnCVarCommand(const DynamicArray<ArgName>& args, String& output)
 	{
 		if (args.Size() <= 1)
 		{
