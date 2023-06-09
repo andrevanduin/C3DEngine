@@ -9,18 +9,21 @@
 namespace C3D
 {
 	RenderView::RenderView(const u16 _id, const RenderViewConfig& config)
-		: id(_id), name(config.name), type(), m_width(config.width), m_height(config.height), m_customShaderName(nullptr),
-	      m_logger(config.name.Data()), m_engine(config.engine)
+		: id(_id), name(config.name), type(), m_width(config.width), m_height(config.height), m_defaultRenderTargetRefreshRequiredCallbackId(INVALID_ID_U16),
+	      m_customShaderName(nullptr), m_logger(config.name.Data()), m_engine(config.engine)
 	{
-		if (!Event.Register(SystemEventCode::DefaultRenderTargetRefreshRequired, this, &RenderView::OnRenderTargetRefreshRequired))
-		{
-			m_logger.Fatal("Constructor() - Unable to register for OnRenderTargetRefreshRequired event.");
-		}
+		m_defaultRenderTargetRefreshRequiredCallbackId = Event.Register(
+			SystemEventCode::DefaultRenderTargetRefreshRequired, 
+			[this](const u16 code, void* sender, const EventContext& context)
+			{
+				return OnRenderTargetRefreshRequired(code, sender, context);
+			}
+		);
 	}
 
 	void RenderView::OnDestroy()
 	{
-		Event.UnRegister(SystemEventCode::DefaultRenderTargetRefreshRequired, this, &RenderView::OnRenderTargetRefreshRequired);
+		Event.Unregister(SystemEventCode::DefaultRenderTargetRefreshRequired, m_defaultRenderTargetRefreshRequiredCallbackId);
 		for (const auto pass : passes)
 		{
 			Renderer.DestroyRenderPass(pass);
@@ -55,7 +58,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RenderView::OnRenderTargetRefreshRequired(u16 code, void* sender, const EventContext& context)
+	bool RenderView::OnRenderTargetRefreshRequired(const u16 code, void* sender, const EventContext& context)
 	{
 		if (code == SystemEventCode::DefaultRenderTargetRefreshRequired)
 		{

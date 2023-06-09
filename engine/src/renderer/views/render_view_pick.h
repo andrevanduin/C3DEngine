@@ -58,6 +58,8 @@ namespace C3D
 		u32 m_instanceCount;
 		DynamicArray<bool> m_instanceUpdated;
 
+		EventCallbackId m_onMouseMovedCallbackId;
+
 		i16 m_mouseX, m_mouseY;
 	};
 }

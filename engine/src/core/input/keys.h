@@ -52,12 +52,11 @@ namespace C3D
         KeyPrint = 0x2a,
         KeyExecute = 0x2b,
         KeySnapshot = 0x2c,
-        /** @Brief The Insert Key. */
-        KeyInsert = 0x2d,
+        /** @Brief The minus (-) Key. */
+        KeyMinus = 0x2d,
         /** @Brief The Delete Key. */
         KeyDelete = 0x2e,
         KeyHelp = 0x2f,
-
         /** @Brief The 0 Key */
         Key0 = 0x30,
         /** @Brief The 1 Key */
@@ -78,7 +77,8 @@ namespace C3D
         Key8 = 0x38,
         /** @Brief The 9 Key */
         Key9 = 0x39,
-
+        /** @Brief The = Key */
+        KeyEquals = 0x3d,
         /** @Brief The A Key. */
         KeyA = 'a',
         /** @Brief The B Key. */
@@ -248,12 +248,8 @@ namespace C3D
 
         /** @Brief The Semicolon Key. */
         KeySemicolon = 0xba,
-        /** @Brief The Plus Key. */
-        KeyPlus = 0xbb,
         /** @Brief The Comma Key. */
         KeyComma = 0xbc,
-        /** @Brief The Minus Key. */
-        KeyMinus = 0xbd,
         /** @Brief The Period Key. */
         KeyPeriod = 0xbe,
         /** @Brief The Slash Key. */

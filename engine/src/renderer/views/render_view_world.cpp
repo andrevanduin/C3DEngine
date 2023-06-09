@@ -19,7 +19,7 @@ namespace C3D
 {
 	RenderViewWorld::RenderViewWorld(const RenderViewConfig& config)
 		: RenderView(ToUnderlying(RenderViewKnownType::World), config), m_shader(nullptr), m_fov(DegToRad(45.0f)), m_nearClip(0.1f), m_farClip(1000.0f),
-			m_projectionMatrix(), m_camera(nullptr), m_ambientColor(), m_renderMode(0)
+			m_onEventCallbackId(INVALID_CALLBACK), m_projectionMatrix(), m_camera(nullptr), m_ambientColor(), m_renderMode(0)
 	{}
 
 	bool RenderViewWorld::OnCreate()
@@ -52,19 +52,14 @@ namespace C3D
 		m_ambientColor = vec4(0.25f, 0.25f, 0.25f, 1.0f);
 
 		// Register our render mode change event listener
-		if (!Event.Register(SystemEventCode::SetRenderMode, this, &RenderViewWorld::OnEvent))
-		{
-			m_logger.Error("OnCreate() - Failed to register render mode set event.");
-			return false;
-		}
-
+		m_onEventCallbackId = Event.Register(SystemEventCode::SetRenderMode, [this](const u16 code, void* sender, const EventContext& context) { return OnEvent(code, sender, context); });
 		return true;
 	}
 
 	void RenderViewWorld::OnDestroy()
 	{
 		RenderView::OnDestroy();
-		Event.UnRegister(SystemEventCode::SetRenderMode, this, &RenderViewWorld::OnEvent);
+		Event.Unregister(SystemEventCode::SetRenderMode, m_onEventCallbackId);
 	}
 
 	void RenderViewWorld::OnResize()

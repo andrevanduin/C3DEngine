@@ -5,7 +5,7 @@
 #include "resources/ui_text.h"
 #include "containers/circular_buffer.h"
 #include "containers/hash_map.h"
-#include "core/callable/callable.h"
+#include "core/function/function.h"
 
 namespace C3D
 {
@@ -15,7 +15,9 @@ namespace C3D
 
 #define Console m_engine->GetBaseConsole()
 
-	REGISTER_CALLABLE(Command, const DynamicArray<CString<128>>&, String&)
+	using CommandName = CString<128>;
+	using ArgName = CString<128>;
+	using CommandCallback = StackFunction<bool(const DynamicArray<ArgName>&, String&), 16>;
 
 	class C3D_API UIConsole
 	{
@@ -34,19 +36,17 @@ namespace C3D
 		void OnUpdate();
 		void OnRender(UIPacketData& packet);
 
-		void RegisterCommand(const CString<128>& name, CommandCallable* func);
+		void RegisterCommand(const CommandName& name, const CommandCallback& func);
 
-		void UnRegisterCommand(const CString<128>& name);
+		void UnRegisterCommand(const CommandName& name);
 
 		void WriteLine(const char* line);
 
 		[[nodiscard]] bool IsInitialized() const;
 		[[nodiscard]] bool IsOpen() const;
-
-		static bool StaticShutdownCommand(int& jan, const float& bert);
-		bool ShutdownCommand(const DynamicArray<CString<128>>& args, String& output) const;
-
 	private:
+		void RegisterDefaultCommands() const;
+
 		void WriteLineInternal(const CString<256>& line);
 
 		bool OnKeyDownEvent(u16 code, void* sender, const EventContext& context);
@@ -82,7 +82,7 @@ namespace C3D
 
 		LoggerInstance<16> m_logger;
 
-		HashMap<CString<128>, CommandCallable*> m_commands;
+		HashMap<CommandName, CommandCallback> m_commands;
 
 		Engine* m_engine;
 	};

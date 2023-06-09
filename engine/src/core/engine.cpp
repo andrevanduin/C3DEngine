@@ -123,9 +123,9 @@ namespace C3D
 		m_systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);		// Camera System
 		m_systemsManager.RegisterSystem<RenderViewSystem>(RenderViewSystemType, viewSystemConfig);  // Render View System
 
-		Event.Register(SystemEventCode::Resized,		this, &Engine::OnResizeEvent);
-		Event.Register(SystemEventCode::Minimized,		this, &Engine::OnMinimizeEvent);
-		Event.Register(SystemEventCode::FocusGained,	this, &Engine::OnFocusGainedEvent);
+		Event.Register(SystemEventCode::Resized,	 [this](const u16 code, void* sender, const EventContext& context) { return OnResizeEvent(code, sender, context);		});
+		Event.Register(SystemEventCode::Minimized,	 [this](const u16 code, void* sender, const EventContext& context) { return OnMinimizeEvent(code, sender, context);		});
+		Event.Register(SystemEventCode::FocusGained, [this](const u16 code, void* sender, const EventContext& context) { return OnFocusGainedEvent(code, sender, context);	});
 
 		// Load render views
 		for (auto& view : m_config.renderViews)
@@ -258,10 +258,6 @@ namespace C3D
 
 		m_logger.Info("Shutdown()");
 		m_logger.Info("UnRegistering events");
-
-		Event.UnRegister(SystemEventCode::Resized,		this, &Engine::OnResizeEvent);
-		Event.UnRegister(SystemEventCode::Minimized,	this, &Engine::OnMinimizeEvent);
-		Event.UnRegister(SystemEventCode::FocusGained,	this, &Engine::OnFocusGainedEvent);
 
 		Console.OnShutDown();
 

@@ -33,7 +33,6 @@ namespace C3D
 
 		bool Close();
 
-		bool ReadLine(string& line);
 		bool ReadLine(String& line, char delimiter = '\n');
 
 		bool WriteLine(const String& line);

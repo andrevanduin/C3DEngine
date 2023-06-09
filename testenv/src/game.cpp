@@ -16,12 +16,9 @@
 #include <systems/events/event_system.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/render_views/render_view_system.h>
-#include <systems/shaders/shader_system.h>
 #include <systems/textures/texture_system.h>
 
 #include <renderer/renderer_types.h>
-
-#include <math/frustum.h>
 
 TestEnv::TestEnv(const C3D::ApplicationConfig& config)
 	: Engine(config), m_camera(nullptr), m_testCamera(nullptr), m_carMesh(nullptr),
@@ -176,12 +173,19 @@ bool TestEnv::OnCreate()
 	m_camera->SetPosition({ 10.5f, 5.0f, 9.5f });
 
 	// TEMP
-	Event.Register(C3D::SystemEventCode::Debug0, this, &TestEnv::OnDebugEvent);
-	Event.Register(C3D::SystemEventCode::Debug1, this, &TestEnv::OnDebugEvent);
-	Event.Register(C3D::SystemEventCode::ObjectHoverIdChanged, this, &TestEnv::OnEvent);
+	Event.Register(C3D::SystemEventCode::Debug0, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnDebugEvent(code, sender, context); });
+	Event.Register(C3D::SystemEventCode::Debug1, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnDebugEvent(code, sender, context); });
+	Event.Register(C3D::SystemEventCode::ObjectHoverIdChanged, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnEvent(code, sender, context); });
 	// TEMP END
 
 	m_frameData.worldGeometries.SetAllocator(&m_frameAllocator);
+
+	Console.RegisterCommand("load_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&)
+	{
+		C3D::EventContext context = {};
+		Event.Fire(C3D::SystemEventCode::Debug1, this, context);
+		return true;
+	});
 
 	return true;
 }
@@ -209,12 +213,6 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 		{
 			const auto pos = m_camera->GetPosition();
 			C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
-		}
-
-		if (Input.IsKeyPressed('v'))
-		{
-			const auto current = Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled);
-			Renderer.SetFlagEnabled(C3D::FlagVSyncEnabled, !current);
 		}
 
 		// Renderer Debug functions
@@ -272,12 +270,6 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 			C3D::Logger::Debug("Swapping Texture");
 			C3D::EventContext context = {};
 			Event.Fire(C3D::SystemEventCode::Debug0, this, context);
-		}
-
-		if (Input.IsKeyPressed('l'))
-		{
-			C3D::EventContext context = {};
-			Event.Fire(C3D::SystemEventCode::Debug1, this, context);
 		}
 		// TEMP END
 
@@ -538,10 +530,6 @@ void TestEnv::OnShutdown()
 			mesh.Unload();
 		}
 	}
-
-	Event.UnRegister(C3D::SystemEventCode::Debug0, this, &TestEnv::OnDebugEvent);
-	Event.UnRegister(C3D::SystemEventCode::Debug1, this, &TestEnv::OnDebugEvent);
-	Event.UnRegister(C3D::SystemEventCode::ObjectHoverIdChanged, this, &TestEnv::OnEvent);
 
 	m_frameAllocator.Destroy();
 	// TEMP END

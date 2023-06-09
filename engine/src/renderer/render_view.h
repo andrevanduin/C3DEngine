@@ -10,6 +10,7 @@
 
 #include "resources/geometry.h"
 #include "resources/skybox.h"
+#include "systems/events/event_system.h"
 
 namespace C3D
 {
@@ -107,6 +108,8 @@ namespace C3D
 
 		u16 m_width;
 		u16 m_height;
+
+		EventCallbackId m_defaultRenderTargetRefreshRequiredCallbackId;
 
 		char* m_customShaderName;
 

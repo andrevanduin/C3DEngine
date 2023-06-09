@@ -4,20 +4,13 @@
 
 #include "containers/array.h"
 #include "containers/cstring.h"
-#include "core/callable/callable.h"
+#include "core/function/function.h"
 
 namespace C3D
 {
 	using CVarName = CString<128>;
-
 	template <typename T>
-	using CVarCallable = ICallable<const T&>;
-	template <typename T>
-	using CVarStaticCallable = StaticCallable<bool(*)(const T&), const T&>;
-	template <typename Instance, typename T>
-	using CVarInstanceCallable = InstanceCallable<Instance, bool(Instance::*)(const T&), const T&>;
-	template <typename Instance, typename T>
-	using CVarCInstanceCallable = InstanceCallable<Instance, bool(Instance::*)(const T&) const, const T&>;
+	using CVarOnChangedCallback = StackFunction<void(const T&), 16>;
 
 	class ICVar
 	{
@@ -37,14 +30,11 @@ namespace C3D
 		[[nodiscard]] virtual CString<256> ToString() const = 0;
 	};
 
-	template <typename T>
-	using CVarOnChangedCallback = std::function<void(const T& value)>;
-
 	template<typename T>
 	class CVar final : public ICVar
 	{
 	public:
-		CVar(const CVarName& name, const T& value) : ICVar(name), m_value(value), m_onChangeCallbacks(nullptr) {}
+		CVar(const CVarName& name, const T& value) : ICVar(name), m_value(value) {}
 
 		[[nodiscard]] CString<256> ToString() const override
 		{
@@ -61,7 +51,7 @@ namespace C3D
 			}
 		}
 
-		void AddOnChangedCallback(CVarCallable<T>* callback)
+		void AddOnChangedCallback(const CVarOnChangedCallback<T>& callback)
 		{
 			for (auto& c : m_onChangeCallbacks)
 			{
@@ -71,7 +61,7 @@ namespace C3D
 
 	private:
 		T m_value;
-		Array<CVarCallable<T>*, 4> m_onChangeCallbacks;
+		Array<CVarOnChangedCallback<T>, 4> m_onChangeCallbacks;
 	};
 
 	template <>

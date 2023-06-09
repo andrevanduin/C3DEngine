@@ -99,8 +99,6 @@ namespace C3D
 		[[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const;
 
 	private:
-		bool OnVSyncChanged(const bool& value) const;
-
 		bool CreateBackend(RendererBackendType type);
 		void DestroyBackend();
 
