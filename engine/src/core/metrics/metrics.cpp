@@ -26,7 +26,6 @@ namespace C3D
 		"ResourceLoader",
 		"Event",
 		"Job",
-		"Callable",
 		"Texture",
 		"MaterialInstance",
 		"Geometry",
