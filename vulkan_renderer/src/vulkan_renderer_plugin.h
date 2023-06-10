@@ -1,30 +1,30 @@
 
 #pragma once
+#include <renderer/renderer_plugin.h>
+
 #include "vulkan_types.h"
 #include "vulkan_buffer.h"
 #include "vulkan_shader.h"
 
-#include "renderer/renderer_backend.h"
-
 namespace C3D
 {
-	class RendererVulkan final : public RendererBackend<64>
+	class C3D_API VulkanRendererPlugin final : public RendererPlugin
 	{
 	public:
-		RendererVulkan();
+		VulkanRendererPlugin();
 
-		RendererVulkan(const RendererVulkan& other) = delete;
-		RendererVulkan(RendererVulkan&& other) = delete;
+		VulkanRendererPlugin(const VulkanRendererPlugin& other) = delete;
+		VulkanRendererPlugin(VulkanRendererPlugin&& other) = delete;
 
-		RendererVulkan& operator=(const RendererVulkan& other) = delete;
-		RendererVulkan& operator=(RendererVulkan&& other) = delete;
+		VulkanRendererPlugin& operator=(const VulkanRendererPlugin& other) = delete;
+		VulkanRendererPlugin& operator=(VulkanRendererPlugin&& other) = delete;
 
-		~RendererVulkan() override = default;
+		~VulkanRendererPlugin() override = default;
 
-		bool Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount) override;
+		bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) override;
 		void Shutdown() override;
 
-		void OnResize(u16 width, u16 height) override;
+		void OnResize(u32 width, u32 height) override;
 
 		bool BeginFrame(f32 deltaTime) override;
 		bool EndFrame(f32 deltaTime) override;

@@ -6,7 +6,6 @@
 #include "core/logger.h"
 #include "core/engine.h"
 
-#include "renderer/vulkan/renderer_vulkan.h"
 #include "resources/shader.h"
 
 #include "systems/system_manager.h"
@@ -17,37 +16,35 @@
 namespace C3D
 {
 	RenderSystem::RenderSystem(const Engine* engine)
-		: BaseSystem(engine, "RENDERER"), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
-		  m_resizing(false), m_framesSinceResize(0), m_backend(nullptr)
+		: SystemWithConfig(engine, "RENDERER"), m_windowRenderTargetCount(0), m_frameBufferWidth(1280), m_frameBufferHeight(720),
+		  m_resizing(false), m_framesSinceResize(0), m_backendPlugin(nullptr)
 	{}
 
-	bool RenderSystem::Init()
+	bool RenderSystem::Init(const RenderSystemConfig& config)
 	{
-		// TODO: Make this configurable once we have multiple rendering backend options
-		if (!CreateBackend(RendererBackendType::Vulkan))
+		m_config = config;
+		m_backendPlugin = config.rendererPlugin;
+		if (!m_backendPlugin)
 		{
-			m_logger.Error("Init() - Failed to create Vulkan Renderer Backend");
+			m_logger.Fatal("Init() - No valid renderer plugin provided");
 			return false;
 		}
 
-		m_logger.Info("Created Vulkan Renderer Backend");
+		RendererPluginConfig rendererPluginConfig{};
+		rendererPluginConfig.applicationName = m_config.applicationName;
+		rendererPluginConfig.engine = m_engine;
+		rendererPluginConfig.flags = m_config.flags;
 
-		// TODO: Expose this to the application to configure.
-		RendererBackendConfig backendConfig{};
-		backendConfig.applicationName = "TestEnv";
-		backendConfig.engine = m_engine;
-		backendConfig.flags = FlagVSyncEnabled | FlagPowerSavingEnabled;
-
-		if (!m_backend->Init(backendConfig, &m_windowRenderTargetCount))
+		if (!m_backendPlugin->Init(rendererPluginConfig, &m_windowRenderTargetCount))
 		{
-			m_logger.Error("Init() - Failed to Initialize Renderer Backend.");
+			m_logger.Fatal("Init() - Failed to Initialize Renderer Backend.");
 			return false;
 		}
 
 		auto& vSync = CVars.Get<bool>("vsync");
 		vSync.AddOnChangedCallback([this](const bool& b) { SetFlagEnabled(FlagVSyncEnabled, b); });
 
-		m_logger.Info("Initialized Vulkan Renderer Backend");
+		m_logger.Info("Init() - Successfully initialized Rendering System");
 		return true;
 	}
 
@@ -55,8 +52,8 @@ namespace C3D
 	{
 		m_logger.Info("Shutting Down");
 
-		m_backend->Shutdown();
-		DestroyBackend();
+		m_backendPlugin->Shutdown();
+		Memory.Delete(MemoryType::RenderSystem, m_backendPlugin);
 	}
 
 	void RenderSystem::OnResize(const u16 width, const u16 height)
@@ -69,7 +66,7 @@ namespace C3D
 
 	bool RenderSystem::DrawFrame(RenderPacket* packet)
 	{
-		m_backend->state.frameNumber++;
+		m_backendPlugin->frameNumber++;
 
 		if (m_resizing)
 		{
@@ -79,7 +76,7 @@ namespace C3D
 			{
 				// Notify our views of the resize
 				Views.OnWindowResize(m_frameBufferWidth, m_frameBufferHeight);
-				m_backend->OnResize(m_frameBufferWidth, m_frameBufferHeight);
+				m_backendPlugin->OnResize(m_frameBufferWidth, m_frameBufferHeight);
 
 				m_framesSinceResize = 0;
 				m_resizing = false;
@@ -93,14 +90,14 @@ namespace C3D
 			}
 		}
 
-		if (m_backend->BeginFrame(packet->deltaTime))
+		if (m_backendPlugin->BeginFrame(packet->deltaTime))
 		{
-			const u8 attachmentIndex = m_backend->GetWindowAttachmentIndex();
+			const u8 attachmentIndex = m_backendPlugin->GetWindowAttachmentIndex();
 
 			// Render each view
 			for (auto& viewPacket : packet->views)
 			{
-				if (!Views.OnRender(viewPacket.view, &viewPacket, m_backend->state.frameNumber, attachmentIndex))
+				if (!Views.OnRender(viewPacket.view, &viewPacket, m_backendPlugin->frameNumber, attachmentIndex))
 				{
 					m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.", viewPacket.view->name);
 					return false;
@@ -108,7 +105,7 @@ namespace C3D
 			}
 
 			// End frame
-			if (!m_backend->EndFrame(packet->deltaTime))
+			if (!m_backendPlugin->EndFrame(packet->deltaTime))
 			{
 				m_logger.Error("DrawFrame() - EndFrame() failed");
 				return false;
@@ -120,163 +117,163 @@ namespace C3D
 
 	void RenderSystem::SetViewport(const vec4& rect) const
 	{
-		m_backend->SetViewport(rect);
+		m_backendPlugin->SetViewport(rect);
 	}
 
 	void RenderSystem::ResetViewport() const
 	{
-		m_backend->ResetViewport();
+		m_backendPlugin->ResetViewport();
 	}
 
 	void RenderSystem::SetScissor(const vec4& rect) const
 	{
-		m_backend->SetScissor(rect);
+		m_backendPlugin->SetScissor(rect);
 	}
 
 	void RenderSystem::ResetScissor() const
 	{
-		m_backend->ResetScissor();
+		m_backendPlugin->ResetScissor();
 	}
 
 	void RenderSystem::SetLineWidth(const float lineWidth) const
 	{
-		m_backend->SetLineWidth(lineWidth);
+		m_backendPlugin->SetLineWidth(lineWidth);
 	}
 
 	void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const
 	{
-		m_backend->CreateTexture(pixels, texture);
+		m_backendPlugin->CreateTexture(pixels, texture);
 	}
 
 	void RenderSystem::CreateWritableTexture(Texture* texture) const
 	{
-		m_backend->CreateWritableTexture(texture);
+		m_backendPlugin->CreateWritableTexture(texture);
 	}
 
 	void RenderSystem::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight) const
 	{
-		m_backend->ResizeTexture(texture, newWidth, newHeight);
+		m_backendPlugin->ResizeTexture(texture, newWidth, newHeight);
 	}
 
 	void RenderSystem::WriteDataToTexture(Texture* texture, const u32 offset, const u32 size, const u8* pixels) const
 	{
-		m_backend->WriteDataToTexture(texture, offset, size, pixels);
+		m_backendPlugin->WriteDataToTexture(texture, offset, size, pixels);
 	}
 
 	void RenderSystem::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory) const
 	{
-		m_backend->ReadDataFromTexture(texture, offset, size, outMemory);
+		m_backendPlugin->ReadDataFromTexture(texture, offset, size, outMemory);
 	}
 
 	void RenderSystem::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba) const
 	{
-		m_backend->ReadPixelFromTexture(texture, x, y, outRgba);
+		m_backendPlugin->ReadPixelFromTexture(texture, x, y, outRgba);
 	}
 
 	bool RenderSystem::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
 	                                  const u32 indexSize, const u64 indexCount, const void* indices) const
 	{
-		return m_backend->CreateGeometry(geometry, vertexSize, vertexCount, vertices, indexSize, indexCount, indices);
+		return m_backendPlugin->CreateGeometry(geometry, vertexSize, vertexCount, vertices, indexSize, indexCount, indices);
 	}
 
 	void RenderSystem::DestroyTexture(Texture* texture) const
 	{
-		return m_backend->DestroyTexture(texture);
+		return m_backendPlugin->DestroyTexture(texture);
 	}
 
 	void RenderSystem::DestroyGeometry(Geometry* geometry) const
 	{
-		return m_backend->DestroyGeometry(geometry);
+		return m_backendPlugin->DestroyGeometry(geometry);
 	}
 
 	void RenderSystem::DrawGeometry(const GeometryRenderData& data) const
 	{
-		return m_backend->DrawGeometry(data);
+		return m_backendPlugin->DrawGeometry(data);
 	}
 
 	bool RenderSystem::BeginRenderPass(RenderPass* pass, RenderTarget* target) const
 	{
-		return m_backend->BeginRenderPass(pass, target);
+		return m_backendPlugin->BeginRenderPass(pass, target);
 	}
 
 	bool RenderSystem::EndRenderPass(RenderPass* pass) const
 	{
-		return m_backend->EndRenderPass(pass);
+		return m_backendPlugin->EndRenderPass(pass);
 	}
 
 	bool RenderSystem::CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const
 	{
-		return m_backend->CreateShader(shader, config, pass);
+		return m_backendPlugin->CreateShader(shader, config, pass);
 	}
 
 	void RenderSystem::DestroyShader(Shader& shader) const
 	{
-		return m_backend->DestroyShader(shader);
+		return m_backendPlugin->DestroyShader(shader);
 	}
 
 	bool RenderSystem::InitializeShader(Shader* shader) const
 	{
-		return m_backend->InitializeShader(shader);
+		return m_backendPlugin->InitializeShader(shader);
 	}
 
 	bool RenderSystem::UseShader(Shader* shader) const
 	{
-		return m_backend->UseShader(shader);
+		return m_backendPlugin->UseShader(shader);
 	}
 
 	bool RenderSystem::ShaderBindGlobals(Shader* shader) const
 	{
-		return m_backend->ShaderBindGlobals(shader);
+		return m_backendPlugin->ShaderBindGlobals(shader);
 	}
 
 	bool RenderSystem::ShaderBindInstance(Shader* shader, u32 instanceId) const
 	{
-		return m_backend->ShaderBindInstance(shader, instanceId);
+		return m_backendPlugin->ShaderBindInstance(shader, instanceId);
 	}
 
 	bool RenderSystem::ShaderApplyGlobals(Shader* shader) const
 	{
-		return m_backend->ShaderApplyGlobals(shader);
+		return m_backendPlugin->ShaderApplyGlobals(shader);
 	}
 
 	bool RenderSystem::ShaderApplyInstance(Shader* shader, const bool needsUpdate) const
 	{
-		return m_backend->ShaderApplyInstance(shader, needsUpdate);
+		return m_backendPlugin->ShaderApplyInstance(shader, needsUpdate);
 	}
 
 	bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) const
 	{
-		return m_backend->AcquireShaderInstanceResources(shader, maps, outInstanceId);
+		return m_backendPlugin->AcquireShaderInstanceResources(shader, maps, outInstanceId);
 	}
 
 	bool RenderSystem::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId) const
 	{
-		return m_backend->ReleaseShaderInstanceResources(shader, instanceId);
+		return m_backendPlugin->ReleaseShaderInstanceResources(shader, instanceId);
 	}
 
 	bool RenderSystem::AcquireTextureMapResources(TextureMap* map) const
 	{
-		return m_backend->AcquireTextureMapResources(map);
+		return m_backendPlugin->AcquireTextureMapResources(map);
 	}
 
 	void RenderSystem::ReleaseTextureMapResources(TextureMap* map) const
 	{
-		m_backend->ReleaseTextureMapResources(map);
+		m_backendPlugin->ReleaseTextureMapResources(map);
 	}
 
 	bool RenderSystem::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const
 	{
-		return m_backend->SetUniform(shader, uniform, value);
+		return m_backendPlugin->SetUniform(shader, uniform, value);
 	}
 
 	void RenderSystem::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget) const
 	{
-		m_backend->CreateRenderTarget(attachmentCount, attachments, pass, width, height, outTarget);
+		m_backendPlugin->CreateRenderTarget(attachmentCount, attachments, pass, width, height, outTarget);
 	}
 
 	void RenderSystem::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory) const
 	{
-		m_backend->DestroyRenderTarget(target, freeInternalMemory);
+		m_backendPlugin->DestroyRenderTarget(target, freeInternalMemory);
 		if (freeInternalMemory)
 		{
 			Platform::Zero(target, sizeof(RenderTarget));
@@ -285,7 +282,7 @@ namespace C3D
 
 	RenderPass* RenderSystem::CreateRenderPass(const RenderPassConfig& config) const
 	{
-		return m_backend->CreateRenderPass(config);
+		return m_backendPlugin->CreateRenderPass(config);
 	}
 
 	bool RenderSystem::DestroyRenderPass(RenderPass* pass) const
@@ -295,72 +292,51 @@ namespace C3D
 		{
 			DestroyRenderTarget(&pass->targets[i], true);
 		}
-		return m_backend->DestroyRenderPass(pass);
+		return m_backendPlugin->DestroyRenderPass(pass);
 	}
 
 	Texture* RenderSystem::GetWindowAttachment(const u8 index) const
 	{
-		return m_backend->GetWindowAttachment(index);
+		return m_backendPlugin->GetWindowAttachment(index);
 	}
 
 	Texture* RenderSystem::GetDepthAttachment(const u8 index) const
 	{
-		return m_backend->GetDepthAttachment(index);
+		return m_backendPlugin->GetDepthAttachment(index);
 	}
 
 	u8 RenderSystem::GetWindowAttachmentIndex() const
 	{
-		return m_backend->GetWindowAttachmentIndex();
+		return m_backendPlugin->GetWindowAttachmentIndex();
 	}
 
 	u8 RenderSystem::GetWindowAttachmentCount() const
 	{
-		return m_backend->GetWindowAttachmentCount();
+		return m_backendPlugin->GetWindowAttachmentCount();
 	}
 
 	RenderBuffer* RenderSystem::CreateRenderBuffer(const RenderBufferType type, const u64 totalSize, const bool useFreelist) const
 	{
-		return m_backend->CreateRenderBuffer(type, totalSize, useFreelist);
+		return m_backendPlugin->CreateRenderBuffer(type, totalSize, useFreelist);
 	}
 
 	bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const
 	{
-		return m_backend->DestroyRenderBuffer(buffer);
+		return m_backendPlugin->DestroyRenderBuffer(buffer);
 	}
 
 	bool RenderSystem::IsMultiThreaded() const
 	{
-		return m_backend->IsMultiThreaded();
+		return m_backendPlugin->IsMultiThreaded();
 	}
 
 	void RenderSystem::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled) const
 	{
-		m_backend->SetFlagEnabled(flag, enabled);
+		m_backendPlugin->SetFlagEnabled(flag, enabled);
 	}
 
 	bool RenderSystem::IsFlagEnabled(const RendererConfigFlagBits flag) const
 	{
-		return m_backend->IsFlagEnabled(flag);
-	}
-
-	bool RenderSystem::CreateBackend(const RendererBackendType type)
-	{
-		if (type == RendererBackendType::Vulkan)
-		{
-			m_backend = Memory.New<RendererVulkan>(MemoryType::RenderSystem);
-			return true;
-		}
-
-		m_logger.Error("Tried Creating an Unsupported Renderer Backend: {}", ToUnderlying(type));
-		return false;
-	}
-
-	void RenderSystem::DestroyBackend()
-	{
-		if (m_backend->type == RendererBackendType::Vulkan)
-		{
-			Memory.Delete(MemoryType::RenderSystem, m_backend);
-			m_backend = nullptr;
-		}
+		return m_backendPlugin->IsFlagEnabled(flag);
 	}
 }

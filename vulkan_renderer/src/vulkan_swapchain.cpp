@@ -1,15 +1,14 @@
 
-#include "vulkan_swapchain.h"
+#include <core/engine.h>
+#include <core/logger.h>
 
+#include <systems/system_manager.h>
+#include <systems/textures/texture_system.h>
+
+#include "vulkan_swapchain.h"
 #include "vulkan_device.h"
 #include "vulkan_image.h"
 #include "vulkan_types.h"
-#include "core/engine.h"
-
-#include "core/logger.h"
-
-#include "systems/system_manager.h"
-#include "systems/textures/texture_system.h"
 
 namespace C3D
 {

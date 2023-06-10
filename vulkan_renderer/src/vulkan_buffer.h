@@ -1,8 +1,9 @@
 
 #pragma once
-#include "core/defines.h"
+#include <core/defines.h>
+#include <renderer/render_buffer.h>
+
 #include "vulkan_types.h"
-#include "renderer/render_buffer.h"
 
 namespace C3D
 {

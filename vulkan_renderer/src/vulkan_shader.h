@@ -1,10 +1,11 @@
 
 #pragma once
+#include <core/defines.h>
+#include <resources/shader.h>
+
 #include "vulkan_buffer.h"
 #include "vulkan_pipeline.h"
-#include "core/defines.h"
 #include "vulkan_types.h"
-#include "resources/shader.h"
 
 namespace C3D
 {

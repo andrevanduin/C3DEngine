@@ -31,7 +31,7 @@ namespace C3D
 		ClearStencilBuffer = 0x4
 	};
 
-	class RenderPass
+	class C3D_API RenderPass
 	{
 	public:
 		RenderPass();

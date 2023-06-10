@@ -1,8 +1,7 @@
 
 #pragma once
 #include <vulkan/vulkan.h>
-
-#include "core/defines.h"
+#include <core/defines.h>
 
 namespace C3D
 {

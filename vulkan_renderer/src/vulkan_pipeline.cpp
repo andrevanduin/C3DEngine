@@ -1,10 +1,9 @@
 
+#include <core/logger.h>
+#include <resources/shader.h>
+
 #include "vulkan_pipeline.h"
 #include "vulkan_utils.h"
-
-#include "core/logger.h"
-
-#include "resources/shader.h"
 
 namespace C3D
 {

@@ -27,8 +27,8 @@
 
 namespace C3D
 {
-	Engine::Engine(ApplicationConfig config)
-		: m_logger("APPLICATION"), m_config(std::move(config)), m_engine(this), m_console(nullptr)
+	Engine::Engine(const ApplicationConfig& config)
+		: m_logger("APPLICATION"), m_config(config), m_engine(this), m_console(nullptr)
 	{}
 
 	Engine::~Engine() = default;
@@ -71,9 +71,10 @@ namespace C3D
 
 		m_systemsManager.Init(this);
 
-		constexpr ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../assets"	};
-		constexpr ShaderSystemConfig	shaderSystemConfig		{ 128, 128, 31, 31			};
-		constexpr CVarSystemConfig		cVarSystemConfig		{ 31						};
+		constexpr	ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../assets"	};
+		constexpr	ShaderSystemConfig		shaderSystemConfig		{ 128, 128, 31, 31			};
+		constexpr	CVarSystemConfig		cVarSystemConfig		{ 31						};
+		const		RenderSystemConfig		renderSystemConfig		{ "TestEnv", m_config.rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled};
 
 		// Init before boot systems
 		m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);								// Event System
@@ -81,7 +82,7 @@ namespace C3D
 		m_systemsManager.RegisterSystem<InputSystem>(InputSystemType);								// Input System
 		m_systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);	// Resource System
 		m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);		// Shader System
-		m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType);							// Render System
+		m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);		// Render System
 
 		const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 

@@ -193,9 +193,9 @@ namespace C3D
 
 		stats.allocCount--;
 
+#ifdef C3D_MEMORY_METRICS_POINTERS
 		auto& tagged = stats.taggedAllocations[type];
 
-#ifdef C3D_MEMORY_METRICS_POINTERS
 		const auto allocIt = std::ranges::find_if(tagged.allocations, [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
 		if (allocIt != tagged.allocations.end())
 		{
@@ -380,7 +380,7 @@ namespace C3D
 		f64 requestedAmount, requiredAmount;
 		const char* requestedUnit;
 		const char* requiredUnit;
-		int count;
+		u32 count;
 
 #ifdef C3D_MEMORY_METRICS_POINTERS
 		u64 requestedSize = 0;

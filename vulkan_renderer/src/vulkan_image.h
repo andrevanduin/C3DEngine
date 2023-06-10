@@ -2,10 +2,10 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-#include "core/defines.h"
+#include <core/defines.h>
+#include <resources/texture.h>
 
 #include "vulkan_command_buffer.h"
-#include "resources/texture.h"
 
 namespace C3D
 {

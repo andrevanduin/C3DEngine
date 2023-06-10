@@ -1,11 +1,10 @@
 
+#include <core/logger.h>
+#include <core/metrics/metrics.h>
+#include <systems/system_manager.h>
+
 #include "vulkan_device.h"
 #include "vulkan_types.h"
-
-#include "core/logger.h"
-#include "core/metrics/metrics.h"
-
-#include "systems/system_manager.h"
 
 namespace C3D
 {

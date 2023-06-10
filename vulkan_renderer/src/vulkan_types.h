@@ -1,13 +1,12 @@
 
 #pragma once
 #include <vulkan/vulkan.h>
+#include <core/defines.h>
+#include <core/asserts.h>
 
 #include "vulkan_renderpass.h"
 #include "vulkan_swapchain.h"
 #include "vulkan_device.h"
-
-#include "core/defines.h"
-#include "core/asserts.h"
 
 #define VK_CHECK(expr)							\
 	{											\

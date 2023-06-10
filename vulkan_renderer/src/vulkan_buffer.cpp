@@ -1,16 +1,13 @@
 
-#include "platform/platform.h"
+#include <platform/platform.h>
+#include <core/logger.h>
+#include <core/metrics/metrics.h>
 
 #include "vulkan_buffer.h"
 #include "vulkan_formatters.h"
 
 #include "vulkan_device.h"
 #include "vulkan_command_buffer.h"
-
-#include "core/logger.h"
-#include "core/metrics/metrics.h"
-
-#include "systems/system_manager.h"
 
 namespace C3D
 {

@@ -1,6 +1,6 @@
 
 #pragma once
-#include "../core/defines.h"
+#include "core/defines.h"
 #include "core/logger.h"
 
 #include "renderer_types.h"
@@ -14,26 +14,25 @@ namespace C3D
 	struct ShaderUniform;
 	struct ShaderConfig;
 
-	template <u64 NameSize>
-	class RendererBackend
+	class RendererPlugin
 	{
 	public:
-		explicit RendererBackend(const CString<NameSize>& loggerName)
-			: type(), state(), m_config(), m_logger(loggerName)
+		explicit RendererPlugin(const CString<32>& loggerName)
+			: type(), frameNumber(INVALID_ID_U64), m_config(), m_logger(loggerName)
 		{}
 
-		RendererBackend(const RendererBackend&) = delete;
-		RendererBackend(RendererBackend&&) = delete;
+		RendererPlugin(const RendererPlugin&) = delete;
+		RendererPlugin(RendererPlugin&&) = delete;
 
-		RendererBackend& operator=(const RendererBackend&) = delete;
-		RendererBackend& operator=(RendererBackend&&) = delete;
+		RendererPlugin& operator=(const RendererPlugin&) = delete;
+		RendererPlugin& operator=(RendererPlugin&&) = delete;
 
-		virtual ~RendererBackend() = default;
+		virtual ~RendererPlugin() = default;
 
-		virtual bool Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount) = 0;
+		virtual bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) = 0;
 		virtual void Shutdown() = 0;
 
-		virtual void OnResize(u16 width, u16 height) = 0;
+		virtual void OnResize(u32 width, u32 height) = 0;
 
 		virtual bool BeginFrame(f32 deltaTime) = 0;
 
@@ -106,12 +105,12 @@ namespace C3D
 		virtual void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) = 0;
 		[[nodiscard]] virtual bool IsFlagEnabled(RendererConfigFlagBits flag) const = 0;
 
-		RendererBackendType type;
-		RendererBackendState state;
+		RendererPluginType type;
+		u64 frameNumber;
 
 	protected:
-		RendererBackendConfig m_config;
-		LoggerInstance<NameSize> m_logger;
+		RendererPluginConfig m_config;
+		LoggerInstance<32> m_logger;
 	};
 }
 

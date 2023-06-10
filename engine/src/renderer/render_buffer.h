@@ -23,7 +23,7 @@ namespace C3D
 		Storage,
 	};
 
-	class RenderBuffer
+	class C3D_API RenderBuffer
 	{
 	public:
 		explicit RenderBuffer(const char* name);

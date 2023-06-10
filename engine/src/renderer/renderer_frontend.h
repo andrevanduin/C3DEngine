@@ -3,9 +3,8 @@
 #include "../core/defines.h"
 
 #include "renderer_types.h"
-#include "renderer_backend.h"
+#include "renderer_plugin.h"
 #include "render_buffer.h"
-#include "core/cvars/cvar.h"
 #include "resources/shader.h"
 
 namespace C3D
@@ -19,12 +18,20 @@ namespace C3D
 
 	class Camera;
 
-	class C3D_API RenderSystem final : public BaseSystem
+	struct RenderSystemConfig
+	{
+		const char* applicationName;
+
+		RendererPlugin* rendererPlugin;
+		RendererConfigFlags flags;
+	};
+
+	class C3D_API RenderSystem final : public SystemWithConfig<RenderSystemConfig>
 	{
 	public:
 		explicit RenderSystem(const Engine* engine);
 
-		bool Init() override;
+		bool Init(const RenderSystemConfig& config) override;
 		void Shutdown() override;
 
 		void OnResize(u16 width, u16 height);
@@ -99,15 +106,12 @@ namespace C3D
 		[[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const;
 
 	private:
-		bool CreateBackend(RendererBackendType type);
-		void DestroyBackend();
-
 		u8 m_windowRenderTargetCount;
 		u32 m_frameBufferWidth, m_frameBufferHeight;
 
 		bool m_resizing;
 		u8 m_framesSinceResize;
 
-		RendererBackend<64>* m_backend;
+		RendererPlugin* m_backendPlugin;
 	};
 }

@@ -1,17 +1,15 @@
 
 #pragma once
-#include <SDL2/SDL.h>
-#undef main
-
 #include "core/defines.h"
 #include "containers/dynamic_array.h"
 
-#include "renderpass.h"
 #include "render_view.h"
 
 namespace C3D
 {
-	enum class RendererBackendType
+	class RendererPlugin;
+
+	enum class RendererPluginType
 	{
 		Vulkan,
 		OpenGl,
@@ -41,7 +39,7 @@ namespace C3D
 
 	typedef u8 RendererConfigFlags;
 
-	struct RendererBackendConfig
+	struct RendererPluginConfig
 	{
 		const char* applicationName;
 		u32 applicationVersion;
@@ -49,11 +47,6 @@ namespace C3D
 		RendererConfigFlags flags;
 
 		const Engine* engine;
-	};
-
-	struct RendererBackendState
-	{
-		u64 frameNumber;
 	};
 
 	enum class ShaderStage

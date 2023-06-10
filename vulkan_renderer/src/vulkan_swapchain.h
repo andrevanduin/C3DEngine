@@ -1,8 +1,9 @@
 
 #pragma once
+#include <renderer/renderer_types.h>
+#include <resources/texture.h>
+
 #include "vulkan_image.h"
-#include "renderer/renderer_types.h"
-#include "resources/texture.h"
 
 namespace C3D
 {

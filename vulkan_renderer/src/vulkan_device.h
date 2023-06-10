@@ -1,9 +1,9 @@
 
 #pragma once
-#include <VkBootstrap/VkBootstrap.h>
+#include <vendor/VkBootstrap/VkBootstrap.h>
 
-#include "core/defines.h"
-#include "core/logger.h"
+#include <core/defines.h>
+#include <core/logger.h>
 
 namespace C3D
 {

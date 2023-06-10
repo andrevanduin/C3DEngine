@@ -8,8 +8,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd26812")
 
 project ("C3DEngine")
 
+# Define our compile definitions that are relevant for all targets
+add_compile_definitions(C3D_PLATFORM_WINDOWS)
+add_compile_definitions(C3D_MEMORY_METRICS)
+# add_compile_definitions(C3D_MEMORY_METRICS_POINTERS)
+add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)
+
 # Include sub-projects.
 add_subdirectory ("engine")
+add_subdirectory ("vulkan_renderer")
 add_subdirectory ("testenv")
 add_subdirectory ("tests")
 

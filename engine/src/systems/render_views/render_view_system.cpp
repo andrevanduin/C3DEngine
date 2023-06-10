@@ -8,7 +8,6 @@
 #include "renderer/views/render_view_ui.h"
 #include "renderer/views/render_view_world.h"
 #include "renderer/views/render_view_skybox.h"
-#include "renderer/vulkan/vulkan_renderpass.h"
 
 namespace C3D
 {

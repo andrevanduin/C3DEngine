@@ -1,9 +1,29 @@
 
-#include "renderer_vulkan.h"
+#include "vulkan_renderer_plugin.h"
 
 #include <SDL2/SDL_vulkan.h>
-#include <VkBootstrap/VkBootstrap.h>
+#include <vendor/VkBootstrap/VkBootstrap.h>
 
+#include <core/logger.h>
+#include <core/engine.h>
+
+#include <core/events/event_context.h>
+#include <core/metrics/metrics.h>
+#include <platform/platform.h>
+#include <renderer/renderer_frontend.h>
+
+#include <resources/texture.h>
+#include <resources/shader.h>
+
+#include <renderer/vertex.h>
+#include <resources/loaders/binary_loader.h>
+
+#include <systems/system_manager.h>
+#include <systems/events/event_system.h>
+#include <systems/resources/resource_system.h>
+#include <systems/textures/texture_system.h>
+
+#include "vulkan_allocator.h"
 #include "vulkan_device.h"
 #include "vulkan_swapchain.h"
 #include "vulkan_renderpass.h"
@@ -11,188 +31,18 @@
 #include "vulkan_shader.h"
 #include "vulkan_utils.h"
 
-#include "core/logger.h"
-#include "core/engine.h"
-
-#include "core/events/event_context.h"
-#include "core/metrics/metrics.h"
-#include "platform/platform.h"
-#include "renderer/renderer_frontend.h"
-
-#include "resources/texture.h"
-#include "resources/shader.h"
-
-#include "renderer/vertex.h"
-#include "resources/loaders/binary_loader.h"
-
-#include "systems/system_manager.h"
-#include "systems/events/event_system.h"
-#include "systems/resources/resource_system.h"
-#include "systems/textures/texture_system.h"
-
-#ifndef C3D_VULKAN_ALLOCATOR_TRACE
-#undef C3D_VULKAN_ALLOCATOR_TRACE
-#endif
-
-#ifndef C3D_VULKAN_USE_CUSTOM_ALLOCATOR
-#define C3D_VULKAN_USE_CUSTOM_ALLOCATOR 1
-#endif
-
 namespace C3D
 {
-#ifdef C3D_VULKAN_USE_CUSTOM_ALLOCATOR
-	/*
-	 * @brief Implementation of PFN_vkAllocationFunction
-	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkAllocationFunction.html
-	 */
-	void* VulkanAllocatorAllocate(void* userData, const size_t size, const size_t alignment, const VkSystemAllocationScope allocationScope)
-	{
-		// The spec states that we should return nullptr if size == 0
-		if (size == 0) return nullptr;
-
-		void* result = Memory.AllocateBlock(MemoryType::Vulkan, size, static_cast<u16>(alignment));
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-		Logger::Trace("[VULKAN_ALLOCATE] - {} (Size = {}B, Alignment = {}).", fmt::ptr(result), size, alignment);
-#endif
-
-		return result;
-	}
-
-	/*
-	 * @brief Implementation of PFN_vkFreeFunction
-	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkFreeFunction.html
-	 */
-	void VulkanAllocatorFree(void* userData, void* memory)
-	{
-		if (!memory)
-		{
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-			Logger::Trace("[VULKAN_FREE] - Block was null. Nothing to free.");
-#endif
-			return;
-		}
-
-		u64 size;
-		u16 alignment;
-		if (DynamicAllocator::GetSizeAlignment(memory, &size, &alignment))
-		{
-			Memory.Free(MemoryType::Vulkan, memory);
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-			Logger::Trace("[VULKAN_FREE] - Block at: {} was Freed.", fmt::ptr(memory));
-#endif
-		}
-		else
-		{
-			Logger::Error("[VULKAN_FREE] - Failed to get alignment lookup for block: {}.", fmt::ptr(memory));
-		}
-	}
-
-	/*
-	 * @brief Implementation of PFN_vkReallocationFunction
-	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkReallocationFunction.html
-	 */
-	void* VulkanAllocatorReallocate(void* userData, void* original, const size_t size, const size_t alignment, const VkSystemAllocationScope allocationScope)
-	{
-		// The spec states that we should do an simple allocation if original is nullptr
-		if (!original)
-		{
-			return VulkanAllocatorAllocate(userData, size, alignment, allocationScope);
-		}
-
-		// The spec states that we should return nullptr if size == 0
-		if (size == 0) return nullptr;
-
-		u64 allocSize;
-		u16 allocAlignment;
-		if (!DynamicAllocator::GetSizeAlignment(original, &allocSize, &allocAlignment))
-		{
-			Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.", fmt::ptr(original));
-			return nullptr;
-		}
-
-		// The spec states that the alignment provided should not differ from the original memory's alignment.
-		if (alignment != allocAlignment)
-		{
-			Logger::Error("[VULKAN_REALLOCATE] - Attempted to do a reallocation with a different alignment of: {}. Original alignment was: {}.", alignment, allocAlignment);
-			return nullptr;
-		}
-
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-		Logger::Trace("[VULKAN_REALLOCATE] - Reallocating block: {}", fmt::ptr(original));
-#endif
-
-		void* result = VulkanAllocatorAllocate(userData, size, alignment, allocationScope);
-		if (result)
-		{
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-			Logger::Trace("[VULKAN_REALLOCATE] - Successfully reallocated to: {}. Copying data.", fmt::ptr(result));
-#endif
-			Platform::MemCopy(result, original, allocSize);
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-			Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", fmt::ptr(original));
-#endif
-			Memory.Free(MemoryType::Vulkan, original);
-		}
-		else
-		{
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-			Logger::Trace("[VULKAN_REALLOCATE] - Failed to Reallocate: {}.", fmt::ptr(original));
-#endif
-		}
-
-		return result;
-	}
-
-	/*
-	 * @brief Implementation of PFN_vkReallocationFunction
-	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkInternalAllocationNotification.html
-	 */
-	void VulkanAllocatorInternalAllocation(void* userData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope)
-	{
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-		Logger::Trace("[VULKAN_EXTERNAL_ALLOCATE] - Allocation of size {}.", size);
-#endif
-		Metrics.AllocateExternal(size);
-	}
-
-	/*
-	 * @brief Implementation of PFN_vkReallocationFunction
-	 * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkInternalAllocationNotification.html
-	 */
-	void VulkanAllocatorInternalFree(void* userData, size_t size, VkInternalAllocationType allocationType, VkSystemAllocationScope allocationScope)
-	{
-#ifdef C3D_VULKAN_ALLOCATOR_TRACE
-		Logger::Trace("[VULKAN_EXTERNAL_FREE] - Free of size {}.", size);
-#endif
-		Metrics.FreeExternal(size);
-	}
-
-	bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks)
-	{
-		if (callbacks)
-		{
-			callbacks->pfnAllocation = VulkanAllocatorAllocate;
-			callbacks->pfnReallocation = VulkanAllocatorReallocate;
-			callbacks->pfnFree = VulkanAllocatorFree;
-			callbacks->pfnInternalAllocation = VulkanAllocatorInternalAllocation;
-			callbacks->pfnInternalFree = VulkanAllocatorInternalFree;
-			callbacks->pUserData = nullptr;
-			return true;
-		}
-		return false;
-	}
-#endif
-
-	RendererVulkan::RendererVulkan()
-		: RendererBackend("VULKAN_RENDERER"), m_context(), m_objectVertexBuffer(&m_context),
+	VulkanRendererPlugin::VulkanRendererPlugin()
+		: RendererPlugin("VULKAN_RENDERER"), m_context(), m_objectVertexBuffer(&m_context),
 	      m_objectIndexBuffer(&m_context), m_geometries{}, m_engine(nullptr)
 	{}
 
-	bool RendererVulkan::Init(const RendererBackendConfig& config, u8* outWindowRenderTargetCount)
+	bool VulkanRendererPlugin::Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount)
 	{
-		type = RendererBackendType::Vulkan;
+		type = RendererPluginType::Vulkan;
 
-#if C3D_VULKAN_USE_CUSTOM_ALLOCATOR == 1
+#ifdef C3D_VULKAN_USE_CUSTOM_ALLOCATOR
 		m_context.allocator = Memory.Allocate<VkAllocationCallbacks>(MemoryType::RenderSystem);
 		if (!CreateVulkanAllocator(m_context.allocator))
 		{
@@ -200,7 +50,7 @@ namespace C3D
 			return false;
 		}
 #else
-		m_context = nullptr;
+		m_context.allocator = nullptr;
 #endif
 
 		// Just set some basic default values. They will be overridden anyway.
@@ -218,7 +68,7 @@ namespace C3D
 			.set_engine_version(VK_MAKE_VERSION(0, 2, 0))
 		#if defined(_DEBUG)
 			.request_validation_layers(true)
-			.set_debug_callback(Logger::VkDebugLog)
+			.set_debug_callback(VulkanUtils::VkDebugLog)
 		#endif
 			.set_allocation_callbacks(m_context.allocator)
 			.require_api_version(1, 2)
@@ -303,7 +153,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::Shutdown()
+	void VulkanRendererPlugin::Shutdown()
 	{
 		m_logger.Info("Shutdown()");
 
@@ -362,7 +212,7 @@ namespace C3D
 #endif
 	}
 
-	void RendererVulkan::OnResize(const u16 width, const u16 height)
+	void VulkanRendererPlugin::OnResize(const u32 width, const u32 height)
 	{
 		m_context.frameBufferWidth = width;
 		m_context.frameBufferHeight = height;
@@ -371,7 +221,7 @@ namespace C3D
 		m_logger.Info("OnResize() - Width: {}, Height: {} and Generation: {}.", width, height, m_context.frameBufferSizeGeneration);
 	}
 
-	bool RendererVulkan::BeginFrame(const f32 deltaTime)
+	bool VulkanRendererPlugin::BeginFrame(const f32 deltaTime)
 	{
 		m_context.frameDeltaTime = deltaTime;
 		const auto& device = m_context.device;
@@ -444,7 +294,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::EndFrame(f32 deltaTime)
+	bool VulkanRendererPlugin::EndFrame(f32 deltaTime)
 	{
 		const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
 
@@ -500,7 +350,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::SetViewport(const vec4& rect)
+	void VulkanRendererPlugin::SetViewport(const vec4& rect)
 	{
 		VkViewport viewport;
 		viewport.x = rect.x;
@@ -514,13 +364,13 @@ namespace C3D
 		vkCmdSetViewport(commandBuffer.handle, 0, 1, &viewport);
 	}
 
-	void RendererVulkan::ResetViewport()
+	void VulkanRendererPlugin::ResetViewport()
 	{
 		// Just set viewport to our currently stored rect
 		SetViewport(m_context.viewportRect);
 	}
 
-	void RendererVulkan::SetScissor(const ivec4& rect)
+	void VulkanRendererPlugin::SetScissor(const ivec4& rect)
 	{
 		VkRect2D scissor;
 		scissor.offset.x = rect.x;
@@ -532,18 +382,18 @@ namespace C3D
 		vkCmdSetScissor(commandBuffer.handle, 0, 1, &scissor);
 	}
 
-	void RendererVulkan::ResetScissor()
+	void VulkanRendererPlugin::ResetScissor()
 	{
 		SetScissor(m_context.scissorRect);
 	}
 
-	void RendererVulkan::SetLineWidth(const float lineWidth)
+	void VulkanRendererPlugin::SetLineWidth(const float lineWidth)
 	{
 		const auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
 		vkCmdSetLineWidth(commandBuffer.handle, lineWidth);
 	}
 
-	void RendererVulkan::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget)
+	void VulkanRendererPlugin::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width, const u32 height, RenderTarget* outTarget)
 	{
 		VkImageView attachmentViews[32];
 		for (u32 i = 0; i < attachmentCount; i++)
@@ -564,7 +414,7 @@ namespace C3D
 		VK_CHECK(vkCreateFramebuffer(m_context.device.logicalDevice, &frameBufferCreateInfo, m_context.allocator, reinterpret_cast<VkFramebuffer*>(&outTarget->internalFrameBuffer)));
 	}
 
-	void RendererVulkan::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory)
+	void VulkanRendererPlugin::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory)
 	{
 		if (target && target->internalFrameBuffer)
 		{
@@ -579,7 +429,7 @@ namespace C3D
 		}
 	}
 
-	RenderPass* RendererVulkan::CreateRenderPass(const RenderPassConfig& config)
+	RenderPass* VulkanRendererPlugin::CreateRenderPass(const RenderPassConfig& config)
 	{
 		const auto pass = Memory.New<VulkanRenderPass>(MemoryType::RenderSystem, &m_context, config);
 		if (!pass->Create(config))
@@ -590,28 +440,28 @@ namespace C3D
 		return pass;
 	}
 
-	bool RendererVulkan::DestroyRenderPass(RenderPass* pass)
+	bool VulkanRendererPlugin::DestroyRenderPass(RenderPass* pass)
 	{
 		pass->Destroy();
 		Memory.Free(MemoryType::RenderSystem, pass);
 		return true;
 	}
 
-	RenderBuffer* RendererVulkan::CreateRenderBuffer(const RenderBufferType bufferType, const u64 totalSize, const bool useFreelist)
+	RenderBuffer* VulkanRendererPlugin::CreateRenderBuffer(const RenderBufferType bufferType, const u64 totalSize, const bool useFreelist)
 	{
 		const auto buffer = Memory.New<VulkanBuffer>(MemoryType::RenderSystem, &m_context);
 		if (!buffer->Create(bufferType, totalSize, useFreelist)) return nullptr;
 		return buffer;
 	}
 
-	bool RendererVulkan::DestroyRenderBuffer(RenderBuffer* buffer)
+	bool VulkanRendererPlugin::DestroyRenderBuffer(RenderBuffer* buffer)
 	{
 		buffer->Destroy();
 		Memory.Free(MemoryType::RenderSystem, buffer);
 		return true;
 	}
 
-	Texture* RendererVulkan::GetWindowAttachment(const u8 index)
+	Texture* VulkanRendererPlugin::GetWindowAttachment(const u8 index)
 	{
 		if (index >= m_context.swapChain.imageCount)
 		{
@@ -621,7 +471,7 @@ namespace C3D
 		return &m_context.swapChain.renderTextures[index];
 	}
 
-	Texture* RendererVulkan::GetDepthAttachment(u8 index)
+	Texture* VulkanRendererPlugin::GetDepthAttachment(u8 index)
 	{
 		if (index >= m_context.swapChain.imageCount)
 		{
@@ -631,33 +481,33 @@ namespace C3D
 		return &m_context.swapChain.depthTextures[index];
 	}
 
-	u8 RendererVulkan::GetWindowAttachmentIndex()
+	u8 VulkanRendererPlugin::GetWindowAttachmentIndex()
 	{
 		return static_cast<u8>(m_context.imageIndex);
 	}
 
-	u8 RendererVulkan::GetWindowAttachmentCount()
+	u8 VulkanRendererPlugin::GetWindowAttachmentCount()
 	{
 		return static_cast<u8>(m_context.swapChain.imageCount);
 	}
 
-	bool RendererVulkan::IsMultiThreaded() const
+	bool VulkanRendererPlugin::IsMultiThreaded() const
 	{
 		return m_context.multiThreadingEnabled;
 	}
 
-	void RendererVulkan::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled)
+	void VulkanRendererPlugin::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled)
 	{
 		m_config.flags = enabled ? m_config.flags | flag : m_config.flags & ~flag;
 		m_context.renderFlagChanged = true;
 	}
 
-	bool RendererVulkan::IsFlagEnabled(const RendererConfigFlagBits flag) const
+	bool VulkanRendererPlugin::IsFlagEnabled(const RendererConfigFlagBits flag) const
 	{
 		return m_config.flags & flag;
 	}
 
-	bool RendererVulkan::BeginRenderPass(RenderPass* pass, RenderTarget* target)
+	bool VulkanRendererPlugin::BeginRenderPass(RenderPass* pass, RenderTarget* target)
 	{
 		VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
 		const auto vulkanPass = dynamic_cast<VulkanRenderPass*>(pass);
@@ -665,14 +515,14 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::EndRenderPass(RenderPass* pass)
+	bool VulkanRendererPlugin::EndRenderPass(RenderPass* pass)
 	{
 		VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
 		VulkanRenderPass::End(commandBuffer);
 		return true;
 	}
 
-	void RendererVulkan::DrawGeometry(const GeometryRenderData& data)
+	void VulkanRendererPlugin::DrawGeometry(const GeometryRenderData& data)
 	{
 		// Simply ignore if there is no geometry to draw
 		if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
@@ -695,7 +545,7 @@ namespace C3D
 		}
 	}
 
-	void RendererVulkan::CreateTexture(const u8* pixels, Texture* texture)
+	void VulkanRendererPlugin::CreateTexture(const u8* pixels, Texture* texture)
 	{
 		// Internal data creation
 		texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
@@ -732,7 +582,7 @@ namespace C3D
 		}
 	}
 
-	void RendererVulkan::CreateWritableTexture(Texture* texture)
+	void VulkanRendererPlugin::CreateWritableTexture(Texture* texture)
 	{
 		texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
@@ -760,7 +610,7 @@ namespace C3D
 		texture->generation++;
 	}
 
-	void RendererVulkan::WriteDataToTexture(Texture* texture, u32 offset, const u32 size, const u8* pixels)
+	void VulkanRendererPlugin::WriteDataToTexture(Texture* texture, u32 offset, const u32 size, const u8* pixels)
 	{
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
 		const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
@@ -795,7 +645,7 @@ namespace C3D
 		texture->generation++;
 	}
 
-	void RendererVulkan::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight)
+	void VulkanRendererPlugin::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight)
 	{
 		if (texture && texture->internalData)
 		{
@@ -813,7 +663,7 @@ namespace C3D
 		}
 	}
 
-	void RendererVulkan::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory)
+	void VulkanRendererPlugin::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory)
 	{
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
 		const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
@@ -854,7 +704,7 @@ namespace C3D
 		staging.Destroy();
 	}
 
-	void RendererVulkan::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba)
+	void VulkanRendererPlugin::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba)
 	{
 		const auto image = static_cast<VulkanImage*>(texture->internalData);
 		const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
@@ -897,7 +747,7 @@ namespace C3D
 		staging.Destroy();
 	}
 
-	void RendererVulkan::DestroyTexture(Texture* texture)
+	void VulkanRendererPlugin::DestroyTexture(Texture* texture)
 	{
 		vkDeviceWaitIdle(m_context.device.logicalDevice);
 
@@ -912,7 +762,7 @@ namespace C3D
 		Platform::Zero(texture);
 	}
 
-	bool RendererVulkan::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
+	bool VulkanRendererPlugin::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
 	                                    const u32 indexSize, const u64 indexCount, const void* indices)
 	{
 		if (!vertexCount || !vertices)
@@ -1012,7 +862,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::DestroyGeometry(Geometry* geometry)
+	void VulkanRendererPlugin::DestroyGeometry(Geometry* geometry)
 	{
 		if (geometry && geometry->internalId != INVALID_ID)
 		{
@@ -1036,7 +886,7 @@ namespace C3D
 		}
 	}
 
-	bool RendererVulkan::CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const
+	bool VulkanRendererPlugin::CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const
 	{
 		// Allocate enough memory for the 
 		shader->apiSpecificData = Memory.New<VulkanShader>(MemoryType::Shader, &m_context);
@@ -1213,7 +1063,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::DestroyShader(Shader& shader)
+	void VulkanRendererPlugin::DestroyShader(Shader& shader)
 	{
 		// Make sure there is something to destroy
 		if (shader.apiSpecificData)
@@ -1277,7 +1127,7 @@ namespace C3D
 		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	}
 
-	bool RendererVulkan::InitializeShader(Shader* shader)
+	bool VulkanRendererPlugin::InitializeShader(Shader* shader)
 	{
 		VkDevice logicalDevice = m_context.device.logicalDevice;
 		const VkAllocationCallbacks* vkAllocator = m_context.allocator;
@@ -1448,21 +1298,21 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::UseShader(Shader* shader)
+	bool VulkanRendererPlugin::UseShader(Shader* shader)
 	{
 		const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
 		vulkanShader->pipeline.Bind(&m_context.graphicsCommandBuffers[m_context.imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
 		return true;
 	}
 
-	bool RendererVulkan::ShaderBindGlobals(Shader* shader)
+	bool VulkanRendererPlugin::ShaderBindGlobals(Shader* shader)
 	{
 		if (!shader) return false;
 		shader->boundUboOffset = static_cast<u32>(shader->globalUboOffset);
 		return true;
 	}
 
-	bool RendererVulkan::ShaderBindInstance(Shader* shader, const u32 instanceId)
+	bool VulkanRendererPlugin::ShaderBindInstance(Shader* shader, const u32 instanceId)
 	{
 		if (!shader)
 		{
@@ -1476,7 +1326,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::ShaderApplyGlobals(Shader* shader)
+	bool VulkanRendererPlugin::ShaderApplyGlobals(Shader* shader)
 	{
 		const u32 imageIndex = m_context.imageIndex;
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
@@ -1516,7 +1366,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::ShaderApplyInstance(Shader* shader, const bool needsUpdate)
+	bool VulkanRendererPlugin::ShaderApplyInstance(Shader* shader, const bool needsUpdate)
 	{
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
 		if (internal->instanceUniformCount == 0 && internal->instanceUniformSamplerCount == 0)
@@ -1636,7 +1486,7 @@ namespace C3D
 		return true;
 	}
 
-	VkSamplerAddressMode RendererVulkan::ConvertRepeatType(const char* axis, const TextureRepeat repeat) const
+	VkSamplerAddressMode VulkanRendererPlugin::ConvertRepeatType(const char* axis, const TextureRepeat repeat) const
 	{
 		switch (repeat)
 		{
@@ -1654,7 +1504,7 @@ namespace C3D
 		}
 	}
 
-	VkFilter RendererVulkan::ConvertFilterType(const char* op, const TextureFilter filter) const
+	VkFilter VulkanRendererPlugin::ConvertFilterType(const char* op, const TextureFilter filter) const
 	{
 		switch (filter)
 		{
@@ -1668,7 +1518,7 @@ namespace C3D
 		}
 	}
 
-	bool RendererVulkan::AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId)
+	bool VulkanRendererPlugin::AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId)
 	{
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
 		// TODO: dynamic
@@ -1753,7 +1603,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId)
+	bool VulkanRendererPlugin::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId)
 	{
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
 		VulkanShaderInstanceState* instanceState = &internal->instanceStates[instanceId];
@@ -1787,7 +1637,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::AcquireTextureMapResources(TextureMap* map)
+	bool VulkanRendererPlugin::AcquireTextureMapResources(TextureMap* map)
 	{
 		VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 
@@ -1820,7 +1670,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::ReleaseTextureMapResources(TextureMap* map)
+	void VulkanRendererPlugin::ReleaseTextureMapResources(TextureMap* map)
 	{
 		if (map)
 		{
@@ -1831,7 +1681,7 @@ namespace C3D
 		}
 	}
 
-	bool RendererVulkan::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value)
+	bool VulkanRendererPlugin::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value)
 	{
 		const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
 		if (uniform->type == Uniform_Sampler)
@@ -1865,7 +1715,7 @@ namespace C3D
 		return true;
 	}
 
-	void RendererVulkan::CreateCommandBuffers()
+	void VulkanRendererPlugin::CreateCommandBuffers()
 	{
 		if (m_context.graphicsCommandBuffers.Empty())
 		{
@@ -1883,7 +1733,7 @@ namespace C3D
 		}
 	}
 
-	bool RendererVulkan::RecreateSwapChain()
+	bool VulkanRendererPlugin::RecreateSwapChain()
 	{
 		if (m_context.recreatingSwapChain)
 		{
@@ -1932,7 +1782,7 @@ namespace C3D
 		return true;
 	}
 
-	bool RendererVulkan::CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const
+	bool VulkanRendererPlugin::CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const
 	{
 		// Read the resource
 		BinaryResource res{};

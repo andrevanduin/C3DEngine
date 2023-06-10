@@ -22,7 +22,7 @@ namespace C3D
 		i32 x, y;
 		i32 width, height;
 
-		bool enablePrimitiveRenderer = true;
+		RendererPlugin* rendererPlugin;
 
 		FontSystemConfig fontConfig;
 		DynamicArray<RenderViewConfig> renderViews;
@@ -50,7 +50,7 @@ namespace C3D
 	class C3D_API Engine
 	{
 	public:
-		explicit Engine(ApplicationConfig config);
+		explicit Engine(const ApplicationConfig& config);
 
 		Engine(const Engine&) = delete;
 		Engine(Engine&&) = delete;

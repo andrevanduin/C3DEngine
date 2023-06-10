@@ -1,5 +1,6 @@
 
 #include "vulkan_utils.h"
+#include <vendor/VkBootstrap/VkBootstrap.h>
 
 namespace C3D
 {
@@ -136,4 +137,30 @@ namespace C3D
 	            return !getExtended ? "VK_ERROR_UNKNOWN" : "VK_ERROR_UNKNOWN An unknown error has occurred; either the application has provided invalid input, or an implementation failure has occurred.";
         }
     }
+
+	VkBool32 VulkanUtils::VkDebugLog(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+		const VkDebugUtilsMessageTypeFlagsEXT messageType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void*)
+	{
+		auto type = vkb::to_string_message_type(messageType);
+		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+		{
+			Logger::Trace("[{}] {}", type, pCallbackData->pMessage);
+		}
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		{
+			Logger::Info("[{}] {}", type, pCallbackData->pMessage);
+		}
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		{
+			Logger::Warn("[{}] {}", type, pCallbackData->pMessage);
+		}
+		else
+		{
+			Logger::Error("[{}] {}", type, pCallbackData->pMessage);
+		}
+
+		return VK_FALSE;
+	}
 }
