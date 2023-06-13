@@ -1,20 +1,25 @@
 
 #include "clock.h"
 #include "platform/platform.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {
+	Clock::Clock(const Platform* os)
+		: m_elapsedTime(0), m_startTime(0), m_operatingSystem(os)
+	{}
+
 	void Clock::Update()
 	{
-		if (m_startTime != 0)
+		if (m_startTime != 0.0)
 		{
-			m_elapsedTime = Platform::GetAbsoluteTime() - m_startTime;
+			m_elapsedTime = m_operatingSystem->GetAbsoluteTime() - m_startTime;
 		}
 	}
 
 	void Clock::Start()
 	{
-		m_startTime = Platform::GetAbsoluteTime();
+		m_startTime = m_operatingSystem->GetAbsoluteTime();
 		m_elapsedTime = 0;
 	}
 

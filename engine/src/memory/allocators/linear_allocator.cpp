@@ -55,9 +55,7 @@ namespace C3D
 		{
 			if (m_allocated + size > m_totalSize)
 			{
-				u64 remaining = m_totalSize - m_allocated;
-				m_logger.Error("Tried to allocate{}B, but there are only{}B remaining", size, remaining);
-				return nullptr;
+				throw std::bad_alloc();
 			}
 
 			char* block = m_memoryBlock + m_allocated;
@@ -65,7 +63,7 @@ namespace C3D
 
 			MetricsAllocate(m_id, type, size, size, block);
 
-			Platform::Zero(block, size);
+			std::memset(block, 0, size);
 			return block;
 		}
 
@@ -80,10 +78,16 @@ namespace C3D
 		if (m_memoryBlock)
 		{
 			m_allocated = 0;
-			Platform::Zero(m_memoryBlock, m_totalSize);
+			std::memset(m_memoryBlock, 0, m_totalSize);
 
 			// Ensure that the metrics keep track of the fact that we just freed all memory for this allocator
 			Metrics.FreeAll(m_id);
 		}
+	}
+
+	LinearAllocator* LinearAllocator::GetDefault()
+	{
+		static auto allocator = new LinearAllocator();
+		return allocator;
 	}
 }

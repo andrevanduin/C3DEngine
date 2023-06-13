@@ -42,7 +42,7 @@ namespace C3D
 		C3D_API bool Unregister(u16 code, EventCallbackId& callbackId);
 		C3D_API bool UnregisterAll(u16 code);
 
-		C3D_API bool Fire(u16 code, void* sender, EventContext data) const;
+		C3D_API bool Fire(u16 code, void* sender, const EventContext& data) const;
 
 	private:
 		EventCodeEntry m_registered[MAX_MESSAGE_CODES];

@@ -268,6 +268,6 @@ namespace C3D
 			handle = nullptr;
 		}
 
-		Platform::Zero(&m_memoryRequirements, sizeof(VkMemoryRequirements));
+		std::memset(&m_memoryRequirements, 0, sizeof(VkMemoryRequirements));
 	}
 }

@@ -90,17 +90,17 @@ namespace C3D
 
 		m_instanceCount = 0;
 
-		Platform::Zero(&m_colorTargetAttachmentTexture);
-		Platform::Zero(&m_depthTargetAttachmentTexture);
+		std::memset(&m_colorTargetAttachmentTexture, 0, sizeof(Texture));
+		std::memset(&m_depthTargetAttachmentTexture, 0, sizeof(Texture));
 
-		m_onMouseMovedCallbackId = Event.Register(SystemEventCode::MouseMoved, [this](const u16 code, void* sender, const EventContext& context) { return OnMouseMovedEvent(code, sender, context); });
+		m_onMouseMovedCallbackId = Event.Register(EventCodeMouseMoved, [this](const u16 code, void* sender, const EventContext& context) { return OnMouseMovedEvent(code, sender, context); });
 		return true;
 	}
 
 	void RenderViewPick::OnDestroy()
 	{
 		RenderView::OnDestroy();
-		Event.Unregister(SystemEventCode::MouseMoved, m_onMouseMovedCallbackId);
+		Event.Unregister(EventCodeMouseMoved, m_onMouseMovedCallbackId);
 
 		ReleaseShaderInstances();
 
@@ -184,8 +184,7 @@ namespace C3D
 		}
 
 		// Copy over the packet data
-		Platform::Copy<PickPacketData>(outPacket->extendedData, packetData);
-
+		*static_cast<PickPacketData*>(outPacket->extendedData) = *packetData;
 		return true;
 	}
 
@@ -400,7 +399,7 @@ namespace C3D
 
 		EventContext context{};
 		context.data.u32[0] = id;
-		Event.Fire(SystemEventCode::ObjectHoverIdChanged, nullptr, context);
+		Event.Fire(EventCodeObjectHoverIdChanged, nullptr, context);
 
 		return true;
 	}
@@ -433,7 +432,7 @@ namespace C3D
 		if (attachment->texture->internalData)
 		{
 			Renderer.DestroyTexture(attachment->texture);
-			Platform::Zero(attachment->texture);
+			std::memset(attachment->texture, 0, sizeof(Texture));
 		}
 
 		// Setup a new texture
@@ -463,9 +462,9 @@ namespace C3D
 		return true;
 	}
 
-	bool RenderViewPick::OnMouseMovedEvent(u16 code, void* sender, const EventContext& context)
+	bool RenderViewPick::OnMouseMovedEvent(const u16 code, void*, const EventContext& context)
 	{
-		if (code == SystemEventCode::MouseMoved)
+		if (code == EventCodeMouseMoved)
 		{
 			m_mouseX = context.data.i16[0];
 			m_mouseY = context.data.i16[1];

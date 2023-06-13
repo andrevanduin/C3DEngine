@@ -6,7 +6,7 @@
 
 namespace C3D
 {
-	class C3D_API LinearAllocator final : public BaseAllocator
+	class C3D_API LinearAllocator final : public BaseAllocator<LinearAllocator>
 	{
 	public:
 		LinearAllocator();
@@ -23,6 +23,8 @@ namespace C3D
 		[[nodiscard]] u64 GetAllocated() const { return m_allocated; }
 
 		[[nodiscard]] bool OwnsMemory() const { return m_ownsMemory; }
+
+		static LinearAllocator* GetDefault();
 
 	private:
 		LoggerInstance<32> m_logger;

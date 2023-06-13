@@ -19,6 +19,7 @@
 #define Jobs		m_engine->GetSystem<C3D::JobSystem>(C3D::SystemType::JobSystemType)
 #define Fonts		m_engine->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
 #define CVars		m_engine->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
+#define OS			m_engine->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType)
 
 namespace C3D
 {
@@ -37,6 +38,7 @@ namespace C3D
 		EventSystemType,
 		JobSystemType,
 		CVarSystemType,
+		PlatformSystemType,
 		MaxKnownSystemType
 	};
 
@@ -97,6 +99,12 @@ namespace C3D
 		[[nodiscard]] SystemType& GetSystem(const u16 type) const
 		{
 			return *reinterpret_cast<SystemType*>(m_systems[type]);
+		}
+
+		template<class SystemType>
+		[[nodiscard]] SystemType* GetSystemPtr(const u16 type) const
+		{
+			return reinterpret_cast<SystemType*>(m_systems[type]);
 		}
 
 		void Shutdown();

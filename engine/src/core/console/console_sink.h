@@ -10,7 +10,6 @@ namespace C3D
 	{
 	public:
 		explicit ConsoleSink(UIConsole* console);
-		~ConsoleSink() override;
 
 	protected:
 		void sink_it_(const spdlog::details::log_msg& msg) override;

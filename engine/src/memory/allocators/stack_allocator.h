@@ -4,26 +4,67 @@
 #include "core/logger.h"
 #include "base_allocator.h"
 #include "core/metrics/metrics.h"
-#include "platform/platform.h"
 
 namespace C3D
 {
 	template <u64 Size>
-	class __declspec(dllexport) StackAllocator final : public BaseAllocator
+	class C3D_API StackAllocator final : public BaseAllocator<StackAllocator<Size>>
 	{
 	public:
-		StackAllocator();
+		StackAllocator()
+			: BaseAllocator<StackAllocator>(ToUnderlying(AllocatorType::Stack)), m_logger("STACK_ALLOCATOR"), m_allocated(0)
+		{}
 
-		void Create(const char* name);
-		void Destroy();
+		void Create(const char* name)
+		{
+			this->m_id = Metrics.CreateAllocator(name, AllocatorType::Stack, Size);
+			std::memset(m_memory.Data(), 0, Size);
+		}
 
-		void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
-		void Free(MemoryType type, void* block) override;
+		void Destroy()
+		{
+			FreeAll();
+		}
 
-		void FreeAll();
+		void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override
+		{
+			if (m_allocated + size > Size)
+			{
+				throw std::bad_alloc();
+			}
+
+			const auto dataPtr = &m_memory[m_allocated];
+			m_allocated += size;
+
+#ifdef C3D_MEMORY_METRICS
+	#ifdef C3D_MEMORY_METRICS_POINTERS
+			Metrics.Allocate(this->m_id, Allocation(type, dataPtr, size));
+	#else
+			Metrics.Allocate(this->m_id, Allocation(type, size));
+	#endif
+#endif
+
+			return dataPtr;
+		}
+
+		void Free(MemoryType type, void* block) override {}
+
+		void FreeAll()
+		{
+			std::memset(m_memory.Data(), 0, Size);
+			m_allocated = 0;
+
+			Metrics.FreeAll(this->m_id);
+		}
 
 		[[nodiscard]] static u64 GetTotalSize() { return Size; }
 		[[nodiscard]] u64 GetAllocated() const { return m_allocated; }
+
+		static StackAllocator* GetDefault()
+		{
+			static auto allocator = new StackAllocator<KibiBytes(8)>();
+			return allocator;
+		}
 
 	private:
 		LoggerInstance<32> m_logger;
@@ -31,58 +72,4 @@ namespace C3D
 		Array<char, Size> m_memory;
 		u64 m_allocated;
 	};
-
-	template <u64 Size>
-	StackAllocator<Size>::StackAllocator()
-		: BaseAllocator(ToUnderlying(AllocatorType::Stack)), m_logger("STACK_ALLOCATOR"), m_allocated(0)
-	{}
-
-	template <u64 Size>
-	void StackAllocator<Size>::Create(const char* name)
-	{
-		m_id = Metrics.CreateAllocator(name, AllocatorType::Stack, Size);
-		Platform::Zero(m_memory.Data(), Size);
-	}
-
-	template <u64 SizeKb>
-	void StackAllocator<SizeKb>::Destroy()
-	{
-		FreeAll();
-	}
-
-	template <u64 Size>
-	void* StackAllocator<Size>::AllocateBlock(const MemoryType type, const u64 size, u16 alignment)
-	{
-		if (m_allocated + size > Size)
-		{
-			m_logger.Error("Out of memory");
-			throw std::bad_alloc();
-		}
-
-		const auto dataPtr = &m_memory[m_allocated];
-		m_allocated += size;
-
-#ifdef C3D_MEMORY_METRICS
-#ifdef C3D_MEMORY_METRICS_POINTERS
-		Metrics.Allocate(m_id, Allocation(type, dataPtr, size));
-#endif
-#ifndef C3D_MEMORY_METRICS_POINTERS
-		Metrics.Allocate(m_id, Allocation(type, size));
-#endif
-#endif
-
-		return dataPtr;
-	}
-
-	template <u64 Size>
-	void StackAllocator<Size>::Free(MemoryType type, void* block) {}
-
-	template <u64 Size>
-	void StackAllocator<Size>::FreeAll()
-	{
-		Platform::Zero(m_memory.Data(), Size);
-		m_allocated = 0;
-
-		Metrics.FreeAll(m_id);
-	}
 }

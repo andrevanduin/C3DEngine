@@ -1,7 +1,9 @@
 
-#include "platform.h"
+#include "platform/platform.h"
 
-#if C3D_PLATFORM_LINUX
+#ifdef C3D_PLATFORM_LINUX
+
+#include "platform/linux/platform_types_linux.h"
 
 #if _POSIX_C_SOURCE >= 199309L
 #include <time.h>  // nanosleep
@@ -18,32 +20,7 @@ namespace C3D
 	static f64 CLOCK_FREQUENCY = 0.0;
 	static LARGE_INTEGER START_TIME;
 
-	void* Platform::Allocate(const u64 size, bool aligned)
-	{
-		return std::malloc(size);
-	}
-
-	void Platform::Free(void* block, bool aligned)
-	{
-		std::free(block);
-	}
-
-	void* Platform::ZeroOutMemory(void* block, const u64 size)
-	{
-		return std::memset(block, 0, size);
-	}
-
-	void* Platform::CopyOverMemory(void* dest, const void* source, const u64 size)
-	{
-		return std::memcpy(dest, source, size);
-	}
-
-	void* Platform::SetMemory(void* dest, const i32 value, const u64 size)
-	{
-		return std::memset(dest, value, size);
-	}
-
-	f64 Platform::GetAbsoluteTime()
+	f64 Platform::GetAbsoluteTime() const
 	{
 		timespec now;
 		clock_gettime(CLOCK_MONOTONIC_RAW, &now);
@@ -78,5 +55,4 @@ namespace C3D
 		return static_cast<u64>(pthread_self());
 	}
 }
-
 #endif

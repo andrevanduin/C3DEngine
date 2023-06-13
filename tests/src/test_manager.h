@@ -22,7 +22,8 @@ struct TestEntry
 class TestManager
 {
 public:
-	TestManager();
+	TestManager(u64 memorySize);
+	~TestManager();
 
 	void StartType(const std::string& type);
 	void Register(pFnTest, const std::string& description);

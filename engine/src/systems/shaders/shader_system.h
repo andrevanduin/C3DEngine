@@ -24,7 +24,7 @@ namespace C3D
 
 		bool Create(RenderPass* pass, const ShaderConfig& config);
 
-		u32 GetId(const char* name);
+		u32 GetId(const char* name) const;
 
 		Shader* Get(const char* name);
 		Shader* GetById(u32 shaderId);

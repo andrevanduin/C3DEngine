@@ -1,7 +1,6 @@
 
 #include <core/logger.h>
 #include <platform/platform.h>
-#include <systems/system_manager.h>
 
 #include "vulkan_renderpass.h"
 #include "vulkan_types.h"
@@ -296,18 +295,17 @@ namespace C3D
 		beginInfo.clearValueCount = 0;
 		beginInfo.pClearValues = nullptr;
 
-		VkClearValue clearValues[2];
-		Platform::Zero(clearValues, sizeof(VkClearValue) * 2);
+		VkClearValue clearValues[2] = {};
 
 		if (m_clearFlags & ClearColorBuffer)
 		{
-			Platform::MemCopy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			std::memcpy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
 		}
 		beginInfo.clearValueCount++;
 
 		if (m_clearFlags & ClearDepthBuffer)
 		{
-			Platform::MemCopy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+			std::memcpy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
 			clearValues[beginInfo.clearValueCount].depthStencil.depth = m_depth;
 
 			const bool doClearStencil = m_clearFlags & ClearStencilBuffer;

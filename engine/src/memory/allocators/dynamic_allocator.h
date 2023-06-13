@@ -18,7 +18,7 @@ namespace C3D
 	constexpr auto MAX_SINGLE_ALLOC_SIZE = GibiBytes(4);
 	constexpr auto SMALLEST_POSSIBLE_ALLOCATION = sizeof(AllocHeader) + sizeof(AllocSizeMarker) + 1 + 1;
 		
-	class C3D_API DynamicAllocator final : public BaseAllocator
+	class C3D_API DynamicAllocator final : public BaseAllocator<DynamicAllocator>
 	{
 	public:
 		DynamicAllocator(AllocatorType type = AllocatorType::Dynamic);
@@ -46,6 +46,8 @@ namespace C3D
 		[[nodiscard]] u64 GetTotalUsableSize() const;
 
 		static constexpr u64 GetMemoryRequirements(u64 usableSize);
+
+		static DynamicAllocator* GetDefault();
 	private:
 		LoggerInstance<32> m_logger;
 

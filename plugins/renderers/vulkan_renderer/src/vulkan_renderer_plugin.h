@@ -8,7 +8,12 @@
 
 namespace C3D
 {
-	class C3D_API VulkanRendererPlugin final : public RendererPlugin
+	extern "C"
+	{
+		C3D_API RendererPlugin* CreatePlugin();
+	}
+	
+	class VulkanRendererPlugin final : public RendererPlugin
 	{
 	public:
 		VulkanRendererPlugin();
@@ -94,7 +99,6 @@ namespace C3D
 
 		void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) override;
 		[[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const override;
-
 	private:
 		void CreateCommandBuffers();
 

@@ -16,7 +16,7 @@ add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)
 
 # Include sub-projects.
 add_subdirectory ("engine")
-add_subdirectory ("vulkan_renderer")
+add_subdirectory ("plugins")
 add_subdirectory ("testenv")
 add_subdirectory ("tests")
 

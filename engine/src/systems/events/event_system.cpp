@@ -67,7 +67,7 @@ namespace C3D
 		return true;
 	}
 
-	bool EventSystem::Fire(const u16 code, void* sender, const EventContext data) const
+	bool EventSystem::Fire(const u16 code, void* sender, const EventContext& data) const
 	{
 		const auto& events = m_registered[code].events;
 		if (events.Empty())

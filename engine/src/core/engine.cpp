@@ -5,6 +5,7 @@
 
 #include <SDL2/SDL.h>
 
+#include "application.h"
 #include "platform/platform.h"
 #include "containers/string.h"
 
@@ -27,19 +28,18 @@
 
 namespace C3D
 {
-	Engine::Engine(const ApplicationConfig& config)
-		: m_logger("APPLICATION"), m_config(config), m_engine(this), m_console(nullptr)
-	{}
-
-	Engine::~Engine() = default;
+	Engine::Engine(Application* application)
+		: m_logger("ENGINE"), m_engine(this), m_console(nullptr), m_application(application)
+	{
+		m_application->m_engine = this;
+		m_appState = m_application->m_appState;
+	}
 
 	void Engine::Init()
 	{
-		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the application twice");
+		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the engine twice");
 
-		m_state.name = m_config.name;
-		m_state.width = m_config.width;
-		m_state.height = m_config.height;
+		m_state.name = m_appState->name;
 
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
@@ -48,10 +48,8 @@ namespace C3D
 
 		m_logger.Info("Successfully initialized SDL");
 
-		String windowName = "C3DEngine - ";
-		windowName.Append(m_config.name);
-
-		m_window = SDL_CreateWindow(windowName.Data(), m_config.x, m_config.y, m_config.width, m_config.height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+		String windowName = String::FromFormat("C3DEngine - {}", m_appState->name);
+		m_window = SDL_CreateWindow(windowName.Data(), m_appState->x, m_appState->y, m_appState->width, m_appState->height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 		if (m_window == nullptr)
 		{
 			m_logger.Fatal("Failed to create a Window: {}", SDL_GetError());
@@ -71,12 +69,13 @@ namespace C3D
 
 		m_systemsManager.Init(this);
 
-		constexpr	ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../assets"	};
+		constexpr	ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../../assets"	};
 		constexpr	ShaderSystemConfig		shaderSystemConfig		{ 128, 128, 31, 31			};
 		constexpr	CVarSystemConfig		cVarSystemConfig		{ 31						};
-		const		RenderSystemConfig		renderSystemConfig		{ "TestEnv", m_config.rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled};
+		const		RenderSystemConfig		renderSystemConfig		{ "TestEnv", m_appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled};
 
 		// Init before boot systems
+		m_systemsManager.RegisterSystem<Platform>(PlatformSystemType);								// Platform (OS) System
 		m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);								// Event System
 		m_systemsManager.RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);				// CVar System
 		m_systemsManager.RegisterSystem<InputSystem>(InputSystemType);								// Input System
@@ -86,7 +85,7 @@ namespace C3D
 
 		const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
-		OnBoot();
+		m_application->OnBoot();
 
 		constexpr auto maxThreadCount = 15;
 		if (threadCount - 1 > maxThreadCount)
@@ -120,16 +119,16 @@ namespace C3D
 
 		m_systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);					// Job System
 		m_systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);		// Texture System
-		m_systemsManager.RegisterSystem<FontSystem>(FontSystemType, m_config.fontConfig);			// Font System
+		m_systemsManager.RegisterSystem<FontSystem>(FontSystemType, m_appState->fontConfig);		// Font System
 		m_systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);		// Camera System
 		m_systemsManager.RegisterSystem<RenderViewSystem>(RenderViewSystemType, viewSystemConfig);  // Render View System
 
-		Event.Register(SystemEventCode::Resized,	 [this](const u16 code, void* sender, const EventContext& context) { return OnResizeEvent(code, sender, context);		});
-		Event.Register(SystemEventCode::Minimized,	 [this](const u16 code, void* sender, const EventContext& context) { return OnMinimizeEvent(code, sender, context);		});
-		Event.Register(SystemEventCode::FocusGained, [this](const u16 code, void* sender, const EventContext& context) { return OnFocusGainedEvent(code, sender, context);	});
+		Event.Register(EventCodeResized,	 [this](const u16 code, void* sender, const EventContext& context) { return OnResizeEvent(code, sender, context);		});
+		Event.Register(EventCodeMinimized,	 [this](const u16 code, void* sender, const EventContext& context) { return OnMinimizeEvent(code, sender, context);		});
+		Event.Register(EventCodeFocusGained, [this](const u16 code, void* sender, const EventContext& context) { return OnFocusGainedEvent(code, sender, context);	});
 
 		// Load render views
-		for (auto& view : m_config.renderViews)
+		for (auto& view : m_appState->renderViews)
 		{
 			if (!Views.Create(view))
 			{
@@ -145,9 +144,9 @@ namespace C3D
 
 		m_state.initialized = true;
 		m_state.lastTime = 0;
-
-		OnResize(m_state.width, m_state.height);
-		Renderer.OnResize(m_state.width, m_state.height);
+		
+		m_application->OnResize();
+		Renderer.OnResize(m_appState->width, m_appState->height);
 
 		Console.OnInit(this);
 	}
@@ -156,7 +155,7 @@ namespace C3D
 	{
 		m_state.running = true;
 
-		Clock clock;
+		Clock clock(m_systemsManager.GetSystemPtr<Platform>(PlatformSystemType));
 
 		clock.Start();
 		clock.Update();
@@ -167,7 +166,7 @@ namespace C3D
 		constexpr f64 targetFrameSeconds = 1.0 / 60.0;
 		f64 frameElapsedTime = 0;
 
-		OnCreate();
+		m_application->OnRun();
 
 		Metrics.PrintMemoryUsage();
 
@@ -180,10 +179,11 @@ namespace C3D
 				clock.Update();
 				const f64 currentTime = clock.GetElapsed();
 				const f64 delta = currentTime - m_state.lastTime;
-				const f64 frameStartTime = Platform::GetAbsoluteTime();
+				const f64 frameStartTime = OS.GetAbsoluteTime();
 
 				Jobs.Update(delta);
 				Metrics.Update(frameElapsedTime);
+				OS.WatchFiles();
 
 				OnUpdate(delta);
 
@@ -196,7 +196,7 @@ namespace C3D
 					m_logger.Warn("DrawFrame() failed");
 				}
 
-				AfterRender();
+				// TODO: Do we need an AfterRender() method?
 
 				// Cleanup our packets
 				for (auto& view : packet.views)
@@ -204,7 +204,7 @@ namespace C3D
 					Views.DestroyPacket(view.view, view);
 				}
 
-				const f64 frameEndTime = Platform::GetAbsoluteTime();
+				const f64 frameEndTime = OS.GetAbsoluteTime();
 				frameElapsedTime = frameEndTime - frameStartTime;
 
 				if (const f64 remainingSeconds = targetFrameSeconds - frameElapsedTime; remainingSeconds > 0)
@@ -234,10 +234,34 @@ namespace C3D
 		m_state.running = false;
 	}
 
+	bool Engine::OnBoot() const
+	{
+		return m_application->OnBoot();
+	}
+
+	void Engine::OnUpdate(const f64 deltaTime) const
+	{
+		m_console->OnUpdate();
+		m_application->OnUpdate(deltaTime);
+	}
+
+	bool Engine::OnRender(RenderPacket& packet, const f64 deltaTime) const
+	{
+		return m_application->OnRender(packet, deltaTime);
+	}
+
+	void Engine::OnResize(const u32 width, const u32 height) const
+	{
+		m_appState->width  = width;
+		m_appState->height = height;
+		m_application->OnResize();
+		Renderer.OnResize(width, height);
+	}
+
 	void Engine::GetFrameBufferSize(u32* width, u32* height) const
 	{
-		*width = m_state.width;
-		*height = m_state.height;
+		*width  = m_appState->width;
+		*height = m_appState->height;
 	}
 
 	SDL_Window* Engine::GetWindow() const
@@ -255,7 +279,7 @@ namespace C3D
 		C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized")
 
 		// Call the OnShutdown() method that is defined by the user
-		OnShutdown();
+		m_application->OnShutdown();
 
 		m_logger.Info("Shutdown()");
 		m_logger.Info("UnRegistering events");
@@ -282,12 +306,16 @@ namespace C3D
 					m_state.running = false;
 					break;
 				case SDL_KEYDOWN:
+					Input.ProcessKey(e.key.keysym.sym, InputState::Down);
+					break;
 				case SDL_KEYUP:
-					Input.ProcessKey(e.key.keysym.sym, e.type == SDL_KEYDOWN);
+					Input.ProcessKey(e.key.keysym.sym, InputState::Up);
 					break;
 				case SDL_MOUSEBUTTONDOWN:
+					Input.ProcessButton(e.button.button, InputState::Down);
+					break;
 				case SDL_MOUSEBUTTONUP:
-					Input.ProcessButton(e.button.button, e.type == SDL_MOUSEBUTTONDOWN);
+					Input.ProcessButton(e.button.button, InputState::Up);
 					break;
 				case SDL_MOUSEMOTION:
 					Input.ProcessMouseMove(e.motion.x, e.motion.y);
@@ -301,19 +329,19 @@ namespace C3D
 						EventContext context{};
 						context.data.u16[0] = static_cast<u16>(e.window.data1);
 						context.data.u16[1] = static_cast<u16>(e.window.data2);
-						Event.Fire(SystemEventCode::Resized, nullptr, context);
+						Event.Fire(EventCodeResized, nullptr, context);
 					}
 					else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED)
 					{
 						constexpr EventContext context{};
-						Event.Fire(SystemEventCode::Minimized, nullptr, context);
+						Event.Fire(EventCodeMinimized, nullptr, context);
 					}
 					else if (e.window.event == SDL_WINDOWEVENT_ENTER && m_state.suspended)
 					{
 						EventContext context{};
-						context.data.u16[0] = static_cast<u16>(m_state.width);
-						context.data.u16[1] = static_cast<u16>(m_state.height);
-						Event.Fire(SystemEventCode::FocusGained, nullptr, context);
+						context.data.u16[0] = static_cast<u16>(m_appState->width);
+						context.data.u16[1] = static_cast<u16>(m_appState->height);
+						Event.Fire(EventCodeFocusGained, nullptr, context);
 					}
 					break;
 				case SDL_TEXTINPUT:
@@ -326,15 +354,15 @@ namespace C3D
 		}
 	}
 
-	bool Engine::OnResizeEvent(const u16 code, void* sender, const EventContext& context)
+	bool Engine::OnResizeEvent(const u16 code, void* sender, const EventContext& context) const
 	{
-		if (code == SystemEventCode::Resized)
+		if (code == EventCodeResized)
 		{
 			const u16 width = context.data.u16[0];
 			const u16 height = context.data.u16[1];
 
 			// We only update out width and height if they actually changed
-			if (width != m_state.width || height != m_state.height)
+			if (width != m_appState->width || height != m_appState->height)
 			{
 				m_logger.Debug("Window Resize: {} {}", width, height);
 
@@ -344,11 +372,7 @@ namespace C3D
 					return true;
 				}
 
-				m_state.width = width;
-				m_state.height = height;
-
 				OnResize(width, height);
-				Renderer.OnResize(width, height);
 			}
 		}
 
@@ -357,7 +381,7 @@ namespace C3D
 
 	bool Engine::OnMinimizeEvent(const u16 code, void* sender, const EventContext& context)
 	{
-		if (code == SystemEventCode::Minimized)
+		if (code == EventCodeMinimized)
 		{
 			m_logger.Info("Window was minimized - suspending application");
 			m_state.suspended = true;
@@ -368,7 +392,7 @@ namespace C3D
 
 	bool Engine::OnFocusGainedEvent(const u16 code, void* sender, const EventContext& context)
 	{
-		if (code == SystemEventCode::FocusGained)
+		if (code == EventCodeFocusGained)
 		{
 			m_logger.Info("Window has regained focus - resuming application");
 			m_state.suspended = false;
@@ -377,7 +401,6 @@ namespace C3D
 			const u16 height = context.data.u16[1];
 
 			OnResize(width, height);
-			Renderer.OnResize(width, height);
 		}
 
 		return false;

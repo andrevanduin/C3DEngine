@@ -400,7 +400,7 @@ namespace C3D
 		{
 			attachmentViews[i] = static_cast<VulkanImage*>(attachments[i].texture->internalData)->view;
 		}
-		Platform::MemCopy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
+		std::memcpy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
 
 		// Setup our frameBuffer creation
 		VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
@@ -751,15 +751,13 @@ namespace C3D
 	{
 		vkDeviceWaitIdle(m_context.device.logicalDevice);
 
-		const auto data = static_cast<VulkanTextureData*>(texture->internalData);
-		if (data)
+		if (const auto data = static_cast<VulkanTextureData*>(texture->internalData))
 		{
 			data->image.Destroy();
-			Platform::Zero(&data->image);
 			Memory.Free(MemoryType::Texture, texture->internalData);
 		}
 		
-		Platform::Zero(texture);
+		std::memset(texture, 0, sizeof(Texture));
 	}
 
 	bool VulkanRendererPlugin::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
@@ -880,7 +878,7 @@ namespace C3D
 			}
 
 			// Clean up data
-			Platform::Zero(internalData);
+			std::memset(internalData, 0, sizeof(VulkanGeometryData));
 			internalData->id = INVALID_ID;
 			internalData->generation = INVALID_ID;
 		}
@@ -954,12 +952,12 @@ namespace C3D
 		}
 
 		// Zero out arrays and counts
-		Platform::Zero(vulkanShader->config.descriptorSets, sizeof(VulkanDescriptorSetConfig) * 2);
+		std::memset(vulkanShader->config.descriptorSets, 0, sizeof(VulkanDescriptorSetConfig) * 2);
 		vulkanShader->config.descriptorSets[0].samplerBindingIndex = INVALID_ID_U8;
 		vulkanShader->config.descriptorSets[1].samplerBindingIndex = INVALID_ID_U8;
 
 		// Zero out attribute arrays
-		Platform::Zero(vulkanShader->config.attributes, sizeof(VkVertexInputAttributeDescription) * VULKAN_SHADER_MAX_ATTRIBUTES);
+		std::memset(vulkanShader->config.attributes, 0, sizeof(VkVertexInputAttributeDescription) * VULKAN_SHADER_MAX_ATTRIBUTES);
 
 		// Get the uniform counts
 		vulkanShader->ZeroOutCounts();
@@ -1104,7 +1102,7 @@ namespace C3D
 			}
 
 			// Destroy the configuration
-			Platform::Zero(&vulkanShader->config, sizeof(VulkanShaderConfig));
+			std::memset(&vulkanShader->config, 0, sizeof(VulkanShaderConfig));
 
 			// Free the api (Vulkan in this case) specific data from the shader
 			Memory.Free(MemoryType::Shader, shader.apiSpecificData);
@@ -1223,8 +1221,7 @@ namespace C3D
 		scissor.extent.width = m_context.frameBufferWidth;
 		scissor.extent.height = m_context.frameBufferHeight;
 
-		VkPipelineShaderStageCreateInfo stageCreateInfos[VULKAN_SHADER_MAX_STAGES];
-		Platform::Zero(stageCreateInfos, sizeof(VkPipelineShaderStageCreateInfo)* VULKAN_SHADER_MAX_STAGES);
+		VkPipelineShaderStageCreateInfo stageCreateInfos[VULKAN_SHADER_MAX_STAGES] = {};
 		for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
 		{
 			stageCreateInfos[i] = vulkanShader->stages[i].shaderStageCreateInfo;
@@ -1385,8 +1382,7 @@ namespace C3D
 		// We only update if it is needed
 		if (needsUpdate)
 		{
-			VkWriteDescriptorSet descriptorWrites[2]; // Always a max of 2 descriptor sets
-			Platform::Zero(descriptorWrites, sizeof(VkWriteDescriptorSet) * 2);
+			VkWriteDescriptorSet descriptorWrites[2] = {}; // Always a max of 2 descriptor sets
 			u32 descriptorCount = 0;
 			u32 descriptorIndex = 0;
 
@@ -1572,7 +1568,7 @@ namespace C3D
 
 		// Each descriptor binding in the set
 		const u32 bindingCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindingCount;
-		Platform::Zero(setState->descriptorStates, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
+		std::memset(setState->descriptorStates, 0, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
 		for (u32 i = 0; i < bindingCount; i++)
 		{
 			for (u32 j = 0; j < 3; j++)
@@ -1621,7 +1617,7 @@ namespace C3D
 		}
 
 		// Destroy descriptor states
-		Platform::Zero(instanceState->descriptorSetState.descriptorStates, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
+		std::memset(instanceState->descriptorSetState.descriptorStates, 0, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
 
 		// Free the memory for the instance texture pointer array
 		if (instanceState->instanceTextureMaps)
@@ -1708,7 +1704,7 @@ namespace C3D
 				// Map the appropriate memory location and copy the data over.
 				auto address = static_cast<u8*>(internal->mappedUniformBufferBlock);
 				address += shader->boundUboOffset + uniform->offset;
-				Platform::MemCopy(address, value, uniform->size);
+				std::memcpy(address, value, uniform->size);
 			}
 		}
 
@@ -1774,7 +1770,7 @@ namespace C3D
 		}
 
 		// Tell the renderer that a refresh is required
-		Event.Fire(SystemEventCode::DefaultRenderTargetRefreshRequired, nullptr, {});
+		Event.Fire(EventCodeDefaultRenderTargetRefreshRequired, nullptr, {});
 
 		CreateCommandBuffers();
 
@@ -1809,4 +1805,10 @@ namespace C3D
 
 		return true;
 	}
+
+	RendererPlugin* CreatePlugin()
+	{
+		return Memory.New<VulkanRendererPlugin>(MemoryType::RenderSystem);
+	}
+
 }

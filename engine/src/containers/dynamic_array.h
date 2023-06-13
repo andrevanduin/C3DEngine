@@ -12,7 +12,7 @@ namespace C3D
 	template<class T, class Allocator = DynamicAllocator>
 	class C3D_API DynamicArray
 	{
-		static_assert(std::is_base_of_v<BaseAllocator, Allocator>, "Allocator must derive from BaseAllocator");
+		static_assert(std::is_base_of_v<BaseAllocator<Allocator>, Allocator>, "Allocator must derive from BaseAllocator");
 
 	public:
 		constexpr static auto default_capacity = 4;
@@ -26,7 +26,7 @@ namespace C3D
 		using iterator = Iterator<T>;
 		using const_iterator = ConstIterator<T>;
 
-		DynamicArray(Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		DynamicArray(Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{}
 
@@ -73,19 +73,19 @@ namespace C3D
 		 * @brief Creates the array with enough memory allocated for the provided initial capacity.
 		 * No initialization is done on the internal memory.
 		 */
-		explicit DynamicArray(const u64 initialCapacity, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit DynamicArray(const u64 initialCapacity, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{
 			Reserve(initialCapacity);
 		}
 
-		DynamicArray(std::initializer_list<T> list, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		DynamicArray(std::initializer_list<T> list, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{
 			Copy(list.begin(), list.size());
 		}
 
-		DynamicArray(const T* elements, const u64 count, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		DynamicArray(const T* elements, const u64 count, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{
 			Copy(elements, count);

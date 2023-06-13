@@ -374,8 +374,7 @@ namespace C3D
 	{
 		// Create default geometry
 		constexpr u32 vertexCount = 4;
-		Vertex3D vertices[vertexCount];
-		Platform::Zero(vertices, sizeof(Vertex3D) * vertexCount);
+		Vertex3D vertices[vertexCount] = {};
 
 		constexpr f32 f = 10.0f;
 
@@ -413,8 +412,7 @@ namespace C3D
 		m_defaultGeometry.material = Materials.GetDefault();
 
 		// Create default 2d geometry
-		Vertex2D vertices2d[vertexCount];
-		Platform::Zero(vertices2d, sizeof(Vertex2D) * 4);
+		Vertex2D vertices2d[vertexCount] = {};
 
 		vertices2d[0].position.x = -0.5f * f;
 		vertices2d[0].position.y = -0.5f * f;

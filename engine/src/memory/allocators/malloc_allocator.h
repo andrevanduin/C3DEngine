@@ -12,7 +12,7 @@ namespace C3D
 		u64 size;
 	};
 
-	class C3D_API MallocAllocator final : public BaseAllocator
+	class C3D_API MallocAllocator final : public BaseAllocator<MallocAllocator>
 	{
 	public:
 		MallocAllocator();
@@ -27,6 +27,8 @@ namespace C3D
 
 		void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
 		void Free(MemoryType type, void* block) override;
+
+		static MallocAllocator* GetDefault();
 	private:
 		LoggerInstance<32> m_logger;
 	};

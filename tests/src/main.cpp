@@ -13,27 +13,20 @@
 #include "containers/string_tests.h"
 #include "containers/cstring_tests.h"
 #include "core/identifier.h"
-#include "core/metrics/metrics.h"
-#include "memory/global_memory_system.h"
 #include "memory/stack_allocator_tests.h"
 
 int main(int argc, char** argv)
 {
-	C3D::Logger::Init();
-	Metrics.Init();
-	C3D::GlobalMemorySystem::Init({ MebiBytes(64) });
+	// Run our tests with 32MiB
+	TestManager manager(MebiBytes(32));
 
-	TestManager manager;
-
-	/*
 	LinearAllocator::RegisterTests(&manager);
 	DynamicAllocator::RegisterTests(&manager);
 	StackAllocator::RegisterTests(&manager);
 
 	Array::RegisterTests(&manager);
-	*/
 	DynamicArray::RegisterTests(&manager);
-	/*
+	
 	Stack::RegisterTests(&manager);
 	String::RegisterTests(&manager);
 	CString::RegisterTests(&manager);
@@ -41,12 +34,10 @@ int main(int argc, char** argv)
 	HashTable::RegisterTests(&manager);
 	HashMap::RegisterTests(&manager);
 	RingQueue::RegisterTests(&manager);
-	*/
 
 	C3D::Logger::Debug("------ Starting tests... ------");
 	manager.RunTests();
 	C3D::Logger::Debug("----- Done Running tests -----");
 
-	C3D::GlobalMemorySystem::Destroy();
 	return 0;
 }

@@ -9,15 +9,34 @@
 
 namespace C3D
 {
+	/** @brief How many KeyDown events we expect before switching to HELD state. **/
+	constexpr u8 KEY_HELD_DELAY = 10;
+	/** @brief How many ButtonDown events we expect before switching to HELD state. **/
+	constexpr u8 BUTTON_HELD_DELAY = 10;
+
+	enum InputState : u8
+	{
+		Up		= 0,
+		Down	= 1,
+		Held	= 2
+	};
+
+	struct KeyState
+	{
+		InputState state;
+		u8 downCount;
+	};
+	using ButtonState = KeyState;
+
     struct KeyBoardState
     {
-        bool keys[static_cast<u8>(Keys::MaxKeys)];
+        KeyState keys[static_cast<u8>(Keys::MaxKeys)];
     };
 
     struct MouseState
     {
         i16 x, y;
-        bool buttons[static_cast<u8>(Buttons::MaxButtons)];
+        ButtonState buttons[static_cast<u8>(Buttons::MaxButtons)];
     };
 
     struct InputSystemConfig {};
@@ -29,10 +48,10 @@ namespace C3D
 
 		void Update(f64 deltaTime) override;
 
-		void ProcessKey(SDL_Keycode sdlKey, bool down);
-		void ProcessButton(u8 button, bool pressed);
+		void ProcessKey(SDL_Keycode sdlKey, InputState state);
+		void ProcessButton(u8 button, InputState state);
 		void ProcessMouseMove(i32 sdlX, i32 sdlY);
-		void ProcessMouseWheel(i32 delta);
+		void ProcessMouseWheel(i32 delta) const;
 
 		C3D_API [[nodiscard]] bool IsKeyDown(u8 key) const;
 		C3D_API [[nodiscard]] bool IsKeyUp(u8 key) const;

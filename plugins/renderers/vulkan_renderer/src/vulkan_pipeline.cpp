@@ -69,8 +69,7 @@ namespace C3D
 			depthStencil.stencilTestEnable = VK_FALSE;
 		}
 
-		VkPipelineColorBlendAttachmentState colorBlendAttachmentState;
-		Platform::Zero(&colorBlendAttachmentState, sizeof(VkPipelineColorBlendAttachmentState));
+		VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
 
 		colorBlendAttachmentState.blendEnable = VK_TRUE;
 		colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
@@ -133,8 +132,7 @@ namespace C3D
 				return false;
 			}
 
-			VkPushConstantRange ranges[32];
-			Platform::Zero(ranges, sizeof(VkPushConstantRange) * 32);
+			VkPushConstantRange ranges[32] = {};
 			for (u32 i = 0; i < config.pushConstantRangeCount; i++)
 			{
 				ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;

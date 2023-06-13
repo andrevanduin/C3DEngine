@@ -54,7 +54,7 @@ namespace C3D
 	MetricSystem* MetricSystem::s_instance;
 
 	MetricSystem::MetricSystem()
-		: m_frameAverageCounter(0), m_msTimes{}, m_msAverage(0), m_frames(0), m_accumulatedFrameMs(0), m_fps(0), m_memoryStats()
+		: m_frameAverageCounter(0), m_msTimes{}, m_msAverage(0), m_frames(0), m_accumulatedFrameMs(0), m_fps(0)
 	{}
 
 	void MetricSystem::Init()
@@ -293,8 +293,7 @@ namespace C3D
 
 	void MetricSystem::PrintMemoryUsage(const u8 allocatorId, const bool debugLines)
 	{
-		char buffer[4096];
-		Platform::Zero(buffer, sizeof(char) * 4096);
+		char buffer[4096] = {};
 
 		const auto& memStats = m_memoryStats[allocatorId];
 		if (memStats.type != AllocatorType::None)

@@ -110,7 +110,7 @@ namespace C3D
 
 			MetricsAllocate(m_id, type, size, requiredSize, userDataPtr);
 
-			Platform::Zero(userDataPtr, size);
+			std::memset(userDataPtr, 0, size);
 			return userDataPtr;
 		}
 
@@ -217,5 +217,11 @@ namespace C3D
 	u64 DynamicAllocator::GetTotalUsableSize() const
 	{
 		return m_totalSize;
+	}
+
+	DynamicAllocator* DynamicAllocator::GetDefault()
+	{
+		static auto allocator = new DynamicAllocator(AllocatorType::GlobalDynamic);
+		return allocator;
 	}
 }

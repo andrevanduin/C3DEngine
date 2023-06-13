@@ -109,7 +109,7 @@ namespace C3D
 			handle = nullptr;
 		}
 
-		Platform::Zero(&m_memoryRequirements);
+		std::memset(&m_memoryRequirements, 0, sizeof(VkMemoryRequirements));
 
 		totalSize = 0;
 		m_usage = {};
@@ -246,7 +246,8 @@ namespace C3D
 			// Map, copy and unmap
 			void* mappedData;
 			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, read.m_memory, 0, size, 0, &mappedData));
-			Platform::MemCopy(*outMemory, mappedData, size);
+			std::memcpy(*outMemory, mappedData, size);
+
 			vkUnmapMemory(m_context->device.logicalDevice, read.m_memory);
 
 			// Cleanup the read buffer
@@ -258,7 +259,7 @@ namespace C3D
 			// We don't need a read buffer can just directly map, copy and unmap
 			void* mappedData;
 			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, 0, size, 0, &mappedData));
-			Platform::MemCopy(*outMemory, mappedData, size);
+			std::memcpy(*outMemory, mappedData, size);
 			vkUnmapMemory(m_context->device.logicalDevice, m_memory);
 		}
 
@@ -303,7 +304,7 @@ namespace C3D
 			// If we don't need a staging buffer we just map, copy and unmap directly
 			void* mappedData;
 			VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, offset, size, 0, &mappedData));
-			Platform::MemCopy(mappedData, data, size);
+			std::memcpy(mappedData, data, size);
 			vkUnmapMemory(m_context->device.logicalDevice, m_memory);
 		}
 

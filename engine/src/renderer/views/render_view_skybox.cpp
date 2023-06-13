@@ -6,12 +6,9 @@
 #include "core/engine.h"
 #include "renderer/renderer_frontend.h"
 
-#include "systems/events/event_system.h"
 #include "systems/system_manager.h"
 #include "systems/shaders/shader_system.h"
 #include "systems/cameras/camera_system.h"
-
-#include "systems/render_views/render_view_system.h"
 #include "systems/resources/resource_system.h"
 
 #include "resources/loaders/shader_loader.h"
@@ -76,7 +73,7 @@ namespace C3D
 		outPacket->viewMatrix = m_camera->GetViewMatrix();
 		outPacket->viewPosition = m_camera->GetPosition();
 		outPacket->extendedData = frameAllocator.Allocate<SkyboxPacketData>(MemoryType::RenderView);
-		Platform::Copy<SkyboxPacketData>(outPacket->extendedData, data);
+		*static_cast<SkyboxPacketData*>(outPacket->extendedData) = *skyboxData;
 
 		return true;
 	}

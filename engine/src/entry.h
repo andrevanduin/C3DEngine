@@ -6,7 +6,7 @@
 #include "core/metrics/metrics.h"
 #include "memory/global_memory_system.h"
 
-inline int main(int argc, char** argv)
+int main(int argc, char** argv)
 {
 	// Create our console just so the logger can already have a handle to it
 	C3D::UIConsole console;
@@ -18,13 +18,17 @@ inline int main(int argc, char** argv)
 	Metrics.Init();
 
 	// Initialize our global allocator that we will normally always use
-	C3D::GlobalMemorySystem::Init({ MebiBytes(512) });
+	C3D::GlobalMemorySystem::Init({ MebiBytes(256) });
 
 	// Create our identifiers
 	C3D::Identifier::Init();
 
-	// Create our instance of the engine by calling the user supplied method
-	const auto engine = C3D::CreateApplication();
+	// Create the application by calling the method provided by the user
+	const auto application = C3D::CreateApplication();
+
+	// Create our instance of the engine and supply it with the user's application
+	const auto engine = Memory.New<C3D::Engine>(C3D::MemoryType::Engine, application);
+
 	// Set the Base Console for our engine so the user can start using it
 	engine->SetBaseConsole(&console);
 
@@ -35,7 +39,10 @@ inline int main(int argc, char** argv)
 	engine->Run();
 
 	// Cleanup the main engine which was created by the user in the CreateApplication
-	delete engine;
+	Memory.Delete(C3D::MemoryType::Engine, engine);
+
+	// Cleanup the application that was provided by the user
+	Memory.Delete(C3D::MemoryType::Game, application);
 
 	// Destroy our identifiers
 	C3D::Identifier::Destroy();

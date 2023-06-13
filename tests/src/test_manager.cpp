@@ -4,7 +4,18 @@
 #include <core/logger.h>
 #include <core/clock.h>
 
-TestManager::TestManager() : m_logger("TEST_MANAGER") {}
+TestManager::TestManager(const u64 memorySize)
+	: m_logger("TEST_MANAGER")
+{
+	C3D::Logger::Init();
+	Metrics.Init();
+	C3D::GlobalMemorySystem::Init({ memorySize });
+}
+
+TestManager::~TestManager()
+{
+	C3D::GlobalMemorySystem::Destroy();
+}
 
 void TestManager::StartType(const std::string& type)
 {
@@ -26,7 +37,10 @@ void TestManager::RunTests()
 	u32 failed = 0;
 	u32 skipped = 0;
 
-	C3D::Clock totalTime;
+	C3D::Platform platform;
+	platform.Init();
+
+	C3D::Clock totalTime(&platform);
 	totalTime.Start();
 
 	auto i = 0;
@@ -40,7 +54,7 @@ void TestManager::RunTests()
 
 		i++;
 
-		C3D::Clock testTime;
+		C3D::Clock testTime(&platform);
 		testTime.Start();
 		
 		const u8 result = test.func();
@@ -66,4 +80,6 @@ void TestManager::RunTests()
 
 	totalTime.Stop();
 	m_logger.Info("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec", passed, failed, skipped, totalTime.GetElapsed());
+
+	platform.Shutdown();
 }

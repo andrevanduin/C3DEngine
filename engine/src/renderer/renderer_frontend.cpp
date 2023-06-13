@@ -56,7 +56,7 @@ namespace C3D
 		Memory.Delete(MemoryType::RenderSystem, m_backendPlugin);
 	}
 
-	void RenderSystem::OnResize(const u16 width, const u16 height)
+	void RenderSystem::OnResize(const u32 width, const u32 height)
 	{
 		m_resizing = true;
 		m_frameBufferWidth = width;
@@ -276,7 +276,7 @@ namespace C3D
 		m_backendPlugin->DestroyRenderTarget(target, freeInternalMemory);
 		if (freeInternalMemory)
 		{
-			Platform::Zero(target, sizeof(RenderTarget));
+			std::memset(target, 0, sizeof(RenderTarget));
 		}
 	}
 

@@ -28,27 +28,29 @@ namespace C3D
 
 	enum SystemEventCode : u16
 	{
-		ApplicationQuit = 0x01,
-		KeyDown = 0x02,
-		KeyUp = 0x03,
-		ButtonDown = 0x04,
-		ButtonUp = 0x05,
-		MouseMoved = 0x06,
-		MouseScrolled = 0x07,
-		Resized = 0x08,
-		Minimized = 0x09,
-		FocusGained = 0x0a,
-		SetRenderMode = 0x0b,
+		EventCodeApplicationQuit = 0x01,
+		EventCodeKeyDown = 0x02,
+		EventCodeKeyUp = 0x03,
+		EventCodeButtonDown = 0x04,
+		EventCodeButtonUp = 0x05,
+		EventCodeMouseMoved = 0x06,
+		EventCodeMouseScrolled = 0x07,
+		EventCodeResized = 0x08,
+		EventCodeMinimized = 0x09,
+		EventCodeFocusGained = 0x0a,
+		EventCodeSetRenderMode = 0x0b,
 
-		Debug0 = 0x10,
-		Debug1 = 0x11,
-		Debug2 = 0x12,
-		Debug3 = 0x13,
-		Debug4 = 0x14,
+		EventCodeDebug0 = 0x10,
+		EventCodeDebug1 = 0x11,
+		EventCodeDebug2 = 0x12,
+		EventCodeDebug3 = 0x13,
+		EventCodeDebug4 = 0x14,
 
-		ObjectHoverIdChanged = 0x15,
-		DefaultRenderTargetRefreshRequired = 0x16,
+		EventCodeObjectHoverIdChanged = 0x15,
+		EventCodeDefaultRenderTargetRefreshRequired = 0x16,
+		EventCodeWatchedFileChanged = 0x17,
+		EventCodeWatchedFileRemoved = 0x18,
 
-		MaxCode = 0xFF
+		EventCodeMaxCode = 0xFF
 	};
 }

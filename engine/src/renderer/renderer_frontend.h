@@ -34,7 +34,7 @@ namespace C3D
 		bool Init(const RenderSystemConfig& config) override;
 		void Shutdown() override;
 
-		void OnResize(u16 width, u16 height);
+		void OnResize(u32 width, u32 height);
 
 		bool DrawFrame(RenderPacket* packet);
 

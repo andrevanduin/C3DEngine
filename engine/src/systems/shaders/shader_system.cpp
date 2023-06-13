@@ -107,7 +107,7 @@ namespace C3D
 		return true;
 	}
 
-	u32 ShaderSystem::GetId(const char* name)
+	u32 ShaderSystem::GetId(const char* name) const
 	{
 		if (!m_shaders.Has(name))
 		{
@@ -275,7 +275,7 @@ namespace C3D
 		shader->attributeStride += size;
 
 		// Create and push the attribute
-		ShaderAttribute attribute{};
+		ShaderAttribute attribute;
 		attribute.name = config->name;
 		attribute.size = size;
 		attribute.type = config->type;

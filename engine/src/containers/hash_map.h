@@ -90,7 +90,7 @@ namespace C3D
 
 		private:
 			u64 m_index;
-			const HashMap<Key, Value, HashFunc>* m_map;
+			const HashMap* m_map;
 		};
 
 		struct HashMapNode
@@ -107,32 +107,30 @@ namespace C3D
 
 		HashMap& operator=(const HashMap& other)
 		{
-			if (this != &other)
+			if (this == &other) return *this;
+
+			// Allocate enough space for the same amount of nodes as other has
+			m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, other.m_size);
+			// Copy over the values from other
+			m_size = other.m_size;
+			m_count = other.m_count;
+			m_hashCompute = other.m_hashCompute;
+
+			// Invalidate all nodes in our array except if at this location other has an occupied element
+			for (u64 i = 0; i < other.m_size; i++)
 			{
-				// Allocate enough space for the same amount of nodes as other has
-				m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, other.m_size);
-				// Copy over the values from other
-				m_size = other.m_size;
-				m_count = other.m_count;
-				m_hashCompute = other.m_hashCompute;
-
-				// Invalidate all nodes in our array except if at this location other has an occupied element
-				for (u64 i = 0; i < other.m_size; i++)
+				const auto otherNode = other.m_nodes[i];
+				if (otherNode.occupied)
 				{
-					const auto otherNode = other.m_nodes[i];
-					if (otherNode.occupied)
-					{
-						// The other node is occupied so we need to copy over this node
-						m_nodes[i].occupied = true;
-						m_nodes[i].element = otherNode.element;
-					}
-					else
-					{
-						// The other node is empty so we don't need to do anything here
-						m_nodes[i].occupied = false;
-					}
+					// The other node is occupied so we need to copy over this node
+					m_nodes[i].occupied = true;
+					m_nodes[i].element = otherNode.element;
 				}
-
+				else
+				{
+					// The other node is empty so we don't need to do anything here
+					m_nodes[i].occupied = false;
+				}
 			}
 			return *this;
 		}
@@ -201,7 +199,7 @@ namespace C3D
 			// Call the destructor for the element
 			m_nodes[hash].element.~Value();
 			// Zero out the memory
-			Platform::Zero(&m_nodes[hash].element);
+			std::memset(&m_nodes[hash].element, 0, sizeof(Value));
 			// Decrement the count to keep track of how many elements we are currently storing
 			m_count--;
 		}

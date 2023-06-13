@@ -52,14 +52,14 @@ namespace C3D
 		m_ambientColor = vec4(0.25f, 0.25f, 0.25f, 1.0f);
 
 		// Register our render mode change event listener
-		m_onEventCallbackId = Event.Register(SystemEventCode::SetRenderMode, [this](const u16 code, void* sender, const EventContext& context) { return OnEvent(code, sender, context); });
+		m_onEventCallbackId = Event.Register(EventCodeSetRenderMode, [this](const u16 code, void* sender, const EventContext& context) { return OnEvent(code, sender, context); });
 		return true;
 	}
 
 	void RenderViewWorld::OnDestroy()
 	{
 		RenderView::OnDestroy();
-		Event.Unregister(SystemEventCode::SetRenderMode, m_onEventCallbackId);
+		Event.Unregister(EventCodeSetRenderMode, m_onEventCallbackId);
 	}
 
 	void RenderViewWorld::OnResize()
@@ -175,7 +175,7 @@ namespace C3D
 
 	bool RenderViewWorld::OnEvent(const u16 code, void* sender, const EventContext& context)
 	{
-		if (code == SystemEventCode::SetRenderMode)
+		if (code == EventCodeSetRenderMode)
 		{
 			switch (const i32 mode = context.data.i32[0])
 			{
@@ -190,6 +190,9 @@ namespace C3D
 				case RendererViewMode::Normals:
 					m_logger.Debug("Renderer mode set to normals");
 					m_renderMode = RendererViewMode::Normals;
+					break;
+				default:
+					m_logger.Fatal("Unknown render mode");
 					break;
 			}
 		}
