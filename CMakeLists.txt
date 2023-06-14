@@ -15,6 +15,7 @@ add_compile_definitions(C3D_MEMORY_METRICS)
 add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)
 
 # Include sub-projects.
+add_subdirectory ("tools")
 add_subdirectory ("engine")
 add_subdirectory ("plugins")
 add_subdirectory ("testenv")

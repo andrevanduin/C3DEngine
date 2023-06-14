@@ -1,7 +1,6 @@
 
 #pragma once
 #include "containers/cstring.h"
-#include "dynamic_libary_function.h"
 #include "memory/allocators/malloc_allocator.h"
 #include "platform/platform.h"
 
@@ -31,8 +30,6 @@ namespace C3D
 
 	protected:
 		explicit DynamicLibrary(const CString<16>& name);
-
-		DynamicArray<DynamicLibraryFunction, MallocAllocator> m_functions;
 
 		CString<64> m_name;
 		CString<64> m_fileName;

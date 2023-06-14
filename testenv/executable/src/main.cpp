@@ -39,5 +39,7 @@ C3D::Application* C3D::CreateApplication()
 // Method that gets called when our game library has updated
 bool C3D::OnGameLibraryUpdated()
 {
+
+
 	return true;
 }

@@ -60,10 +60,10 @@ public:
 	void OnLibraryUnload() override;
 
 private:
-	bool ConfigureRenderViews();
+	bool ConfigureRenderViews() const;
 
 	bool OnEvent(u16 code, void* sender, const C3D::EventContext& context) const;
-	bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context);
+	bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context) const;
 
 	GameState* m_state;
 };

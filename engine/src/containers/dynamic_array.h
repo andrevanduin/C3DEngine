@@ -1,5 +1,4 @@
 
-// ReSharper disable CppInconsistentNaming
 #pragma once
 #include "core/defines.h"
 #include "memory/global_memory_system.h"

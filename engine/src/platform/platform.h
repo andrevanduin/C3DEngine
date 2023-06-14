@@ -51,7 +51,7 @@ namespace C3D
 		void WatchFiles();
 
 		/* @brief Get the systems absolute time. */
-		f64 GetAbsoluteTime() const;
+		[[nodiscard]] f64 GetAbsoluteTime() const;
 
 		/* @brief Sleeps the current thread for the provided amount of ms. */
 		static void SleepMs(u64 ms);

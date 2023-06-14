@@ -536,7 +536,7 @@ void TestEnv::OnLibraryUnload()
 
 }
 
-bool TestEnv::ConfigureRenderViews()
+bool TestEnv::ConfigureRenderViews() const
 {
 	// Skybox View
 	C3D::RenderViewConfig skyboxConfig{};
@@ -710,7 +710,7 @@ bool TestEnv::OnEvent(const u16 code, void*, const C3D::EventContext& context) c
 	}
 }
 
-bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext& context)
+bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&) const
 {
 	if (code == C3D::EventCodeDebug0)
 	{

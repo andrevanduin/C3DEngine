@@ -1,5 +1,4 @@
 
-#include "core/dynamic_library/dynamic_libary_function.h"
 #include "platform/platform.h"
 
 #ifdef C3D_PLATFORM_WINDOWS
