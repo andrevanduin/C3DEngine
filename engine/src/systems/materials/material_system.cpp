@@ -18,10 +18,8 @@
 namespace C3D
 {
 	MaterialSystem::MaterialSystem(const Engine* engine)
-		: SystemWithConfig(engine, "MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_registeredMaterials(nullptr),
-		  m_materialShaderId(0), m_uiShaderId(0)
-	{
-	}
+		: SystemWithConfig(engine, "MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_materialShaderId(0), m_uiShaderId(0)
+	{}
 
 	bool MaterialSystem::Init(const MaterialSystemConfig& config)
 	{
@@ -36,20 +34,8 @@ namespace C3D
 		m_materialShaderId = INVALID_ID;
 		m_uiShaderId = INVALID_ID;
 
-		// Allocate enough memory for the max number of materials that we will be using
-		m_registeredMaterials = Memory.Allocate<Material>(MemoryType::MaterialInstance, config.maxMaterialCount);
-		// Set the id of all the textures to invalid
-		for (u32 i = 0; i < m_config.maxMaterialCount; i++)
-		{
-			m_registeredMaterials[i].id = INVALID_ID;
-			m_registeredMaterials[i].generation = INVALID_ID;
-			m_registeredMaterials[i].internalId = INVALID_ID;
-			m_registeredMaterials[i].renderFrameNumber = INVALID_ID;
-		}
-
-		// Ensure that we have enough space for all our textures
-		m_registeredMaterialTable.Create(config.maxMaterialCount);
-		m_registeredMaterialTable.FillDefault();
+		// Create our hashmap for the materials
+		m_registeredMaterials.Create(config.maxMaterialCount);
 
 		if (!CreateDefaultMaterial())
 		{
@@ -64,23 +50,19 @@ namespace C3D
 	void MaterialSystem::Shutdown()
 	{
 		m_logger.Info("Destroying all loaded materials");
-		for (u32 i = 0; i < m_config.maxMaterialCount; i++)
+		for (auto& ref : m_registeredMaterials) 
 		{
-			if (m_registeredMaterials[i].id != INVALID_ID)
+			if (ref.material.id != INVALID_ID) 
 			{
-				DestroyMaterial(&m_registeredMaterials[i]);
+				DestroyMaterial(&ref.material);
 			}
 		}
 
 		m_logger.Info("Destroying default material");
 		DestroyMaterial(&m_defaultMaterial);
 
-		// Free the memory we allocated for all our materials
-		Memory.Free(MemoryType::MaterialInstance, m_registeredMaterials);
-		m_registeredMaterials = nullptr;
-
-		// Cleanup our material table
-		m_registeredMaterialTable.Destroy();
+		// Cleanup our registered material hashmap
+		m_registeredMaterials.Destroy();
 	}
 
 	Material* MaterialSystem::Acquire(const char* name)
@@ -109,85 +91,63 @@ namespace C3D
 			return &m_defaultMaterial;
 		}
 
-		MaterialReference ref = m_registeredMaterialTable.Get(config.name);
+		if (m_registeredMaterials.Has(config.name)) {
+			// The material already exists
+			MaterialReference& ref = m_registeredMaterials.Get(config.name);
+			ref.referenceCount++;
 
-		// This should only happen the first time a material is loaded
-		if (ref.referenceCount == 0)
-		{
-			ref.autoRelease = config.autoRelease;
-		}
-
-		ref.referenceCount++;
-		if (ref.handle == INVALID_ID)
-		{
-			// No material exists yet. Let's find a free index for it
-			const u32 count = m_config.maxMaterialCount;
-			Material* mat = nullptr;
-			for (u32 i = 0; i < count; i++)
-			{
-				if (m_registeredMaterials[i].id == INVALID_ID)
-				{
-					ref.handle = i;
-					mat = &m_registeredMaterials[i];
-					break;
-				}
-			}
-
-			if (!mat || ref.handle == INVALID_ID)
-			{
-				m_logger.Fatal("No more free space for materials. Adjust the configuration to allow more");
-				return nullptr;
-			}
-
-			// Create a new Material
-			if (!LoadMaterial(config, mat))
-			{
-				m_logger.Error("Failed to load material {}", config.name);
-				return nullptr;
-			}
-
-			// Get the uniform indices
-			Shader* shader = Shaders.GetById(mat->shaderId);
-			// Save locations to known types for quick lookups
-			if (m_materialShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.Material")
-			{
-				m_materialShaderId = shader->id;
-				m_materialLocations.projection = Shaders.GetUniformIndex(shader, "projection");
-				m_materialLocations.view = Shaders.GetUniformIndex(shader, "view");
-				m_materialLocations.ambientColor = Shaders.GetUniformIndex(shader, "ambientColor");
-				m_materialLocations.diffuseColor = Shaders.GetUniformIndex(shader, "diffuseColor");
-				m_materialLocations.shininess = Shaders.GetUniformIndex(shader, "shininess");
-				m_materialLocations.viewPosition = Shaders.GetUniformIndex(shader, "viewPosition");
-				m_materialLocations.diffuseTexture = Shaders.GetUniformIndex(shader, "diffuseTexture");
-				m_materialLocations.specularTexture = Shaders.GetUniformIndex(shader, "specularTexture");
-				m_materialLocations.normalTexture = Shaders.GetUniformIndex(shader, "normalTexture");
-				m_materialLocations.model = Shaders.GetUniformIndex(shader, "model");
-				m_materialLocations.renderMode = Shaders.GetUniformIndex(shader, "mode");
-			}
-			else if (m_uiShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.UI")
-			{
-				m_uiShaderId = shader->id;
-				m_uiLocations.projection = Shaders.GetUniformIndex(shader, "projection");
-				m_uiLocations.view = Shaders.GetUniformIndex(shader, "view");
-				m_uiLocations.diffuseColor = Shaders.GetUniformIndex(shader, "diffuseColor");
-				m_uiLocations.diffuseTexture = Shaders.GetUniformIndex(shader, "diffuseTexture");
-				m_uiLocations.model = Shaders.GetUniformIndex(shader, "model");
-			}
-
-			if (mat->generation == INVALID_ID) mat->generation = 0;
-			else mat->generation++;
-
-			// Use the handle (location in the array) as the material id
-			mat->id = ref.handle;
-			m_logger.Trace("Material {} did not exist yet. Created and the refCount is now {}", config.name, ref.referenceCount);
-		}
-		else
-		{
 			m_logger.Trace("Material {} already exists. The refCount is now {}", config.name, ref.referenceCount);
+
+			return &ref.material;
 		}
 
-		m_registeredMaterialTable.Set(config.name, ref);
-		return &m_registeredMaterials[ref.handle];
+		// The material does not exist yet
+		// Add a new reference into the registered materials hashmap
+		m_registeredMaterials.Set(config.name, MaterialReference(config.autoRelease));
+		// Get a reference to it so we can start using it
+		auto& ref = m_registeredMaterials.Get(config.name);
+		// Get a pointer to the material inside of our reference
+		Material* mat = &ref.material;
+
+		// Create a new Material
+		if (!LoadMaterial(config, mat))
+		{
+			m_logger.Error("Failed to load material {}", config.name);
+			return nullptr;
+		}
+
+		// Get the uniform indices
+		Shader* shader = Shaders.GetById(mat->shaderId);
+		// Save locations to known types for quick lookups
+		if (m_materialShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.Material")
+		{
+			m_materialShaderId = shader->id;
+			m_materialLocations.projection = Shaders.GetUniformIndex(shader, "projection");
+			m_materialLocations.view = Shaders.GetUniformIndex(shader, "view");
+			m_materialLocations.ambientColor = Shaders.GetUniformIndex(shader, "ambientColor");
+			m_materialLocations.diffuseColor = Shaders.GetUniformIndex(shader, "diffuseColor");
+			m_materialLocations.shininess = Shaders.GetUniformIndex(shader, "shininess");
+			m_materialLocations.viewPosition = Shaders.GetUniformIndex(shader, "viewPosition");
+			m_materialLocations.diffuseTexture = Shaders.GetUniformIndex(shader, "diffuseTexture");
+			m_materialLocations.specularTexture = Shaders.GetUniformIndex(shader, "specularTexture");
+			m_materialLocations.normalTexture = Shaders.GetUniformIndex(shader, "normalTexture");
+			m_materialLocations.model = Shaders.GetUniformIndex(shader, "model");
+			m_materialLocations.renderMode = Shaders.GetUniformIndex(shader, "mode");
+		}
+		else if (m_uiShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.UI")
+		{
+			m_uiShaderId = shader->id;
+			m_uiLocations.projection = Shaders.GetUniformIndex(shader, "projection");
+			m_uiLocations.view = Shaders.GetUniformIndex(shader, "view");
+			m_uiLocations.diffuseColor = Shaders.GetUniformIndex(shader, "diffuseColor");
+			m_uiLocations.diffuseTexture = Shaders.GetUniformIndex(shader, "diffuseTexture");
+			m_uiLocations.model = Shaders.GetUniformIndex(shader, "model");
+		}
+
+		mat->generation = 0;
+		m_logger.Trace("Material {} did not exist yet. Created and the refCount is now {}", config.name, ref.referenceCount);
+
+		return &ref.material;
 	}
 
 	void MaterialSystem::Release(const char* name)
@@ -198,34 +158,34 @@ namespace C3D
 			return;
 		}
 
-		MaterialReference ref = m_registeredMaterialTable.Get(name);
-		if (ref.referenceCount == 0)
+		if (!m_registeredMaterials.Has(name))
 		{
 			m_logger.Warn("Tried to release a material that does not exist: {}", name);
 			return;
 		}
 
+		MaterialReference& ref = m_registeredMaterials.Get(name);
 		ref.referenceCount--;
+
 		if (ref.referenceCount == 0 && ref.autoRelease)
 		{
 			// This material is marked for auto release and we are holding no more references to it
-			Material* mat = &m_registeredMaterials[ref.handle];
+
+			// Make a copy of the name in case the material's name itself is used for calling this method since DestroyMaterial() will clear that name
+			auto nameCopy = ref.material.name;
 
 			// Destroy the material
-			DestroyMaterial(mat);
+			DestroyMaterial(&ref.material);
 
-			// Reset the reference
-			ref.handle = INVALID_ID;
-			ref.autoRelease = false;
+			// Remove the material reference
+			m_registeredMaterials.Delete(nameCopy);
 
-			m_logger.Info("Released material {}. The texture was unloaded because refCount = 0 and autoRelease = true", name);
+			m_logger.Info("Released material {}. The texture was unloaded because refCount = 0 and autoRelease = true", nameCopy);
 		}
 		else
 		{
 			m_logger.Info("Released material {}. The material now has a refCount = {} (autoRelease = {})", name, ref.referenceCount, ref.autoRelease);
 		}
-
-		m_registeredMaterialTable.Set(name, ref);
 	}
 
 	Material* MaterialSystem::GetDefault()

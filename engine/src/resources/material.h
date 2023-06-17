@@ -17,13 +17,13 @@ namespace C3D
 	struct Material
 	{
 		/* @brief The id of the material. */
-		u32 id;
+		u32 id = INVALID_ID;
 		/* @brief The material generation. Gets incremented every time the material is changed. */
-		u32 generation;
+		u32 generation = INVALID_ID;
 		/* @brief The material internal id. Used by the renderer backend to map to internal resources. */
-		u32 internalId;
+		u32 internalId = INVALID_ID;
 		/* @brief The material's associated shader id. */
-		u32 shaderId;
+		u32 shaderId = INVALID_ID;
 		/* @brief The material name. */
 		CString<MATERIAL_NAME_MAX_LENGTH> name;
 		/* @brief The material diffuse color. */
@@ -35,10 +35,10 @@ namespace C3D
 		/* @brief The material normal texture map. */
 		TextureMap normalMap;
 		/* @brief The material shininess, determines how bright the specular lighting will be. */
-		float shininess;
+		float shininess = 0.0f;
 
 		/* @brief Synced to the renderer current frame number when the material has been applied that frame. */
-		u32 renderFrameNumber;
+		u32 renderFrameNumber = INVALID_ID;
 	};
 
 	struct MaterialConfig

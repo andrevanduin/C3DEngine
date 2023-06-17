@@ -22,11 +22,11 @@ namespace C3D
 
 	struct MaterialReference
 	{
-		MaterialReference() : referenceCount(0), handle(INVALID_ID), autoRelease(false) {}
+		MaterialReference(bool shouldAutoRelease) : autoRelease(shouldAutoRelease) {}
 
-		u64 referenceCount;
-		u32 handle;
+		u32 referenceCount = 1;
 		bool autoRelease;
+		Material material;
 	};
 
 	struct MaterialUniformLocations
@@ -82,10 +82,8 @@ namespace C3D
 		bool m_initialized;
 
 		Material m_defaultMaterial;
-		Material* m_registeredMaterials;
-
 		// Hashtable to map names to material-references
-		HashTable<MaterialReference> m_registeredMaterialTable;
+		HashMap<CString<256>, MaterialReference> m_registeredMaterials;
 
 		// Known locations for the material shader
 		MaterialUniformLocations m_materialLocations;
