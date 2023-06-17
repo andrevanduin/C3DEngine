@@ -35,6 +35,9 @@ int main(int argc, char** argv)
 	// Initialize our engine
 	engine->Init();
 
+	// Init our application
+	InitApplication(engine);
+
 	// Run our engine's game loop
 	engine->Run();
 

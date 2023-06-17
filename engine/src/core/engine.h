@@ -75,6 +75,8 @@ namespace C3D
 			return *m_console;
 		}
 
+		void OnApplicationLibraryReload(Application* app);
+
 	protected:
 		LoggerInstance<16> m_logger;
 
@@ -86,7 +88,6 @@ namespace C3D
 		UIConsole* m_console;
 
 		Application* m_application;
-		ApplicationState* m_appState;
 
 	private:
 		void Shutdown();
@@ -100,6 +101,4 @@ namespace C3D
 		
 		friend int ::main(int argc, char** argv);
 	};
-
-	bool OnGameLibraryUpdated();
 }

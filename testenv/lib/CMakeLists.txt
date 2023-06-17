@@ -1,22 +1,20 @@
 
-cmake_minimum_required (VERSION 3.13)
+cmake_minimum_required (VERSION 3.21)
 
+set(CMAKE_TOOLCHAIN_FILE "E:/Dev/vcpkg/scripts/buildsystems/vcpkg.cmake")
 set(CMAKE_CXX_STANDARD 23)
 
 file(GLOB_RECURSE TestEnvLib_SRC "*.h" "*.cpp")
 
 add_library(TestEnvLib SHARED ${TestEnvLib_SRC})
+target_link_options(TestEnvLib PUBLIC /MANIFEST:NO)
 
 target_compile_definitions(TestEnvLib PUBLIC C3D_EXPORT)
 
-# add_custom_target(GenerateVersion COMMAND VersionGen > jan.txt)
-
-# add_dependencies(TestEnvLib GenerateVersion)
-
-# file (READ "${CMAKE_BINARY_DIR}/testenv/lib/jan.txt" VER)
-
-set_target_properties(TestEnvLib PROPERTIES PDB_NAME "${CMAKE_BINARY_DIR}/testenv/lib/jan.txt")
+set_target_properties(TestEnvLib PROPERTIES PDB_NAME "TestEnvLib${RANDOM_PDB_VERSION}")
 
 target_link_libraries(TestEnvLib PUBLIC C3DEngine)
 
 target_include_directories(TestEnvLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+add_custom_command(TARGET TestEnvLib COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/TestEnvLib.dll" "${CMAKE_BINARY_DIR}/testenv/executable")

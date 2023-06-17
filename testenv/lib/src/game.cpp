@@ -296,14 +296,14 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	}
 
 	// Rotate 
-	quat rotation = angleAxis(0.5f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
+	quat rotation = angleAxis(10.0f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
 	m_state->meshes[0].transform.Rotate(rotation);
 	m_state->meshes[1].transform.Rotate(rotation);
 	m_state->meshes[2].transform.Rotate(rotation);
 
 	if (m_state->meshes[3].generation != INVALID_ID_U8)
 	{
-		m_state->meshes[3].transform.Rotate(rotation);
+		//m_state->meshes[3].transform.Rotate(rotation);
 	}
 
 	const auto fWidth = static_cast<f32>(m_state->width);

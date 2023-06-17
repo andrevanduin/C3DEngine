@@ -1,5 +1,6 @@
 
 // ReSharper disable CppInconsistentNaming
+// ReSharper disable CppClangTidyCertDcl58Cpp
 #pragma once
 #include <iostream>
 #include <fmt/core.h>

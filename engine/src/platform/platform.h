@@ -14,6 +14,14 @@ namespace C3D
 	using DynamicLibraryExtension = CString<8>;
 	using FileWatchId = u32;
 
+	enum class CopyFileStatus : u8
+	{
+		Success,
+		NotFound,
+		Locked,
+		Unknown,
+	};
+
 	class C3D_API Platform final : public BaseSystem
 	{
 	public:
@@ -31,7 +39,7 @@ namespace C3D
 		 *	@param OverwriteIfExists - Set to true if you want to overwrite the file in the dest if it exists
 		 *	@return True if successfully copied file false otherwise
 		 */
-		bool CopyFile(const char* source, const char* dest, bool overwriteIfExists) const;
+		static CopyFileStatus CopyFile(const char* source, const char* dest, bool overwriteIfExists);
 
 		/* @brief Starts watching the file at the provided filePath for changes.
 		 *

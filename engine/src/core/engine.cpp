@@ -32,14 +32,14 @@ namespace C3D
 		: m_logger("ENGINE"), m_engine(this), m_console(nullptr), m_application(application)
 	{
 		m_application->m_engine = this;
-		m_appState = m_application->m_appState;
 	}
 
 	void Engine::Init()
 	{
 		C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the engine twice");
 
-		m_state.name = m_appState->name;
+		const auto appState = m_application->m_appState;
+		m_state.name = appState->name;
 
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
@@ -48,8 +48,8 @@ namespace C3D
 
 		m_logger.Info("Successfully initialized SDL");
 
-		String windowName = String::FromFormat("C3DEngine - {}", m_appState->name);
-		m_window = SDL_CreateWindow(windowName.Data(), m_appState->x, m_appState->y, m_appState->width, m_appState->height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+		String windowName = String::FromFormat("C3DEngine - {}", appState->name);
+		m_window = SDL_CreateWindow(windowName.Data(), appState->x, appState->y, appState->width, appState->height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 		if (m_window == nullptr)
 		{
 			m_logger.Fatal("Failed to create a Window: {}", SDL_GetError());
@@ -69,10 +69,10 @@ namespace C3D
 
 		m_systemsManager.Init(this);
 
-		constexpr	ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../../../assets"	};
+		constexpr	ResourceSystemConfig	resourceSystemConfig	{ 32, "../../../assets"	};
 		constexpr	ShaderSystemConfig		shaderSystemConfig		{ 128, 128, 31, 31			};
 		constexpr	CVarSystemConfig		cVarSystemConfig		{ 31						};
-		const		RenderSystemConfig		renderSystemConfig		{ "TestEnv", m_appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled};
+		const		RenderSystemConfig		renderSystemConfig		{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled};
 
 		// Init before boot systems
 		m_systemsManager.RegisterSystem<Platform>(PlatformSystemType);								// Platform (OS) System
@@ -119,7 +119,7 @@ namespace C3D
 
 		m_systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);					// Job System
 		m_systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);		// Texture System
-		m_systemsManager.RegisterSystem<FontSystem>(FontSystemType, m_appState->fontConfig);		// Font System
+		m_systemsManager.RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);		// Font System
 		m_systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);		// Camera System
 		m_systemsManager.RegisterSystem<RenderViewSystem>(RenderViewSystemType, viewSystemConfig);  // Render View System
 
@@ -128,7 +128,7 @@ namespace C3D
 		Event.Register(EventCodeFocusGained, [this](const u16 code, void* sender, const EventContext& context) { return OnFocusGainedEvent(code, sender, context);	});
 
 		// Load render views
-		for (auto& view : m_appState->renderViews)
+		for (auto& view : appState->renderViews)
 		{
 			if (!Views.Create(view))
 			{
@@ -144,9 +144,9 @@ namespace C3D
 
 		m_state.initialized = true;
 		m_state.lastTime = 0;
-		
+
 		m_application->OnResize();
-		Renderer.OnResize(m_appState->width, m_appState->height);
+		Renderer.OnResize(appState->width, appState->height);
 
 		Console.OnInit(this);
 	}
@@ -252,16 +252,20 @@ namespace C3D
 
 	void Engine::OnResize(const u32 width, const u32 height) const
 	{
-		m_appState->width  = width;
-		m_appState->height = height;
+		const auto appState = m_application->m_appState;
+		appState->width  = width;
+		appState->height = height;
+
 		m_application->OnResize();
 		Renderer.OnResize(width, height);
 	}
 
 	void Engine::GetFrameBufferSize(u32* width, u32* height) const
 	{
-		*width  = m_appState->width;
-		*height = m_appState->height;
+		const auto appState = m_application->m_appState;
+
+		*width  = appState->width;
+		*height = appState->height;
 	}
 
 	SDL_Window* Engine::GetWindow() const
@@ -272,6 +276,12 @@ namespace C3D
 	const EngineState* Engine::GetState() const
 	{
 		return &m_state;
+	}
+
+	void Engine::OnApplicationLibraryReload(Application* app)
+	{
+		m_application = app;
+		m_application->m_engine = this;
 	}
 
 	void Engine::Shutdown()
@@ -338,9 +348,11 @@ namespace C3D
 					}
 					else if (e.window.event == SDL_WINDOWEVENT_ENTER && m_state.suspended)
 					{
+						const auto appState = m_application->m_appState;
+
 						EventContext context{};
-						context.data.u16[0] = static_cast<u16>(m_appState->width);
-						context.data.u16[1] = static_cast<u16>(m_appState->height);
+						context.data.u16[0] = static_cast<u16>(appState->width);
+						context.data.u16[1] = static_cast<u16>(appState->height);
 						Event.Fire(EventCodeFocusGained, nullptr, context);
 					}
 					break;
@@ -360,9 +372,10 @@ namespace C3D
 		{
 			const u16 width = context.data.u16[0];
 			const u16 height = context.data.u16[1];
+			const auto appState = m_application->m_appState;
 
 			// We only update out width and height if they actually changed
-			if (width != m_appState->width || height != m_appState->height)
+			if (width != appState->width || height != appState->height)
 			{
 				m_logger.Debug("Window Resize: {} {}", width, height);
 
@@ -390,7 +403,7 @@ namespace C3D
 		return false;
 	}
 
-	bool Engine::OnFocusGainedEvent(const u16 code, void* sender, const EventContext& context)
+	bool Engine::OnFocusGainedEvent(const u16 code, void*, const EventContext& context)
 	{
 		if (code == EventCodeFocusGained)
 		{

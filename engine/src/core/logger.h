@@ -1,8 +1,8 @@
 
 #pragma once
-#include <stack>
 
 #pragma warning(push, 0)
+#undef SPDLOG_ACTIVE_LEVEL
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 #include <spdlog/spdlog.h>
 #pragma warning(pop)

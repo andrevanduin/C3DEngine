@@ -48,16 +48,25 @@ namespace C3D
 		m_fileWatches.Destroy();
 	}
 
-	bool Platform::CopyFile(const char* source, const char* dest, const bool overwriteIfExists = true) const
+	CopyFileStatus Platform::CopyFile(const char* source, const char* dest, const bool overwriteIfExists = true)
 	{
-		if (const auto result = CopyFileA(source, dest, !overwriteIfExists); result != 0)
+		if (const auto result = CopyFileA(source, dest, !overwriteIfExists); !result)
 		{
-			const auto msg = GetLastErrorMsg();
-			m_logger.Error(msg.data());
-			return false;
+			const auto error = GetLastError();
+			if (error == ERROR_FILE_NOT_FOUND)
+			{
+				return CopyFileStatus::NotFound;
+			}
+
+			if (error == ERROR_SHARING_VIOLATION)
+			{
+				return CopyFileStatus::Locked;
+			}
+
+			return CopyFileStatus::Unknown;
 		}
 
-		return true;
+		return CopyFileStatus::Success;
 	}
 
 	FileWatchId Platform::WatchFile(const char* filePath)
@@ -212,7 +221,7 @@ namespace C3D
 		CString<128> path(name);
 		path += ".dll";
 
-		const HMODULE library = LoadLibraryA(path.Data());
+		HMODULE library = LoadLibraryA(path.Data());
 		if (!library)
 		{
 			const auto errorMsg = GetLastErrorMsg();
