@@ -15,7 +15,7 @@ namespace C3D
 
 	DynamicLibrary::~DynamicLibrary()
 	{
-		Unload();
+		if (m_data && !m_name.Empty()) Unload();
 	}
 
 	bool DynamicLibrary::Load(const char* name)

@@ -143,10 +143,10 @@ namespace C3D
 		return INVALID_ID_U8;
 	}
 
-	void MetricSystem::DestroyAllocator(const u8 allocatorId)
+	void MetricSystem::DestroyAllocator(const u8 allocatorId, bool printMissedAllocs)
 	{
 		// Print the memory usage for this allocator
-		PrintMemoryUsage(allocatorId, true);
+		if (printMissedAllocs) (allocatorId, true);
 		// Clear out the metrics we have on this allocator
 		m_memoryStats[allocatorId] = MemoryStats();
 	}

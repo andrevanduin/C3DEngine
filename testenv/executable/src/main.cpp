@@ -125,9 +125,9 @@ void C3D::InitApplication(Engine* engine)
 
 void C3D::DestroyApplication() 
 {
-	applicationLib.Unload();
-	rendererPlugin.Unload();
-
 	Memory.Delete(C3D::MemoryType::Game, applicationState);
 	Memory.Delete(C3D::MemoryType::Game, application);
+
+	applicationLib.Unload();
+	rendererPlugin.Unload();
 }

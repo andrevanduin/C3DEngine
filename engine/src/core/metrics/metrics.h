@@ -54,7 +54,7 @@ namespace C3D
 		 * @brief Destroys the internal metrics object used for tracking allocators
 		 * that is associated with the provided allocatorId
 		*/
-		void DestroyAllocator(u8 allocatorId);
+		void DestroyAllocator(u8 allocatorId, bool printMissedAllocs = true);
 
 		void Allocate(u8 allocatorId, const Allocation& a);
 
