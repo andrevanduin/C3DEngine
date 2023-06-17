@@ -75,7 +75,8 @@
         "xstddef": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xtree": "cpp"
+        "xtree": "cpp",
+        "*.rh": "cpp"
     },
     "cmake.generator": "Ninja"
 }

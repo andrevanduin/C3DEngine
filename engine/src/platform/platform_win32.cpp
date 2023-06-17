@@ -1,7 +1,6 @@
 
-#include "platform/platform.h"
-
 #ifdef C3D_PLATFORM_WINDOWS
+#include "platform_win32.h"
 #include "containers/cstring.h"
 #include "core/engine.h"
 #include "core/events/event_context.h"
@@ -252,12 +251,7 @@ namespace C3D
 
 		return true;
 	}
-
-	constexpr DynamicLibraryExtension Platform::GetDynamicLibraryExtension()
-	{
-		return ".dll";
-	}
-
+	
 	std::string Platform::GetLastErrorMsg()
 	{
 		const auto errorCode = GetLastError();

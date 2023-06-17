@@ -358,7 +358,7 @@ namespace C3D
 	{
 		Renderer.DestroyGeometry(g);
 		g->internalId = INVALID_ID;
-		g->generation = INVALID_ID;
+		g->generation = INVALID_ID_U16;
 		g->id = INVALID_ID;
 		g->name.Clear();
 

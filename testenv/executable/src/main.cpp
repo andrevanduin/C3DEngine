@@ -122,3 +122,12 @@ void C3D::InitApplication(Engine* engine)
 	);
 	applicationLibraryFile = engine->GetSystem<Platform>(PlatformSystemType).WatchFile("TestEnvLib.dll");
 }
+
+void C3D::DestroyApplication() 
+{
+	applicationLib.Unload();
+	rendererPlugin.Unload();
+
+	Memory.Delete(C3D::MemoryType::Game, applicationState);
+	Memory.Delete(C3D::MemoryType::Game, application);
+}

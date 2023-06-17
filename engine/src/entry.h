@@ -41,11 +41,11 @@ int main(int argc, char** argv)
 	// Run our engine's game loop
 	engine->Run();
 
-	// Cleanup the main engine which was created by the user in the CreateApplication
+	// Cleanup our engine
 	Memory.Delete(C3D::MemoryType::Engine, engine);
 
-	// Cleanup the application that was provided by the user
-	Memory.Delete(C3D::MemoryType::Game, application);
+	// Call the user's cleanup method
+	C3D::DestroyApplication();
 
 	// Destroy our identifiers
 	C3D::Identifier::Destroy();

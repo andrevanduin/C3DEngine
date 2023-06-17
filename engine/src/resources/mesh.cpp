@@ -56,11 +56,6 @@ namespace C3D
 		geometries.Clear();
 	}
 
-	void Mesh::SetEngine(const Engine* engine)
-	{
-		m_engine = engine;
-	}
-
 	bool Mesh::LoadJobEntryPoint(void* data, void* resultData) const
 	{
 		const auto loadParams = static_cast<MeshLoadParams*>(data);
@@ -80,11 +75,9 @@ namespace C3D
 
 		// NOTE: This also handles the GPU upload. Can't be jobified until the renderer is multiThreaded.
 		auto& configs = meshParams->meshResource.geometryConfigs;
-		const auto configCount = configs.Size();
-
-		for (u64 i = 0; i < configCount; i++)
+		for (auto& c : configs)
 		{
-			meshParams->outMesh->geometries.PushBack(Geometric.AcquireFromConfig(configs[i], true));
+			meshParams->outMesh->geometries.PushBack(Geometric.AcquireFromConfig(c, true));
 		}
 		meshParams->outMesh->generation++;
 

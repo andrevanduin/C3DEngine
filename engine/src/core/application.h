@@ -60,4 +60,5 @@ namespace C3D
 
 	Application* CreateApplication();
 	void InitApplication(Engine* engine);
+	void DestroyApplication();
 }

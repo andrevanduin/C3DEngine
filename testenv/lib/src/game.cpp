@@ -152,10 +152,7 @@ bool TestEnv::OnRun()
 	uiConfig.indices.PushBack(0);
 	uiConfig.indices.PushBack(1);
 
-	m_state->uiMeshes[0].uniqueId = C3D::Identifier::GetNewId(&m_state->uiMeshes[0]);
-	m_state->uiMeshes[0].geometries.PushBack(Geometric.AcquireFromConfig(uiConfig, true));
-	m_state->uiMeshes[0].generation = 0;
-	m_state->uiMeshes[0].SetEngine(m_engine);
+	m_state->uiMeshes[0].LoadFromConfig(m_engine, uiConfig);
 
 	//auto rotation = angleAxis(C3D::DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
 	//m_uiMeshes[0].transform.Rotate(rotation);
@@ -172,6 +169,7 @@ bool TestEnv::OnRun()
 	// TEMP
 	Event.Register(C3D::EventCodeDebug0, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnDebugEvent(code, sender, context); });
 	Event.Register(C3D::EventCodeDebug1, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnDebugEvent(code, sender, context); });
+	Event.Register(C3D::EventCodeDebug2, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnDebugEvent(code, sender, context); });
 	Event.Register(C3D::EventCodeObjectHoverIdChanged, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnEvent(code, sender, context); });
 	// TEMP END
 
@@ -180,6 +178,12 @@ bool TestEnv::OnRun()
 	Console.RegisterCommand("load_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&)
 	{
 		Event.Fire(C3D::EventCodeDebug1, this, {});
+		return true;
+	});
+
+	Console.RegisterCommand("unload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&)
+	{
+		Event.Fire(C3D::EventCodeDebug2, this, {});
 		return true;
 	});
 
@@ -296,7 +300,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 	}
 
 	// Rotate 
-	quat rotation = angleAxis(10.0f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
+	quat rotation = angleAxis(2.0f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
 	m_state->meshes[0].transform.Rotate(rotation);
 	m_state->meshes[1].transform.Rotate(rotation);
 	m_state->meshes[2].transform.Rotate(rotation);
@@ -741,9 +745,8 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&) cons
 	{
 		if (!m_state->modelsLoaded)
 		{
-			m_logger.Debug("OnDebugEvent() - Loading models...");
-			m_state->modelsLoaded = true;
-
+			m_logger.Info("OnDebugEvent() - Loading models...");
+			
 			if (!m_state->carMesh->LoadFromResource(m_engine, "falcon"))
 			{
 				m_logger.Error("OnDebugEvent() - Failed to load falcon mesh!");
@@ -752,9 +755,24 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&) cons
 			{
 				m_logger.Error("OnDebugEvent() - Failed to load sponza mesh!");
 			}
+
+			m_state->modelsLoaded = true;
 		}
 
 		return true;
+	}
+
+	if (code == C3D::EventCodeDebug2)
+	{
+		if (m_state->modelsLoaded) 
+		{
+			m_logger.Info("OnDebugEvent() - Unloading models...");
+
+			m_state->carMesh->Unload();
+			m_state->sponzaMesh->Unload();
+		}
+
+		m_state->modelsLoaded = false;
 	}
 		
 	return false;
