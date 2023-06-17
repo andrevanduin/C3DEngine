@@ -278,7 +278,7 @@ namespace C3D
 		constexpr u32 pixelCount = textureDimensions * textureDimensions;
 
 		const auto pixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(pixelCount) * channels);
-		Platform::SetMemory(pixels, 255, sizeof(u8) * pixelCount * channels);
+		std::memset(pixels, 255, sizeof(u8) * pixelCount * channels);
 
 		for (u64 row = 0; row < textureDimensions; row++)
 		{
@@ -314,8 +314,8 @@ namespace C3D
 		m_logger.Trace("Create default diffuse texture...");
 		const auto diffusePixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
 		// Default diffuse texture is all white
-		Platform::SetMemory(diffusePixels, 255, sizeof(u8) * 16 * 16 * 4); // Default diffuse map is all white
-
+		std::memset(diffusePixels, 255, sizeof(u8) * 16 * 16 * 4); // Default diffuse map is all white
+		
 		m_defaultDiffuseTexture = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, TextureType::Type2D, 16, 16, 4);
 		Renderer.CreateTexture(diffusePixels, &m_defaultDiffuseTexture);
 		// Manually set the texture generation to invalid since this is the default texture
@@ -324,8 +324,8 @@ namespace C3D
 		// Specular texture.
 		m_logger.Trace("Create default specular texture...");
 		const auto specPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
-		Platform::SetMemory(specPixels, 0, sizeof(u8) * 16 * 16 * 4); // Default specular map is black (no specular)
-
+		std::memset(specPixels, 0, sizeof(u8) * 16 * 16 * 4); // Default specular map is black (no specular)
+		
 		m_defaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, TextureType::Type2D, 16, 16, 4);
 		Renderer.CreateTexture(specPixels, &m_defaultSpecularTexture);
 		// Manually set the texture generation to invalid since this is the default texture
@@ -334,8 +334,8 @@ namespace C3D
 		// Normal texture.
 		m_logger.Trace("Create default normal texture...");
 		const auto normalPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
-		Platform::SetMemory(normalPixels, 0, sizeof(u8) * 16 * 16 * 4);
-
+		std::memset(normalPixels, 0, sizeof(u8) * 16 * 16 * 4);
+		
 		// Each pixel
 		for (u64 row = 0; row < 16; row++)
 		{
@@ -439,8 +439,7 @@ namespace C3D
 			}
 
 			// Copy over the pixels to the correct location in the array
-			Platform::MemCopy(pixels + (imageSize * i), res.data.pixels, imageSize);
-
+			std::memcpy(pixels + (imageSize * i), res.data.pixels, imageSize);
 			// Cleanup our resource
 			Resources.Unload(res);
 		}
@@ -461,7 +460,7 @@ namespace C3D
 
 		// Zero out the memory for the texture
 		texture->name.Clear();
-		Platform::Zero(texture);
+		std::memset(texture, 0, sizeof(Texture));
 
 		// Invalidate the id and generation
 		texture->id = INVALID_ID;

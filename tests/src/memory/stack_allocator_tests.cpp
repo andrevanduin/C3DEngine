@@ -22,7 +22,10 @@ u8 StackAllocatorShouldErrorOnOverAllocation()
 	C3D::StackAllocator<KibiBytes(2)> allocator;
 	allocator.Create("Test Allocator");
 
-	ExpectToThrow("bad allocation", [&] { allocator.AllocateBlock(C3D::MemoryType::Test, KibiBytes(6)); })
+	ExpectToThrow("bad allocation", [&] 
+	{
+		allocator.AllocateBlock(C3D::MemoryType::Test, KibiBytes(8));
+	});
 
 	return true;
 }

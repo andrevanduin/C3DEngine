@@ -31,4 +31,10 @@ namespace C3D
 #endif
 		std::free(block);
 	}
+
+	MallocAllocator* MallocAllocator::GetDefault()
+	{
+		static auto allocator = new MallocAllocator();
+		return allocator;
+	}
 }

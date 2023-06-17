@@ -8,7 +8,6 @@
 #include "resources/ui_text.h"
 #include "resources/loaders/shader_loader.h"
 
-#include "systems/events/event_system.h"
 #include "systems/system_manager.h"
 #include "systems/shaders/shader_system.h"
 #include "systems/materials/material_system.h"
@@ -76,7 +75,7 @@ namespace C3D
 		outPacket->projectionMatrix = m_projectionMatrix;
 		outPacket->viewMatrix = m_viewMatrix;
 		outPacket->extendedData = frameAllocator.Allocate<UIPacketData>(MemoryType::RenderView);
-		Platform::Copy<UIPacketData>(outPacket->extendedData, data);
+		*static_cast<UIPacketData*>(outPacket->extendedData) = *uiData;
 
 		for (const auto mesh : uiData->meshData.meshes)
 		{

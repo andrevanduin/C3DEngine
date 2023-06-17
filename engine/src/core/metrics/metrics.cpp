@@ -26,7 +26,6 @@ namespace C3D
 		"ResourceLoader",
 		"Event",
 		"Job",
-		"Callable",
 		"Texture",
 		"MaterialInstance",
 		"Geometry",
@@ -55,7 +54,7 @@ namespace C3D
 	MetricSystem* MetricSystem::s_instance;
 
 	MetricSystem::MetricSystem()
-		: m_frameAverageCounter(0), m_msTimes{}, m_msAverage(0), m_frames(0), m_accumulatedFrameMs(0), m_fps(0), m_memoryStats()
+		: m_frameAverageCounter(0), m_msTimes{}, m_msAverage(0), m_frames(0), m_accumulatedFrameMs(0), m_fps(0)
 	{}
 
 	void MetricSystem::Init()
@@ -193,9 +192,9 @@ namespace C3D
 
 		stats.allocCount--;
 
+#ifdef C3D_MEMORY_METRICS_POINTERS
 		auto& tagged = stats.taggedAllocations[type];
 
-#ifdef C3D_MEMORY_METRICS_POINTERS
 		const auto allocIt = std::ranges::find_if(tagged.allocations, [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
 		if (allocIt != tagged.allocations.end())
 		{
@@ -294,8 +293,7 @@ namespace C3D
 
 	void MetricSystem::PrintMemoryUsage(const u8 allocatorId, const bool debugLines)
 	{
-		char buffer[4096];
-		Platform::Zero(buffer, sizeof(char) * 4096);
+		char buffer[4096] = {};
 
 		const auto& memStats = m_memoryStats[allocatorId];
 		if (memStats.type != AllocatorType::None)
@@ -380,7 +378,7 @@ namespace C3D
 		f64 requestedAmount, requiredAmount;
 		const char* requestedUnit;
 		const char* requiredUnit;
-		int count;
+		u32 count;
 
 #ifdef C3D_MEMORY_METRICS_POINTERS
 		u64 requestedSize = 0;

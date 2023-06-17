@@ -1,5 +1,6 @@
 
 // ReSharper disable CppInconsistentNaming
+// ReSharper disable CppClangTidyCertDcl58Cpp
 #pragma once
 #include <iostream>
 #include <fmt/core.h>
@@ -28,7 +29,7 @@ namespace C3D
 	template <class Allocator>
 	class __declspec(dllexport) BasicString
 	{
-		static_assert(std::is_base_of_v<BaseAllocator, Allocator>, "Allocator needs to be have a base type of BaseAllocator");
+		static_assert(std::is_base_of_v<BaseAllocator<Allocator>, Allocator>, "Allocator needs to be have a base type of BaseAllocator");
 
 	public:
 		using value_type = char;
@@ -120,7 +121,7 @@ namespace C3D
 		 * Private constructor to build a string of given length with given capacity.
 		 * It is up to the caller to initialize the string with actual data.
 		 */
-		BasicString(const u64 size, const u64 capacity, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		BasicString(const u64 size, const u64 capacity, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(size), m_allocator(allocator)
 		{
 			if (capacity > SSO_THRESHOLD)
@@ -144,7 +145,7 @@ namespace C3D
 	public:
 
 		/* @brief Creates empty string with 1 null byte. (Will use SSO) */
-		BasicString(Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		BasicString(Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 		{
 			// Point our data pointer to the stack memory
 			m_data = m_sso.data;
@@ -158,7 +159,7 @@ namespace C3D
 		}
 
 		/* @brief Creates empty string with 1 null byte. (Will use SSO) */
-		explicit BasicString(decltype(nullptr), Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit BasicString(decltype(nullptr), Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 		{
 			// Point our data pointer to the stack memory
 			m_data = m_sso.data;
@@ -171,7 +172,7 @@ namespace C3D
 			m_allocator = allocator;
 		}
 
-		BasicString(const char* value, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		BasicString(const char* value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(0), m_allocator(allocator)
 		{
 			if (value == nullptr)
@@ -186,14 +187,14 @@ namespace C3D
 			std::memcpy(m_data, value, m_size);
 		}
 
-		BasicString(const char* value, const u64 size, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		BasicString(const char* value, const u64 size, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(size), m_allocator(allocator)
 		{
 			Init(size);
 			std::memcpy(m_data, value, m_size);
 		}
 
-		explicit BasicString(const bool value, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit BasicString(const bool value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(0), m_allocator(allocator)
 		{
 			if (value)
@@ -208,7 +209,7 @@ namespace C3D
 			}
 		}
 
-		explicit BasicString(const u32 value, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit BasicString(const u32 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(0), m_allocator(allocator)
 		{
 			const auto buffer = std::to_string(value);
@@ -216,7 +217,7 @@ namespace C3D
 			std::memcpy(m_data, buffer.data(), m_size);
 		}
 
-		explicit BasicString(const i32 value, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit BasicString(const i32 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(0), m_allocator(allocator)
 		{
 			const auto buffer = std::to_string(value);
@@ -224,7 +225,7 @@ namespace C3D
 			std::memcpy(m_data, buffer.data(), m_size);
 		}
 
-		explicit BasicString(const u64 value, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit BasicString(const u64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(0), m_allocator(allocator)
 		{
 			const auto buffer = std::to_string(value);
@@ -232,7 +233,7 @@ namespace C3D
 			std::memcpy(m_data, buffer.data(), m_size);
 		}
 
-		explicit BasicString(const i64 value, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit BasicString(const i64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(0), m_allocator(allocator)
 		{
 			const auto buffer = fmt::format("{}", value);
@@ -240,7 +241,7 @@ namespace C3D
 			std::memcpy(m_data, buffer.data(), m_size);
 		}
 
-		explicit BasicString(const f32 value, const char* format = "{}", Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit BasicString(const f32 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(0), m_allocator(allocator)
 		{
 			const auto buffer = fmt::format(format, value);
@@ -248,7 +249,7 @@ namespace C3D
 			std::memcpy(m_data, buffer.data(), m_size);
 		}
 
-		explicit BasicString(const f64 value, const char* format = "{}", Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit BasicString(const f64 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_data(nullptr), m_size(0), m_allocator(allocator)
 		{
 			const auto buffer = fmt::format(format, value);
@@ -817,11 +818,6 @@ namespace C3D
 				throw std::invalid_argument("The string does not contain a valid vec4 representation");
 			}
 			return vec;
-		}
-
-		[[nodiscard]] Allocator* GetAllocator() const
-		{
-			return m_allocator;
 		}
 
 		/* @brief Gets the number of characters currently in the string (excluding the null-terminator). */

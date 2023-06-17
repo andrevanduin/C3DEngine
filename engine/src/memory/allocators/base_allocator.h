@@ -1,10 +1,12 @@
 
 #pragma once
 #include "core/defines.h"
+#include "core/metrics/metrics.h"
 #include "core/metrics/types.h"
 
 namespace C3D
 {
+	template <class Derived>
 	class C3D_API BaseAllocator
 	{
 	public:
@@ -23,8 +25,17 @@ namespace C3D
 		virtual void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) = 0;
 		virtual void Free(MemoryType type, void* block) = 0;
 
-		BaseAllocator& SetStacktraceRef();
-		BaseAllocator* SetStacktrace();
+		BaseAllocator& SetStacktraceRef()
+		{
+			Metrics.SetStacktrace();
+			return *this;
+		}
+
+		BaseAllocator* SetStacktrace()
+		{
+			Metrics.SetStacktrace();
+			return this;
+		}
 
 		template <typename T>
 		T* Allocate(const MemoryType type, const u64 count = 1)
@@ -50,6 +61,11 @@ namespace C3D
 		[[nodiscard]] void* GetMemory() const { return m_memoryBlock; }
 
 		[[nodiscard]] u8 GetId() const { return m_id; }
+
+		static Derived* GetDefault()
+		{
+			return Derived::GetDefault();
+		}
 
 	protected:
 		// The id for this allocator

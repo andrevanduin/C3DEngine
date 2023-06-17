@@ -11,7 +11,7 @@ namespace C3D
 	};
 
 	template <>
-	class ResourceLoader<BinaryResource> final : public IResourceLoader
+	class C3D_API ResourceLoader<BinaryResource> final : public IResourceLoader
 	{
 	public:
 		explicit ResourceLoader(const Engine* engine);

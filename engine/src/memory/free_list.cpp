@@ -17,7 +17,7 @@ namespace C3D
 		m_totalManagedSize = managedSize;
 
 		m_nodes = static_cast<Node*>(memory);
-		Platform::Zero(m_nodes, m_nodesSize);
+		std::memset(m_nodes, 0, m_nodesSize);
 
 		// Set all our nodes to invalid
 		for (u64 i = 0; i < m_totalNodes; i++)
@@ -39,7 +39,7 @@ namespace C3D
 	void FreeList::Destroy()
 	{
 		// Zero out our nodes
-		Platform::Zero(m_nodes, m_nodesSize);
+		std::memset(m_nodes, 0, m_nodesSize);
 		m_nodes = nullptr;
 		// NOTE: We can't free our memory since the user of this class is responsible for the memory we are using.
 	}

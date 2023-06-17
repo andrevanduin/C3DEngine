@@ -41,7 +41,6 @@ namespace C3D
 		ResourceLoader,
 		EventSystem,
 		Job,
-		Callable,
 		Texture,
 		MaterialInstance,
 		Geometry,

@@ -63,21 +63,18 @@ u8 LinearAllocatorMultiAllocationOverAllocate()
     C3D::LinearAllocator allocator;
     allocator.Create("LINEAR_ALLOCATOR_TEST", sizeof(u64) * maxAllocations);
 
-    void* block;
     for (u64 i = 0; i < maxAllocations; i++)
     {
-        block = allocator.AllocateBlock(C3D::MemoryType::Test, sizeof(u64));
+        void* block = allocator.AllocateBlock(C3D::MemoryType::Test, sizeof(u64));
 
         ExpectShouldNotBe(nullptr, block);
         ExpectShouldBe(sizeof(u64) * (i + 1), allocator.GetAllocated());
     }
 
-    C3D::Logger::Debug("The following error is intentionally caused by this test:");
-
-    block = allocator.AllocateBlock(C3D::MemoryType::Test, sizeof(u64));
-
-    ExpectShouldBe(nullptr, block);
-    ExpectShouldBe(sizeof(u64) * maxAllocations, allocator.GetAllocated());
+    ExpectToThrow("bad allocation", [&]
+    {
+        allocator.AllocateBlock(C3D::MemoryType::Test, sizeof(u64));
+    });
 
     allocator.Destroy();
     return true;

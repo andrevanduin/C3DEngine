@@ -331,7 +331,7 @@ namespace C3D
 
 	bool MaterialSystem::CreateDefaultMaterial()
 	{
-		Platform::Zero(&m_defaultMaterial);
+		std::memset(&m_defaultMaterial, 0, sizeof(Material));
 
 		m_defaultMaterial.id = INVALID_ID;
 		m_defaultMaterial.generation = INVALID_ID;
@@ -363,7 +363,7 @@ namespace C3D
 
 	bool MaterialSystem::LoadMaterial(const MaterialConfig& config, Material* mat) const
 	{
-		Platform::Zero(mat);
+		std::memset(mat, 0, sizeof(Material));
 
 		// Name
 		mat->name = config.name;
@@ -499,7 +499,7 @@ namespace C3D
 		}
 
 		// Zero out memory and invalidate ids
-		Platform::Zero(mat);
+		std::memset(mat, 0, sizeof(Material));
 		mat->id = INVALID_ID;
 		mat->generation = INVALID_ID;
 		mat->internalId = INVALID_ID;

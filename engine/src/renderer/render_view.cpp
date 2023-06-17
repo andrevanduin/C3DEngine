@@ -13,7 +13,7 @@ namespace C3D
 	      m_customShaderName(nullptr), m_logger(config.name.Data()), m_engine(config.engine)
 	{
 		m_defaultRenderTargetRefreshRequiredCallbackId = Event.Register(
-			SystemEventCode::DefaultRenderTargetRefreshRequired, 
+			EventCodeDefaultRenderTargetRefreshRequired, 
 			[this](const u16 code, void* sender, const EventContext& context)
 			{
 				return OnRenderTargetRefreshRequired(code, sender, context);
@@ -23,7 +23,7 @@ namespace C3D
 
 	void RenderView::OnDestroy()
 	{
-		Event.Unregister(SystemEventCode::DefaultRenderTargetRefreshRequired, m_defaultRenderTargetRefreshRequiredCallbackId);
+		Event.Unregister(EventCodeDefaultRenderTargetRefreshRequired, m_defaultRenderTargetRefreshRequiredCallbackId);
 		for (const auto pass : passes)
 		{
 			Renderer.DestroyRenderPass(pass);
@@ -58,9 +58,9 @@ namespace C3D
 		return true;
 	}
 
-	bool RenderView::OnRenderTargetRefreshRequired(const u16 code, void* sender, const EventContext& context)
+	bool RenderView::OnRenderTargetRefreshRequired(const u16 code, void*, const EventContext&)
 	{
-		if (code == SystemEventCode::DefaultRenderTargetRefreshRequired)
+		if (code == EventCodeDefaultRenderTargetRefreshRequired)
 		{
 			Views.RegenerateRenderTargets(this);
 		}

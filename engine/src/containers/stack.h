@@ -11,7 +11,7 @@ namespace C3D
 	template <class Type, class Allocator = DynamicAllocator>
 	class __declspec(dllexport) Stack
 	{
-		static_assert(std::is_base_of_v<BaseAllocator, Allocator>, "Allocator must derive from BaseAllocator");
+		static_assert(std::is_base_of_v<BaseAllocator<Allocator>, Allocator>, "Allocator must derive from BaseAllocator");
 
 		constexpr static auto default_capacity = 4;
 		constexpr static auto resize_factor = 1.5f;
@@ -25,7 +25,7 @@ namespace C3D
 		using iterator = Iterator<Type>;
 		using const_iterator = ConstIterator<Type>;
 
-		Stack(Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		Stack(Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{}
 
@@ -72,13 +72,13 @@ namespace C3D
 		 * @brief Creates the array with enough memory allocated for the provided initial capacity.
 		 * No initialization is done on the internal memory.
 		 */
-		explicit Stack(const u64 initialCapacity, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		explicit Stack(const u64 initialCapacity, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
 		{
 			Reserve(initialCapacity);
 		}
 
-		Stack(std::initializer_list<Type> list, Allocator* allocator = GlobalMemorySystem::GetDefaultAllocator<Allocator>())
+		Stack(std::initializer_list<Type> list, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
 			: m_capacity(0), m_size(0), m_elements(nullptr)
 		{
 			Copy(list.begin(), list.size(), allocator);

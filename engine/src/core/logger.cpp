@@ -4,8 +4,6 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
-#include <VkBootstrap/VkBootstrap.h>
-
 #include "console/console.h"
 #include "console/console_sink.h"
 
@@ -39,32 +37,6 @@ namespace C3D
 		}
 
 		GetInitialized() = true;
-	}
-
-	VkBool32 Logger::VkDebugLog(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		const VkDebugUtilsMessageTypeFlagsEXT messageType,
-		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData)
-	{
-		auto type = vkb::to_string_message_type(messageType);
-		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-		{
-			Trace("[{}] {}", type, pCallbackData->pMessage);
-		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-		{
-			Info("[{}] {}", type, pCallbackData->pMessage);
-		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		{
-			Warn("[{}] {}", type, pCallbackData->pMessage);
-		}
-		else
-		{
-			Error("[{}] {}", type, pCallbackData->pMessage);
-		}
-
-		return VK_FALSE;
 	}
 
 	bool& Logger::GetInitialized()

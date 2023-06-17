@@ -18,12 +18,15 @@ namespace C3D
 		#define MetricsFree(id, type, requested, required, ptr)					\
 			Metrics.Free(id, DeAllocation(type, ptr))
 	#else
-		#define MetricsAllocate(id, type, requested, required, ptr)			\
+		#define MetricsAllocate(id, type, requested, required, ptr)				\
 			Metrics.Allocate(id, Allocation(type, requested, required))
 
-		#define MetricsFree(id, type, requested, required, ptr)				\
+		#define MetricsFree(id, type, requested, required, ptr)					\
 			Metrics.Free(id, DeAllocation(type, requested, required))
 	#endif
+#else
+	#define MetricsAllocate(id, type, requested, required, ptr)
+	#define MetricsFree(id, type, requested, required, ptr)
 #endif
 
 	constexpr auto AVG_COUNT = 30;

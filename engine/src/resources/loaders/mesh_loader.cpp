@@ -4,7 +4,6 @@
 #include "core/string_utils.h"
 #include "math/geometry_utils.h"
 #include "platform/filesystem.h"
-#include "renderer/renderer_types.h"
 #include "renderer/vertex.h"
 #include "systems/geometry/geometry_system.h"
 #include "systems/resources/resource_system.h"
@@ -112,10 +111,8 @@ namespace C3D
 		DynamicArray<vec2> texCoords(16384);
 		DynamicArray<MeshGroupData> groups(4);
 
-		char materialFileName[512];
-
-		char name[512];
-		Platform::Zero(name, sizeof(char) * 512);
+		char materialFileName[512] = {};
+		char name[512] = {};
 
 		u8 currentMaterialNameCount = 0;
 		char materialNames[32][64];
@@ -185,12 +182,12 @@ namespace C3D
 
 						outGeometries.PushBack(newData);
 						groups[i].faces.Destroy();
-						Platform::Zero(materialNames[i], 64);
+						std::memset(materialNames[i], 0, 64);
 					}
 
 					currentMaterialNameCount = 0;
 					groups.Clear();
-					Platform::Zero(name, 512);
+					std::memset(name, 0, 512);
 
 					char t[2];
 					sscanf(line.Data(), "%s %s", t, name);

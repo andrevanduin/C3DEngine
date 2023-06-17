@@ -1,13 +1,11 @@
 
 #pragma once
-#include <stack>
 
 #pragma warning(push, 0)
+#undef SPDLOG_ACTIVE_LEVEL
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 #include <spdlog/spdlog.h>
 #pragma warning(pop)
-
-#include <vulkan/vulkan_core.h>
 
 #include "defines.h"
 #include "asserts.h"
@@ -72,9 +70,6 @@ namespace C3D
 			const std::string str = std::vformat(format, std::make_format_args(args...));
 			GetCoreLogger()->critical(str);
 		}
-
-		static VkBool32 VkDebugLog(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
-			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 	private:
 		static bool& GetInitialized();
 		static std::shared_ptr<spdlog::logger>& GetCoreLogger();

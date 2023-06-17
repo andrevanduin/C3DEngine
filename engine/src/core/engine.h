@@ -1,8 +1,10 @@
 
 #pragma once
+#include "application.h"
 #include "console/console.h"
 #include "defines.h"
 #include "logger.h"
+
 #include "renderer/renderer_types.h"
 #include "renderer/render_view.h"
 
@@ -14,19 +16,8 @@ struct SDL_Window;
 namespace C3D
 {
 	class Engine;
+	class Application;
 	struct EventContext;
-
-	struct ApplicationConfig
-	{
-		String name;
-		i32 x, y;
-		i32 width, height;
-
-		bool enablePrimitiveRenderer = true;
-
-		FontSystemConfig fontConfig;
-		DynamicArray<RenderViewConfig> renderViews;
-	};
 
 	struct GameFrameData
 	{
@@ -37,9 +28,6 @@ namespace C3D
 	{
 		String name;
 
-		u32 width = 0;
-		u32 height = 0;
-
 		bool running = false;
 		bool suspended = false;
 		bool initialized = false;
@@ -47,23 +35,29 @@ namespace C3D
 		f64 lastTime = 0;
 	};
 
-	class C3D_API Engine
+	class C3D_API Engine final
 	{
 	public:
-		explicit Engine(ApplicationConfig config);
-
-		Engine(const Engine&) = delete;
-		Engine(Engine&&) = delete;
-
-		Engine& operator=(const Engine&) = delete;
-		Engine& operator=(Engine&&) = delete;
-
-		virtual ~Engine();
+		explicit Engine(Application* application);
 
 		void Init();
 
 		void Run();
 		void Quit();
+
+		[[nodiscard]] bool OnBoot() const;
+
+		void OnUpdate(f64 deltaTime) const;
+
+		bool OnRender(RenderPacket& packet, f64 deltaTime) const;
+
+		void OnResize(u32 width, u32 height) const;
+
+		void GetFrameBufferSize(u32* width, u32* height) const;
+
+		[[nodiscard]] SDL_Window* GetWindow() const;
+
+		[[nodiscard]] const EngineState* GetState() const;
 
 		template<class SystemType>
 		[[nodiscard]] SystemType& GetSystem(const u16 type) const
@@ -81,38 +75,11 @@ namespace C3D
 			return *m_console;
 		}
 
-		virtual bool OnBoot()	{ return true; }
-		virtual bool OnCreate() { return true; }
-
-		virtual void OnUpdate(const f64 deltaTime)
-		{
-			m_console->OnUpdate();
-		}
-
-		virtual bool OnRender(RenderPacket& packet, f64 deltaTime)
-		{
-			return true;
-		}
-
-		virtual void AfterRender() {}
-
-		virtual void OnResize(u16 width, u16 height) {}
-
-		virtual void OnShutdown() {}
-
-		void GetFrameBufferSize(u32* width, u32* height) const;
-
-		[[nodiscard]] SDL_Window* GetWindow() const;
-
-		[[nodiscard]] const EngineState* GetState() const;
+		void OnApplicationLibraryReload(Application* app);
 
 	protected:
 		LoggerInstance<16> m_logger;
-		LinearAllocator m_frameAllocator;
 
-		GameFrameData m_frameData;
-
-		ApplicationConfig m_config;
 		EngineState m_state;
 
 		SystemManager m_systemsManager;
@@ -120,11 +87,13 @@ namespace C3D
 		const Engine* m_engine;
 		UIConsole* m_console;
 
+		Application* m_application;
+
 	private:
 		void Shutdown();
 		void HandleSdlEvents();
 
-		bool OnResizeEvent(u16 code, void* sender, const EventContext& context);
+		bool OnResizeEvent(u16 code, void* sender, const EventContext& context) const;
 		bool OnMinimizeEvent(u16 code, void* sender, const EventContext& context);
 		bool OnFocusGainedEvent(u16 code, void* sender, const EventContext& context);
 
@@ -132,7 +101,4 @@ namespace C3D
 		
 		friend int ::main(int argc, char** argv);
 	};
-
-	Engine* CreateApplication();
-	void DestroyApplication(const Engine* app);
 }

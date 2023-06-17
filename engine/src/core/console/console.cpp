@@ -29,8 +29,8 @@ namespace C3D
 		m_entry.SetPosition( { 5, 30, 0 });
 		m_cursor.SetPosition({ 5, 30, 0 });
 
-		Event.Register(KeyDown, [this](const u16 code, void* sender, const EventContext& context) { return OnKeyDownEvent(code, sender, context); });
-		Event.Register(MouseScrolled, [this](const u16 code, void* sender, const EventContext& context) { return OnMouseScrollEvent(code, sender, context); });
+		Event.Register(EventCodeKeyDown, [this](const u16 code, void* sender, const EventContext& context) { return OnKeyDownEvent(code, sender, context); });
+		Event.Register(EventCodeMouseScrolled, [this](const u16 code, void* sender, const EventContext& context) { return OnMouseScrollEvent(code, sender, context); });
 
 		m_commands.Create(377);
 		m_initialized = true;
