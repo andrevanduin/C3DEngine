@@ -17,6 +17,27 @@
 
 namespace C3D
 {
+	// TODO: HACK
+	struct DirectionalLight 
+	{
+		vec4 color;
+		vec4 direction; // Ignore w (only for 16 byte alignment)
+	};
+
+	struct PointLight 
+	{
+		vec4 color;
+		vec4 position; // Ignore w (only for 16 byte alignment)
+		// Usually 1, make sure denominator never gets smaller than 1
+		f32 fConstant;
+		// Reduces light intensity linearly
+		f32 linear;
+		// Makes the light fall of slower at longer dinstances
+		f32 quadratic;
+		f32 padding;
+	};
+	// TODO: HACK
+
 	MaterialSystem::MaterialSystem(const Engine* engine)
 		: SystemWithConfig(engine, "MATERIAL_SYSTEM"), m_initialized(false), m_defaultMaterial(), m_materialShaderId(0), m_uiShaderId(0)
 	{}
@@ -133,6 +154,9 @@ namespace C3D
 			m_materialLocations.normalTexture = Shaders.GetUniformIndex(shader, "normalTexture");
 			m_materialLocations.model = Shaders.GetUniformIndex(shader, "model");
 			m_materialLocations.renderMode = Shaders.GetUniformIndex(shader, "mode");
+			m_materialLocations.dirLight = Shaders.GetUniformIndex(shader, "dirLight");
+			m_materialLocations.pLight0 = Shaders.GetUniformIndex(shader, "pLight0");
+			m_materialLocations.pLight1 = Shaders.GetUniformIndex(shader, "pLight1");
 		}
 		else if (m_uiShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.UI")
 		{
@@ -257,6 +281,19 @@ namespace C3D
 				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseTexture, &material->diffuseMap));
 				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.specularTexture, &material->specularMap));
 				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.normalTexture, &material->normalMap));
+
+				// TODO: HACK: moving lights to CPU side
+				static DirectionalLight dirLight = { vec4(0.4f, 0.4f, 0.2f, 1.0f), vec4(-0.57735f, -0.57735f, -0.57735f, 0.0f) };
+				static PointLight pLight0 = { vec4(0.0f, 1.0f, 0.0f, 1.0f), vec4(-5.5f, 0.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f };
+				static PointLight pLight1 = { vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(5.5f, 0.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f };
+
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.dirLight, &dirLight));
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.pLight0, &pLight0));
+				MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.pLight1, &pLight1));
+
+				// TODO: HACK:
+
+				
 			}
 			else if (material->shaderId == m_uiShaderId)
 			{

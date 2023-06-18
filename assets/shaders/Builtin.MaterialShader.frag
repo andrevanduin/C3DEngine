@@ -2,56 +2,33 @@
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 1, binding = 0) uniform localUniformObject
-{
-	vec4 diffuseColor;
-	float shininess;
-} objectUbo;
-
 struct DirectionalLight 
 {
-	vec3 direction;
 	vec4 color;
+	vec4 direction;
 };
 
 struct PointLight 
 {
-	vec3 position;
 	vec4 color;
+	vec4 position;
 	// Usually 1, make sure denominator never gets smaller than 1
 	float fConstant;
 	// Reduces light intensity linearly
 	float linear;
 	// Makes the light fall of slower at longer dinstances
 	float quadratic;
+	float padding;
 };
 
-// TODO: feed in from cpu instead of hardcoding
-DirectionalLight dirLight = 
+layout(set = 1, binding = 0) uniform localUniformObject
 {
-	vec3(-0.57735, -0.57735, -0.57735),
-	vec4(0.6, 0.6, 0.6, 1.0)
-};
-
-// TODO: feed in from cpu
-PointLight pLight0 = 
-{
-	vec3(-5.5, 0.0, -5.5),
-	vec4(0.0, 1.0, 0.0, 1.0),
-	1.0,
-	0.35,
-	0.44
-};
-
-// TODO: feed in from cpu
-PointLight pLight1 = 
-{
-	vec3(5.5, 0.0, -5.5),
-	vec4(1.0, 0.0, 0.0, 1.0),
-	1.0,
-	0.35,
-	0.44
-};
+	vec4 diffuseColor;
+	DirectionalLight dirLight;
+	PointLight pLight0;
+	PointLight pLight1;
+	float shininess;
+} objectUbo;
 
 // Samplers, diffuse, spec
 const int SAMP_DIFFUSE = 0;
@@ -97,10 +74,10 @@ void main()
 	if (inMode == 0 || inMode == 1) 
 	{
 		vec3 viewDirection = normalize(inDto.viewPosition - inDto.fragPosition);
-		outColor = CalculateDirectionalLight(dirLight, normal, viewDirection);
+		outColor = CalculateDirectionalLight(objectUbo.dirLight, normal, viewDirection);
 
-		outColor += CalculatePointLight(pLight0, normal, inDto.fragPosition, viewDirection);
-		outColor += CalculatePointLight(pLight1, normal, inDto.fragPosition, viewDirection);
+		outColor += CalculatePointLight(objectUbo.pLight0, normal, inDto.fragPosition, viewDirection);
+		outColor += CalculatePointLight(objectUbo.pLight1, normal, inDto.fragPosition, viewDirection);
 	}
 	else 
 	{
@@ -110,9 +87,9 @@ void main()
 
 vec4 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDirection) 
 {
-	float diffuseFactor = max(dot(normal, -light.direction), 0.0);
+	float diffuseFactor = max(dot(normal, -light.direction.xyz), 0.0);
 
-	vec3 halfDirection = normalize(viewDirection - light.direction);
+	vec3 halfDirection = normalize(viewDirection - light.direction.xyz);
 	float specularFactor = pow(max(dot(halfDirection, normal), 0.0), objectUbo.shininess);
 
 	vec4 diffSamp = texture(samplers[SAMP_DIFFUSE], inDto.texCoord);
@@ -133,14 +110,14 @@ vec4 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir
 
 vec4 CalculatePointLight(PointLight light, vec3 normal, vec3 fragPosition, vec3 viewDirection)
 {
-	vec3 lightDirection = normalize(light.position - fragPosition);
+	vec3 lightDirection = normalize(light.position.xyz - fragPosition);
 	float diff = max(dot(normal, lightDirection), 0.0);
 
 	vec3 reflectDirection = reflect(-lightDirection, normal);
 	float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), objectUbo.shininess);
 
 	// Calculate attenuation, or light falloff over distance
-	float distance = length(light.position - fragPosition);
+	float distance = length(light.position.xyz - fragPosition);
 	float attenuation = 1.0 / (light.fConstant + light.linear * distance + light.quadratic * (distance * distance));
 
 	vec4 ambient = inDto.ambientColor;

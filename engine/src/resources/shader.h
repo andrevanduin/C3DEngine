@@ -54,7 +54,7 @@ namespace C3D
 	{
 		String name;
 
-		u8 size;
+		u16 size;
 		u32 location;
 
 		ShaderUniformType type;

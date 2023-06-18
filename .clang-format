@@ -1,1 +1,8 @@
+BasedOnStyle: Google
 BreakBeforeBraces: Allman
+IndentWidth: 4
+NamespaceIndentation: All
+UseTab: Never
+AccessModifierOffset: -4
+Language: Cpp
+ColumnLimit: 120

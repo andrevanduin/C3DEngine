@@ -42,6 +42,9 @@ namespace C3D
 		u16 normalTexture	= INVALID_ID_U16;
 		u16 model			= INVALID_ID_U16;
 		u16 renderMode		= INVALID_ID_U16;
+		u16 dirLight		= INVALID_ID_U16;
+		u16 pLight0			= INVALID_ID_U16;
+		u16 pLight1			= INVALID_ID_U16;
 	};
 
 	struct UiUniformLocations

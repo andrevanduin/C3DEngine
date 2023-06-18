@@ -27,7 +27,7 @@ namespace C3D
 		void ParseStageFiles(ShaderConfig& data, const String& value) const;
 
 		void ParseAttribute(ShaderConfig& data, const String& value) const;
-		void ParseUniform(ShaderConfig& data, const String& value) const;
+		bool ParseUniform(ShaderConfig& data, const String& value) const;
 		static void ParseTopology(ShaderConfig& data, const String& value);
 
 		static void ParseCullMode(ShaderConfig& data, const String& value);

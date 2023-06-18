@@ -24,6 +24,12 @@ uniform = u32, global, mode
 
 # Instance
 uniform = vec4, instance, diffuseColor
+
+# Structs
+uniform = struct32, instance, dirLight
+uniform = struct48, instance, pLight0
+uniform = struct48, instance, pLight1
+
 uniform = f32, instance, shininess
 
 # Samplers
