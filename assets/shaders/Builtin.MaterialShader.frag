@@ -21,12 +21,14 @@ struct PointLight
 	float padding;
 };
 
+const int MAX_POINT_LIGHTS = 10;
+
 layout(set = 1, binding = 0) uniform localUniformObject
 {
 	vec4 diffuseColor;
 	DirectionalLight dirLight;
-	PointLight pLight0;
-	PointLight pLight1;
+	PointLight pLights[MAX_POINT_LIGHTS];
+	uint numPLights;
 	float shininess;
 } objectUbo;
 
@@ -76,8 +78,10 @@ void main()
 		vec3 viewDirection = normalize(inDto.viewPosition - inDto.fragPosition);
 		outColor = CalculateDirectionalLight(objectUbo.dirLight, normal, viewDirection);
 
-		outColor += CalculatePointLight(objectUbo.pLight0, normal, inDto.fragPosition, viewDirection);
-		outColor += CalculatePointLight(objectUbo.pLight1, normal, inDto.fragPosition, viewDirection);
+		for (int i = 0; i < objectUbo.numPLights; i++)
+		{
+			outColor += CalculatePointLight(objectUbo.pLights[i], normal, inDto.fragPosition, viewDirection);
+		}
 	}
 	else 
 	{

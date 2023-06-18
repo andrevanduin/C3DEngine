@@ -1,89 +1,92 @@
 
 #pragma once
-#include "core/defines.h"
-#include "renderer/render_view.h"
-#include "resources/ui_text.h"
 #include "containers/circular_buffer.h"
 #include "containers/hash_map.h"
+#include "core/defines.h"
 #include "core/function/function.h"
+#include "renderer/render_view.h"
+#include "resources/ui_text.h"
 
 namespace C3D
 {
-	constexpr auto MAX_LINES = 512;
-	constexpr i8 MAX_HISTORY = 64;
-	constexpr auto SHOWN_LINES = 10;
+    constexpr auto MAX_LINES = 512;
+    constexpr i8 MAX_HISTORY = 64;
+    constexpr auto SHOWN_LINES = 10;
 
 #define Console m_engine->GetBaseConsole()
 
-	using CommandName = CString<128>;
-	using ArgName = CString<128>;
-	using CommandCallback = StackFunction<bool(const DynamicArray<ArgName>&, String&), 16>;
+    using CommandName = CString<128>;
+    using ArgName = CString<128>;
+    using CommandCallback = StackFunction<bool(const DynamicArray<ArgName>&, String&), 16>;
 
-	class C3D_API UIConsole
-	{
-		enum class LogType
-		{
-			Info,
-			Error,
-		};
+    class C3D_API UIConsole
+    {
+        enum class LogType
+        {
+            Info,
+            Error,
+        };
 
-	public:
-		UIConsole();
+    public:
+        UIConsole();
 
-		void OnInit(Engine* engine);
-		void OnShutDown();
+        void OnInit(Engine* engine);
+        void OnShutDown();
 
-		void OnUpdate();
-		void OnRender(UIPacketData& packet);
+        void OnUpdate();
+        void OnRender(UIPacketData& packet);
 
-		void RegisterCommand(const CommandName& name, const CommandCallback& func);
+        void RegisterCommand(const CommandName& name, const CommandCallback& func);
 
-		void UnRegisterCommand(const CommandName& name);
+        void UnregisterCommand(const CommandName& name);
 
-		void WriteLine(const char* line);
+        void WriteLine(const char* line);
 
-		[[nodiscard]] bool IsInitialized() const;
-		[[nodiscard]] bool IsOpen() const;
-	private:
-		void RegisterDefaultCommands() const;
+        [[nodiscard]] bool IsInitialized() const;
+        [[nodiscard]] bool IsOpen() const;
 
-		void WriteLineInternal(const CString<256>& line);
+    private:
+        void RegisterDefaultCommands() const;
 
-		bool OnKeyDownEvent(u16 code, void* sender, const EventContext& context);
-		bool OnMouseScrollEvent(u16 code, void* sender, const EventContext& context);
+        void WriteLineInternal(const CString<256>& line);
 
-		bool OnParseCommand();
+        bool OnKeyDownEvent(u16 code, void* sender, const EventContext& context);
+        bool OnMouseScrollEvent(u16 code, void* sender, const EventContext& context);
 
-		template <typename... Args>
-		void PrintCommandMessage(const LogType type, const char* format, Args&&... args)
-		{
-			if (type == LogType::Info) m_logger.Info(format, args...);
-			else m_logger.Error(format, args...);
+        bool OnParseCommand();
 
-			m_current = "";
-			m_isEntryDirty = true;
-		}
+        template <typename... Args>
+        void PrintCommandMessage(const LogType type, const char* format, Args&&... args)
+        {
+            if (type == LogType::Info)
+                m_logger.Info(format, args...);
+            else
+                m_logger.Error(format, args...);
 
-		bool m_isOpen, m_initialized;
-		bool m_isTextDirty, m_isEntryDirty;
+            m_current = "";
+            m_isEntryDirty = true;
+        }
 
-		u8 m_cursorCounter, m_scrollCounter;
-		u32 m_startIndex, m_endIndex, m_nextLine;
+        bool m_isOpen, m_initialized;
+        bool m_isTextDirty, m_isEntryDirty;
 
-		// History
-		i8 m_currentHistory;
-		i8 m_endHistory, m_nextHistory;
+        u8 m_cursorCounter, m_scrollCounter;
+        u32 m_startIndex, m_endIndex, m_nextLine;
 
-		CircularBuffer<CString<256>, MAX_LINES> m_lines;
-		CircularBuffer<CString<256>, MAX_HISTORY> m_history;
+        // History
+        i8 m_currentHistory;
+        i8 m_endHistory, m_nextHistory;
 
-		UIText m_text, m_entry, m_cursor;
-		CString<256> m_current;
+        CircularBuffer<CString<256>, MAX_LINES> m_lines;
+        CircularBuffer<CString<256>, MAX_HISTORY> m_history;
 
-		LoggerInstance<16> m_logger;
+        UIText m_text, m_entry, m_cursor;
+        CString<256> m_current;
 
-		HashMap<CommandName, CommandCallback> m_commands;
+        LoggerInstance<16> m_logger;
 
-		Engine* m_engine;
-	};
-}
+        HashMap<CommandName, CommandCallback> m_commands;
+
+        Engine* m_engine;
+    };
+}  // namespace C3D

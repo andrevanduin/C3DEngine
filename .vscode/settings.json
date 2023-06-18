@@ -78,5 +78,29 @@
         "xtree": "cpp",
         "*.rh": "cpp"
     },
-    "cmake.generator": "Ninja"
+    "cmake.generator": "Ninja",
+    "todohighlight.include": [
+        "**/*.cpp",
+        "**/*.h",
+    ],
+    "todohighlight.keywords": [
+        {
+            "text": "TODO:",
+            "color": "#2aafd4",
+            "isWholeLine": true,
+            "backgroundColor": "none",
+        },
+        {
+            "text": "HACK:",
+            "color": "#ed408e",
+            "isWholeLine": true,
+            "backgroundColor": "none",
+        },
+        {
+            "text": "NOTE:",
+            "color": "#21931b",
+            "isWholeLine": true,
+            "backgroundColor": "none"
+        }
+    ]
 }

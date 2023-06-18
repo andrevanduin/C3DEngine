@@ -1,5 +1,15 @@
 BasedOnStyle: Google
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Custom
+BraceWrapping:
+  SplitEmptyFunction: false
+  AfterNamespace: true
+  AfterFunction: true
+  AfterEnum: true
+  AfterClass: true
+  AfterStruct: true
+  AfterCaseLabel: true
+  AfterControlStatement: true
+  BeforeElse: true
 IndentWidth: 4
 NamespaceIndentation: All
 UseTab: Never
