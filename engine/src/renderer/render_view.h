@@ -109,7 +109,7 @@ namespace C3D
 		u16 m_width;
 		u16 m_height;
 
-		EventCallbackId m_defaultRenderTargetRefreshRequiredCallbackId;
+		RegisteredEventCallback m_defaultRenderTargetRefreshRequiredCallback;
 
 		char* m_customShaderName;
 

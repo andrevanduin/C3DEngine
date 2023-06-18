@@ -23,13 +23,19 @@ uniform = vec3, global, viewPosition
 uniform = u32, global, mode
 
 # Instance
-uniform = vec4, instance, diffuseColor
-uniform = f32, instance, shininess
 
 # Samplers
 uniform = samp, instance, diffuseTexture
 uniform = samp, instance, specularTexture
 uniform = samp, instance, normalTexture
+
+uniform = vec4, instance, diffuseColor
+
+# Structs
+uniform = struct32, instance, dirLight
+uniform = struct480, instance, pLights
+uniform = u32, instance, numPLights
+uniform = f32, instance, shininess
 
 # Local
 uniform = mat4, local, model

@@ -38,16 +38,11 @@ layout(location = 1) out struct dto
 
 void main()
 {
-	// Simply pass ambient color
-	outDto.ambientColor = globalUbo.ambientColor;
-	// Simply pass texture coordinates
 	outDto.texCoord = inTexCoord;
-	// Simply pass view position
-	outDto.viewPosition = globalUbo.viewPosition;
+	outDto.color = inColor;
+	
 	// Fragment position in world space
 	outDto.fragPosition = vec3(uPushConstants.model * vec4(inPosition, 1.0));
-	// Simply pass color
-	outDto.color = inColor;
 
 	// Calculate mat3 version of our model
 	mat3 m3Model = mat3(uPushConstants.model);
@@ -55,7 +50,10 @@ void main()
 	outDto.normal = normalize(m3Model * inNormal);
 	outDto.tangent = normalize(m3Model * inTangent);
 
-	outMode = globalUbo.mode;
-
+	outDto.ambientColor = globalUbo.ambientColor;
+	outDto.viewPosition = globalUbo.viewPosition;
+	
 	gl_Position = globalUbo.projection * globalUbo.view * uPushConstants.model * vec4(inPosition, 1.0);
+
+	outMode = globalUbo.mode;
 }

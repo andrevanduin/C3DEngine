@@ -42,7 +42,7 @@ namespace C3D
 			Memory.Free(MemoryType::LinearAllocator, m_memoryBlock);
 		}
 		// Destroy the metrics object associated with this allocator
-		Metrics.DestroyAllocator(m_id);
+		Metrics.DestroyAllocator(m_id, false);
 
 		m_memoryBlock = nullptr;
 		m_totalSize = 0;

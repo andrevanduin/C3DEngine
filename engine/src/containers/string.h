@@ -670,25 +670,69 @@ namespace C3D
 			return std::find(begin(), end(), c) != end();
 		}
 
-		/* @brief Check if const char pointer matches case-sensitive. */
+		/**
+		 * @brief Compares the string with the other const char case-sensitive
+		 * 
+		 * @param other The const char* you want to compare against
+		 * @return True if equal (case-sensitive), false otherwise
+		 */
 		[[nodiscard]] bool Equals(const char* other) const
 		{
 			return std::strcmp(m_data, other) == 0;
 		}
 
-		/* @brief Check if const char pointer matches case-insensitive. */
+		/**
+		 * @brief Compares the string with the other const char case-sensitive upto n characters
+		 * 
+		 * @param other The const char* you want to compare against
+		 * @param n The amount of characters you want to check upto
+		 * @return True if equal (case-sensitive), false otherwise
+		 */
+		[[nodiscard]] bool NEquals(const char* other, const int n) const
+		{
+			return std::strncmp(m_data, other, n) == 0;
+		}
+
+		/**
+		 * @brief Compares the string with the other const char case-insensitive
+		 * 
+		 * @param other The const char* you want to compare against
+		 * @return True if equal (case-insensitive), false otherwise
+		 */
 		[[nodiscard]] bool IEquals(const char* other) const
 		{
 			return _stricmp(m_data, other) == 0;
 		}
 
-		/* @brief Check if another string matches case-sensitive. */
+		/**
+		 * @brief Compares the string with the other const char case-insensitive upto n characters
+		 * 
+		 * @param other The const char* you want to compare against
+		 * @param n The amount of characters you want to check upto
+		 * @return True if equal (case-insensitive), false otherwise
+		 */
+		[[nodiscard]] bool NIEquals(const char* other, const int n) const
+		{
+			return _strnicmp(m_data, other, n) == 0;
+		}
+
+		/**
+		 * @brief Check if another string matches case-sensitive
+		 * 
+		 * @param other The other string you want to compare against
+		 * @return True if equal (case-sensitive), false otherwise
+		 */
 		[[nodiscard]] bool Equals(const BasicString& other) const
 		{
 			return std::equal(begin(), end(), other.begin(), other.end());
 		}
 
-		/* @brief Check if another string matches case-insensitive. */
+		/**
+		 * @brief Check if another string matches case-insensitive
+		 * 
+		 * @param other The other string you want to compare against
+		 * @return True if equal (case-insensitive), false otherwise
+		 */
 		[[nodiscard]] bool IEquals(const BasicString& other) const
 		{
 			return std::equal(begin(), end(), other.begin(), other.end(), [](const char a, const char b) { return tolower(a) == tolower(b); });
@@ -740,7 +784,7 @@ namespace C3D
 		}
 
 		/* @brief Gets a substring starting at the provided start iterator until the provided end iterator. */
-		[[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt, const_iterator endIt)
+		[[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt, const_iterator endIt) const
 		{
 			// Calculate the size of our new substring
 			const auto size = endIt - startIt;
@@ -755,9 +799,31 @@ namespace C3D
 		}
 
 		/* @brief Gets a substring starting at the provided start iterator until the end of the string. */
-		[[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt)
+		[[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt) const
 		{
 			return SubStr(startIt, cend());
+		}
+
+		/**
+		 * @brief Gets a substring from the provided start to the end
+		 * 
+		 * @param start The index at which we start taking the substring
+		 * @param end The index at which we stop taking the substring (upto the end of the string if = 0)
+		 * @return A newly created substring from start to end
+		 */
+		[[nodiscard]] BasicString<Allocator> SubStr(const u64 start, const u64 end = 0) const
+		{
+			// If the provided index is 0 or larger than our total string we simply take the end of the string as an end index
+			const auto endIndex = (end == 0 || end > Size()) ? Size() : end;
+			const auto size = endIndex - start;
+			// Create the new string here on the stack (RVO will make sure this string gets moved)
+			// We increase the capacity by 1 since we need to add a '\0' byte
+			BasicString<Allocator> sub(size, size + 1);
+			// Copy the elements from our current string starting at start (size characters in total) into the new string
+			std::copy_n(m_data + start, size, sub.m_data);
+			// Add the ending '\0' byte
+			sub.m_data[size] = '\0';
+			return sub;
 		}
 
 		/* @brief Converts string to a f32. */

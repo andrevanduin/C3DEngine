@@ -39,7 +39,7 @@ namespace C3D
 		f32 m_nearClip;
 		f32 m_farClip;
 
-		EventCallbackId m_onEventCallbackId;
+		RegisteredEventCallback m_onEventCallback;
 
 		mat4 m_projectionMatrix;
 		Camera* m_camera;
