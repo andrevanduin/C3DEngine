@@ -2,123 +2,127 @@
 #pragma once
 #include <renderer/renderer_plugin.h>
 
-#include "vulkan_types.h"
 #include "vulkan_buffer.h"
 #include "vulkan_shader.h"
+#include "vulkan_types.h"
 
 namespace C3D
 {
-	extern "C"
-	{
-		C3D_API RendererPlugin* CreatePlugin();
-	}
-	
-	class VulkanRendererPlugin final : public RendererPlugin
-	{
-	public:
-		VulkanRendererPlugin();
+    struct FrameData;
 
-		VulkanRendererPlugin(const VulkanRendererPlugin& other) = delete;
-		VulkanRendererPlugin(VulkanRendererPlugin&& other) = delete;
+    extern "C" {
+    C3D_API RendererPlugin* CreatePlugin();
+    }
 
-		VulkanRendererPlugin& operator=(const VulkanRendererPlugin& other) = delete;
-		VulkanRendererPlugin& operator=(VulkanRendererPlugin&& other) = delete;
+    class VulkanRendererPlugin final : public RendererPlugin
+    {
+    public:
+        VulkanRendererPlugin();
 
-		~VulkanRendererPlugin() override = default;
+        VulkanRendererPlugin(const VulkanRendererPlugin& other) = delete;
+        VulkanRendererPlugin(VulkanRendererPlugin&& other) = delete;
 
-		bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) override;
-		void Shutdown() override;
+        VulkanRendererPlugin& operator=(const VulkanRendererPlugin& other) = delete;
+        VulkanRendererPlugin& operator=(VulkanRendererPlugin&& other) = delete;
 
-		void OnResize(u32 width, u32 height) override;
+        ~VulkanRendererPlugin() override = default;
 
-		bool BeginFrame(f32 deltaTime) override;
-		bool EndFrame(f32 deltaTime) override;
+        bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) override;
+        void Shutdown() override;
 
-		void SetViewport(const vec4& rect) override;
-		void ResetViewport() override;
-		void SetScissor(const ivec4& rect) override;
-		void ResetScissor() override;
+        void OnResize(u32 width, u32 height) override;
 
-		void SetLineWidth(float lineWidth) override;
+        bool BeginFrame(const FrameData* frameData) override;
+        bool EndFrame(const FrameData* frameData) override;
 
-		bool BeginRenderPass(RenderPass* pass, RenderTarget* target) override;
-		bool EndRenderPass(RenderPass* pass) override;
+        void SetViewport(const vec4& rect) override;
+        void ResetViewport() override;
+        void SetScissor(const ivec4& rect) override;
+        void ResetScissor() override;
 
-		void DrawGeometry(const GeometryRenderData& data) override;
+        void SetLineWidth(float lineWidth) override;
 
-		void CreateTexture(const u8* pixels, Texture* texture) override;
-		void CreateWritableTexture(Texture* texture) override;
+        bool BeginRenderPass(RenderPass* pass, RenderTarget* target) override;
+        bool EndRenderPass(RenderPass* pass) override;
 
-		void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels) override;
-		void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) override;
+        void DrawGeometry(const GeometryRenderData& data) override;
 
-		void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory) override;
-		void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba) override;
+        void CreateTexture(const u8* pixels, Texture* texture) override;
+        void CreateWritableTexture(Texture* texture) override;
 
-		void DestroyTexture(Texture* texture) override;
+        void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels) override;
+        void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) override;
 
-		bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount, const void* indices) override;
-		void DestroyGeometry(Geometry* geometry) override;
+        void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory) override;
+        void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba) override;
 
-		bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const override;
-		void DestroyShader(Shader& shader) override;
+        void DestroyTexture(Texture* texture) override;
 
-		bool InitializeShader(Shader* shader) override;
-		bool UseShader(Shader* shader) override;
+        bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize,
+                            u64 indexCount, const void* indices) override;
+        void DestroyGeometry(Geometry* geometry) override;
 
-		bool ShaderBindGlobals(Shader* shader) override;
-		bool ShaderBindInstance(Shader* shader, u32 instanceId) override;
+        bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const override;
+        void DestroyShader(Shader& shader) override;
 
-		bool ShaderApplyGlobals(Shader* shader) override;
-		bool ShaderApplyInstance(Shader* shader, bool needsUpdate) override;
+        bool InitializeShader(Shader* shader) override;
+        bool UseShader(Shader* shader) override;
 
-		bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) override;
-		bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) override;
+        bool ShaderBindGlobals(Shader* shader) override;
+        bool ShaderBindInstance(Shader* shader, u32 instanceId) override;
 
-		bool AcquireTextureMapResources(TextureMap* map) override;
-		void ReleaseTextureMapResources(TextureMap* map) override;
+        bool ShaderApplyGlobals(Shader* shader) override;
+        bool ShaderApplyInstance(Shader* shader, bool needsUpdate) override;
 
-		bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
+        bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) override;
+        bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) override;
 
-		void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height, RenderTarget* outTarget) override;
-		void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) override;
+        bool AcquireTextureMapResources(TextureMap* map) override;
+        void ReleaseTextureMapResources(TextureMap* map) override;
 
-		RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
-		bool DestroyRenderPass(RenderPass* pass) override;
+        bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
 
-		RenderBuffer* CreateRenderBuffer(RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
-		bool DestroyRenderBuffer(RenderBuffer* buffer) override;
+        void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width,
+                                u32 height, RenderTarget* outTarget) override;
+        void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) override;
 
-		Texture* GetWindowAttachment(u8 index) override;
-		Texture* GetDepthAttachment(u8 index) override;
+        RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
+        bool DestroyRenderPass(RenderPass* pass) override;
 
-		u8 GetWindowAttachmentIndex() override;
-		u8 GetWindowAttachmentCount() override;
+        RenderBuffer* CreateRenderBuffer(RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
+        bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
-		[[nodiscard]] bool IsMultiThreaded() const override;
+        Texture* GetWindowAttachment(u8 index) override;
+        Texture* GetDepthAttachment(u8 index) override;
 
-		void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) override;
-		[[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const override;
-	private:
-		void CreateCommandBuffers();
+        u8 GetWindowAttachmentIndex() override;
+        u8 GetWindowAttachmentCount() override;
 
-		bool RecreateSwapChain();
+        [[nodiscard]] bool IsMultiThreaded() const override;
 
-		bool CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const;
+        void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) override;
+        [[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const override;
 
-		VkSamplerAddressMode ConvertRepeatType(const char* axis, TextureRepeat repeat) const;
-		VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;
+    private:
+        void CreateCommandBuffers();
 
-		VulkanContext m_context;
-		VulkanBuffer m_objectVertexBuffer, m_objectIndexBuffer;
+        bool RecreateSwapChain();
 
-		// TODO: make dynamic
-		VulkanGeometryData m_geometries[VULKAN_MAX_GEOMETRY_COUNT];
+        bool CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const;
+
+        VkSamplerAddressMode ConvertRepeatType(const char* axis, TextureRepeat repeat) const;
+        VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;
+
+        VulkanContext m_context;
+        VulkanBuffer m_objectVertexBuffer, m_objectIndexBuffer;
+
+        // TODO: make dynamic
+        VulkanGeometryData m_geometries[VULKAN_MAX_GEOMETRY_COUNT];
 
 #ifdef _DEBUG
-		VkDebugUtilsMessengerEXT m_debugMessenger{ nullptr };
+        VkDebugUtilsMessengerEXT m_debugMessenger = nullptr;
 #endif
 
-		const Engine* m_engine;
-	};
-}
+        const SystemManager* m_pSystemsManager;
+    };
+}  // namespace C3D

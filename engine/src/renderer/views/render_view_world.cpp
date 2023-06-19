@@ -76,7 +76,7 @@ namespace C3D
         m_projectionMatrix = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
     }
 
-    bool RenderViewWorld::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
+    bool RenderViewWorld::OnBuildPacket(LinearAllocator* frameAllocator, void* data, RenderViewPacket* outPacket)
     {
         if (!data || !outPacket)
         {
@@ -98,7 +98,8 @@ namespace C3D
             {
                 // Material has no transparency
                 outPacket->geometries.PushBack(gData);
-            } else
+            }
+            else
             {
                 vec3 center = vec4(gData.geometry->center, 1.0f) * gData.model;
                 const f32 distance = glm::distance(center, m_camera->GetPosition());

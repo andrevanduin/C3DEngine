@@ -6,21 +6,21 @@
 #include "memory/allocators/linear_allocator.h"
 #include "system.h"
 
-#define Input m_engine->GetSystem<C3D::InputSystem>(C3D::SystemType::InputSystemType)
-#define Event m_engine->GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
-#define Renderer m_engine->GetSystem<C3D::RenderSystem>(C3D::SystemType::RenderSystemType)
-#define Textures m_engine->GetSystem<C3D::TextureSystem>(C3D::SystemType::TextureSystemType)
-#define Materials m_engine->GetSystem<C3D::MaterialSystem>(C3D::SystemType::MaterialSystemType)
-#define Geometric m_engine->GetSystem<C3D::GeometrySystem>(C3D::SystemType::GeometrySystemType)
-#define Resources m_engine->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
-#define Shaders m_engine->GetSystem<C3D::ShaderSystem>(C3D::SystemType::ShaderSystemType)
-#define Lights m_engine->GetSystem<C3D::LightSystem>(C3D::SystemType::LightSystemType)
-#define Cam m_engine->GetSystem<C3D::CameraSystem>(C3D::SystemType::CameraSystemType)
-#define Views m_engine->GetSystem<C3D::RenderViewSystem>(C3D::SystemType::RenderViewSystemType)
-#define Jobs m_engine->GetSystem<C3D::JobSystem>(C3D::SystemType::JobSystemType)
-#define Fonts m_engine->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
-#define CVars m_engine->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
-#define OS m_engine->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType)
+#define Input m_pSystemsManager->GetSystem<C3D::InputSystem>(C3D::SystemType::InputSystemType)
+#define Event m_pSystemsManager->GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
+#define Renderer m_pSystemsManager->GetSystem<C3D::RenderSystem>(C3D::SystemType::RenderSystemType)
+#define Textures m_pSystemsManager->GetSystem<C3D::TextureSystem>(C3D::SystemType::TextureSystemType)
+#define Materials m_pSystemsManager->GetSystem<C3D::MaterialSystem>(C3D::SystemType::MaterialSystemType)
+#define Geometric m_pSystemsManager->GetSystem<C3D::GeometrySystem>(C3D::SystemType::GeometrySystemType)
+#define Resources m_pSystemsManager->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
+#define Shaders m_pSystemsManager->GetSystem<C3D::ShaderSystem>(C3D::SystemType::ShaderSystemType)
+#define Lights m_pSystemsManager->GetSystem<C3D::LightSystem>(C3D::SystemType::LightSystemType)
+#define Cam m_pSystemsManager->GetSystem<C3D::CameraSystem>(C3D::SystemType::CameraSystemType)
+#define Views m_pSystemsManager->GetSystem<C3D::RenderViewSystem>(C3D::SystemType::RenderViewSystemType)
+#define Jobs m_pSystemsManager->GetSystem<C3D::JobSystem>(C3D::SystemType::JobSystemType)
+#define Fonts m_pSystemsManager->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
+#define CVars m_pSystemsManager->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
+#define OS m_pSystemsManager->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType)
 
 namespace C3D
 {
@@ -44,14 +44,12 @@ namespace C3D
         MaxKnownSystemType
     };
 
-    class Engine;
-
     class C3D_API SystemManager
     {
     public:
         SystemManager();
 
-        void Init(const Engine* engine);
+        void Init();
 
         template <class System>
         bool RegisterSystem(const u16 systemType)
@@ -66,7 +64,7 @@ namespace C3D
                 return false;
             }
 
-            auto s = m_allocator.New<System>(MemoryType::CoreSystem, m_engine);
+            auto s = m_allocator.New<System>(MemoryType::CoreSystem, this);
             if (!s->Init())
             {
                 m_logger.Fatal("RegisterSystem() - Failed to initialize system");
@@ -90,7 +88,7 @@ namespace C3D
                 return false;
             }
 
-            auto s = m_allocator.New<System>(MemoryType::CoreSystem, m_engine);
+            auto s = m_allocator.New<System>(MemoryType::CoreSystem, this);
             if (!s->Init(config))
             {
                 m_logger.Fatal("RegisterSystem() - Failed to initialize system");
@@ -116,11 +114,9 @@ namespace C3D
         void Shutdown();
 
     private:
-        Array<ISystem*, MaxKnownSystemType> m_systems;
+        Array<ISystem*, MaxKnownSystemType> m_systems = {};
 
         LinearAllocator m_allocator;
         LoggerInstance<16> m_logger;
-
-        const Engine* m_engine;
     };
 }  // namespace C3D

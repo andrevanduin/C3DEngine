@@ -14,8 +14,8 @@ namespace C3D
 {
 	constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
 
-	ResourceLoader<MaterialResource>::ResourceLoader(const Engine* engine)
-		: IResourceLoader(engine, "MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
+	ResourceLoader<MaterialResource>::ResourceLoader(const SystemManager* pSystemsManager)
+		: IResourceLoader(pSystemsManager, "MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials")
 	{}
 
 	bool ResourceLoader<MaterialResource>::Load(const char* name, MaterialResource& resource) const

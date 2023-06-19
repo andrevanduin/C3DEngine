@@ -1,180 +1,179 @@
 
 #include "cvar_system.h"
+
 #include "core/engine.h"
 
 namespace C3D
 {
-	CVarSystem::CVarSystem(const Engine* engine)
-		: SystemWithConfig(engine, "CVAR_SYSTEM")
-	{}
+    CVarSystem::CVarSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager, "CVAR_SYSTEM") {}
 
-	bool CVarSystem::Init(const CVarSystemConfig& config)
-	{
-		m_logger.Info("Init()");
+    bool CVarSystem::Init(const CVarSystemConfig& config)
+    {
+        m_logger.Info("Init()");
 
-		m_config = config;
-		m_cVars.Create(config.maxCVars);
+        m_config = config;
+        m_pConsole = config.pConsole;
 
-		if (!CreateDefaultCVars())
-		{
-			m_logger.Error("Init() - Failed to create default CVars");
-			return false;
-		}
+        m_cVars.Create(config.maxCVars);
 
-		m_initialized = true;
-		return true;
-	}
+        if (!CreateDefaultCVars())
+        {
+            m_logger.Error("Init() - Failed to create default CVars");
+            return false;
+        }
 
-	void CVarSystem::Shutdown()
-	{
-		m_logger.Info("Shutdown()");
+        m_initialized = true;
+        return true;
+    }
 
-		for (const auto cVar : m_cVars)
-		{
-			Remove(cVar->name);
-		}
-		m_cVars.Destroy();
-		m_initialized = false;
-	}
+    void CVarSystem::Shutdown()
+    {
+        m_logger.Info("Shutdown()");
 
-	bool CVarSystem::Remove(const CVarName& name)
-	{
-		if (!Exists(name))
-		{
-			m_logger.Error("Remove() - No CVar with name: \'{}\' exist!", name);
-			return false;
-		}
+        for (const auto cVar : m_cVars)
+        {
+            Remove(cVar->name);
+        }
+        m_cVars.Destroy();
+        m_initialized = false;
+    }
 
-		const auto cVar = m_cVars.Get(name);
-		m_cVars.Delete(name);
+    bool CVarSystem::Remove(const CVarName& name)
+    {
+        if (!Exists(name))
+        {
+            m_logger.Error("Remove() - No CVar with name: \'{}\' exist!", name);
+            return false;
+        }
 
-		Memory.Delete(MemoryType::CVar, cVar);
-		return true;
-	}
+        const auto cVar = m_cVars.Get(name);
+        m_cVars.Delete(name);
 
-	bool CVarSystem::Exists(const CVarName& name) const
-	{
-		return m_cVars.Has(name);
-	}
+        Memory.Delete(MemoryType::CVar, cVar);
+        return true;
+    }
 
-	bool CVarSystem::Print(const CVarName& name, CString<256>& output)
-	{
-		if (!Exists(name))
-		{
-			m_logger.Error("Print() - No CVar with name: \'{}\' exists!", name);
-			return false;
-		}
+    bool CVarSystem::Exists(const CVarName& name) const { return m_cVars.Has(name); }
 
-		output = m_cVars.Get(name)->ToString();
-		return true;
-	}
+    bool CVarSystem::Print(const CVarName& name, CString<256>& output)
+    {
+        if (!Exists(name))
+        {
+            m_logger.Error("Print() - No CVar with name: \'{}\' exists!", name);
+            return false;
+        }
 
-	String CVarSystem::PrintAll() const
-	{
-		String vars = "";
-		for (const auto cVar : m_cVars)
-		{
-			vars += cVar->ToString();
-			vars += "\n";
-		}
-		return vars;
-	}
+        output = m_cVars.Get(name)->ToString();
+        return true;
+    }
 
-	void CVarSystem::RegisterDefaultCommands()
-	{
-		Console.RegisterCommand("cvar", [this](const DynamicArray<ArgName>& args, String& output) { return OnCVarCommand(args, output); });
-	}
+    String CVarSystem::PrintAll() const
+    {
+        String vars = "";
+        for (const auto cVar : m_cVars)
+        {
+            vars += cVar->ToString();
+            vars += "\n";
+        }
+        return vars;
+    }
 
-	bool CVarSystem::CreateDefaultCVars()
-	{
-		if (!Create("vsync", true)) return false;
+    void CVarSystem::RegisterDefaultCommands()
+    {
+        m_pConsole->RegisterCommand(
+            "cvar", [this](const DynamicArray<ArgName>& args, String& output) { return OnCVarCommand(args, output); });
+    }
 
-		return true;
-	}
+    bool CVarSystem::CreateDefaultCVars()
+    {
+        if (!Create("vsync", true)) return false;
 
-	bool CVarSystem::OnCVarCommand(const DynamicArray<ArgName>& args, String& output)
-	{
-		if (args.Size() <= 1)
-		{
-			output = "Not enough arguments provided";
-			return false;
-		}
+        return true;
+    }
 
-		const auto commandType = args[1];
+    bool CVarSystem::OnCVarCommand(const DynamicArray<ArgName>& args, String& output)
+    {
+        if (args.Size() <= 1)
+        {
+            output = "Not enough arguments provided";
+            return false;
+        }
 
-		// cvar print [ all | name ]
-		if (commandType == "print")
-		{
-			// Print command
-			if (args.Size() != 3)
-			{
-				output = "The print command requires the name of a CVar or the 'all' argument";
-				return false;
-			}
+        const auto commandType = args[1];
 
-			const auto arg2 = args[2];
-			if (arg2 == "all")
-			{
-				// Print all command
-				output = PrintAll();
-				return true;
-			}
+        // cvar print [ all | name ]
+        if (commandType == "print")
+        {
+            // Print command
+            if (args.Size() != 3)
+            {
+                output = "The print command requires the name of a CVar or the 'all' argument";
+                return false;
+            }
 
-			// Assume arg2 is the name of a CVar
-			if (!Exists(arg2))
-			{
-				output = String::FromFormat("The CVar \'{}\' does not exist!", arg2);
-				return false;
-			}
+            const auto arg2 = args[2];
+            if (arg2 == "all")
+            {
+                // Print all command
+                output = PrintAll();
+                return true;
+            }
 
-			const auto cVar = m_cVars.Get(arg2);
-			output += cVar->ToString();
-			return true;
-		}
+            // Assume arg2 is the name of a CVar
+            if (!Exists(arg2))
+            {
+                output = String::FromFormat("The CVar \'{}\' does not exist!", arg2);
+                return false;
+            }
 
-		// cvar set name type value
-		if (commandType == "set")
-		{
-			// Set command
-			if (args.Size() != 5)
-			{
-				output = "The set command requires the name of a CVar, the type and a value to set";
-				return false;
-			}
+            const auto cVar = m_cVars.Get(arg2);
+            output += cVar->ToString();
+            return true;
+        }
 
-			const auto cVarName = args[2];
-			if (!Exists(cVarName))
-			{
-				output = String::FromFormat("The CVar \'{}\' does not exist!", cVarName);
-				return false;
-			}
+        // cvar set name type value
+        if (commandType == "set")
+        {
+            // Set command
+            if (args.Size() != 5)
+            {
+                output = "The set command requires the name of a CVar, the type and a value to set";
+                return false;
+            }
 
-			const auto type = args[3];
-			const auto valueStr = args[4];
+            const auto cVarName = args[2];
+            if (!Exists(cVarName))
+            {
+                output = String::FromFormat("The CVar \'{}\' does not exist!", cVarName);
+                return false;
+            }
 
-			if (type == "i32" || type == "int")
-			{
-				SetCVar(cVarName, valueStr.ToI32(), output);
-				return true;
-			}
+            const auto type = args[3];
+            const auto valueStr = args[4];
 
-			if (type == "u32")
-			{
-				SetCVar(cVarName, valueStr.ToU32(), output);
-				return true;
-			}
+            if (type == "i32" || type == "int")
+            {
+                SetCVar(cVarName, valueStr.ToI32(), output);
+                return true;
+            }
 
-			if (type == "bool")
-			{
-				SetCVar(cVarName, valueStr.ToBool(), output);
-				return true;
-			}
+            if (type == "u32")
+            {
+                SetCVar(cVarName, valueStr.ToU32(), output);
+                return true;
+            }
 
-			output = String::FromFormat("Unknown type: \'{}\'", type);
-			return false;
-		}
+            if (type == "bool")
+            {
+                SetCVar(cVarName, valueStr.ToBool(), output);
+                return true;
+            }
 
-		output = String::FromFormat("Unknown argument \'{}\'", commandType);
-		return false;
-	}
-}
+            output = String::FromFormat("Unknown type: \'{}\'", type);
+            return false;
+        }
+
+        output = String::FromFormat("Unknown argument \'{}\'", commandType);
+        return false;
+    }
+}  // namespace C3D

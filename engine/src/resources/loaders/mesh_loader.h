@@ -55,7 +55,7 @@ namespace C3D
 	class ResourceLoader<MeshResource> final : public IResourceLoader
 	{
 	public:
-		explicit ResourceLoader(const Engine* engine);
+		explicit ResourceLoader(const SystemManager* pSystemsManager);
 
 		bool Load(const char* name, MeshResource& resource) const;
 		void Unload(MeshResource& resource) const;

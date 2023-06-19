@@ -7,7 +7,9 @@
 
 namespace C3D
 {
-    EventSystem::EventSystem(const Engine* engine) : BaseSystem(engine, "EVENT"), m_registered{} {}
+    EventSystem::EventSystem(const SystemManager* pSystemsManager)
+        : BaseSystem(pSystemsManager, "EVENT"), m_registered{}
+    {}
 
     void EventSystem::Shutdown()
     {

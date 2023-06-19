@@ -54,7 +54,7 @@ namespace C3D
     class C3D_API GeometrySystem final : public SystemWithConfig<GeometrySystemConfig>
     {
     public:
-        explicit GeometrySystem(const Engine* engine);
+        explicit GeometrySystem(const SystemManager* pSystemsManager);
 
         bool Init(const GeometrySystemConfig& config) override;
         void Shutdown() override;

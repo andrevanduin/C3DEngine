@@ -11,8 +11,8 @@
 
 namespace C3D
 {
-	ResourceLoader<TextResource>::ResourceLoader(const Engine* engine)
-		: IResourceLoader(engine, "TEXT_LOADER", MemoryType::String, ResourceType::Text, nullptr, "")
+	ResourceLoader<TextResource>::ResourceLoader(const SystemManager* pSystemsManager)
+		: IResourceLoader(pSystemsManager, "TEXT_LOADER", MemoryType::String, ResourceType::Text, nullptr, "")
 	{}
 
 	bool ResourceLoader<TextResource>::Load(const char* name, TextResource& resource) const

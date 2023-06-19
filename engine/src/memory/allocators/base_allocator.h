@@ -6,72 +6,67 @@
 
 namespace C3D
 {
-	template <class Derived>
-	class C3D_API BaseAllocator
-	{
-	public:
-		explicit BaseAllocator(const u8 type)
-			: m_id(INVALID_ID_U8), m_type(type), m_memoryBlock(nullptr)
-		{}
+    template <class Derived>
+    class C3D_API BaseAllocator
+    {
+    public:
+        explicit BaseAllocator(const u8 type) : m_id(INVALID_ID_U8), m_type(type), m_memoryBlock(nullptr) {}
 
-		BaseAllocator(const BaseAllocator&) = delete;
-		BaseAllocator(BaseAllocator&&) = delete;
+        BaseAllocator(const BaseAllocator&) = delete;
+        BaseAllocator(BaseAllocator&&) = delete;
 
-		BaseAllocator& operator=(const BaseAllocator&) = delete;
-		BaseAllocator& operator=(BaseAllocator&&) = delete;
+        BaseAllocator& operator=(const BaseAllocator&) = delete;
+        BaseAllocator& operator=(BaseAllocator&&) = delete;
 
-		virtual ~BaseAllocator() = default;
+        virtual ~BaseAllocator() = default;
 
-		virtual void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) = 0;
-		virtual void Free(MemoryType type, void* block) = 0;
+        virtual void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) = 0;
+        virtual void Free(MemoryType type, void* block) = 0;
 
-		BaseAllocator& SetStacktraceRef()
-		{
-			Metrics.SetStacktrace();
-			return *this;
-		}
+        BaseAllocator& SetStacktraceRef()
+        {
+            Metrics.SetStacktrace();
+            return *this;
+        }
 
-		BaseAllocator* SetStacktrace()
-		{
-			Metrics.SetStacktrace();
-			return this;
-		}
+        BaseAllocator* SetStacktrace()
+        {
+            Metrics.SetStacktrace();
+            return this;
+        }
 
-		template <typename T>
-		T* Allocate(const MemoryType type, const u64 count = 1)
-		{
-			return static_cast<T*>(AllocateBlock(type, sizeof(T) * count, alignof(T)));
-		}
+        template <typename T>
+        T* Allocate(const MemoryType type, const u64 count = 1)
+        {
+            return static_cast<T*>(AllocateBlock(type, sizeof(T) * count, alignof(T)));
+        }
 
-		template <class T, class... Args>
-		T* New(const MemoryType type, Args&&... args)
-		{
-			return new(AllocateBlock(type, sizeof (T), alignof(T))) T(std::forward<Args>(args)...);
-		}
+        template <class T, class... Args>
+        T* New(const MemoryType type, Args&&... args)
+        {
+            return new (AllocateBlock(type, sizeof(T), alignof(T))) T(std::forward<Args>(args)...);
+        }
 
-		template <class T>
-		void Delete(const MemoryType type, T* instance)
-		{
-			// Call our destructor
-			instance->~T();
-			// Free our memory
-			Free(type, instance);
-		}
+        template <class T>
+        void Delete(const MemoryType type, T* instance)
+        {
+            // Call our destructor
+            instance->~T();
+            // Free our memory
+            Free(type, instance);
+        }
 
-		[[nodiscard]] void* GetMemory() const { return m_memoryBlock; }
+        [[nodiscard]] void* GetMemory() const { return m_memoryBlock; }
 
-		[[nodiscard]] u8 GetId() const { return m_id; }
+        [[nodiscard]] u8 GetId() const { return m_id; }
 
-		static Derived* GetDefault()
-		{
-			return Derived::GetDefault();
-		}
+        static Derived* GetDefault() { return Derived::GetDefault(); }
 
-	protected:
-		// The id for this allocator
-		u8 m_id;
-		u8 m_type;
-		
-		char* m_memoryBlock;
-	};
-}
+    protected:
+        // The id for this allocator
+        u8 m_id;
+        u8 m_type;
+
+        char* m_memoryBlock;
+    };
+}  // namespace C3D

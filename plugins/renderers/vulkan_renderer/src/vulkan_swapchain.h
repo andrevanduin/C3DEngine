@@ -7,46 +7,50 @@
 
 namespace C3D
 {
-	struct VulkanContext;
+    class SystemManager;
+    struct VulkanContext;
 
-	class VulkanSwapChain
-	{
-	public:
-		explicit VulkanSwapChain();
+    class VulkanSwapChain
+    {
+    public:
+        void Create(const SystemManager* pSystemsManager, VulkanContext* context, u32 width, u32 height,
+                    RendererConfigFlags flags);
 
-		void Create(const Engine* engine, VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
+        void Recreate(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
-		void Recreate(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
+        void Destroy(const VulkanContext* context);
 
-		void Destroy(const VulkanContext* context);
+        bool AcquireNextImageIndex(VulkanContext* context, u64 timeoutNs, VkSemaphore imageAvailableSemaphore,
+                                   VkFence fence, u32* outImageIndex);
 
-		bool AcquireNextImageIndex(VulkanContext* context, u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex);
+        void Present(VulkanContext* context, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore,
+                     u32 presentImageIndex);
 
-		void Present(VulkanContext* context, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, u32 presentImageIndex);
+        VkSwapchainKHR handle = nullptr;
 
-		VkSwapchainKHR handle;
+        VkSurfaceFormatKHR imageFormat;
+        u32 imageCount = 0;
 
-		VkSurfaceFormatKHR imageFormat;
-		u32 imageCount;
+        u8 maxFramesInFlight = 0;
 
-		u8 maxFramesInFlight;
+        Texture* renderTextures = nullptr;
 
-		Texture* renderTextures;
+        /* @brief An array of depth texture. */
+        Texture* depthTextures = nullptr;
+        /* @brief Render targets used for on-screen rendering, one per frame. */
+        RenderTarget renderTargets[3] = {};
 
-		/* @brief An array of depth texture. */
-		Texture* depthTextures;
-		/* @brief Render targets used for on-screen rendering, one per frame. */
-		RenderTarget renderTargets[3];
-	private:
-		void CreateInternal(const Engine* engine, VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
+    private:
+        void CreateInternal(const SystemManager* pSystemsManager, VulkanContext* context, u32 width, u32 height,
+                            RendererConfigFlags flags);
 
-		void DestroyInternal(const VulkanContext* context) const;
+        void DestroyInternal(const VulkanContext* context) const;
 
-		VkPresentModeKHR GetPresentMode(const VulkanContext* context) const;
+        VkPresentModeKHR GetPresentMode(const VulkanContext* context) const;
 
-		RendererConfigFlags m_flags;
-		VkPresentModeKHR m_presentMode;
+        RendererConfigFlags m_flags = 0;
+        VkPresentModeKHR m_presentMode;
 
-		const Engine* m_engine;
-	};
-}
+        const SystemManager* m_pSystemsManager = nullptr;
+    };
+}  // namespace C3D

@@ -111,11 +111,13 @@ C3D::Application* C3D::CreateApplication()
 // Method that gets called when the engine is fully initialized
 void C3D::InitApplication(Engine* engine)
 {
-    engine->GetSystem<EventSystem>(EventSystemType)
+    const auto pSystemsManager = engine->GetSystemsManager();
+
+    pSystemsManager->GetSystem<EventSystem>(EventSystemType)
         .Register(EventCodeWatchedFileChanged, [engine](const u16 code, void*, const EventContext& context) {
             return OnWatchedFileChanged(code, engine, context);
         });
-    applicationLibraryFile = engine->GetSystem<Platform>(PlatformSystemType).WatchFile("TestEnvLib.dll");
+    applicationLibraryFile = pSystemsManager->GetSystem<Platform>(PlatformSystemType).WatchFile("TestEnvLib.dll");
 
     application->OnLibraryLoad();
 }

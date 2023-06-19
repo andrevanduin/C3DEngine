@@ -32,7 +32,7 @@ namespace C3D
     class C3D_API LightSystem final : public BaseSystem
     {
     public:
-        LightSystem(const Engine* engine);
+        explicit LightSystem(const SystemManager* pSystemsManager);
 
         bool Init() override;
         void Shutdown() override;

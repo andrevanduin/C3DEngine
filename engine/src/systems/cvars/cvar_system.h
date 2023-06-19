@@ -1,81 +1,85 @@
 
 #pragma once
 #include "containers/dynamic_array.h"
-#include "systems/system.h"
-
 #include "containers/hash_map.h"
 #include "containers/string.h"
 #include "core/console/console.h"
 #include "core/cvars/cvar.h"
+#include "systems/system.h"
 
 namespace C3D
 {
-	struct CVarSystemConfig
-	{
-		u32 maxCVars;
-	};
+    class UIConsole;
 
-	using ICVarChangedCallback = std::function<void(const ICVar& cVar)>;
+    struct CVarSystemConfig
+    {
+        u32 maxCVars = 0;
+        UIConsole* pConsole = nullptr;
+    };
 
-	template <typename T>
-	using CVarChangedCallback = std::function<void(const CVar<T>& cVar)>;
+    using ICVarChangedCallback = std::function<void(const ICVar& cVar)>;
 
-	class CVarSystem final : public SystemWithConfig<CVarSystemConfig>
-	{
-	public:
-		explicit CVarSystem(const Engine* engine);
+    template <typename T>
+    using CVarChangedCallback = std::function<void(const CVar<T>& cVar)>;
 
-		bool Init(const CVarSystemConfig& config) override;
-		void Shutdown() override;
+    class CVarSystem final : public SystemWithConfig<CVarSystemConfig>
+    {
+    public:
+        explicit CVarSystem(const SystemManager* pSystemsManager);
 
-		template <typename T>
-		bool Create(const CVarName& name, const T& value)
-		{
-			if (Exists(name))
-			{
-				m_logger.Error("Create() - Failed to create CVar. A CVar named: \'{}\' already exists!", name);
-				return false;
-			}
+        bool Init(const CVarSystemConfig& config) override;
+        void Shutdown() override;
 
-			const auto pCVar = Memory.New<CVar<T>>(MemoryType::CVar, name, value);
-			m_cVars.Set(name, pCVar);
-			return true;
-		}
+        template <typename T>
+        bool Create(const CVarName& name, const T& value)
+        {
+            if (Exists(name))
+            {
+                m_logger.Error("Create() - Failed to create CVar. A CVar named: \'{}\' already exists!", name);
+                return false;
+            }
 
-		bool Remove(const CVarName& name);
+            const auto pCVar = Memory.New<CVar<T>>(MemoryType::CVar, name, value);
+            m_cVars.Set(name, pCVar);
+            return true;
+        }
 
-		[[nodiscard]] bool Exists(const CVarName& name) const;
+        bool Remove(const CVarName& name);
 
-		template <typename T>
-		CVar<T>& Get(const CVarName& name) const
-		{
-			if (!Exists(name))
-			{
-				m_logger.Fatal("Get() - Failed to find a CVar with the name: \'{}\'", name);
-			}
-			return *reinterpret_cast<CVar<T>*>(m_cVars.Get(name));
-		}
+        [[nodiscard]] bool Exists(const CVarName& name) const;
 
-		bool Print(const CVarName& name, CString<256>& output);
+        template <typename T>
+        CVar<T>& Get(const CVarName& name) const
+        {
+            if (!Exists(name))
+            {
+                m_logger.Fatal("Get() - Failed to find a CVar with the name: \'{}\'", name);
+            }
+            return *reinterpret_cast<CVar<T>*>(m_cVars.Get(name));
+        }
 
-		[[nodiscard]] String PrintAll() const;
+        bool Print(const CVarName& name, CString<256>& output);
 
-		void RegisterDefaultCommands();
-	private:
-		bool CreateDefaultCVars();
+        [[nodiscard]] String PrintAll() const;
 
-		template <typename T>
-		void SetCVar(const CString<128>& name, const T& value, String& output)
-		{
-			const auto cVar = reinterpret_cast<CVar<T>*>(m_cVars.Get(name));
-			cVar->SetValue(value);
-			output += cVar->ToString();
-		}
+        void RegisterDefaultCommands();
 
+    private:
+        bool CreateDefaultCVars();
 
-		bool OnCVarCommand(const DynamicArray<ArgName>& args, String& output);
+        template <typename T>
+        void SetCVar(const CString<128>& name, const T& value, String& output)
+        {
+            const auto cVar = reinterpret_cast<CVar<T>*>(m_cVars.Get(name));
+            cVar->SetValue(value);
+            output += cVar->ToString();
+        }
 
-		HashMap<CVarName, ICVar*> m_cVars;
-		DynamicArray<ICVarChangedCallback*> m_cVarChangedCallbacks;
-	};
-}
+        bool OnCVarCommand(const DynamicArray<ArgName>& args, String& output);
+
+        HashMap<CVarName, ICVar*> m_cVars;
+        DynamicArray<ICVarChangedCallback*> m_cVarChangedCallbacks;
+
+        UIConsole* m_pConsole;
+    };
+}  // namespace C3D

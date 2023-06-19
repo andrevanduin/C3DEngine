@@ -4,78 +4,83 @@
 
 namespace C3D
 {
-	class Engine;
+    class SystemManager;
+    struct FrameData;
 
-	class ISystem
-	{
-	public:
-		explicit ISystem(const Engine* engine) : m_initialized(false), m_engine(engine) {}
+    class ISystem
+    {
+    public:
+        explicit ISystem(const SystemManager* pSystemsManager) : m_pSystemsManager(pSystemsManager) {}
 
-		ISystem(const ISystem&) = delete;
-		ISystem(ISystem&&) = delete;
+        ISystem(const ISystem&) = delete;
+        ISystem(ISystem&&) = delete;
 
-		ISystem& operator=(const ISystem&) = delete;
-		ISystem& operator=(ISystem&&) = delete;
+        ISystem& operator=(const ISystem&) = delete;
+        ISystem& operator=(ISystem&&) = delete;
 
-		virtual ~ISystem() = default;
+        virtual ~ISystem() = default;
 
-		virtual void Shutdown() = 0;
-		virtual void Update(f64 deltaTime) = 0;
+        virtual void Shutdown() = 0;
+        virtual void Update(const FrameData* frameData) = 0;
 
-	protected:
-		bool m_initialized;
+    protected:
+        bool m_initialized = false;
 
-		const Engine* m_engine;
-	};
+        const SystemManager* m_pSystemsManager;
+    };
 
-	class BaseSystem : public ISystem
-	{
-	public:
-		explicit BaseSystem(const Engine* engine, const CString<32>& name) : ISystem(engine), m_logger(name) {}
-		
-		virtual bool Init()
-		{
-			m_logger.Info("Init()");
-			m_initialized = true;
-			return true;
-		}
+    class BaseSystem : public ISystem
+    {
+    public:
+        explicit BaseSystem(const SystemManager* pSystemsManager, const CString<32>& name)
+            : ISystem(pSystemsManager), m_logger(name)
+        {}
 
-		void Shutdown() override
-		{
-			m_logger.Info("Shutdown()");
-			m_initialized = false;
-		}
+        virtual bool Init()
+        {
+            m_logger.Info("Init()");
+            m_initialized = true;
+            return true;
+        }
 
-		void Update(const f64 deltaTime) override {}
+        void Shutdown() override
+        {
+            m_logger.Info("Shutdown()");
+            m_initialized = false;
+        }
 
-	protected:
-		LoggerInstance<32> m_logger;
-	};
+        void Update(const FrameData* frameData) override {}
 
-	template <typename T>
-	class SystemWithConfig : public ISystem
-	{
-	public:
-		explicit SystemWithConfig(const Engine* engine, const CString<32>& name) : ISystem(engine), m_logger(name), m_config{} {}
+    protected:
+        LoggerInstance<32> m_logger;
+    };
 
-		virtual bool Init(const T& config = {})
-		{
-			m_logger.Info("Init()");
-			m_initialized = true;
-			m_config = config;
-			return true;
-		}
+    template <typename T>
+    class SystemWithConfig : public ISystem
+    {
+    public:
+        explicit SystemWithConfig(const SystemManager* pSystemsManager, const CString<32>& name)
+            : ISystem(pSystemsManager), m_logger(name), m_config{}
+        {}
 
-		void Shutdown() override
-		{
-			m_logger.Info("Shutdown()");
-			m_initialized = false;
-		}
+        virtual bool Init(const T& config = {})
+        {
+            m_logger.Info("Init()");
+            m_initialized = true;
+            m_config = config;
+            return true;
+        }
 
-		void Update(const f64 deltaTime) override {}
+        void Shutdown() override
+        {
+            m_logger.Info("Shutdown()");
+            m_initialized = false;
+        }
 
-	protected:
-		LoggerInstance<32> m_logger;
-		T m_config;
-	};
-}
+        void Update(const FrameData* frameData) override {}
+
+    protected:
+        LoggerInstance<32> m_logger;
+        T m_config;
+    };
+}  // namespace C3D

@@ -16,8 +16,8 @@
 
 namespace C3D
 {
-	ResourceLoader<ImageResource>::ResourceLoader(const Engine* engine)
-		: IResourceLoader(engine, "IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
+	ResourceLoader<ImageResource>::ResourceLoader(const SystemManager* pSystemsManager)
+		: IResourceLoader(pSystemsManager, "IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr, "textures")
 	{}
 
 	bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource& resource) const

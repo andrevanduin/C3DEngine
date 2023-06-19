@@ -1,99 +1,97 @@
 
 #pragma once
-#include "core/defines.h"
-#include "resources/texture.h"
-
 #include <array>
 
 #include "containers/hash_table.h"
+#include "core/defines.h"
 #include "core/logger.h"
 #include "resources/loaders/image_loader.h"
+#include "resources/texture.h"
 #include "systems/system.h"
 
 namespace C3D
 {
-	constexpr auto DEFAULT_TEXTURE_NAME = "default";
-	constexpr auto DEFAULT_DIFFUSE_TEXTURE_NAME = "defaultDiffuse";
-	constexpr auto DEFAULT_SPECULAR_TEXTURE_NAME = "defaultSpecular";
-	constexpr auto DEFAULT_NORMAL_TEXTURE_NAME = "defaultNormal";
+    constexpr auto DEFAULT_TEXTURE_NAME = "default";
+    constexpr auto DEFAULT_DIFFUSE_TEXTURE_NAME = "defaultDiffuse";
+    constexpr auto DEFAULT_SPECULAR_TEXTURE_NAME = "defaultSpecular";
+    constexpr auto DEFAULT_NORMAL_TEXTURE_NAME = "defaultNormal";
 
-	struct TextureSystemConfig
-	{
-		u32 maxTextureCount;
-	};
+    struct TextureSystemConfig
+    {
+        u32 maxTextureCount;
+    };
 
-	struct TextureReference
-	{
-		TextureReference() : referenceCount(0), handle(INVALID_ID), autoRelease(false) {}
+    struct TextureReference
+    {
+        u64 referenceCount = 0;
+        u32 handle = INVALID_ID;
+        bool autoRelease = false;
+    };
 
-		u64 referenceCount;
-		u32 handle;
-		bool autoRelease;
-	};
+    /* @brief Parameters that you provide for loading a Texture. Will also be used as the result data for the job. */
+    struct TextureLoadParams
+    {
+        String resourceName;
+        Texture* outTexture = nullptr;
+        Texture tempTexture;
+        u32 currentGeneration = INVALID_ID;
+        ImageResource imageResource;
+    };
 
-	/* @brief Parameters that you provide for loading a Texture. Will also be used as the result data for the job. */
-	struct TextureLoadParams
-	{
-		TextureLoadParams()
-			: outTexture(nullptr), currentGeneration(INVALID_ID), imageResource()
-		{}
+    class C3D_API TextureSystem final : public SystemWithConfig<TextureSystemConfig>
+    {
+    public:
+        TextureSystem(const SystemManager* pSystemsManager);
 
-		String resourceName;
-		Texture* outTexture;
-		Texture tempTexture;
-		u32 currentGeneration;
-		ImageResource imageResource;
-	};
+        bool Init(const TextureSystemConfig& config) override;
+        void Shutdown() override;
 
-	class C3D_API TextureSystem final : public SystemWithConfig<TextureSystemConfig>
-	{
-	public:
-		TextureSystem(const Engine* engine);
+        Texture* Acquire(const char* name, bool autoRelease);
+        Texture* AcquireCube(const char* name, bool autoRelease);
+        Texture* AcquireWritable(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency);
 
-		bool Init(const TextureSystemConfig& config) override;
-		void Shutdown() override;
+        void Release(const char* name);
 
-		Texture* Acquire(const char* name, bool autoRelease);
-		Texture* AcquireCube(const char* name, bool autoRelease);
-		Texture* AcquireWritable(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency);
+        void WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency,
+                          bool isWritable, bool registerTexture, void* internalData, Texture* outTexture);
 
-		void Release(const char* name);
+        static bool SetInternal(Texture* t, void* internalData);
 
-		void WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency, bool isWritable, bool registerTexture, void* internalData, Texture* outTexture);
+        bool Resize(Texture* t, u32 width, u32 height, bool regenerateInternalData) const;
+        bool WriteData(Texture* t, u32 offset, u32 size, const u8* data) const;
 
-		static bool SetInternal(Texture* t, void* internalData);
+        Texture* GetDefault();
+        Texture* GetDefaultDiffuse();
+        Texture* GetDefaultSpecular();
+        Texture* GetDefaultNormal();
 
-		bool Resize(Texture* t, u32 width, u32 height, bool regenerateInternalData) const;
-		bool WriteData(Texture* t, u32 offset, u32 size, const u8* data) const;
+        bool CreateDefaultTextures();
 
-		Texture* GetDefault();
-		Texture* GetDefaultDiffuse();
-		Texture* GetDefaultSpecular();
-		Texture* GetDefaultNormal();
+    private:
+        void DestroyDefaultTextures();
 
-		bool CreateDefaultTextures();
-	private:
-		void DestroyDefaultTextures();
+        bool LoadTexture(const char* name, Texture* texture) const;
+        bool LoadCubeTextures(const char* name, const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames,
+                              Texture* texture) const;
 
-		bool LoadTexture(const char* name, Texture* texture) const;
-		bool LoadCubeTextures(const char* name, const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames, Texture* texture) const;
+        void DestroyTexture(Texture* texture) const;
 
-		void DestroyTexture(Texture* texture) const;
+        bool ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease,
+                                     bool skipLoad, u32* outTextureId);
 
-		bool ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease, bool skipLoad, u32* outTextureId);
+        bool LoadJobEntryPoint(void* data, void* resultData) const;
+        void LoadJobSuccess(void* data) const;
+        void LoadJobFailure(void* data) const;
 
-		bool LoadJobEntryPoint(void* data, void* resultData) const;
-		void LoadJobSuccess(void* data) const;
-		void LoadJobFailure(void* data) const;
+        bool m_initialized;
 
-		bool m_initialized;
+        Texture m_defaultTexture;
+        Texture m_defaultDiffuseTexture;
+        Texture m_defaultSpecularTexture;
+        Texture m_defaultNormalTexture;
 
-		Texture m_defaultTexture;
-		Texture m_defaultDiffuseTexture;
-		Texture m_defaultSpecularTexture;
-		Texture m_defaultNormalTexture;
-
-		Texture* m_registeredTextures;
-		HashTable<TextureReference> m_registeredTextureTable;
-	};
-}
+        // TODO: Replace with HashMap
+        Texture* m_registeredTextures;
+        HashTable<TextureReference> m_registeredTextureTable;
+    };
+}  // namespace C3D

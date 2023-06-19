@@ -9,10 +9,10 @@
 
 namespace C3D
 {
-    ResourceLoader<ShaderResource>::ResourceLoader(const Engine* engine)
-        : IResourceLoader(engine, "SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
-    {
-    }
+    ResourceLoader<ShaderResource>::ResourceLoader(const SystemManager* pSystemsManager)
+        : IResourceLoader(pSystemsManager, "SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr,
+                          "shaders")
+    {}
 
     bool ResourceLoader<ShaderResource>::Load(const char* name, ShaderResource& resource) const
     {
