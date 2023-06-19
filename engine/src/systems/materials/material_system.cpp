@@ -16,12 +16,8 @@
 
 namespace C3D
 {
-    MaterialSystem::MaterialSystem(const Engine* engine)
-        : SystemWithConfig(engine, "MATERIAL_SYSTEM"),
-          m_initialized(false),
-          m_defaultMaterial(),
-          m_materialShaderId(0),
-          m_uiShaderId(0)
+    MaterialSystem::MaterialSystem(const SystemManager* pSystemsManager)
+        : SystemWithConfig(pSystemsManager, "MATERIAL_SYSTEM")
     {}
 
     bool MaterialSystem::Init(const MaterialSystemConfig& config)
@@ -140,7 +136,8 @@ namespace C3D
             m_materialLocations.dirLight = Shaders.GetUniformIndex(shader, "dirLight");
             m_materialLocations.pLights = Shaders.GetUniformIndex(shader, "pLights");
             m_materialLocations.numPLights = Shaders.GetUniformIndex(shader, "numPLights");
-        } else if (m_uiShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.UI")
+        }
+        else if (m_uiShaderId == INVALID_ID && config.shaderName == "Shader.Builtin.UI")
         {
             m_uiShaderId = shader->id;
             m_uiLocations.projection = Shaders.GetUniformIndex(shader, "projection");
@@ -190,7 +187,8 @@ namespace C3D
 
             m_logger.Info("Released material {}. The texture was unloaded because refCount = 0 and autoRelease = true",
                           nameCopy);
-        } else
+        }
+        else
         {
             m_logger.Info("Released material {}. The material now has a refCount = {} (autoRelease = {})", name,
                           ref.referenceCount, ref.autoRelease);
@@ -236,11 +234,13 @@ namespace C3D
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.ambientColor, ambientColor));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.viewPosition, viewPosition));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.renderMode, &renderMode));
-        } else if (shaderId == m_uiShaderId)
+        }
+        else if (shaderId == m_uiShaderId)
         {
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.projection, projection));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.view, view));
-        } else
+        }
+        else
         {
             m_logger.Error("ApplyGlobal() - Unrecognized shader id '{}'.", shaderId);
             return false;
@@ -277,12 +277,13 @@ namespace C3D
                 MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.dirLight, dirLight));
                 MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.pLights, pointLights.GetData()));
                 MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.numPLights, &numPLights));
-
-            } else if (material->shaderId == m_uiShaderId)
+            }
+            else if (material->shaderId == m_uiShaderId)
             {
                 MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseColor, &material->diffuseColor));
                 MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseTexture, &material->diffuseMap));
-            } else
+            }
+            else
             {
                 m_logger.Error("ApplyInstance() - Unrecognized shader id '{}' on material: '{}'.", material->shaderId,
                                material->name);
@@ -374,7 +375,8 @@ namespace C3D
                               config.diffuseMapName, mat->name);
                 mat->diffuseMap.texture = Textures.GetDefaultDiffuse();
             }
-        } else
+        }
+        else
         {
             mat->diffuseMap.texture = Textures.GetDefaultDiffuse();
         }
@@ -398,7 +400,8 @@ namespace C3D
                               config.specularMapName, mat->name);
                 mat->specularMap.texture = Textures.GetDefaultSpecular();
             }
-        } else
+        }
+        else
         {
             mat->specularMap.texture = Textures.GetDefaultSpecular();
         }
@@ -422,7 +425,8 @@ namespace C3D
                               config.normalMapName, mat->name);
                 mat->normalMap.texture = Textures.GetDefaultNormal();
             }
-        } else
+        }
+        else
         {
             mat->normalMap.texture = Textures.GetDefaultNormal();
         }

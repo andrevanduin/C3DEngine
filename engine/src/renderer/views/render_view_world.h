@@ -6,45 +6,45 @@
 
 namespace C3D
 {
-	class Camera;
+    class Camera;
 
-	struct GeometryDistance
-	{
-		GeometryRenderData g;
-		f32 distance;
-	};
+    struct GeometryDistance
+    {
+        GeometryRenderData g;
+        f32 distance;
+    };
 
-	class RenderViewWorld final : public RenderView
-	{
-	public:
-		explicit RenderViewWorld(const RenderViewConfig& config);
+    class RenderViewWorld final : public RenderView
+    {
+    public:
+        explicit RenderViewWorld(const RenderViewConfig& config);
 
-		bool OnCreate() override;
-		void OnDestroy() override;
+        bool OnCreate() override;
+        void OnDestroy() override;
 
-		void OnResize() override;
+        void OnResize() override;
 
-		bool OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket) override;
+        bool OnBuildPacket(LinearAllocator* frameAllocator, void* data, RenderViewPacket* outPacket) override;
 
-		bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) override;
-		
-	private:
-		bool OnEvent(u16 code, void* sender, const EventContext& context);
+        bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) override;
 
-		DynamicArray<GeometryDistance> m_distances;
+    private:
+        bool OnEvent(u16 code, void* sender, const EventContext& context);
 
-		Shader* m_shader;
+        DynamicArray<GeometryDistance> m_distances;
 
-		f32 m_fov;
-		f32 m_nearClip;
-		f32 m_farClip;
+        Shader* m_shader;
 
-		RegisteredEventCallback m_onEventCallback;
+        f32 m_fov;
+        f32 m_nearClip;
+        f32 m_farClip;
 
-		mat4 m_projectionMatrix;
-		Camera* m_camera;
+        RegisteredEventCallback m_onEventCallback;
 
-		vec4 m_ambientColor;
-		u32 m_renderMode;
-	};
-}
+        mat4 m_projectionMatrix;
+        Camera* m_camera;
+
+        vec4 m_ambientColor;
+        u32 m_renderMode;
+    };
+}  // namespace C3D

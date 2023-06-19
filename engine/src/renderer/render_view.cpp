@@ -16,7 +16,7 @@ namespace C3D
           m_height(config.height),
           m_customShaderName(nullptr),
           m_logger(config.name.Data()),
-          m_engine(config.engine)
+          m_pSystemsManager(config.pSystemsManager)
     {
         m_defaultRenderTargetRefreshRequiredCallback =
             Event.Register(EventCodeDefaultRenderTargetRefreshRequired,

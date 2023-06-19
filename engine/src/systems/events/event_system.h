@@ -38,7 +38,7 @@ namespace C3D
         };
 
     public:
-        explicit EventSystem(const Engine* engine);
+        explicit EventSystem(const SystemManager* pSystemsManager);
 
         void Shutdown() override;
 

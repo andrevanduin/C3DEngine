@@ -1,29 +1,21 @@
 
 #pragma once
 #include "application.h"
-#include "console/console.h"
+#include "core/frame_data.h"
 #include "defines.h"
 #include "logger.h"
 #include "renderer/render_view.h"
 #include "renderer/renderer_types.h"
 #include "systems/fonts/font_system.h"
 
-struct SDL_Window;
 namespace C3D
 {
-    class Engine;
     class Application;
+    class UIConsole;
     struct EventContext;
-
-    struct GameFrameData
-    {
-        DynamicArray<GeometryRenderData, LinearAllocator> worldGeometries;
-    };
 
     struct EngineState
     {
-        String name;
-
         bool running = false;
         bool suspended = false;
         bool initialized = false;
@@ -34,18 +26,14 @@ namespace C3D
     class C3D_API Engine final
     {
     public:
-        explicit Engine(Application* application);
+        explicit Engine(Application* pApplication, UIConsole* pConsole);
 
         void Init();
 
         void Run();
         void Quit();
 
-        [[nodiscard]] bool OnBoot() const;
-
-        void OnUpdate(f64 deltaTime) const;
-
-        bool OnRender(RenderPacket& packet, f64 deltaTime) const;
+        void OnUpdate() const;
 
         void OnResize(u32 width, u32 height) const;
 
@@ -55,38 +43,37 @@ namespace C3D
 
         [[nodiscard]] const EngineState* GetState() const;
 
-        template <class SystemType>
-        [[nodiscard]] SystemType& GetSystem(const u16 type) const
-        {
-            return m_systemsManager.GetSystem<SystemType>(type);
-        }
-
-        void SetBaseConsole(UIConsole* console) { m_console = console; }
-
-        [[nodiscard]] UIConsole& GetBaseConsole() const { return *m_console; }
-
         void OnApplicationLibraryReload(Application* app);
+
+        const SystemManager* GetSystemsManager() { return &m_systemsManager; }
 
     protected:
         LoggerInstance<16> m_logger;
 
-        EngineState m_state;
-
-        SystemManager m_systemsManager;
-
-        const Engine* m_engine;
-        UIConsole* m_console;
-
         Application* m_application;
+        UIConsole* m_pConsole;
 
     private:
         void Shutdown();
         void HandleSdlEvents();
 
         bool OnResizeEvent(u16 code, void* sender, const EventContext& context) const;
+        bool OnQuitEvent(u16 code, void* sender, const EventContext& context);
+
         bool OnMinimizeEvent(u16 code, void* sender, const EventContext& context);
         bool OnFocusGainedEvent(u16 code, void* sender, const EventContext& context);
 
-        SDL_Window* m_window{nullptr};
+        /** @brief The Engine's internal state. */
+        EngineState m_state;
+        /** @brief Systems manager that can be used to access all the engine's systems. */
+        SystemManager m_systemsManager;
+        /** @brief Allocator used for allocating frame data. Gets cleared on every frame. */
+        LinearAllocator m_frameAllocator;
+        /* @brief The data that is relevant for every frame. */
+        FrameData m_frameData;
+        /** @brief A pointer to the systems manager (just used to ensure we can make macro calls in the engine.cpp). */
+        const SystemManager* m_pSystemsManager;
+
+        SDL_Window* m_window = nullptr;
     };
 }  // namespace C3D

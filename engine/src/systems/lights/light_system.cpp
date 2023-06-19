@@ -2,7 +2,7 @@
 
 namespace C3D
 {
-    LightSystem::LightSystem(const Engine* engine) : BaseSystem(engine, "LIGHT_SYSTEM") {}
+    LightSystem::LightSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager, "LIGHT_SYSTEM") {}
 
     bool LightSystem::Init()
     {

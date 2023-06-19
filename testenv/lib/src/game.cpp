@@ -5,6 +5,7 @@
 #include <core/colors.h>
 #include <core/console/console.h>
 #include <core/events/event_context.h>
+#include <core/frame_data.h>
 #include <core/identifier.h>
 #include <core/logger.h>
 #include <core/metrics/metrics.h>
@@ -23,9 +24,6 @@ TestEnv::TestEnv(C3D::ApplicationState* state) : Application(state), m_state(rei
 bool TestEnv::OnBoot()
 {
     m_logger.Info("OnBoot() - Booting TestEnv");
-
-    // Setup the frame allocator
-    m_state->frameAllocator.Create("FRAME_ALLOCATOR", MebiBytes(64));
 
     m_state->fontConfig.autoRelease = false;
 
@@ -56,18 +54,18 @@ bool TestEnv::OnBoot()
     return true;
 }
 
-bool TestEnv::OnRun()
+bool TestEnv::OnRun(const C3D::FrameData& frameData)
 {
     // TEMP
     // Create test ui text objects
-    if (!m_state->testText.Create(m_engine, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
+    if (!m_state->testText.Create(m_pSystemsManager, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
                                   "Some test text 123,\nyesyes!\n\tKaas!"))
     {
         m_logger.Fatal("Failed to load basic ui bitmap text.");
     }
 
     m_state->testText.SetPosition({10, 640, 0});
-    m_state->skybox.Create(m_engine, "skybox_cube");
+    m_state->skybox.Create(m_pSystemsManager, "skybox_cube");
 
     // World meshes
     for (u32 i = 0; i < 10; i++)
@@ -81,20 +79,20 @@ bool TestEnv::OnRun()
     // Our First cube
     // Load up a cube configuration, and load geometry for it
     C3D::Mesh* cubeMesh = &m_state->meshes[meshCount];
-    cubeMesh->LoadCube(m_engine, 10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
+    cubeMesh->LoadCube(m_pSystemsManager, 10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
     meshCount++;
 
     // A second cube
     // Load up a cube configuration, and load geometry for it
     C3D::Mesh* cubeMesh2 = &m_state->meshes[meshCount];
-    cubeMesh2->LoadCube(m_engine, 5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube_2", "test_material");
+    cubeMesh2->LoadCube(m_pSystemsManager, 5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube_2", "test_material");
     cubeMesh2->transform = C3D::Transform(vec3(0.0f, 10.0f, 0.0f));
     cubeMesh2->transform.SetParent(&cubeMesh->transform);
     meshCount++;
 
     // A third cube
     C3D::Mesh* cubeMesh3 = &m_state->meshes[meshCount];
-    cubeMesh3->LoadCube(m_engine, 2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube_3", "test_material");
+    cubeMesh3->LoadCube(m_pSystemsManager, 2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube_3", "test_material");
     cubeMesh3->transform = C3D::Transform(vec3(0.0f, 5.0f, 0.0f));
     cubeMesh3->transform.SetParent(&cubeMesh2->transform);
     meshCount++;
@@ -109,9 +107,9 @@ bool TestEnv::OnRun()
     m_state->sponzaMesh->uniqueId = C3D::Identifier::GetNewId(m_state->sponzaMesh);
 
     m_state->dirLight = {vec4(0.4f, 0.4f, 0.2f, 1.0f), vec4(-0.57735f, -0.57735f, -0.57735f, 0.0f)};
-    m_state->pLights[0] = {vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(-5.5f, 0.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
-    m_state->pLights[1] = {vec4(0.0f, 1.0f, 0.0f, 1.0f), vec4(5.5f, 0.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
-    m_state->pLights[2] = {vec4(0.0f, 0.0f, 1.0f, 1.0f), vec4(5.5f, 0.0f, 5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
+    m_state->pLights[0] = {vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(-5.5f, 2.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
+    m_state->pLights[1] = {vec4(0.0f, 1.0f, 0.0f, 1.0f), vec4(5.5f, 2.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
+    m_state->pLights[2] = {vec4(0.0f, 0.0f, 1.0f, 1.0f), vec4(4.5f, 2.0f, 5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
 
     Lights.AddDirectionalLight(&m_state->dirLight);
     Lights.AddPointLight(&m_state->pLights[0]);
@@ -159,7 +157,7 @@ bool TestEnv::OnRun()
     uiConfig.indices.PushBack(0);
     uiConfig.indices.PushBack(1);
 
-    m_state->uiMeshes[0].LoadFromConfig(m_engine, uiConfig);
+    m_state->uiMeshes[0].LoadFromConfig(m_pSystemsManager, uiConfig);
 
     // auto rotation = angleAxis(C3D::DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
     // m_uiMeshes[0].transform.Rotate(rotation);
@@ -169,28 +167,30 @@ bool TestEnv::OnRun()
 
     m_state->camera = Cam.GetDefault();
     m_state->camera->SetPosition({10.5f, 5.0f, 9.5f});
-    m_state->frameData.worldGeometries.SetAllocator(&m_state->frameAllocator);
+
+    // Set the allocator for the dynamic array that contains our world geometries to our frame allocator
+    auto gameFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
+    gameFrameData->worldGeometries.SetAllocator(frameData.frameAllocator);
 
     return true;
 }
 
-void TestEnv::OnUpdate(const f64 deltaTime)
+void TestEnv::OnUpdate(const C3D::FrameData& frameData)
 {
-    // Destroy all our frame data
-    m_state->frameData.worldGeometries.Destroy();
-    // Reset our frame allocator (freeing all memory used previous frame)
-    m_state->frameAllocator.FreeAll();
+    // Get our application specific frame data
+    auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
 
     static u64 allocCount = 0;
     const u64 prevAllocCount = allocCount;
     allocCount = Metrics.GetAllocCount();
 
-    if (!Console.IsOpen())
+    const auto deltaTime = frameData.deltaTime;
+    if (!m_pConsole->IsOpen())
     {
         if (Input.IsKeyPressed(C3D::KeyM))
         {
-            C3D::Logger::Debug("Allocations: {} of which {} happened this frame", allocCount,
-                               allocCount - prevAllocCount);
+            C3D::Logger::Info("Allocations: {} of which {} happened this frame", allocCount,
+                              allocCount - prevAllocCount);
             Metrics.PrintMemoryUsage(true);
         }
 
@@ -296,16 +296,17 @@ void TestEnv::OnUpdate(const f64 deltaTime)
     }
 
     const auto absTime = OS.GetAbsoluteTime();
-    const auto sinTime = C3D::Sin(absTime * 2) + C3D::PI_2;  // 0 -> 4PI
-    const auto sinTime2 = C3D::Sin(absTime * 2);             // -2PI -> 2PI
+    const auto sinTime = (C3D::Sin(absTime) + 1) / 2;  // 0 - > 1
+    const auto sinTime2 = C3D::Sin(absTime);           // -1 -> 1
 
-    const C3D::HSV hsv(sinTime / C3D::PI_4, 1.0f, 1.0f);
+    const C3D::HSV hsv(sinTime, 1.0f, 1.0f);
     const auto rgba = C3D::HsvToRgba(hsv);
 
     m_state->pLights[0].color = vec4(rgba.r, rgba.g, rgba.b, rgba.a);
-    m_state->pLights[0].position.z = -2.0f;
-    m_state->pLights[0].position.y += (sinTime2 / 5.0f);
-    if (m_state->pLights[0].position.y < 0.0f) m_state->pLights[0].position.y = 0.0f;
+    m_state->pLights[0].position.x += sinTime2;
+
+    if (m_state->pLights[0].position.x < 20.0f) m_state->pLights[0].position.x = 20.0f;
+    if (m_state->pLights[0].position.x > 60.0f) m_state->pLights[0].position.x = 60.0f;
 
     const auto fWidth = static_cast<f32>(m_state->width);
     const auto fHeight = static_cast<f32>(m_state->height);
@@ -346,7 +347,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
     // 1000.0f);
 
     // Reserve a reasonable amount of space for our world geometries
-    m_state->frameData.worldGeometries.Reserve(512);
+    appFrameData->worldGeometries.Reserve(512);
 
     u32 drawCount = 0;
     u32 count = 0;
@@ -361,7 +362,7 @@ void TestEnv::OnUpdate(const f64 deltaTime)
 
             for (const auto geometry : mesh.geometries)
             {
-                m_state->frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
+                appFrameData->worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
                 drawCount++;
 
                 /*
@@ -426,32 +427,32 @@ void TestEnv::OnUpdate(const f64 deltaTime)
     buffer.FromFormat(
         "{:<10} : Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\n"
         "{:<10} : Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}\n"
-        "{:<10} : DrawCount: {} FPS: {} FrameTime: {:.3f}ms VSync: {}",
+        "{:<10} : DrawCount: {} FPS: {} FrameTime: {:.3f}ms VSync: {} SinTime: {}",
         "Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), "Mouse",
         mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, hoveredBuffer, "Renderer", drawCount,
-        Metrics.GetFps(), Metrics.GetFrameTime(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No");
+        Metrics.GetFps(), Metrics.GetFrameTime(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No",
+        sinTime);
 
     m_state->testText.SetText(buffer.Data());
 }
 
-bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
+bool TestEnv::OnRender(C3D::RenderPacket& packet, const C3D::FrameData& frameData)
 {
-    // TEMP
-    // Ensure that we will be using our frame allocator for this packet's view
-    packet.views.SetAllocator(&m_state->frameAllocator);
-    // Pre-Allocate enough space for 5 views (and default initialize them)
+    // Get our application specific frame data
+    auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
+    // Pre-Allocate enough space for 4 views (and default initialize them)
     packet.views.Resize(4);
 
     // Skybox
     C3D::SkyboxPacketData skyboxData = {&m_state->skybox};
-    if (!Views.BuildPacket(Views.Get("skybox"), m_state->frameAllocator, &skyboxData, &packet.views[0]))
+    if (!Views.BuildPacket(Views.Get("skybox"), frameData.frameAllocator, &skyboxData, &packet.views[0]))
     {
         m_logger.Error("Failed to build packet for view: 'skybox'");
         return false;
     }
 
     // World
-    if (!Views.BuildPacket(Views.Get("world"), m_state->frameAllocator, &m_state->frameData.worldGeometries,
+    if (!Views.BuildPacket(Views.Get("world"), frameData.frameAllocator, &appFrameData->worldGeometries,
                            &packet.views[1]))
     {
         m_logger.Error("Failed to build packet for view: 'world'");
@@ -460,7 +461,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
 
     // UI
     C3D::UIPacketData uiPacket = {};
-    uiPacket.meshData.meshes.SetAllocator(&m_state->frameAllocator);
+    uiPacket.meshData.meshes.SetAllocator(frameData.frameAllocator);
     for (auto& mesh : m_state->uiMeshes)
     {
         if (mesh.generation != INVALID_ID_U8)
@@ -468,12 +469,12 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
             uiPacket.meshData.meshes.PushBack(&mesh);
         }
     }
-    uiPacket.texts.SetAllocator(&m_state->frameAllocator);
+    uiPacket.texts.SetAllocator(frameData.frameAllocator);
     uiPacket.texts.PushBack(&m_state->testText);
 
-    Console.OnRender(uiPacket);
+    m_pConsole->OnRender(uiPacket);
 
-    if (!Views.BuildPacket(Views.Get("ui"), m_state->frameAllocator, &uiPacket, &packet.views[2]))
+    if (!Views.BuildPacket(Views.Get("ui"), frameData.frameAllocator, &uiPacket, &packet.views[2]))
     {
         m_logger.Error("Failed to build packet for view: 'ui'");
         return false;
@@ -482,13 +483,16 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, f64 deltaTime)
     // Pick
     C3D::PickPacketData pickPacket = {};
     pickPacket.uiMeshData = uiPacket.meshData;
-    pickPacket.worldMeshData = &m_state->frameData.worldGeometries;
+    pickPacket.worldMeshData = &appFrameData->worldGeometries;
     pickPacket.texts = uiPacket.texts;
-    if (!Views.BuildPacket(Views.Get("pick"), m_state->frameAllocator, &pickPacket, &packet.views[3]))
+    if (!Views.BuildPacket(Views.Get("pick"), frameData.frameAllocator, &pickPacket, &packet.views[3]))
     {
         m_logger.Error("Failed to build packet for view: 'pick'");
         return false;
     }
+
+    // Destroy our array of world geometries since our frame allocator will be freed after this frame
+    appFrameData->worldGeometries.Destroy();
 
     // TEMP END
     return true;
@@ -523,8 +527,6 @@ void TestEnv::OnShutdown()
             mesh.Unload();
         }
     }
-
-    m_state->frameAllocator.Destroy();
     // TEMP END
 }
 
@@ -553,12 +555,12 @@ void TestEnv::OnLibraryLoad()
                         });
     m_state->m_registeredCallbacks.PushBack(cb);
 
-    Console.RegisterCommand("load_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
+    m_pConsole->RegisterCommand("load_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         Event.Fire(C3D::EventCodeDebug1, this, {});
         return true;
     });
 
-    Console.RegisterCommand("unload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
+    m_pConsole->RegisterCommand("unload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         Event.Fire(C3D::EventCodeDebug2, this, {});
         return true;
     });
@@ -572,8 +574,8 @@ void TestEnv::OnLibraryUnload()
     }
     m_state->m_registeredCallbacks.Clear();
 
-    Console.UnregisterCommand("load_scene");
-    Console.UnregisterCommand("unload_scene");
+    m_pConsole->UnregisterCommand("load_scene");
+    m_pConsole->UnregisterCommand("unload_scene");
 }
 
 bool TestEnv::ConfigureRenderViews() const
@@ -691,8 +693,8 @@ bool TestEnv::ConfigureRenderViews() const
 
     pickPasses[0].name = "RenderPass.Builtin.WorldPick";
     pickPasses[0].renderArea = {0, 0, 1280, 720};
-    pickPasses[0].clearColor = {
-        1.0f, 1.0f, 1.0f, 1.0f};  // HACK: Clear to white for better visibility (should be 0 since it's invalid id)
+    // HACK: Clear to white for better visibility (should be 0 since it's invalid id)
+    pickPasses[0].clearColor = {1.0f, 1.0f, 1.0f, 1.0f};
     pickPasses[0].clearFlags =
         C3D::RenderPassClearFlags::ClearColorBuffer | C3D::RenderPassClearFlags::ClearDepthBuffer;
     pickPasses[0].depth = 1.0f;
@@ -785,11 +787,11 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&) cons
         {
             m_logger.Info("OnDebugEvent() - Loading models...");
 
-            if (!m_state->carMesh->LoadFromResource(m_engine, "falcon"))
+            if (!m_state->carMesh->LoadFromResource(m_pSystemsManager, "falcon"))
             {
                 m_logger.Error("OnDebugEvent() - Failed to load falcon mesh!");
             }
-            if (!m_state->sponzaMesh->LoadFromResource(m_engine, "sponza"))
+            if (!m_state->sponzaMesh->LoadFromResource(m_pSystemsManager, "sponza"))
             {
                 m_logger.Error("OnDebugEvent() - Failed to load sponza mesh!");
             }
@@ -829,5 +831,7 @@ C3D::ApplicationState* CreateApplicationState()
     state->height = 720;
     state->x = 2560 / 2 - 1280 / 2;
     state->y = 1440 / 2 - 720 / 2;
+    state->frameAllocatorSize = MebiBytes(8);
+    state->appFrameDataSize = sizeof(GameFrameData);
     return state;
 }

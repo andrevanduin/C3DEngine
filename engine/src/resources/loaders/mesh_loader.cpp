@@ -10,8 +10,8 @@
 
 namespace C3D
 {
-	ResourceLoader<MeshResource>::ResourceLoader(const Engine* engine)
-		: IResourceLoader(engine, "MESH_LOADER", MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
+	ResourceLoader<MeshResource>::ResourceLoader(const SystemManager* pSystemsManager)
+		: IResourceLoader(pSystemsManager, "MESH_LOADER", MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
 	{}
 
 	bool ResourceLoader<MeshResource>::Load(const char* name, MeshResource& resource) const

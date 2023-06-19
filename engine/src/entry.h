@@ -8,49 +8,46 @@
 
 int main(int argc, char** argv)
 {
-	// Create our console just so the logger can already have a handle to it
-	C3D::UIConsole console;
+    // Create our console just so the logger can already have a handle to it
+    C3D::UIConsole console;
 
-	// Initialize our logger which we should do first to ensure we can log errors everywhere
-	C3D::Logger::Init(&console);
+    // Initialize our logger which we should do first to ensure we can log errors everywhere
+    C3D::Logger::Init(&console);
 
-	// Initialize our metrics to track our memory usage and other stats
-	Metrics.Init();
+    // Initialize our metrics to track our memory usage and other stats
+    Metrics.Init();
 
-	// Initialize our global allocator that we will normally always use
-	C3D::GlobalMemorySystem::Init({ MebiBytes(256) });
+    // Initialize our global allocator that we will normally always use
+    C3D::GlobalMemorySystem::Init({MebiBytes(256)});
 
-	// Create our identifiers
-	C3D::Identifier::Init();
+    // Create our identifiers
+    C3D::Identifier::Init();
 
-	// Create the application by calling the method provided by the user
-	const auto application = C3D::CreateApplication();
+    // Create the application by calling the method provided by the user
+    const auto application = C3D::CreateApplication();
 
-	// Create our instance of the engine and supply it with the user's application
-	const auto engine = Memory.New<C3D::Engine>(C3D::MemoryType::Engine, application);
+    // Create our instance of the engine and supply it with the user's application
+    const auto engine = Memory.New<C3D::Engine>(C3D::MemoryType::Engine, application, &console);
 
-	// Set the Base Console for our engine so the user can start using it
-	engine->SetBaseConsole(&console);
+    // Initialize our engine
+    engine->Init();
 
-	// Initialize our engine
-	engine->Init();
+    // Init our application
+    InitApplication(engine);
 
-	// Init our application
-	InitApplication(engine);
+    // Run our engine's game loop
+    engine->Run();
 
-	// Run our engine's game loop
-	engine->Run();
+    // Cleanup our engine
+    Memory.Delete(C3D::MemoryType::Engine, engine);
 
-	// Cleanup our engine
-	Memory.Delete(C3D::MemoryType::Engine, engine);
+    // Call the user's cleanup method
+    C3D::DestroyApplication();
 
-	// Call the user's cleanup method
-	C3D::DestroyApplication();
+    // Destroy our identifiers
+    C3D::Identifier::Destroy();
 
-	// Destroy our identifiers
-	C3D::Identifier::Destroy();
-
-	// Cleanup our global memory system
-	C3D::GlobalMemorySystem::Destroy();
-	return 0;
+    // Cleanup our global memory system
+    C3D::GlobalMemorySystem::Destroy();
+    return 0;
 }

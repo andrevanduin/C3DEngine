@@ -58,7 +58,7 @@ namespace C3D
     class C3D_API MaterialSystem final : public SystemWithConfig<MaterialSystemConfig>
     {
     public:
-        explicit MaterialSystem(const Engine* engine);
+        explicit MaterialSystem(const SystemManager* pSystemsManager);
 
         bool Init(const MaterialSystemConfig& config) override;
 
@@ -83,7 +83,7 @@ namespace C3D
 
         void DestroyMaterial(Material* mat) const;
 
-        bool m_initialized;
+        bool m_initialized = false;
 
         Material m_defaultMaterial;
         // Hashtable to map names to material-references
@@ -91,10 +91,10 @@ namespace C3D
 
         // Known locations for the material shader
         MaterialUniformLocations m_materialLocations;
-        u32 m_materialShaderId;
+        u32 m_materialShaderId = INVALID_ID;
 
         // Known locations for the UI shader
         UiUniformLocations m_uiLocations;
-        u32 m_uiShaderId;
+        u32 m_uiShaderId = INVALID_ID;
     };
 }  // namespace C3D

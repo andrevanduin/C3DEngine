@@ -11,30 +11,15 @@
 
 namespace C3D
 {
-    UIConsole::UIConsole()
-        : m_isOpen(false),
-          m_initialized(false),
-          m_isTextDirty(true),
-          m_isEntryDirty(true),
-          m_cursorCounter(0),
-          m_scrollCounter(0),
-          m_startIndex(0),
-          m_endIndex(SHOWN_LINES),
-          m_nextLine(0),
-          m_currentHistory(-1),
-          m_endHistory(0),
-          m_nextHistory(0),
-          m_logger("CONSOLE"),
-          m_engine(nullptr)
-    {}
+    UIConsole::UIConsole() : m_logger("CONSOLE") {}
 
-    void UIConsole::OnInit(Engine* engine)
+    void UIConsole::OnInit(const SystemManager* pSystemsManager)
     {
-        m_engine = engine;
+        m_pSystemsManager = pSystemsManager;
 
-        m_text.Create(m_engine, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "-");
-        m_entry.Create(m_engine, UITextType::Bitmap, "Ubuntu Mono 21px", 21, " ");
-        m_cursor.Create(m_engine, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "|");
+        m_text.Create(m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "-");
+        m_entry.Create(m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, " ");
+        m_cursor.Create(m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "|");
 
         m_text.SetPosition({5, 5, 0});
         m_entry.SetPosition({5, 30, 0});
@@ -135,7 +120,8 @@ namespace C3D
             {
                 m_commands.Delete(name);
                 m_logger.Info("UnRegistered command: \'{}\'", name);
-            } else
+            }
+            else
             {
                 m_logger.Warn("No command with name \'{}\' is registered", name);
             }
@@ -157,7 +143,8 @@ namespace C3D
                 WriteLineInternal(currentLine);
                 currentLine = "";
                 currentLineLength = 0;
-            } else
+            }
+            else
             {
                 currentLine += character;
                 currentLineLength++;
@@ -196,7 +183,8 @@ namespace C3D
             if (m_currentHistory > minStartIndex)
             {
                 m_currentHistory--;
-            } else if (m_currentHistory == -1 && m_endHistory != 0)
+            }
+            else if (m_currentHistory == -1 && m_endHistory != 0)
             {
                 m_currentHistory = m_endHistory - 1;
             }
@@ -247,10 +235,12 @@ namespace C3D
             // Characters
             typedChar = static_cast<char>(keyCode);
             if (shiftHeld) typedChar -= 32;  // If shift is held we want capital letters
-        } else if (keyCode == KeySpace)
+        }
+        else if (keyCode == KeySpace)
         {
             typedChar = static_cast<char>(keyCode);
-        } else if (keyCode == KeyMinus || keyCode == KeyEquals)
+        }
+        else if (keyCode == KeyMinus || keyCode == KeyEquals)
         {
             typedChar = static_cast<char>(keyCode);
             if (shiftHeld)
@@ -268,7 +258,8 @@ namespace C3D
                         break;
                 }
             }
-        } else if (keyCode >= Key0 && keyCode <= Key9)
+        }
+        else if (keyCode >= Key0 && keyCode <= Key9)
         {
             // Numbers
             typedChar = static_cast<char>(keyCode);
@@ -311,7 +302,8 @@ namespace C3D
                         break;
                 }
             }
-        } else
+        }
+        else
         {
             // A key was pressed that we don't care about
             return false;
@@ -387,7 +379,8 @@ namespace C3D
         {
             PrintCommandMessage(LogType::Error, "The command \'{}\' failed to execute:", commandName);
             m_logger.Error(output.Data());
-        } else
+        }
+        else
         {
             PrintCommandMessage(LogType::Info, "The command \'{}\' executed successfully:", commandName);
             m_logger.Info(output.Data());
@@ -402,10 +395,10 @@ namespace C3D
 
     bool UIConsole::IsOpen() const { return m_isOpen; }
 
-    void UIConsole::RegisterDefaultCommands() const
+    void UIConsole::RegisterDefaultCommands()
     {
-        Console.RegisterCommand("exit", [this](const DynamicArray<ArgName>&, String& output) {
-            m_engine->Quit();
+        RegisterCommand("exit", [this](const DynamicArray<ArgName>&, String& output) {
+            Event.Fire(EventCodeApplicationQuit, nullptr, {});
             output += "Shutting down";
             return true;
         });

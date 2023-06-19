@@ -14,7 +14,7 @@ namespace C3D
 	class ResourceLoader<MaterialResource> final : public IResourceLoader
 	{
 	public:
-		explicit ResourceLoader(const Engine* engine);
+		explicit ResourceLoader(const SystemManager* pSystemsManager);
 
 		bool Load(const char* name, MaterialResource& resource) const;
 		static void Unload(MaterialResource& resource);

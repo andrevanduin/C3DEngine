@@ -127,7 +127,7 @@ namespace C3D
             glm::perspective(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
     }
 
-    bool RenderViewPick::OnBuildPacket(LinearAllocator& frameAllocator, void* data, RenderViewPacket* outPacket)
+    bool RenderViewPick::OnBuildPacket(LinearAllocator* frameAllocator, void* data, RenderViewPacket* outPacket)
     {
         if (!data || !outPacket)
         {
@@ -143,7 +143,7 @@ namespace C3D
         m_worldShaderInfo.view = worldCam->GetViewMatrix();
 
         packetData->uiGeometryCount = 0;
-        outPacket->extendedData = frameAllocator.Allocate<PickPacketData>(MemoryType::RenderView);
+        outPacket->extendedData = frameAllocator->Allocate<PickPacketData>(MemoryType::RenderView);
 
         u32 highestInstanceId = 0;
         // Iterate all geometries in world data

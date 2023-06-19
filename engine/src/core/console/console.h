@@ -13,11 +13,11 @@ namespace C3D
     constexpr i8 MAX_HISTORY = 64;
     constexpr auto SHOWN_LINES = 10;
 
-#define Console m_engine->GetBaseConsole()
-
     using CommandName = CString<128>;
     using ArgName = CString<128>;
     using CommandCallback = StackFunction<bool(const DynamicArray<ArgName>&, String&), 16>;
+
+    class SystemManager;
 
     class C3D_API UIConsole
     {
@@ -30,7 +30,7 @@ namespace C3D
     public:
         UIConsole();
 
-        void OnInit(Engine* engine);
+        void OnInit(const SystemManager* pSystemsManager);
         void OnShutDown();
 
         void OnUpdate();
@@ -46,7 +46,7 @@ namespace C3D
         [[nodiscard]] bool IsOpen() const;
 
     private:
-        void RegisterDefaultCommands() const;
+        void RegisterDefaultCommands();
 
         void WriteLineInternal(const CString<256>& line);
 
@@ -67,15 +67,15 @@ namespace C3D
             m_isEntryDirty = true;
         }
 
-        bool m_isOpen, m_initialized;
-        bool m_isTextDirty, m_isEntryDirty;
+        bool m_isOpen = false, m_initialized = false;
+        bool m_isTextDirty = true, m_isEntryDirty = true;
 
-        u8 m_cursorCounter, m_scrollCounter;
-        u32 m_startIndex, m_endIndex, m_nextLine;
+        u8 m_cursorCounter = 0, m_scrollCounter = 0;
+        u32 m_startIndex = 0, m_endIndex = SHOWN_LINES, m_nextLine = 0;
 
         // History
-        i8 m_currentHistory;
-        i8 m_endHistory, m_nextHistory;
+        i8 m_currentHistory = -1;
+        i8 m_endHistory = 0, m_nextHistory = 0;
 
         CircularBuffer<CString<256>, MAX_LINES> m_lines;
         CircularBuffer<CString<256>, MAX_HISTORY> m_history;
@@ -87,6 +87,6 @@ namespace C3D
 
         HashMap<CommandName, CommandCallback> m_commands;
 
-        Engine* m_engine;
+        const SystemManager* m_pSystemsManager;
     };
 }  // namespace C3D

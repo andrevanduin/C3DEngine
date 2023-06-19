@@ -1,31 +1,29 @@
 
 #pragma once
 #include "core/defines.h"
-#include "texture.h"
 #include "geometry.h"
+#include "texture.h"
 
 namespace C3D
 {
-	class Engine;
+    class SystemManager;
 
-	class C3D_API Skybox
-	{
-	public:
-		Skybox();
+    class C3D_API Skybox
+    {
+    public:
+        bool Create(const SystemManager* pSystemsManager, const char* cubeMapName);
 
-		bool Create(const Engine* engine, const char* cubeMapName);
+        void Destroy();
 
-		void Destroy();
+        TextureMap cubeMap;
+        Geometry* g = nullptr;
 
-		TextureMap cubeMap;
-		Geometry* g;
+        u32 instanceId = INVALID_ID;
+        /* @brief Synced to the renderer's current frame number
+         * when the material has been applied for that frame. */
+        u64 frameNumber = INVALID_ID_U64;
 
-		u32 instanceId;
-		/* @brief Synced to the renderer's current frame number
-		 * when the material has been applied for that frame. */
-		u64 frameNumber;
-
-	private:
-		const Engine* m_engine;
-	};
-}
+    private:
+        const SystemManager* m_pSystemsManager = nullptr;
+    };
+}  // namespace C3D

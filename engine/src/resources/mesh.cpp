@@ -7,12 +7,12 @@
 
 namespace C3D
 {
-    Mesh::Mesh() : uniqueId(INVALID_ID), generation(INVALID_ID_U8), m_engine(nullptr) {}
+    Mesh::Mesh() {}
 
-    bool Mesh::LoadCube(const Engine* engine, const f32 width, const f32 height, const f32 depth, const f32 tileX,
-                        const f32 tileY, const String& name, const String& materialName)
+    bool Mesh::LoadCube(const SystemManager* pSystemsManager, const f32 width, const f32 height, const f32 depth,
+                        const f32 tileX, const f32 tileY, const String& name, const String& materialName)
     {
-        m_engine = engine;
+        m_pSystemsManager = pSystemsManager;
 
         auto cubeConfig = Geometric.GenerateCubeConfig(width, height, depth, tileX, tileY, name, materialName);
 
@@ -26,9 +26,9 @@ namespace C3D
         return true;
     }
 
-    bool Mesh::LoadFromResource(const Engine* engine, const char* resourceName)
+    bool Mesh::LoadFromResource(const SystemManager* pSystemsManager, const char* resourceName)
     {
-        m_engine = engine;
+        m_pSystemsManager = pSystemsManager;
         generation = INVALID_ID_U8;
 
         MeshLoadParams params;

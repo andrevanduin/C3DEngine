@@ -26,10 +26,15 @@
 
 namespace C3D
 {
-    Engine::Engine(Application* application)
-        : m_logger("ENGINE"), m_engine(this), m_console(nullptr), m_application(application)
+    Engine::Engine(Application* pApplication, UIConsole* pConsole)
+        : m_logger("ENGINE"),
+          m_application(pApplication),
+          m_pConsole(pConsole),
+          m_frameData(),
+          m_pSystemsManager(&m_systemsManager)
     {
-        m_application->m_engine = this;
+        m_application->m_pSystemsManager = &m_systemsManager;
+        m_application->m_pConsole = pConsole;
     }
 
     void Engine::Init()
@@ -37,7 +42,22 @@ namespace C3D
         C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the engine twice");
 
         const auto appState = m_application->m_appState;
-        m_state.name = appState->name;
+
+        // Setup our frame allocator
+        m_frameAllocator.Create("FRAME_ALLOCATOR", appState->frameAllocatorSize);
+        m_frameData.frameAllocator = &m_frameAllocator;
+
+        // Allocate enough space for the application specific frame-data. Which is used only by the user from the
+        // application itself
+        if (appState->appFrameDataSize > 0)
+        {
+            m_frameData.applicationFrameData =
+                static_cast<ApplicationFrameData*>(Memory.AllocateBlock(MemoryType::Game, appState->appFrameDataSize));
+        }
+        else
+        {
+            m_frameData.applicationFrameData = nullptr;
+        }
 
         if (SDL_Init(SDL_INIT_VIDEO) != 0)
         {
@@ -61,18 +81,19 @@ namespace C3D
         {
             m_logger.Fatal("System reported {} threads. C3DEngine requires at least 1 thread besides the main thread.",
                            threadCount);
-        } else
+        }
+        else
         {
             m_logger.Info("System reported {} threads (including main thread).", threadCount);
         }
 
-        m_systemsManager.Init(this);
+        m_systemsManager.Init();
 
         constexpr ResourceSystemConfig resourceSystemConfig{32, "../../../assets"};
         constexpr ShaderSystemConfig shaderSystemConfig{128, 128, 31, 31};
-        constexpr CVarSystemConfig cVarSystemConfig{31};
+        const CVarSystemConfig cVarSystemConfig{31, m_pConsole};
         const RenderSystemConfig renderSystemConfig{"TestEnv", appState->rendererPlugin,
-                                                    FlagVSyncEnabled | FlagPowerSavingEnabled};
+                                                    FlagVSyncEnabled | FlagPowerSavingEnabled, m_window};
 
         // Init before boot systems
         m_systemsManager.RegisterSystem<Platform>(PlatformSystemType);                  // Platform (OS) System
@@ -101,11 +122,13 @@ namespace C3D
         if (threadCount == 1 || !rendererMultiThreaded)
         {
             jobThreadTypes[0] |= (JobTypeGpuResource | JobTypeResourceLoad);
-        } else if (threadCount == 2)
+        }
+        else if (threadCount == 2)
         {
             jobThreadTypes[0] |= JobTypeGpuResource;
             jobThreadTypes[1] |= JobTypeResourceLoad;
-        } else
+        }
+        else
         {
             jobThreadTypes[0] = JobTypeGpuResource;
             jobThreadTypes[1] = JobTypeResourceLoad;
@@ -132,6 +155,9 @@ namespace C3D
         Event.Register(EventCodeFocusGained, [this](const u16 code, void* sender, const EventContext& context) {
             return OnFocusGainedEvent(code, sender, context);
         });
+        Event.Register(EventCodeApplicationQuit, [this](const u16 code, void* sender, const EventContext& context) {
+            return OnQuitEvent(code, sender, context);
+        });
 
         // Load render views
         for (auto& view : appState->renderViews)
@@ -155,7 +181,7 @@ namespace C3D
         m_application->OnResize();
         Renderer.OnResize(appState->width, appState->height);
 
-        Console.OnInit(this);
+        m_pConsole->OnInit(&m_systemsManager);
     }
 
     void Engine::Run()
@@ -173,7 +199,7 @@ namespace C3D
         constexpr f64 targetFrameSeconds = 1.0 / 60.0;
         f64 frameElapsedTime = 0;
 
-        m_application->OnRun();
+        m_application->OnRun(m_frameData);
 
         Metrics.PrintMemoryUsage();
 
@@ -188,17 +214,30 @@ namespace C3D
                 const f64 delta = currentTime - m_state.lastTime;
                 const f64 frameStartTime = OS.GetAbsoluteTime();
 
-                Jobs.Update(delta);
+                m_frameData.totalTime = currentTime;
+                m_frameData.deltaTime = delta;
+
+                // Reset our frame allocator (freeing all memory used previous frame)
+                m_frameData.frameAllocator->FreeAll();
+
+                Jobs.Update(&m_frameData);
                 Metrics.Update(frameElapsedTime);
                 OS.WatchFiles();
 
-                OnUpdate(delta);
+                OnUpdate();
 
                 // TODO: Refactor packet creation
                 RenderPacket packet;
-                OnRender(packet, delta);
+                // Ensure that we will be using our frame allocator for this packet's view
+                packet.views.SetAllocator(&m_frameAllocator);
 
-                if (!Renderer.DrawFrame(&packet))
+                if (!m_application->OnRender(packet, m_frameData))
+                {
+                    m_logger.Fatal("OnRender() for the game failed. Shutting down.");
+                    break;
+                }
+
+                if (!Renderer.DrawFrame(&packet, &m_frameData))
                 {
                     m_logger.Warn("DrawFrame() failed");
                 }
@@ -227,7 +266,7 @@ namespace C3D
                     frameCount++;
                 }
 
-                Input.Update(delta);
+                Input.Update(&m_frameData);
 
                 m_state.lastTime = currentTime;
             }
@@ -238,17 +277,10 @@ namespace C3D
 
     void Engine::Quit() { m_state.running = false; }
 
-    bool Engine::OnBoot() const { return m_application->OnBoot(); }
-
-    void Engine::OnUpdate(const f64 deltaTime) const
+    void Engine::OnUpdate() const
     {
-        m_console->OnUpdate();
-        m_application->OnUpdate(deltaTime);
-    }
-
-    bool Engine::OnRender(RenderPacket& packet, const f64 deltaTime) const
-    {
-        return m_application->OnRender(packet, deltaTime);
+        m_pConsole->OnUpdate();
+        m_application->OnUpdate(m_frameData);
     }
 
     void Engine::OnResize(const u32 width, const u32 height) const
@@ -276,7 +308,8 @@ namespace C3D
     void Engine::OnApplicationLibraryReload(Application* app)
     {
         m_application = app;
-        m_application->m_engine = this;
+        m_application->m_pSystemsManager = &m_systemsManager;
+        m_application->m_pConsole = m_pConsole;
         m_application->OnLibraryLoad();
     }
 
@@ -284,13 +317,17 @@ namespace C3D
     {
         C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized")
 
+        m_logger.Info("Shutdown()");
+
         // Call the OnShutdown() method that is defined by the user
         m_application->OnShutdown();
 
-        m_logger.Info("Shutdown()");
-        m_logger.Info("UnRegistering events");
+        m_frameAllocator.Destroy();
 
-        Console.OnShutDown();
+        // Free the application specific frame data
+        Memory.Free(MemoryType::Game, m_frameData.applicationFrameData);
+
+        m_pConsole->OnShutDown();
 
         m_systemsManager.Shutdown();
 
@@ -336,11 +373,13 @@ namespace C3D
                         context.data.u16[0] = static_cast<u16>(e.window.data1);
                         context.data.u16[1] = static_cast<u16>(e.window.data2);
                         Event.Fire(EventCodeResized, nullptr, context);
-                    } else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED)
+                    }
+                    else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED)
                     {
                         constexpr EventContext context{};
                         Event.Fire(EventCodeMinimized, nullptr, context);
-                    } else if (e.window.event == SDL_WINDOWEVENT_ENTER && m_state.suspended)
+                    }
+                    else if (e.window.event == SDL_WINDOWEVENT_ENTER && m_state.suspended)
                     {
                         const auto appState = m_application->m_appState;
 
@@ -385,6 +424,12 @@ namespace C3D
         }
 
         return false;
+    }
+
+    bool Engine::OnQuitEvent(u16, void*, const EventContext&)
+    {
+        Quit();
+        return true;
     }
 
     bool Engine::OnMinimizeEvent(const u16 code, void* sender, const EventContext& context)

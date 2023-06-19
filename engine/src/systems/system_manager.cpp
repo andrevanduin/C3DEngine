@@ -6,33 +6,29 @@
 
 namespace C3D
 {
-	SystemManager::SystemManager()
-		: m_systems(), m_logger("SYSTEM_MANAGER"), m_engine(nullptr)
-	{}
+    SystemManager::SystemManager() : m_logger("SYSTEM_MANAGER") {}
 
-	void SystemManager::Init(const Engine* engine)
-	{
-		m_engine = engine;
+    void SystemManager::Init()
+    {
+        m_logger.Info("Init()");
 
-		m_logger.Info("Init()");
+        // 8 mb of total space for all our systems
+        constexpr u64 systemsAllocatorTotalSize = MebiBytes(8);
+        m_allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
+    }
 
-		// 8 mb of total space for all our systems
-		constexpr u64 systemsAllocatorTotalSize = MebiBytes(8);
-		m_allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
-	}
+    void SystemManager::Shutdown()
+    {
+        m_logger.Info("Shutting down all Systems");
 
-	void SystemManager::Shutdown()
-	{
-		m_logger.Info("Shutting down all Systems");
+        for (const auto system : m_systems)
+        {
+            system->Shutdown();
+            m_allocator.Delete(MemoryType::CoreSystem, system);
+        }
 
-		for (const auto system : m_systems)
-		{
-			system->Shutdown();
-			m_allocator.Delete(MemoryType::CoreSystem, system);
-		}
-
-		m_logger.Info("Destroying Linear Allocator");
-		m_allocator.Destroy();
-		m_logger.Info("Shutdown finished");
-	}
-}
+        m_logger.Info("Destroying Linear Allocator");
+        m_allocator.Destroy();
+        m_logger.Info("Shutdown finished");
+    }
+}  // namespace C3D
