@@ -2,7 +2,7 @@
 #pragma once
 #include <array>
 
-#include "containers/hash_table.h"
+#include "containers/hash_map.h"
 #include "core/defines.h"
 #include "core/logger.h"
 #include "resources/loaders/image_loader.h"
@@ -24,8 +24,10 @@ namespace C3D
 
     struct TextureReference
     {
+        TextureReference(bool autoRelease) : autoRelease(autoRelease) {}
+
         u64 referenceCount = 0;
-        u32 handle = INVALID_ID;
+        Texture texture;
         bool autoRelease = false;
     };
 
@@ -78,8 +80,8 @@ namespace C3D
 
         void DestroyTexture(Texture* texture) const;
 
-        bool ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease,
-                                     bool skipLoad, u32* outTextureId);
+        Texture* ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease,
+                                         bool skipLoad);
 
         bool LoadJobEntryPoint(u32 loadingTextureIndex);
         void LoadJobSuccess(u32 loadingTextureIndex);
@@ -93,9 +95,7 @@ namespace C3D
         Texture m_defaultSpecularTexture;
         Texture m_defaultNormalTexture;
 
-        // TODO: Replace with HashMap
-        Texture* m_registeredTextures;
-        HashTable<TextureReference> m_registeredTextureTable;
+        HashMap<CString<TEXTURE_NAME_MAX_LENGTH>, TextureReference> m_registeredTextures;
 
         Array<LoadingTexture, MAX_LOADING_TEXTURES> m_loadingTextures;
     };
