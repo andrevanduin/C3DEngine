@@ -373,20 +373,48 @@ namespace C3D
         DestroyTexture(&m_defaultNormalTexture);
     }
 
-    bool TextureSystem::LoadTexture(const char* name, Texture* texture) const
+    bool TextureSystem::LoadTexture(const char* name, Texture* texture)
     {
-        TextureLoadParams params;
-        params.resourceName = name;
-        params.outTexture = texture;
-        params.currentGeneration = texture->generation;
+        static u32 LOADING_TEXTURE_ID = 0;
 
-        JobInfo<TextureLoadParams, TextureLoadParams> info;
-        info.entryPoint = [this](void* d, void* r) { return LoadJobEntryPoint(d, r); };
-        info.onSuccess = [this](void* r) { LoadJobSuccess(r); };
-        info.onFailure = [this](void* r) { LoadJobFailure(r); };
-        info.input = params;
+        LoadingTexture loadingTexture;
+        loadingTexture.id = LOADING_TEXTURE_ID++;
+        loadingTexture.resourceName = name;
+        loadingTexture.outTexture = texture;
+        loadingTexture.currentGeneration = texture->generation;
 
-        Jobs.Submit(info);
+        u32 loadingTextureIndex = INVALID_ID;
+        for (auto i = 0; i < m_loadingTextures.Size(); i++)
+        {
+            if (m_loadingTextures[i].id == INVALID_ID)
+            {
+                m_loadingTextures[i] = loadingTexture;
+                loadingTextureIndex = i;
+                break;
+            }
+        }
+
+        if (loadingTextureIndex == INVALID_ID)
+        {
+            m_logger.Error(
+                "LoadTexture() - Failed to queue texture for loading since there is no space in the loading texture "
+                "queue");
+            return false;
+        }
+
+        JobInfo info;
+        info.entryPoint = [this, loadingTextureIndex]() { return LoadJobEntryPoint(loadingTextureIndex); };
+        info.onSuccess = [this, loadingTextureIndex]() { LoadJobSuccess(loadingTextureIndex); };
+        info.onFailure = [this, loadingTextureIndex]() {
+            const auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
+
+            m_logger.Error("LoadJobFailure() - Failed to load texture '{}'", loadingTexture.resourceName);
+            CleanupLoadingTexture(loadingTextureIndex);
+        };
+
+        Jobs.Submit(std::move(info));
+        m_logger.Trace("LoadTexture() - Loading job submitted for: '{}'", name);
+
         return true;
     }
 
@@ -605,30 +633,30 @@ namespace C3D
         return true;
     }
 
-    bool TextureSystem::LoadJobEntryPoint(void* data, void* resultData) const
+    bool TextureSystem::LoadJobEntryPoint(u32 loadingTextureIndex)
     {
-        const auto loadParams = static_cast<TextureLoadParams*>(data);
-
         constexpr ImageResourceParams resourceParams{true};
 
-        const auto result = Resources.Load(loadParams->resourceName.Data(), loadParams->imageResource, resourceParams);
+        auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
+        const auto result =
+            Resources.Load(loadingTexture.resourceName.Data(), loadingTexture.imageResource, resourceParams);
         if (result)
         {
-            const ImageResourceData& resourceData = loadParams->imageResource.data;
+            const ImageResourceData& resourceData = loadingTexture.imageResource.data;
 
             // Use our temporary texture to load into
-            loadParams->tempTexture.width = resourceData.width;
-            loadParams->tempTexture.height = resourceData.height;
-            loadParams->tempTexture.channelCount = resourceData.channelCount;
+            loadingTexture.tempTexture.width = resourceData.width;
+            loadingTexture.tempTexture.height = resourceData.height;
+            loadingTexture.tempTexture.channelCount = resourceData.channelCount;
 
-            loadParams->currentGeneration = loadParams->outTexture->generation;
-            loadParams->outTexture->generation = INVALID_ID;
+            loadingTexture.currentGeneration = loadingTexture.outTexture->generation;
+            loadingTexture.outTexture->generation = INVALID_ID;
 
-            const u64 totalSize = static_cast<u64>(loadParams->tempTexture.width) * loadParams->tempTexture.height *
-                                  loadParams->tempTexture.channelCount;
+            const u64 totalSize = static_cast<u64>(loadingTexture.tempTexture.width) *
+                                  loadingTexture.tempTexture.height * loadingTexture.tempTexture.channelCount;
             // Check for transparency
             bool hasTransparency = false;
-            for (u64 i = 0; i < totalSize; i += loadParams->tempTexture.channelCount)
+            for (u64 i = 0; i < totalSize; i += loadingTexture.tempTexture.channelCount)
             {
                 const u8 a = resourceData.pixels[i + 3];  // Get the alpha channel of this pixel
                 if (a < 255)
@@ -639,52 +667,50 @@ namespace C3D
             }
 
             // Take a copy of the name
-            loadParams->tempTexture.name = loadParams->resourceName.Data();
-            loadParams->tempTexture.generation = INVALID_ID;
-            loadParams->tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
-
-            const auto rData = static_cast<TextureLoadParams*>(resultData);
-            *rData = *loadParams;
+            loadingTexture.tempTexture.name = loadingTexture.resourceName.Data();
+            loadingTexture.tempTexture.generation = INVALID_ID;
+            loadingTexture.tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
         }
 
         return result;
     }
 
-    void TextureSystem::LoadJobSuccess(void* data) const
+    void TextureSystem::LoadJobSuccess(u32 loadingTextureIndex)
     {
-        const auto params = static_cast<TextureLoadParams*>(data);
-
         // TODO: This still handles the GPU upload. This can't be jobified before our renderer supports multiThreading.
-        const ImageResourceData& resourceData = params->imageResource.data;
+        auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
+        const ImageResourceData& resourceData = loadingTexture.imageResource.data;
 
         // Acquire internal texture resources and upload to GPU.
-        Renderer.CreateTexture(resourceData.pixels, &params->tempTexture);
+        Renderer.CreateTexture(resourceData.pixels, &loadingTexture.tempTexture);
         // Take a copy of the old texture.
-        Texture old = *params->outTexture;
+        Texture old = *loadingTexture.outTexture;
         // Assign the temp texture to the pointer
-        *params->outTexture = params->tempTexture;
+        *loadingTexture.outTexture = loadingTexture.tempTexture;
         // Destroy the old texture
         Renderer.DestroyTexture(&old);
 
-        if (params->currentGeneration == INVALID_ID)
+        if (loadingTexture.currentGeneration == INVALID_ID)
         {
-            params->outTexture->generation = 0;
+            loadingTexture.outTexture->generation = 0;
         }
         else
         {
-            params->outTexture->generation++;
+            loadingTexture.outTexture->generation++;
         }
 
-        m_logger.Trace("LoadJobSuccess() - Successfully loaded texture '{}'.", params->resourceName);
-
-        // Cleanup our data
-        Resources.Unload(params->imageResource);
+        m_logger.Trace("LoadJobSuccess() - Successfully loaded texture '{}'.", loadingTexture.resourceName);
+        CleanupLoadingTexture(loadingTextureIndex);
     }
 
-    void TextureSystem::LoadJobFailure(void* data) const
+    void TextureSystem::CleanupLoadingTexture(u32 loadingTextureIndex)
     {
-        const auto params = static_cast<TextureLoadParams*>(data);
-        m_logger.Error("LoadJobFailure() - Failed to load texture '{}'.", params->resourceName);
-        Resources.Unload(params->imageResource);
+        auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
+
+        // Unload our image resource
+        Resources.Unload(loadingTexture.imageResource);
+        // Invalidate this loading texture since it is now done
+        loadingTexture.id = INVALID_ID;
+        loadingTexture.resourceName.Clear();
     }
 }  // namespace C3D

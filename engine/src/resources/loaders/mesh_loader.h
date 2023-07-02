@@ -1,214 +1,231 @@
 
 #pragma once
-#include "resource_loader.h"
 #include "containers/dynamic_array.h"
-#include "renderer/vertex.h"
-#include "systems/geometry/geometry_system.h"
-
+#include "core/clock.h"
 #include "platform/filesystem.h"
+#include "renderer/vertex.h"
+#include "resource_loader.h"
+#include "resources/geometry.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {
-	class File;
-	constexpr auto MESH_LOADER_EXTENSION_COUNT = 2;
+    class File;
+    constexpr auto MESH_LOADER_EXTENSION_COUNT = 2;
 
-	template<typename, typename>
-	struct GeometryConfig;
+    enum class MeshFileType
+    {
+        NotFound,
+        Csm,
+        Obj,
+    };
 
-	enum class MeshFileType
-	{
-		NotFound,
-		Csm,
-		Obj,
-	};
+    struct SupportedMeshFileType
+    {
+        const char* extension;
+        MeshFileType type;
+        bool isBinary;
+    };
 
-	struct SupportedMeshFileType
-	{
-		const char* extension;
-		MeshFileType type;
-		bool isBinary;
-	};
+    struct MeshVertexIndexData
+    {
+        u32 positionIndex;
+        u32 normalIndex;
+        u32 texCoordinateIndex;
+    };
 
-	struct MeshVertexIndexData
-	{
-		u32 positionIndex;
-		u32 normalIndex;
-		u32 texCoordinateIndex;
-	};
+    struct MeshFaceData
+    {
+        MeshVertexIndexData vertices[3];
+    };
 
-	struct MeshFaceData
-	{
-		MeshVertexIndexData vertices[3];
-	};
+    struct MeshGroupData
+    {
+        DynamicArray<MeshFaceData> faces;
+    };
 
-	struct MeshGroupData
-	{
-		DynamicArray<MeshFaceData> faces;
-	};
+    struct MeshResource final : Resource
+    {
+        DynamicArray<GeometryConfig> geometryConfigs;
+    };
 
-	struct MeshResource : Resource
-	{
-		DynamicArray<GeometryConfig<Vertex3D, u32>> geometryConfigs;
-	};
+    struct UIMeshResource final : Resource
+    {
+        DynamicArray<UIGeometryConfig> geometryConfigs;
+    };
 
-	template <>
-	class ResourceLoader<MeshResource> final : public IResourceLoader
-	{
-	public:
-		explicit ResourceLoader(const SystemManager* pSystemsManager);
+    template <>
+    class ResourceLoader<MeshResource> final : public IResourceLoader
+    {
+    public:
+        explicit ResourceLoader(const SystemManager* pSystemsManager);
 
-		bool Load(const char* name, MeshResource& resource) const;
-		void Unload(MeshResource& resource) const;
+        bool Load(const char* name, MeshResource& resource) const;
+        void Unload(MeshResource& resource) const;
 
-	private:
-		bool ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig<Vertex3D, u32>>& outGeometries) const;
-		void ObjParseVertexLine(const String& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords) const;
-		static void ObjParseFaceLine(const String& line, u64 normalCount, u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups);
+    private:
+        bool ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig>& outGeometries) const;
+        void ObjParseVertexLine(const String& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals,
+                                DynamicArray<vec2>& texCoords) const;
+        static void ObjParseFaceLine(const String& line, u64 normalCount, u64 texCoordinateCount,
+                                     DynamicArray<MeshGroupData>& groups);
 
-		void ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords, DynamicArray<MeshFaceData>& faces, GeometryConfig<Vertex3D, u32>* outData) const;
+        void ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords,
+                              DynamicArray<MeshFaceData>& faces, GeometryConfig* outData) const;
 
-		bool ImportObjMaterialLibraryFile(const char* mtlFilePath) const;
-		void ObjMaterialParseColorLine(const String& line, MaterialConfig& config) const;
-		void ObjMaterialParseMapLine(const String& line, MaterialConfig& config) const;
-		void ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName, const char* mtlFilePath) const;
+        bool ImportObjMaterialLibraryFile(const char* mtlFilePath) const;
+        void ObjMaterialParseColorLine(const String& line, MaterialConfig& config) const;
+        void ObjMaterialParseMapLine(const String& line, MaterialConfig& config) const;
+        void ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName,
+                                        const char* mtlFilePath) const;
 
-		template<typename VertexType, typename IndexType>
-		bool LoadCsmFile(File& file, DynamicArray<GeometryConfig<VertexType, IndexType>>& outGeometries) const;
+        template <typename VertexType, typename IndexType>
+        bool LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const;
 
-		template<typename VertexType, typename IndexType>
-		bool WriteCsmFile(const String& path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries) const;
+        template <typename VertexType, typename IndexType>
+        bool WriteCsmFile(const String& path, const char* name,
+                          DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const;
 
-		bool WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const;
-	};
+        bool WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const;
+    };
 
-	template <typename VertexType, typename IndexType>
-	bool ResourceLoader<MeshResource>::LoadCsmFile(File& file, DynamicArray<GeometryConfig<VertexType, IndexType>>& outGeometries) const
-	{
-		// Version
-		u16 version = 0;
-		file.Read(&version);
+    template <typename VertexType, typename IndexType>
+    bool ResourceLoader<MeshResource>::LoadCsmFile(
+        File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const
+    {
+        Clock clock(m_pSystemsManager->GetSystemPtr<Platform>(PlatformSystemType));
+        clock.Start();
 
-		// Name Length
-		u64 nameLength = 0;
-		file.Read(&nameLength);
+        // Version
+        u16 version = 0;
+        file.Read(&version);
 
-		// Name + null terminator
-		char name[256];
-		file.Read(name, nameLength);
+        // Name Length
+        u64 nameLength = 0;
+        file.Read(&nameLength);
 
-		// Geometry count
-		u64 geometryCount = 0;
-		file.Read(&geometryCount);
+        // Name + null terminator
+        char name[256];
+        file.Read(name, nameLength);
 
-		// For Each geometry
-		for (u64 i = 0; i < geometryCount; i++)
-		{
-			GeometryConfig<VertexType, IndexType> g = {};
+        // Geometry count
+        u64 geometryCount = 0;
+        file.Read(&geometryCount);
 
-			// Vertices (size / count / array)
-			u64 vertexSize = 0;
-			u64 vertexCount = 0;
+        // Reserve enough space for the geometries
+        outGeometries.Reserve(geometryCount);
+        // For Each geometry
+        for (u64 i = 0; i < geometryCount; i++)
+        {
+            IGeometryConfig<VertexType, IndexType> g = {};
 
-			file.Read(&vertexSize);
-			file.Read(&vertexCount);
-			// Resize so we have enough space and our count is correct
-			g.vertices.Resize(vertexCount); 
-			file.Read(g.vertices.GetData(), vertexCount);
+            // Vertices (size / count / array)
+            u64 vertexSize = 0;
+            u64 vertexCount = 0;
 
-			// Indices (size / count / array)
-			u64 indexSize = 0;
-			u64 indexCount = 0;
-			
-			file.Read(&indexSize);
-			file.Read(&indexCount);
-			// Resize so we have enough space and our count is correct
-			g.indices.Resize(indexCount);
-			file.Read(g.indices.GetData(), indexCount);
+            file.Read(&vertexSize);
+            file.Read(&vertexCount);
+            // Resize so we have enough space and our count is correct
+            g.vertices.Resize(vertexCount);
+            file.Read(g.vertices.GetData(), vertexCount);
 
-			// Name
-			file.Read(g.name);
+            // Indices (size / count / array)
+            u64 indexSize = 0;
+            u64 indexCount = 0;
 
-			// Material Name
-			file.Read(g.materialName);
+            file.Read(&indexSize);
+            file.Read(&indexCount);
+            // Resize so we have enough space and our count is correct
+            g.indices.Resize(indexCount);
+            file.Read(g.indices.GetData(), indexCount);
 
-			// Center
-			file.Read(&g.center);
+            // Name
+            file.Read(g.name);
 
-			// Extents (min / max)
-			file.Read(&g.minExtents);
-			file.Read(&g.maxExtents);
+            // Material Name
+            file.Read(g.materialName);
 
-			outGeometries.PushBack(g);
-		}
+            // Center
+            file.Read(&g.center);
 
-		m_logger.Info("ReadCsmFile() - {} Bytes read from file {}", file.bytesRead, file.currentPath);
-		file.Close();
-		return true;
-	}
+            // Extents (min / max)
+            file.Read(&g.minExtents);
+            file.Read(&g.maxExtents);
 
-	template <typename VertexType, typename IndexType>
-	bool ResourceLoader<MeshResource>::WriteCsmFile(const String& path, const char* name, DynamicArray<GeometryConfig<VertexType, IndexType>>& geometries) const
-	{
-		if (File::Exists(path))
-		{
-			m_logger.Info("WriteCsmFile() - File: {} already exists and will be overwritten", path);
-		}
+            outGeometries.PushBack(g);
+        }
 
-		File file;
-		if (!file.Open(path, FileModeWrite | FileModeBinary))
-		{
-			m_logger.Error("WriteCsmFile() - Failed to open path {}", path);
-			return false;
-		}
+        clock.Update();
+        m_logger.Info("ReadCsmFile() - {} Bytes read from file {} in {:.4f} ms", file.bytesRead, file.currentPath,
+                      clock.GetElapsedMs());
+        file.Close();
+        return true;
+    }
 
-		// Version
-		constexpr u16 version = 0x0001u;
-		file.Write(&version);
+    template <typename VertexType, typename IndexType>
+    bool ResourceLoader<MeshResource>::WriteCsmFile(
+        const String& path, const char* name, DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const
+    {
+        if (File::Exists(path))
+        {
+            m_logger.Info("WriteCsmFile() - File: {} already exists and will be overwritten", path);
+        }
 
-		// Name Length
-		const u64 nameLength = std::strlen(name) + 1;
-		file.Write(&nameLength);
-		// Name + null terminator
-		file.Write(name, nameLength);
+        File file;
+        if (!file.Open(path, FileModeWrite | FileModeBinary))
+        {
+            m_logger.Error("WriteCsmFile() - Failed to open path {}", path);
+            return false;
+        }
 
-		// Geometry count
-		const u64 geometryCount = geometries.Size();
-		file.Write(&geometryCount);
+        // Version
+        constexpr u16 version = 0x0001u;
+        file.Write(&version);
 
-		for (auto& geometry : geometries)
-		{
-			// Vertices (size / count / array)
-			constexpr u64 vertexSize = GeometryConfig<VertexType, IndexType>::GetVertexSize();
-			const u64 vertexCount = geometry.vertices.Size();
+        // Name Length
+        const u64 nameLength = std::strlen(name) + 1;
+        file.Write(&nameLength);
+        // Name + null terminator
+        file.Write(name, nameLength);
 
-			file.Write(&vertexSize);
-			file.Write(&vertexCount);
-			file.Write(geometry.vertices.GetData(), vertexCount);
+        // Geometry count
+        const u64 geometryCount = geometries.Size();
+        file.Write(&geometryCount);
 
-			// Indices (size / count / array)
-			constexpr u64 indexSize = GeometryConfig<VertexType, IndexType>::GetIndexSize();
-			const u64 indexCount = geometry.indices.Size();
+        for (auto& geometry : geometries)
+        {
+            // Vertices (size / count / array)
+            constexpr u64 vertexSize = IGeometryConfig<VertexType, IndexType>::GetVertexSize();
+            const u64 vertexCount = geometry.vertices.Size();
 
-			file.Write(&indexSize);
-			file.Write(&indexCount);
-			file.Write(geometry.indices.GetData(), indexCount);
+            file.Write(&vertexSize);
+            file.Write(&vertexCount);
+            file.Write(geometry.vertices.GetData(), vertexCount);
 
-			// Name
-			file.Write(geometry.name);
+            // Indices (size / count / array)
+            constexpr u64 indexSize = IGeometryConfig<VertexType, IndexType>::GetIndexSize();
+            const u64 indexCount = geometry.indices.Size();
 
-			// Material Name
-			file.Write(geometry.materialName);
+            file.Write(&indexSize);
+            file.Write(&indexCount);
+            file.Write(geometry.indices.GetData(), indexCount);
 
-			// Center
-			file.Write(&geometry.center);
+            // Name
+            file.Write(geometry.name);
 
-			// Extents
-			file.Write(&geometry.minExtents);
-			file.Write(&geometry.maxExtents);
-		}
+            // Material Name
+            file.Write(geometry.materialName);
 
-		m_logger.Info("WriteCsmFile() - {} Bytes written to file {}", file.bytesWritten, path);
-		file.Close();
-		return true;
-	}
-}
+            // Center
+            file.Write(&geometry.center);
+
+            // Extents
+            file.Write(&geometry.minExtents);
+            file.Write(&geometry.maxExtents);
+        }
+
+        m_logger.Info("WriteCsmFile() - {} Bytes written to file {}", file.bytesWritten, path);
+        file.Close();
+        return true;
+    }
+}  // namespace C3D

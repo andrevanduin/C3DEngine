@@ -220,7 +220,7 @@ namespace C3D
                 // Reset our frame allocator (freeing all memory used previous frame)
                 m_frameData.frameAllocator->FreeAll();
 
-                Jobs.Update(&m_frameData);
+                Jobs.Update(m_frameData);
                 Metrics.Update(frameElapsedTime);
                 OS.WatchFiles();
 
@@ -266,7 +266,7 @@ namespace C3D
                     frameCount++;
                 }
 
-                Input.Update(&m_frameData);
+                Input.Update(m_frameData);
 
                 m_state.lastTime = currentTime;
             }
@@ -277,10 +277,12 @@ namespace C3D
 
     void Engine::Quit() { m_state.running = false; }
 
-    void Engine::OnUpdate() const
+    void Engine::OnUpdate()
     {
         m_pConsole->OnUpdate();
         m_application->OnUpdate(m_frameData);
+
+        const auto jan = 0xAFFFFFFF;
     }
 
     void Engine::OnResize(const u32 width, const u32 height) const

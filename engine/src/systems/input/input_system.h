@@ -44,7 +44,7 @@ namespace C3D
     public:
         explicit InputSystem(const SystemManager* pSystemsManager);
 
-        void Update(const FrameData* frameData) override;
+        void Update(const FrameData& frameData) override;
 
         void ProcessKey(SDL_Keycode sdlKey, InputState state);
         void ProcessButton(u8 button, InputState state);

@@ -1,6 +1,7 @@
 
 #pragma once
 #include "containers/dynamic_array.h"
+#include "core/clock.h"
 #include "core/defines.h"
 #include "core/engine.h"
 #include "core/logger.h"
@@ -23,25 +24,6 @@ namespace C3D
         u32 maxGeometryCount;
     };
 
-    template <typename VertexType, typename IndexType>
-    struct GeometryConfig
-    {
-        GeometryConfig() : center(), minExtents(), maxExtents() {}
-
-        DynamicArray<VertexType> vertices;
-        DynamicArray<IndexType> indices;
-
-        vec3 center;
-        vec3 minExtents;
-        vec3 maxExtents;
-
-        CString<GEOMETRY_NAME_MAX_LENGTH> name;
-        CString<MATERIAL_NAME_MAX_LENGTH> materialName;
-
-        [[nodiscard]] static constexpr u32 GetVertexSize() { return sizeof(VertexType); }
-        [[nodiscard]] static constexpr u32 GetIndexSize() { return sizeof(IndexType); }
-    };
-
     struct GeometryReference
     {
         GeometryReference() : referenceCount(0), geometry(), autoRelease(false) {}
@@ -62,11 +44,15 @@ namespace C3D
         [[nodiscard]] Geometry* AcquireById(u32 id) const;
 
         template <typename VertexType, typename IndexType>
-        [[nodiscard]] Geometry* AcquireFromConfig(const GeometryConfig<VertexType, IndexType>& config,
+        [[nodiscard]] Geometry* AcquireFromConfig(const IGeometryConfig<VertexType, IndexType>& config,
                                                   bool autoRelease) const;
 
         template <typename VertexType, typename IndexType>
-        static void DisposeConfig(GeometryConfig<VertexType, IndexType>* config);
+        static void DisposeConfig(IGeometryConfig<VertexType, IndexType>& config)
+        {
+            config.vertices.Destroy();
+            config.indices.Destroy();
+        }
 
         void Release(const Geometry* geometry) const;
 
@@ -74,18 +60,16 @@ namespace C3D
         Geometry* GetDefault2D();
 
         // NOTE: Vertex and index arrays are dynamically allocated so they should be freed by the user
-        [[nodiscard]] static GeometryConfig<Vertex3D, u32> GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount,
-                                                                               u32 ySegmentCount, f32 tileX, f32 tileY,
-                                                                               const String& name,
-                                                                               const String& materialName);
+        [[nodiscard]] static GeometryConfig GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount,
+                                                                u32 ySegmentCount, f32 tileX, f32 tileY,
+                                                                const String& name, const String& materialName);
 
-        [[nodiscard]] static GeometryConfig<Vertex3D, u32> GenerateCubeConfig(f32 width, f32 height, f32 depth,
-                                                                              f32 tileX, f32 tileY, const String& name,
-                                                                              const String& materialName);
+        [[nodiscard]] static GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY,
+                                                               const String& name, const String& materialName);
 
     private:
         template <typename VertexType, typename IndexType>
-        bool CreateGeometry(const GeometryConfig<VertexType, IndexType>& config, Geometry* g) const;
+        bool CreateGeometry(const IGeometryConfig<VertexType, IndexType>& config, Geometry* g) const;
 
         void DestroyGeometry(Geometry* g) const;
 
@@ -98,7 +82,7 @@ namespace C3D
     };
 
     template <typename VertexType, typename IndexType>
-    Geometry* GeometrySystem::AcquireFromConfig(const GeometryConfig<VertexType, IndexType>& config,
+    Geometry* GeometrySystem::AcquireFromConfig(const IGeometryConfig<VertexType, IndexType>& config,
                                                 const bool autoRelease) const
     {
         Geometry* g = nullptr;
@@ -133,14 +117,7 @@ namespace C3D
     }
 
     template <typename VertexType, typename IndexType>
-    void GeometrySystem::DisposeConfig(GeometryConfig<VertexType, IndexType>* config)
-    {
-        config->vertices.Destroy();
-        config->indices.Destroy();
-    }
-
-    template <typename VertexType, typename IndexType>
-    bool GeometrySystem::CreateGeometry(const GeometryConfig<VertexType, IndexType>& config, Geometry* g) const
+    bool GeometrySystem::CreateGeometry(const IGeometryConfig<VertexType, IndexType>& config, Geometry* g) const
     {
         // Send the geometry off to the renderer to be uploaded to the gpu
         if (!Renderer.CreateGeometry(g, sizeof(VertexType), config.vertices.Size(), config.vertices.GetData(),

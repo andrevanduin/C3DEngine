@@ -390,6 +390,17 @@ namespace C3D
             m_size = 0;
         }
 
+        /**
+         * @brief Resets the dynamic array to an initial state. Keep in mind that this does not free any memory.
+         * So if you call this method and the memory it's using is not somehow freed elsewhere you will leak.
+         */
+        void Reset()
+        {
+            m_elements = nullptr;
+            m_size = 0;
+            m_capacity = 0;
+        }
+
         /*
          * @brief Removes the element at the provided iterator from the array.
          * If you remove an element all elements to the right of it will be copied over

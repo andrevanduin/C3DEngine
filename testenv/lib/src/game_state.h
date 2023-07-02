@@ -1,7 +1,12 @@
 
 #pragma once
 #include <core/application.h>
+#include <core/frame_data.h>
+#include <math/frustum.h>
+#include <resources/mesh.h>
+#include <resources/simple_scene.h>
 #include <resources/ui_text.h>
+#include <systems/lights/light_system.h>
 
 namespace C3D
 {
@@ -15,6 +20,8 @@ struct GameState final : C3D::ApplicationState
     C3D::Frustum cameraFrustum;
 
     // TEMP
+    C3D::SimpleScene simpleScene;
+
     C3D::Skybox skybox;
 
     C3D::Mesh meshes[10];
@@ -26,9 +33,7 @@ struct GameState final : C3D::ApplicationState
 
     bool modelsLoaded = false;
 
-    C3D::Mesh* planes[6] = {};
-
-    C3D::Mesh uiMeshes[10];
+    C3D::UIMesh uiMeshes[10];
     C3D::UIText testText;
 
     u32 hoveredObjectId = INVALID_ID;

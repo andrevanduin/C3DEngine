@@ -143,13 +143,12 @@ namespace C3D
         m_worldShaderInfo.view = worldCam->GetViewMatrix();
 
         packetData->uiGeometryCount = 0;
-        outPacket->extendedData = frameAllocator->Allocate<PickPacketData>(MemoryType::RenderView);
+        outPacket->extendedData = frameAllocator->New<PickPacketData>(MemoryType::RenderView);
 
         u32 highestInstanceId = 0;
         // Iterate all geometries in world data
 
         const auto& worldMeshData = *packetData->worldMeshData;
-
         for (const auto& geometry : worldMeshData)
         {
             outPacket->geometries.PushBack(geometry);
@@ -193,7 +192,8 @@ namespace C3D
         }
 
         // Copy over the packet data
-        *static_cast<PickPacketData*>(outPacket->extendedData) = *packetData;
+        auto outPickPacketData = static_cast<PickPacketData*>(outPacket->extendedData);
+        *outPickPacketData = *packetData;
         return true;
     }
 

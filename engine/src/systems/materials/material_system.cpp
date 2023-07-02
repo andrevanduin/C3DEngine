@@ -1,6 +1,7 @@
 
 #include "material_system.h"
 
+#include "core/clock.h"
 #include "core/engine.h"
 #include "core/logger.h"
 #include "core/string_utils.h"
@@ -66,6 +67,17 @@ namespace C3D
 
     Material* MaterialSystem::Acquire(const char* name)
     {
+        if (m_registeredMaterials.Has(name))
+        {
+            // The material already exists
+            MaterialReference& ref = m_registeredMaterials.Get(name);
+            ref.referenceCount++;
+
+            m_logger.Trace("Material {} already exists. The refCount is now {}", name, ref.referenceCount);
+
+            return &ref.material;
+        }
+
         MaterialResource materialResource{};
         if (!Resources.Load(name, materialResource))
         {

@@ -16,6 +16,8 @@ namespace C3D
         f64 deltaTime;
         /** @brief The total amount of time in seconds that the application has been running. */
         f64 totalTime;
+        /** @brief The number of meshes drawn in the last frame. */
+        u32 drawnMeshCount;
         /** @brief A pointer to the engine's frame allocator. */
         LinearAllocator* frameAllocator;
         /** @brief A pointer to application specific frame data. Optional and up to the application to use. */

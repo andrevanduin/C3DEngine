@@ -10,14 +10,17 @@
 #include <core/logger.h>
 #include <core/metrics/metrics.h>
 #include <renderer/renderer_types.h>
+#include <resources/skybox.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/events/event_system.h>
+#include <systems/geometry/geometry_system.h>
 #include <systems/input/input_system.h>
 #include <systems/render_views/render_view_system.h>
 #include <systems/system_manager.h>
 #include <systems/textures/texture_system.h>
 
 #include <glm/gtx/matrix_decompose.hpp>
+#include <map>
 
 TestEnv::TestEnv(C3D::ApplicationState* state) : Application(state), m_state(reinterpret_cast<GameState*>(state)) {}
 
@@ -54,18 +57,23 @@ bool TestEnv::OnBoot()
     return true;
 }
 
-bool TestEnv::OnRun(const C3D::FrameData& frameData)
+bool TestEnv::OnRun(C3D::FrameData& frameData)
 {
     // TEMP
     // Create test ui text objects
     if (!m_state->testText.Create(m_pSystemsManager, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
                                   "Some test text 123,\nyesyes!\n\tKaas!"))
     {
-        m_logger.Fatal("Failed to load basic ui bitmap text.");
+        m_logger.Fatal("OnRun() - Failed to load basic ui bitmap text.");
     }
 
     m_state->testText.SetPosition({10, 640, 0});
-    m_state->skybox.Create(m_pSystemsManager, "skybox_cube");
+
+    if (!m_state->simpleScene.Create(m_pSystemsManager))
+    {
+        m_logger.Error("OnRun() - Failed to create simple scene");
+        return false;
+    }
 
     // World meshes
     for (u32 i = 0; i < 10; i++)
@@ -74,37 +82,96 @@ bool TestEnv::OnRun(const C3D::FrameData& frameData)
         m_state->uiMeshes[i].generation = INVALID_ID_U8;
     }
 
-    u8 meshCount = 0;
+    // Skybox
+    C3D::SkyboxConfig skyboxConfig = {};
+    skyboxConfig.cubeMapName = "skybox";
+    if (!m_state->skybox.Create(m_pSystemsManager, skyboxConfig))
+    {
+        m_logger.Error("OnRun() - Failed to create skybox");
+        return false;
+    }
 
-    // Our First cube
-    // Load up a cube configuration, and load geometry for it
-    C3D::Mesh* cubeMesh = &m_state->meshes[meshCount];
-    cubeMesh->LoadCube(m_pSystemsManager, 10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material");
-    meshCount++;
+    if (!m_state->simpleScene.AddSkybox(&m_state->skybox))
+    {
+        m_logger.Error("OnRun() - Failed add skybox to simple scene");
+        return false;
+    }
 
-    // A second cube
-    // Load up a cube configuration, and load geometry for it
-    C3D::Mesh* cubeMesh2 = &m_state->meshes[meshCount];
-    cubeMesh2->LoadCube(m_pSystemsManager, 5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube_2", "test_material");
-    cubeMesh2->transform = C3D::Transform(vec3(0.0f, 10.0f, 0.0f));
-    cubeMesh2->transform.SetParent(&cubeMesh->transform);
-    meshCount++;
+    // First cube
+    C3D::Mesh* cube0Mesh = &m_state->meshes[0];
+    C3D::MeshConfig cube0Config = {};
+    cube0Config.geometryConfigs.PushBack(
+        Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, "test_cube", "test_material"));
 
-    // A third cube
-    C3D::Mesh* cubeMesh3 = &m_state->meshes[meshCount];
-    cubeMesh3->LoadCube(m_pSystemsManager, 2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube_3", "test_material");
-    cubeMesh3->transform = C3D::Transform(vec3(0.0f, 5.0f, 0.0f));
-    cubeMesh3->transform.SetParent(&cubeMesh2->transform);
-    meshCount++;
+    if (!cube0Mesh->Create(m_pSystemsManager, cube0Config))
+    {
+        m_logger.Error("OnRun() - Failed to create cube mesh 0");
+        return false;
+    }
 
-    m_state->carMesh = &m_state->meshes[meshCount];
+    if (!m_state->simpleScene.AddMesh(cube0Mesh))
+    {
+        m_logger.Error("OnRun() - Failed to add cube0Mesh to simple scene");
+        return false;
+    }
+
+    // Second cube
+    C3D::Mesh* cube1Mesh = &m_state->meshes[1];
+    cube1Mesh->transform = C3D::Transform(vec3(0.0f, 10.0f, 0.0f));
+    cube1Mesh->transform.SetParent(&cube0Mesh->transform);
+    C3D::MeshConfig cube1Config = {};
+    cube1Config.geometryConfigs.PushBack(
+        Geometric.GenerateCubeConfig(5.0f, 5.0f, 5.0f, 1.0f, 1.0f, "test_cube2", "test_material"));
+
+    if (!cube1Mesh->Create(m_pSystemsManager, cube1Config))
+    {
+        m_logger.Error("OnRun() - Failed to create cube mesh 2");
+        return false;
+    }
+
+    if (!m_state->simpleScene.AddMesh(cube1Mesh))
+    {
+        m_logger.Error("OnRun() - Failed to add cube2Mesh to simple scene");
+        return false;
+    }
+
+    // Third cube
+    C3D::Mesh* cube2Mesh = &m_state->meshes[2];
+    cube2Mesh->transform = C3D::Transform(vec3(0.0f, 4.0f, 0.0f));
+    cube2Mesh->transform.SetParent(&cube1Mesh->transform);
+    C3D::MeshConfig cube2Config = {};
+    cube2Config.geometryConfigs.PushBack(
+        Geometric.GenerateCubeConfig(2.0f, 2.0f, 2.0f, 1.0f, 1.0f, "test_cube3", "test_material"));
+
+    if (!cube2Mesh->Create(m_pSystemsManager, cube2Config))
+    {
+        m_logger.Error("OnRun() - Failed to create cube mesh 2");
+        return false;
+    }
+
+    if (!m_state->simpleScene.AddMesh(cube2Mesh))
+    {
+        m_logger.Error("OnRun() - Failed to add cube2Mesh to simple scene");
+        return false;
+    }
+
+    if (!m_state->simpleScene.Initialize())
+    {
+        m_logger.Error("OnRun() - Failed to initialize simple scene");
+        return false;
+    }
+
+    if (!m_state->simpleScene.Load())
+    {
+        m_logger.Error("OnRun() - Failed to load simple scene");
+        return false;
+    }
+
+    m_state->carMesh = &m_state->meshes[3];
     m_state->carMesh->transform = C3D::Transform({15.0f, 0.0f, 1.0f});
-    m_state->carMesh->uniqueId = C3D::Identifier::GetNewId(m_state->carMesh);
-    meshCount++;
 
-    m_state->sponzaMesh = &m_state->meshes[meshCount];
+    m_state->sponzaMesh = &m_state->meshes[4];
     m_state->sponzaMesh->transform = C3D::Transform({15.0f, 0.0f, 1.0f}, mat4(1.0f), {0.05f, 0.05f, 0.05f});
-    m_state->sponzaMesh->uniqueId = C3D::Identifier::GetNewId(m_state->sponzaMesh);
 
     m_state->dirLight = {vec4(0.4f, 0.4f, 0.2f, 1.0f), vec4(-0.57735f, -0.57735f, -0.57735f, 0.0f)};
     m_state->pLights[0] = {vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(-5.5f, 2.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
@@ -117,11 +184,9 @@ bool TestEnv::OnRun(const C3D::FrameData& frameData)
     Lights.AddPointLight(&m_state->pLights[2]);
 
     // Load up our test ui geometry
-    C3D::GeometryConfig<C3D::Vertex2D, u32> uiConfig{};
-    uiConfig.vertices = C3D::DynamicArray<C3D::Vertex2D>();
+    C3D::UIGeometryConfig uiConfig = {};
     uiConfig.vertices.Resize(4);
-
-    uiConfig.indices = C3D::DynamicArray<u32>(6);
+    uiConfig.indices.Resize(6);
 
     uiConfig.materialName = "test_ui_material";
     uiConfig.name = "test_ui_geometry";
@@ -175,7 +240,7 @@ bool TestEnv::OnRun(const C3D::FrameData& frameData)
     return true;
 }
 
-void TestEnv::OnUpdate(const C3D::FrameData& frameData)
+void TestEnv::OnUpdate(C3D::FrameData& frameData)
 {
     // Get our application specific frame data
     auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
@@ -286,8 +351,10 @@ void TestEnv::OnUpdate(const C3D::FrameData& frameData)
 
     // Rotate
     quat rotation = angleAxis(0.2f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
+    quat rotation2 = angleAxis(-0.2f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
+
     m_state->meshes[0].transform.Rotate(rotation);
-    m_state->meshes[1].transform.Rotate(rotation);
+    m_state->meshes[1].transform.Rotate(rotation2);
     m_state->meshes[2].transform.Rotate(rotation);
 
     if (m_state->meshes[3].generation != INVALID_ID_U8)
@@ -304,6 +371,8 @@ void TestEnv::OnUpdate(const C3D::FrameData& frameData)
 
     m_state->pLights[0].color = vec4(rgba.r, rgba.g, rgba.b, rgba.a);
     m_state->pLights[0].position.x += sinTime2;
+    m_state->pLights[0].linear = 0.5f;
+    m_state->pLights[0].quadratic = 0.2f;
 
     if (m_state->pLights[0].position.x < 20.0f) m_state->pLights[0].position.x = 20.0f;
     if (m_state->pLights[0].position.x > 60.0f) m_state->pLights[0].position.x = 60.0f;
@@ -346,118 +415,44 @@ void TestEnv::OnUpdate(const C3D::FrameData& frameData)
     // m_cameraFrustum.Create(m_camera->GetPosition(), forward, right, up, fWidth / fHeight, glm::radians(45.0f), 1.0f,
     // 1000.0f);
 
-    // Reserve a reasonable amount of space for our world geometries
-    appFrameData->worldGeometries.Reserve(512);
-
-    u32 drawCount = 0;
-    u32 count = 0;
-
-    for (auto& mesh : m_state->meshes)
-    {
-        // auto meshSet = false;
-
-        if (mesh.generation != INVALID_ID_U8)
-        {
-            mat4 model = mesh.transform.GetWorld();
-
-            for (const auto geometry : mesh.geometries)
-            {
-                appFrameData->worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
-                drawCount++;
-
-                /*
-                // Bounding sphere calculations
-                vec3 extentsMin = vec4(geometry->extents.min, 1.0f) * model;
-                vec3 extentsMax = vec4(geometry->extents.max, 1.0f) * model;
-
-                f32 min = C3D::Min(extentsMin.x, extentsMin.y, extentsMin.z);
-                f32 max = C3D::Max(extentsMax.x, extentsMax.y, extentsMax.z);
-                f32 diff = C3D::Abs(max - min);
-                f32 radius = diff * 0.5f;
-
-                // Translate / Scale the center
-                const vec3 center = vec4(geometry->center, 1.0f) * model;
-
-                if (m_cameraFrustum.IntersectsWithSphere({ center, radius }))
-                {
-                        m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
-                        drawCount++;
-                }
-
-                // AABB Calculation
-                const vec3 extentsMin = vec4(geometry->extents.min, 1.0f);
-                const vec3 extentsMax = vec4(geometry->extents.max, 1.0f);
-                const vec3 center = vec4(geometry->center, 1.0f);
-
-                const vec3 halfExtents =
-                {
-                        C3D::Abs(extentsMax.x - center.x),
-                        C3D::Abs(extentsMax.y - center.y),
-                        C3D::Abs(extentsMax.z - center.z),
-                };
-
-                if (!m_hasPrimitives[count])
-                {
-                        // Only add primitives for the mesh once
-                        auto pMesh = m_primitiveRenderer.AddBox(geometry->center, halfExtents);
-                        pMesh->transform.SetParent(&mesh.transform);
-
-                        m_primitiveMeshes[m_primitiveMeshCount] = pMesh;
-                        m_primitiveMeshCount++;
-                        meshSet = true;
-                }
-
-                if (m_cameraFrustum.IntersectsWithAABB({ geometry->center, halfExtents }))
-                {
-                        m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
-                        drawCount++;
-                }*/
-            }
-        }
-
-        /*
-        if (meshSet)
-        {
-                m_hasPrimitives[count] = true;
-        }*/
-        count++;
-    }
-
-    C3D::CString<256> buffer;
+    C3D::CString<320> buffer;
     buffer.FromFormat(
         "{:<10} : Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\n"
         "{:<10} : Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}\n"
-        "{:<10} : DrawCount: {} FPS: {} FrameTime: {:.3f}ms VSync: {} SinTime: {}",
+        "{:<10} : DrawCount: {} FPS: {} FrameTime: {:.3f}ms VSync: {} AbsTime: {:.3f}",
         "Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), "Mouse",
-        mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, hoveredBuffer, "Renderer", drawCount,
-        Metrics.GetFps(), Metrics.GetFrameTime(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No",
-        sinTime);
+        mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, hoveredBuffer, "Renderer", 0, Metrics.GetFps(),
+        Metrics.GetFrameTime(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No", absTime);
 
     m_state->testText.SetText(buffer.Data());
 }
 
-bool TestEnv::OnRender(C3D::RenderPacket& packet, const C3D::FrameData& frameData)
+bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
 {
     // Get our application specific frame data
     auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
     // Pre-Allocate enough space for 4 views (and default initialize them)
     packet.views.Resize(4);
 
-    // Skybox
-    C3D::SkyboxPacketData skyboxData = {&m_state->skybox};
-    if (!Views.BuildPacket(Views.Get("skybox"), frameData.frameAllocator, &skyboxData, &packet.views[0]))
+    // FIXME: Read this from a config
+    packet.views[0].view = Views.Get("skybox");
+    packet.views[1].view = Views.Get("world");
+    packet.views[2].view = Views.Get("ui");
+    packet.views[3].view = Views.Get("pick");
+
+    if (!m_state->simpleScene.PopulateRenderPacket(frameData, packet))
     {
-        m_logger.Error("Failed to build packet for view: 'skybox'");
+        m_logger.Error("OnRender() - Failed to populate render packet for simple scene");
         return false;
     }
 
-    // World
+    /* World
     if (!Views.BuildPacket(Views.Get("world"), frameData.frameAllocator, &appFrameData->worldGeometries,
                            &packet.views[1]))
     {
-        m_logger.Error("Failed to build packet for view: 'world'");
+        m_logger.Error("OnRender() - Failed to build packet for view: 'world'");
         return false;
-    }
+    }*/
 
     // UI
     C3D::UIPacketData uiPacket = {};
@@ -490,9 +485,6 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, const C3D::FrameData& frameDat
         m_logger.Error("Failed to build packet for view: 'pick'");
         return false;
     }
-
-    // Destroy our array of world geometries since our frame allocator will be freed after this frame
-    appFrameData->worldGeometries.Destroy();
 
     // TEMP END
     return true;
@@ -787,13 +779,30 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&) cons
         {
             m_logger.Info("OnDebugEvent() - Loading models...");
 
-            if (!m_state->carMesh->LoadFromResource(m_pSystemsManager, "falcon"))
+            C3D::MeshConfig falconConfig = {};
+            falconConfig.resourceName = "falcon";
+
+            if (!m_state->carMesh->Create(m_pSystemsManager, falconConfig))
             {
-                m_logger.Error("OnDebugEvent() - Failed to load falcon mesh!");
+                m_logger.Error("OnDebugEvent() - Failed to create falcon mesh");
+                return false;
             }
-            if (!m_state->sponzaMesh->LoadFromResource(m_pSystemsManager, "sponza"))
+            if (!m_state->simpleScene.AddMesh(m_state->carMesh))
             {
-                m_logger.Error("OnDebugEvent() - Failed to load sponza mesh!");
+                m_logger.Error("OnDebugEvent() - Failed to add falcon mesh");
+            }
+
+            C3D::MeshConfig sponzaConfig = {};
+            sponzaConfig.resourceName = "sponza";
+
+            if (!m_state->sponzaMesh->Create(m_pSystemsManager, sponzaConfig))
+            {
+                m_logger.Error("OnDebugEvent() - Failed to create sponza mesh");
+            }
+
+            if (!m_state->simpleScene.AddMesh(m_state->sponzaMesh))
+            {
+                m_logger.Error("OnDebugEvent() - Failed to add sponza mesh");
             }
 
             m_state->modelsLoaded = true;

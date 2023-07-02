@@ -17,7 +17,7 @@ namespace C3D
           m_mousePrevious()
     {}
 
-    void InputSystem::Update(const FrameData* frameData)
+    void InputSystem::Update(const FrameData& frameData)
     {
         if (!m_initialized) return;
 

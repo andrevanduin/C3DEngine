@@ -15,6 +15,7 @@ namespace C3D
     constexpr auto DEFAULT_DIFFUSE_TEXTURE_NAME = "defaultDiffuse";
     constexpr auto DEFAULT_SPECULAR_TEXTURE_NAME = "defaultSpecular";
     constexpr auto DEFAULT_NORMAL_TEXTURE_NAME = "defaultNormal";
+    constexpr auto MAX_LOADING_TEXTURES = 128;
 
     struct TextureSystemConfig
     {
@@ -28,9 +29,10 @@ namespace C3D
         bool autoRelease = false;
     };
 
-    /* @brief Parameters that you provide for loading a Texture. Will also be used as the result data for the job. */
-    struct TextureLoadParams
+    /** @brief Structure to hold a texture that is currently being loaded. */
+    struct LoadingTexture
     {
+        u32 id = INVALID_ID;
         String resourceName;
         Texture* outTexture = nullptr;
         Texture tempTexture;
@@ -70,7 +72,7 @@ namespace C3D
     private:
         void DestroyDefaultTextures();
 
-        bool LoadTexture(const char* name, Texture* texture) const;
+        bool LoadTexture(const char* name, Texture* texture);
         bool LoadCubeTextures(const char* name, const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames,
                               Texture* texture) const;
 
@@ -79,9 +81,10 @@ namespace C3D
         bool ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease,
                                      bool skipLoad, u32* outTextureId);
 
-        bool LoadJobEntryPoint(void* data, void* resultData) const;
-        void LoadJobSuccess(void* data) const;
-        void LoadJobFailure(void* data) const;
+        bool LoadJobEntryPoint(u32 loadingTextureIndex);
+        void LoadJobSuccess(u32 loadingTextureIndex);
+
+        void CleanupLoadingTexture(u32 loadingTextureIndex);
 
         bool m_initialized;
 
@@ -93,5 +96,7 @@ namespace C3D
         // TODO: Replace with HashMap
         Texture* m_registeredTextures;
         HashTable<TextureReference> m_registeredTextureTable;
+
+        Array<LoadingTexture, MAX_LOADING_TEXTURES> m_loadingTextures;
     };
 }  // namespace C3D

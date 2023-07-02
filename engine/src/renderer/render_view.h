@@ -14,6 +14,7 @@
 namespace C3D
 {
     class Mesh;
+    class UIMesh;
     class SystemManager;
 
     enum class RenderViewKnownType
@@ -153,11 +154,16 @@ namespace C3D
         DynamicArray<Mesh*, LinearAllocator> meshes;
     };
 
+    struct UIMeshPacketData
+    {
+        DynamicArray<UIMesh*, LinearAllocator> meshes;
+    };
+
     class UIText;
 
     struct UIPacketData
     {
-        MeshPacketData meshData;
+        UIMeshPacketData meshData;
         // TEMP
         DynamicArray<UIText*, LinearAllocator> texts;
         // TEMP END
@@ -167,7 +173,7 @@ namespace C3D
     {
         DynamicArray<GeometryRenderData, LinearAllocator>* worldMeshData;
 
-        MeshPacketData uiMeshData;
+        UIMeshPacketData uiMeshData;
         u32 uiGeometryCount;
         // TEMP:
         DynamicArray<UIText*, LinearAllocator> texts;
