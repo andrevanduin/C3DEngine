@@ -142,7 +142,7 @@ namespace C3D
         vec3 viewPosition;
         vec4 ambientColor;
 
-        DynamicArray<GeometryRenderData> geometries;
+        DynamicArray<GeometryRenderData, LinearAllocator> geometries;
         // @brief The name of the custom shader to use, if not using it is nullptr.
         const char* customShaderName;
         // @brief Holds a pointer to extra data understood by both the object and consuming view.

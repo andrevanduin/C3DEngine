@@ -226,6 +226,9 @@ namespace C3D
 
                 OnUpdate();
 
+                // Reset our drawn mesh count for the next frame
+                m_frameData.drawnMeshCount = 0;
+
                 // TODO: Refactor packet creation
                 RenderPacket packet;
                 // Ensure that we will be using our frame allocator for this packet's view

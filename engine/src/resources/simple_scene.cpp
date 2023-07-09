@@ -4,6 +4,7 @@
 #include "core/frame_data.h"
 #include "renderer/renderer_types.h"
 #include "resources/mesh.h"
+#include "systems/lights/light_system.h"
 #include "systems/render_views/render_view_system.h"
 #include "systems/system_manager.h"
 
@@ -84,25 +85,64 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::Unload() { return true; }
+    bool SimpleScene::Unload()
+    {
+        m_state = SceneState::Unloading;
+
+        if (m_skybox)
+        {
+            if (!m_skybox->Unload())
+            {
+                m_logger.Error("Unload() - Failed to unload skybox");
+            }
+        }
+
+        for (auto mesh : m_meshes)
+        {
+            if (mesh->generation == INVALID_ID_U8) continue;
+
+            if (!mesh->Unload())
+            {
+                m_logger.Error("Unload() - Failed to unload mesh");
+            }
+        }
+
+        if (m_directionalLight)
+        {
+            RemoveDirectionalLight(m_directionalLight);
+        }
+
+        for (auto light : m_pointLights)
+        {
+            RemovePointLight(light);
+        }
+
+        m_state = SceneState::Unloaded;
+        return true;
+    }
 
     bool SimpleScene::Update(FrameData& frameData) { return true; }
 
     bool SimpleScene::PopulateRenderPacket(FrameData& frameData, RenderPacket& packet)
     {
+        if (m_state != SceneState::Loaded) return true;
+
         // TODO: Cache this somewhere so we don't check every time
-        for (auto& viewPacket : packet.views)
+        if (m_skybox)
         {
-            const auto view = viewPacket.view;
-            if (view->type == RenderViewKnownType::Skybox)
+            for (auto& viewPacket : packet.views)
             {
-                SkyboxPacketData skyboxData = {m_skybox};
-                if (!Views.BuildPacket(view, frameData.frameAllocator, &skyboxData, &viewPacket))
+                const auto view = viewPacket.view;
+                if (view->type == RenderViewKnownType::Skybox)
                 {
-                    m_logger.Error("PopulateRenderPacket() - Failed to populate render packet with skybox data");
-                    return false;
+                    SkyboxPacketData skyboxData = {m_skybox};
+                    if (!Views.BuildPacket(view, frameData.frameAllocator, &skyboxData, &viewPacket))
+                    {
+                        m_logger.Error("PopulateRenderPacket() - Failed to populate render packet with skybox data");
+                        return false;
+                    }
+                    break;
                 }
-                break;
             }
         }
 
@@ -198,13 +238,83 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::AddDirectionalLight(DirectionalLight* light) { return true; }
+    bool SimpleScene::AddDirectionalLight(DirectionalLight* light)
+    {
+        if (!light)
+        {
+            m_logger.Error("AddDirectionalLight() - Invalid light provided");
+            return false;
+        }
 
-    bool SimpleScene::RemoveDirectionalLight(DirectionalLight* light) { return true; }
+        if (m_directionalLight)
+        {
+            // TODO: Do resource unloading when required
+            if (!Lights.RemoveDirectionalLight(m_directionalLight))
+            {
+                m_logger.Error("AddDirectionalLight() - Failed to remove current directional light");
+                return false;
+            }
+        }
 
-    bool SimpleScene::AddPointLight(PointLight* light) { return true; }
+        m_directionalLight = light;
+        return Lights.AddDirectionalLight(light);
+    }
 
-    bool SimpleScene::RemovePointLight(PointLight* light) { return true; }
+    bool SimpleScene::RemoveDirectionalLight(DirectionalLight* light)
+    {
+        if (!light)
+        {
+            m_logger.Error("RemoveDirectionalLight() - Invalid light provided");
+            return false;
+        }
+
+        if (m_directionalLight == light)
+        {
+            m_directionalLight = nullptr;
+            return Lights.RemoveDirectionalLight(light);
+        }
+
+        m_logger.Warn("RemoveDirectionalLight() - Could not remove since provided light is not part of this scene");
+        return false;
+    }
+
+    bool SimpleScene::AddPointLight(PointLight* light)
+    {
+        if (!light)
+        {
+            m_logger.Error("AddPointLight() - Invalid light provided");
+            return false;
+        }
+
+        if (!Lights.AddPointLight(light))
+        {
+            m_logger.Error("AddPointLight() - Failed to add point light to lighting system");
+            return false;
+        }
+
+        m_pointLights.PushBack(light);
+        return true;
+    }
+
+    bool SimpleScene::RemovePointLight(PointLight* light)
+    {
+        if (!light)
+        {
+            m_logger.Error("RemovePointLight() - Invalid light provided");
+            return false;
+        }
+
+        for (auto l : m_pointLights)
+        {
+            if (l == light)
+            {
+                return Lights.RemovePointLight(light);
+            }
+        }
+
+        m_logger.Warn("RemovePointLight() - Failed to remove light that is not part of the scene");
+        return false;
+    }
 
     bool SimpleScene::AddMesh(Mesh* mesh)
     {

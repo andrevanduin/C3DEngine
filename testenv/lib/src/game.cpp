@@ -155,6 +155,35 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
         return false;
     }
 
+    m_state->dirLight = {vec4(0.4f, 0.4f, 0.2f, 1.0f), vec4(-0.57735f, -0.57735f, -0.57735f, 0.0f)};
+    m_state->pLights[0] = {vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(-5.5f, 2.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
+    m_state->pLights[1] = {vec4(0.0f, 1.0f, 0.0f, 1.0f), vec4(5.5f, 2.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
+    m_state->pLights[2] = {vec4(0.0f, 0.0f, 1.0f, 1.0f), vec4(4.5f, 2.0f, 5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
+
+    if (!m_state->simpleScene.AddDirectionalLight(&m_state->dirLight))
+    {
+        m_logger.Error("OnRun() - Failed to add directional light to simple scene");
+        return false;
+    }
+
+    if (!m_state->simpleScene.AddPointLight(&m_state->pLights[0]))
+    {
+        m_logger.Error("OnRun() - Failed to add point light to simple scene");
+        return false;
+    }
+
+    if (!m_state->simpleScene.AddPointLight(&m_state->pLights[1]))
+    {
+        m_logger.Error("OnRun() - Failed to add point light to simple scene");
+        return false;
+    }
+
+    if (!m_state->simpleScene.AddPointLight(&m_state->pLights[2]))
+    {
+        m_logger.Error("OnRun() - Failed to add point light to simple scene");
+        return false;
+    }
+
     if (!m_state->simpleScene.Initialize())
     {
         m_logger.Error("OnRun() - Failed to initialize simple scene");
@@ -172,16 +201,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 
     m_state->sponzaMesh = &m_state->meshes[4];
     m_state->sponzaMesh->transform = C3D::Transform({15.0f, 0.0f, 1.0f}, mat4(1.0f), {0.05f, 0.05f, 0.05f});
-
-    m_state->dirLight = {vec4(0.4f, 0.4f, 0.2f, 1.0f), vec4(-0.57735f, -0.57735f, -0.57735f, 0.0f)};
-    m_state->pLights[0] = {vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(-5.5f, 2.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
-    m_state->pLights[1] = {vec4(0.0f, 1.0f, 0.0f, 1.0f), vec4(5.5f, 2.0f, -5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
-    m_state->pLights[2] = {vec4(0.0f, 0.0f, 1.0f, 1.0f), vec4(4.5f, 2.0f, 5.5f, 0.0f), 1.0f, 0.35f, 0.44f, 0.0f};
-
-    Lights.AddDirectionalLight(&m_state->dirLight);
-    Lights.AddPointLight(&m_state->pLights[0]);
-    Lights.AddPointLight(&m_state->pLights[1]);
-    Lights.AddPointLight(&m_state->pLights[2]);
 
     // Load up our test ui geometry
     C3D::UIGeometryConfig uiConfig = {};
@@ -421,8 +440,9 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         "{:<10} : Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}\n"
         "{:<10} : DrawCount: {} FPS: {} FrameTime: {:.3f}ms VSync: {} AbsTime: {:.3f}",
         "Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), "Mouse",
-        mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, hoveredBuffer, "Renderer", 0, Metrics.GetFps(),
-        Metrics.GetFrameTime(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No", absTime);
+        mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, hoveredBuffer, "Renderer",
+        frameData.drawnMeshCount, Metrics.GetFps(), Metrics.GetFrameTime(),
+        Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No", absTime);
 
     m_state->testText.SetText(buffer.Data());
 }
@@ -436,23 +456,22 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
 
     // FIXME: Read this from a config
     packet.views[0].view = Views.Get("skybox");
+    packet.views[0].geometries.SetAllocator(frameData.frameAllocator);
+
     packet.views[1].view = Views.Get("world");
+    packet.views[1].geometries.SetAllocator(frameData.frameAllocator);
+
     packet.views[2].view = Views.Get("ui");
+    packet.views[2].geometries.SetAllocator(frameData.frameAllocator);
+
     packet.views[3].view = Views.Get("pick");
+    packet.views[3].geometries.SetAllocator(frameData.frameAllocator);
 
     if (!m_state->simpleScene.PopulateRenderPacket(frameData, packet))
     {
         m_logger.Error("OnRender() - Failed to populate render packet for simple scene");
         return false;
     }
-
-    /* World
-    if (!Views.BuildPacket(Views.Get("world"), frameData.frameAllocator, &appFrameData->worldGeometries,
-                           &packet.views[1]))
-    {
-        m_logger.Error("OnRender() - Failed to build packet for view: 'world'");
-        return false;
-    }*/
 
     // UI
     C3D::UIPacketData uiPacket = {};
@@ -478,7 +497,8 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     // Pick
     C3D::PickPacketData pickPacket = {};
     pickPacket.uiMeshData = uiPacket.meshData;
-    pickPacket.worldMeshData = &appFrameData->worldGeometries;
+    // TODO: This index is hardcoded currently
+    pickPacket.worldMeshData = &packet.views[1].geometries;
     pickPacket.texts = uiPacket.texts;
     if (!Views.BuildPacket(Views.Get("pick"), frameData.frameAllocator, &pickPacket, &packet.views[3]))
     {
@@ -817,8 +837,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&) cons
         {
             m_logger.Info("OnDebugEvent() - Unloading models...");
 
-            m_state->carMesh->Unload();
-            m_state->sponzaMesh->Unload();
+            m_state->simpleScene.Unload();
         }
 
         m_state->modelsLoaded = false;

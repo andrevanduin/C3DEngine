@@ -97,50 +97,53 @@ namespace C3D
                 return false;
             }
 
-            if (!Shaders.UseById(shaderId))
+            if (skyBoxData)
             {
-                m_logger.Error("OnRender() - Failed to use shader with id {}", shaderId);
-                return false;
+                if (!Shaders.UseById(shaderId))
+                {
+                    m_logger.Error("OnRender() - Failed to use shader with id {}", shaderId);
+                    return false;
+                }
+
+                // Get the view matrix, but zero out the position so the skybox stays in the same spot
+                auto view = m_camera->GetViewMatrix();
+                view[3][0] = 0.0f;
+                view[3][1] = 0.0f;
+                view[3][2] = 0.0f;
+
+                // TODO: Change this
+
+                // Global
+                Renderer.ShaderBindGlobals(Shaders.GetById(shaderId));
+                if (!Shaders.SetUniformByIndex(m_projectionLocation, &packet->projectionMatrix))
+                {
+                    m_logger.Error("Failed to apply projection matrix.");
+                    return false;
+                }
+                if (!Shaders.SetUniformByIndex(m_viewLocation, &view))
+                {
+                    m_logger.Error("Failed to apply view position.");
+                    return false;
+                }
+                Shaders.ApplyGlobal();
+
+                // Instance
+                Shaders.BindInstance(skyBoxData->box->instanceId);
+                if (!Shaders.SetUniformByIndex(m_cubeMapLocation, &skyBoxData->box->cubeMap))
+                {
+                    m_logger.Error("Failed to apply cube map uniform.");
+                    return false;
+                }
+                bool needsUpdate = skyBoxData->box->frameNumber != frameNumber;
+                Shaders.ApplyInstance(needsUpdate);
+
+                // Sync the frame number
+                skyBoxData->box->frameNumber = frameNumber;
+
+                // Draw it
+                GeometryRenderData data(skyBoxData->box->g);
+                Renderer.DrawGeometry(data);
             }
-
-            // Get the view matrix, but zero out the position so the skybox stays in the same spot
-            auto view = m_camera->GetViewMatrix();
-            view[3][0] = 0.0f;
-            view[3][1] = 0.0f;
-            view[3][2] = 0.0f;
-
-            // TODO: Change this
-
-            // Global
-            Renderer.ShaderBindGlobals(Shaders.GetById(shaderId));
-            if (!Shaders.SetUniformByIndex(m_projectionLocation, &packet->projectionMatrix))
-            {
-                m_logger.Error("Failed to apply projection matrix.");
-                return false;
-            }
-            if (!Shaders.SetUniformByIndex(m_viewLocation, &view))
-            {
-                m_logger.Error("Failed to apply view position.");
-                return false;
-            }
-            Shaders.ApplyGlobal();
-
-            // Instance
-            Shaders.BindInstance(skyBoxData->box->instanceId);
-            if (!Shaders.SetUniformByIndex(m_cubeMapLocation, &skyBoxData->box->cubeMap))
-            {
-                m_logger.Error("Failed to apply cube map uniform.");
-                return false;
-            }
-            bool needsUpdate = skyBoxData->box->frameNumber != frameNumber;
-            Shaders.ApplyInstance(needsUpdate);
-
-            // Sync the frame number
-            skyBoxData->box->frameNumber = frameNumber;
-
-            // Draw it
-            GeometryRenderData data(skyBoxData->box->g);
-            Renderer.DrawGeometry(data);
 
             if (!Renderer.EndRenderPass(pass))
             {
