@@ -4,6 +4,7 @@
 #include "loaders/mesh_loader.h"
 #include "renderer/transform.h"
 #include "resources/geometry.h"
+#include "resources/scene/simple_scene_config.h"
 
 namespace C3D
 {
@@ -12,7 +13,19 @@ namespace C3D
 
     struct MeshConfig
     {
-        const char* resourceName = nullptr;
+        MeshConfig() = default;
+
+        MeshConfig(const SimpleSceneMeshConfig& cfg) : name(cfg.name), resourceName(cfg.resourceName)
+        {
+            if (!cfg.parentName.Empty())
+            {
+                parentName = cfg.parentName;
+            }
+        }
+
+        String name;
+        String resourceName;
+        String parentName;
         DynamicArray<GeometryConfig> geometryConfigs;
     };
 
@@ -26,8 +39,9 @@ namespace C3D
     {
     public:
         Mesh();
+        Mesh(const MeshConfig& cfg);
 
-        bool Create(const SystemManager* pSystemsManager, const MeshConfig& config);
+        bool Create(const SystemManager* pSystemsManager, const MeshConfig& cfg);
 
         bool Initialize();
 
@@ -43,6 +57,7 @@ namespace C3D
         DynamicArray<Geometry*> geometries;
 
         Transform transform;
+        MeshConfig config;
 
     private:
         bool LoadFromResource();
@@ -52,8 +67,6 @@ namespace C3D
         void LoadJobFailure();
 
         LoggerInstance<8> m_logger;
-
-        MeshConfig m_config;
         MeshResource m_resource;
 
         const SystemManager* m_pSystemsManager = nullptr;

@@ -48,10 +48,10 @@ namespace C3D
 #endif
 
         // Just set some basic default values. They will be overridden anyway.
-        m_context.frameBufferWidth = 1280;
+        m_context.frameBufferWidth  = 1280;
         m_context.frameBufferHeight = 720;
-        m_config = config;
-        m_pSystemsManager = config.pSystemsManager;
+        m_config                    = config;
+        m_pSystemsManager           = config.pSystemsManager;
 
         vkb::InstanceBuilder instanceBuilder;
 
@@ -62,6 +62,7 @@ namespace C3D
 #if defined(_DEBUG)
                                      .request_validation_layers(true)
                                      .set_debug_callback(VulkanUtils::VkDebugLog)
+                                     .enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
 #endif
                                      .set_allocation_callbacks(m_context.allocator)
                                      .require_api_version(1, 2)
@@ -71,8 +72,42 @@ namespace C3D
         const vkb::Instance vkbInstance = vkbInstanceResult.value();
 
         m_context.instance = vkbInstance.instance;
+
 #if defined(_DEBUG)
         m_debugMessenger = vkbInstance.debug_messenger;
+
+        // Load up our debug function pointers
+        m_context.pfnSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
+            vkGetInstanceProcAddr(m_context.instance, "vkSetDebugUtilsObjectNameEXT"));
+        if (!m_context.pfnSetDebugUtilsObjectNameEXT)
+        {
+            m_logger.Error("Init() - Failed to get instance proc address for 'vkSetDebugUtilsObjectNameEXT'");
+            return false;
+        }
+
+        m_context.pfnSetDebugUtilsObjectTagEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectTagEXT>(
+            vkGetInstanceProcAddr(m_context.instance, "vkSetDebugUtilsObjectTagEXT"));
+        if (!m_context.pfnSetDebugUtilsObjectTagEXT)
+        {
+            m_logger.Error("Init() - Failed to get instance proc address for 'vkSetDebugUtilsObjectTagEXT'");
+            return false;
+        }
+
+        m_context.pfnCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
+            vkGetInstanceProcAddr(m_context.instance, "vkCmdBeginDebugUtilsLabelEXT"));
+        if (!m_context.pfnCmdBeginDebugUtilsLabelEXT)
+        {
+            m_logger.Error("Init() - Failed to get instance proc address for 'vkCmdBeginDebugUtilsLabelEXT'");
+            return false;
+        }
+
+        m_context.pfnCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
+            vkGetInstanceProcAddr(m_context.instance, "vkCmdEndDebugUtilsLabelEXT"));
+        if (!m_context.pfnCmdEndDebugUtilsLabelEXT)
+        {
+            m_logger.Error("Init() - Failed to get instance proc address for 'vkCmdEndDebugUtilsLabelEXT'");
+            return false;
+        }
 #endif
 
         // TODO: Implement multiThreading
@@ -106,14 +141,14 @@ namespace C3D
         m_logger.Info("Init() - Creating Semaphores and Fences");
         for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
         {
-            VkSemaphoreCreateInfo semaphoreCreateInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+            VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
             vkCreateSemaphore(m_context.device.logicalDevice, &semaphoreCreateInfo, m_context.allocator,
                               &m_context.imageAvailableSemaphores[i]);
             vkCreateSemaphore(m_context.device.logicalDevice, &semaphoreCreateInfo, m_context.allocator,
                               &m_context.queueCompleteSemaphores[i]);
 
-            VkFenceCreateInfo fenceCreateInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-            fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            VkFenceCreateInfo fenceCreateInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+            fenceCreateInfo.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
             VK_CHECK(vkCreateFence(m_context.device.logicalDevice, &fenceCreateInfo, m_context.allocator,
                                    &m_context.inFlightFences[i]));
         }
@@ -213,7 +248,7 @@ namespace C3D
 
     void VulkanRendererPlugin::OnResize(const u32 width, const u32 height)
     {
-        m_context.frameBufferWidth = width;
+        m_context.frameBufferWidth  = width;
         m_context.frameBufferHeight = height;
         m_context.frameBufferSizeGeneration++;
 
@@ -288,12 +323,12 @@ namespace C3D
         commandBuffer->Begin(false, false, false);
 
         // Dynamic state
-        m_context.viewportRect = {0.0f, static_cast<f32>(m_context.frameBufferHeight),
-                                  static_cast<f32>(m_context.frameBufferWidth),
-                                  -static_cast<f32>(m_context.frameBufferHeight)};
+        m_context.viewportRect = { 0.0f, static_cast<f32>(m_context.frameBufferHeight),
+                                   static_cast<f32>(m_context.frameBufferWidth),
+                                   -static_cast<f32>(m_context.frameBufferHeight) };
         SetViewport(m_context.viewportRect);
 
-        m_context.scissorRect = {0, 0, m_context.frameBufferWidth, m_context.frameBufferHeight};
+        m_context.scissorRect = { 0, 0, m_context.frameBufferWidth, m_context.frameBufferHeight };
         SetScissor(m_context.scissorRect);
 
         return true;
@@ -323,18 +358,18 @@ namespace C3D
         // Reset the fence for use on the next frame
         VK_CHECK(vkResetFences(m_context.device.logicalDevice, 1, &m_context.inFlightFences[m_context.currentFrame]));
 
-        VkSubmitInfo submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        VkSubmitInfo submitInfo       = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer->handle;
+        submitInfo.pCommandBuffers    = &commandBuffer->handle;
 
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &m_context.queueCompleteSemaphores[m_context.currentFrame];
+        submitInfo.pSignalSemaphores    = &m_context.queueCompleteSemaphores[m_context.currentFrame];
 
         submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &m_context.imageAvailableSemaphores[m_context.currentFrame];
+        submitInfo.pWaitSemaphores    = &m_context.imageAvailableSemaphores[m_context.currentFrame];
 
-        constexpr VkPipelineStageFlags flags[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.pWaitDstStageMask = flags;
+        constexpr VkPipelineStageFlags flags[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submitInfo.pWaitDstStageMask            = flags;
 
         // Submit all the commands that we have queued
         const auto result = vkQueueSubmit(m_context.device.graphicsQueue, 1, &submitInfo,
@@ -359,10 +394,10 @@ namespace C3D
     void VulkanRendererPlugin::SetViewport(const vec4& rect)
     {
         VkViewport viewport;
-        viewport.x = rect.x;
-        viewport.y = rect.y;
-        viewport.width = rect.z;
-        viewport.height = rect.w;
+        viewport.x        = rect.x;
+        viewport.y        = rect.y;
+        viewport.width    = rect.z;
+        viewport.height   = rect.w;
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
@@ -379,9 +414,9 @@ namespace C3D
     void VulkanRendererPlugin::SetScissor(const ivec4& rect)
     {
         VkRect2D scissor;
-        scissor.offset.x = rect.x;
-        scissor.offset.y = rect.y;
-        scissor.extent.width = rect.z;
+        scissor.offset.x      = rect.x;
+        scissor.offset.y      = rect.y;
+        scissor.extent.width  = rect.z;
         scissor.extent.height = rect.w;
 
         const auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
@@ -408,13 +443,13 @@ namespace C3D
         std::memcpy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
 
         // Setup our frameBuffer creation
-        VkFramebufferCreateInfo frameBufferCreateInfo = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
-        frameBufferCreateInfo.renderPass = dynamic_cast<VulkanRenderPass*>(pass)->handle;
-        frameBufferCreateInfo.attachmentCount = attachmentCount;
-        frameBufferCreateInfo.pAttachments = attachmentViews;
-        frameBufferCreateInfo.width = width;
-        frameBufferCreateInfo.height = height;
-        frameBufferCreateInfo.layers = 1;
+        VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+        frameBufferCreateInfo.renderPass              = dynamic_cast<VulkanRenderPass*>(pass)->handle;
+        frameBufferCreateInfo.attachmentCount         = attachmentCount;
+        frameBufferCreateInfo.pAttachments            = attachmentViews;
+        frameBufferCreateInfo.width                   = width;
+        frameBufferCreateInfo.height                  = height;
+        frameBufferCreateInfo.layers                  = 1;
 
         VK_CHECK(vkCreateFramebuffer(m_context.device.logicalDevice, &frameBufferCreateInfo, m_context.allocator,
                                      reinterpret_cast<VkFramebuffer*>(&outTarget->internalFrameBuffer)));
@@ -431,7 +466,7 @@ namespace C3D
             {
                 Memory.Free(MemoryType::Array, target->attachments);
                 target->attachmentCount = 0;
-                target->attachments = nullptr;
+                target->attachments     = nullptr;
             }
         }
     }
@@ -503,7 +538,7 @@ namespace C3D
 
     void VulkanRendererPlugin::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled)
     {
-        m_config.flags = enabled ? m_config.flags | flag : m_config.flags & ~flag;
+        m_config.flags              = enabled ? (m_config.flags | flag) : (m_config.flags & ~flag);
         m_context.renderFlagChanged = true;
     }
 
@@ -512,7 +547,7 @@ namespace C3D
     bool VulkanRendererPlugin::BeginRenderPass(RenderPass* pass, RenderTarget* target)
     {
         VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-        const auto vulkanPass = dynamic_cast<VulkanRenderPass*>(pass);
+        const auto vulkanPass              = dynamic_cast<VulkanRenderPass*>(pass);
         vulkanPass->Begin(commandBuffer, target);
         return true;
     }
@@ -520,7 +555,8 @@ namespace C3D
     bool VulkanRendererPlugin::EndRenderPass(RenderPass* pass)
     {
         VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-        VulkanRenderPass::End(commandBuffer);
+        const auto vulkanPass              = dynamic_cast<VulkanRenderPass*>(pass);
+        vulkanPass->End(commandBuffer);
         return true;
     }
 
@@ -529,7 +565,7 @@ namespace C3D
         // Simply ignore if there is no geometry to draw
         if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
 
-        const auto bufferData = &m_geometries[data.geometry->internalId];
+        const auto bufferData        = &m_geometries[data.geometry->internalId];
         const bool includesIndexData = bufferData->indexCount > 0;
 
         if (!m_objectVertexBuffer.Draw(bufferData->vertexBufferOffset, bufferData->vertexCount, includesIndexData))
@@ -552,13 +588,14 @@ namespace C3D
         // Internal data creation
         texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
 
-        const auto image = static_cast<VulkanImage*>(texture->internalData);
+        const auto image             = static_cast<VulkanImage*>(texture->internalData);
         const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height *
                                        texture->channelCount * (texture->type == TextureType::TypeCube ? 6 : 1);
 
-        constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;  // NOTE: Assumes 8 bits per channel
-
-        image->Create(&m_context, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+        // NOTE: Assumes 8 bits per channel
+        constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat,
+                      VK_IMAGE_TILING_OPTIMAL,
                       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -588,7 +625,7 @@ namespace C3D
     void VulkanRendererPlugin::CreateWritableTexture(Texture* texture)
     {
         texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
-        const auto image = static_cast<VulkanImage*>(texture->internalData);
+        const auto image      = static_cast<VulkanImage*>(texture->internalData);
 
         VkFormat imageFormat;
         VkImageUsageFlagBits usage;
@@ -596,8 +633,8 @@ namespace C3D
 
         if (texture->flags & TextureFlag::IsDepth)
         {
-            usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-            aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+            usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            aspect      = VK_IMAGE_ASPECT_DEPTH_BIT;
             imageFormat = m_context.device.depthFormat;
         }
         else
@@ -605,19 +642,19 @@ namespace C3D
             usage =
                 static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                                                   VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-            aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+            aspect      = VK_IMAGE_ASPECT_COLOR_BIT;
             imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
         }
 
-        image->Create(&m_context, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
-                      usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, aspect);
+        image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat,
+                      VK_IMAGE_TILING_OPTIMAL, usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, aspect);
 
         texture->generation++;
     }
 
     void VulkanRendererPlugin::WriteDataToTexture(Texture* texture, u32 offset, const u32 size, const u8* pixels)
     {
-        const auto image = static_cast<VulkanImage*>(texture->internalData);
+        const auto image           = static_cast<VulkanImage*>(texture->internalData);
         const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
         // Create a staging buffer and load data into it.
@@ -630,7 +667,7 @@ namespace C3D
 
         VulkanCommandBuffer tempBuffer;
         VkCommandPool pool = m_context.device.graphicsCommandPool;
-        VkQueue queue = m_context.device.graphicsQueue;
+        VkQueue queue      = m_context.device.graphicsQueue;
 
         tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
 
@@ -662,7 +699,8 @@ namespace C3D
             const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
             // TODO: Lot's of assumptions here
-            image->Create(&m_context, texture->type, newWidth, newHeight, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+            image->Create(&m_context, texture->name, texture->type, newWidth, newHeight, imageFormat,
+                          VK_IMAGE_TILING_OPTIMAL,
                           VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                               VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -673,7 +711,7 @@ namespace C3D
 
     void VulkanRendererPlugin::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory)
     {
-        const auto image = static_cast<VulkanImage*>(texture->internalData);
+        const auto image       = static_cast<VulkanImage*>(texture->internalData);
         const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
         // Create a staging buffer and load data into it
@@ -688,7 +726,7 @@ namespace C3D
 
         VulkanCommandBuffer tempBuffer;
         VkCommandPool pool = m_context.device.graphicsCommandPool;
-        VkQueue queue = m_context.device.graphicsQueue;
+        VkQueue queue      = m_context.device.graphicsQueue;
 
         tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
 
@@ -716,7 +754,7 @@ namespace C3D
 
     void VulkanRendererPlugin::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba)
     {
-        const auto image = static_cast<VulkanImage*>(texture->internalData);
+        const auto image       = static_cast<VulkanImage*>(texture->internalData);
         const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
         // RGBA is 4 * sizeof a unsigned 8bit integer
         constexpr auto size = sizeof(u8) * 4;
@@ -733,7 +771,7 @@ namespace C3D
 
         VulkanCommandBuffer tempBuffer;
         VkCommandPool pool = m_context.device.graphicsCommandPool;
-        VkQueue queue = m_context.device.graphicsQueue;
+        VkQueue queue      = m_context.device.graphicsQueue;
 
         tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
 
@@ -767,9 +805,8 @@ namespace C3D
         {
             data->image.Destroy();
             Memory.Free(MemoryType::Texture, texture->internalData);
+            texture->internalData = nullptr;
         }
-
-        std::memset(texture, 0, sizeof(Texture));
     }
 
     bool VulkanRendererPlugin::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount,
@@ -791,12 +828,12 @@ namespace C3D
             internalData = &m_geometries[geometry->internalId];
 
             // Take a copy of the old data
-            oldRange.indexBufferOffset = internalData->indexBufferOffset;
-            oldRange.indexCount = internalData->indexCount;
-            oldRange.indexElementSize = internalData->indexElementSize;
+            oldRange.indexBufferOffset  = internalData->indexBufferOffset;
+            oldRange.indexCount         = internalData->indexCount;
+            oldRange.indexElementSize   = internalData->indexElementSize;
             oldRange.vertexBufferOffset = internalData->vertexBufferOffset;
-            oldRange.vertexCount = internalData->vertexCount;
-            oldRange.vertexElementSize = internalData->vertexElementSize;
+            oldRange.vertexCount        = internalData->vertexCount;
+            oldRange.vertexElementSize  = internalData->vertexElementSize;
         }
         else
         {
@@ -805,8 +842,8 @@ namespace C3D
                 if (m_geometries[i].id == INVALID_ID)
                 {
                     geometry->internalId = i;
-                    m_geometries[i].id = i;
-                    internalData = &m_geometries[i];
+                    m_geometries[i].id   = i;
+                    internalData         = &m_geometries[i];
                     break;
                 }
             }
@@ -821,9 +858,9 @@ namespace C3D
         }
 
         // Vertex data
-        internalData->vertexCount = static_cast<u32>(vertexCount);
+        internalData->vertexCount       = static_cast<u32>(vertexCount);
         internalData->vertexElementSize = sizeof(Vertex3D);
-        u64 totalSize = vertexCount * vertexSize;
+        u64 totalSize                   = vertexCount * vertexSize;
 
         if (!m_objectVertexBuffer.Allocate(totalSize, &internalData->vertexBufferOffset))
         {
@@ -840,9 +877,9 @@ namespace C3D
         // Index data, if applicable
         if (indexCount && indices)
         {
-            internalData->indexCount = static_cast<u32>(indexCount);
+            internalData->indexCount       = static_cast<u32>(indexCount);
             internalData->indexElementSize = sizeof(u32);
-            totalSize = indexCount * indexSize;
+            totalSize                      = indexCount * indexSize;
 
             if (!m_objectIndexBuffer.Allocate(totalSize, &internalData->indexBufferOffset))
             {
@@ -900,7 +937,7 @@ namespace C3D
 
             // Clean up data
             std::memset(internalData, 0, sizeof(VulkanGeometryData));
-            internalData->id = INVALID_ID;
+            internalData->id         = INVALID_ID;
             internalData->generation = INVALID_ID;
         }
     }
@@ -937,8 +974,8 @@ namespace C3D
         constexpr u32 maxDescriptorAllocateCount = 1024;
 
         // Get a pointer to our Vulkan specific shader stuff
-        const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
-        vulkanShader->renderPass = dynamic_cast<VulkanRenderPass*>(pass);
+        const auto vulkanShader                    = static_cast<VulkanShader*>(shader->apiSpecificData);
+        vulkanShader->renderPass                   = dynamic_cast<VulkanRenderPass*>(pass);
         vulkanShader->config.maxDescriptorSetCount = maxDescriptorAllocateCount;
 
         vulkanShader->config.stageCount = 0;
@@ -968,8 +1005,8 @@ namespace C3D
             }
 
             // Set the stage and increment the stage count
-            const auto stageIndex = vulkanShader->config.stageCount;
-            vulkanShader->config.stages[stageIndex].stage = stageFlag;
+            const auto stageIndex                            = vulkanShader->config.stageCount;
+            vulkanShader->config.stages[stageIndex].stage    = stageFlag;
             vulkanShader->config.stages[stageIndex].fileName = config.stageFileNames[i].Data();
             vulkanShader->config.stageCount++;
         }
@@ -1008,10 +1045,10 @@ namespace C3D
         }
 
         // TODO: For now, shaders will only ever have these 2 types of descriptor pools
-        vulkanShader->config.poolSizes[0] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                             1024};  // HACK: max number of ubo descriptor sets
-        vulkanShader->config.poolSizes[1] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                             4096};  // HACK: max number of image sampler descriptor sets
+        vulkanShader->config.poolSizes[0] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                              1024 };  // HACK: max number of ubo descriptor sets
+        vulkanShader->config.poolSizes[1] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                              4096 };  // HACK: max number of image sampler descriptor sets
 
         // Global descriptor set config
         if (vulkanShader->globalUniformCount > 0 || vulkanShader->globalUniformSamplerCount > 0)
@@ -1021,10 +1058,10 @@ namespace C3D
             // Global UBO binding is first, if present
             if (vulkanShader->globalUniformCount > 0)
             {
-                u8 bindingIndex = setConfig.bindingCount;
-                setConfig.bindings[bindingIndex].binding = bindingIndex;
+                u8 bindingIndex                                  = setConfig.bindingCount;
+                setConfig.bindings[bindingIndex].binding         = bindingIndex;
                 setConfig.bindings[bindingIndex].descriptorCount = 1;
-                setConfig.bindings[bindingIndex].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                setConfig.bindings[bindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 setConfig.bindings[bindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
                 setConfig.bindingCount++;
             }
@@ -1032,12 +1069,12 @@ namespace C3D
             // Add a binding for samplers if we are using them
             if (vulkanShader->globalUniformSamplerCount > 0)
             {
-                u8 bindingIndex = setConfig.bindingCount;
-                setConfig.bindings[bindingIndex].binding = bindingIndex;
+                u8 bindingIndex                                  = setConfig.bindingCount;
+                setConfig.bindings[bindingIndex].binding         = bindingIndex;
                 setConfig.bindings[bindingIndex].descriptorCount = vulkanShader->globalUniformSamplerCount;
-                setConfig.bindings[bindingIndex].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                setConfig.bindings[bindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 setConfig.bindings[bindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-                setConfig.samplerBindingIndex = bindingIndex;
+                setConfig.samplerBindingIndex               = bindingIndex;
                 setConfig.bindingCount++;
             }
 
@@ -1053,10 +1090,10 @@ namespace C3D
             // Add a binding for UBO if it's used
             if (vulkanShader->instanceUniformCount > 0)
             {
-                u8 bindingIndex = setConfig.bindingCount;
-                setConfig.bindings[bindingIndex].binding = bindingIndex;
+                u8 bindingIndex                                  = setConfig.bindingCount;
+                setConfig.bindings[bindingIndex].binding         = bindingIndex;
                 setConfig.bindings[bindingIndex].descriptorCount = 1;
-                setConfig.bindings[bindingIndex].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                setConfig.bindings[bindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 setConfig.bindings[bindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
                 setConfig.bindingCount++;
             }
@@ -1064,12 +1101,12 @@ namespace C3D
             // Add a binding for samplers if used
             if (vulkanShader->instanceUniformSamplerCount > 0)
             {
-                u8 bindingIndex = setConfig.bindingCount;
-                setConfig.bindings[bindingIndex].binding = bindingIndex;
+                u8 bindingIndex                                  = setConfig.bindingCount;
+                setConfig.bindings[bindingIndex].binding         = bindingIndex;
                 setConfig.bindings[bindingIndex].descriptorCount = vulkanShader->instanceUniformSamplerCount;
-                setConfig.bindings[bindingIndex].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                setConfig.bindings[bindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 setConfig.bindings[bindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-                setConfig.samplerBindingIndex = bindingIndex;
+                setConfig.samplerBindingIndex               = bindingIndex;
                 setConfig.bindingCount++;
             }
 
@@ -1098,7 +1135,7 @@ namespace C3D
         {
             const auto vulkanShader = static_cast<VulkanShader*>(shader.apiSpecificData);
 
-            VkDevice logicalDevice = m_context.device.logicalDevice;
+            VkDevice logicalDevice                   = m_context.device.logicalDevice;
             const VkAllocationCallbacks* vkAllocator = m_context.allocator;
 
             // Cleanup the descriptor set layouts
@@ -1157,9 +1194,9 @@ namespace C3D
 
     bool VulkanRendererPlugin::InitializeShader(Shader* shader)
     {
-        VkDevice logicalDevice = m_context.device.logicalDevice;
+        VkDevice logicalDevice                   = m_context.device.logicalDevice;
         const VkAllocationCallbacks* vkAllocator = m_context.allocator;
-        const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto vulkanShader                  = static_cast<VulkanShader*>(shader->apiSpecificData);
 
         for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
         {
@@ -1177,41 +1214,41 @@ namespace C3D
         static VkFormat t[11];
         if (!types)
         {
-            t[Attribute_Float32] = VK_FORMAT_R32_SFLOAT;
+            t[Attribute_Float32]   = VK_FORMAT_R32_SFLOAT;
             t[Attribute_Float32_2] = VK_FORMAT_R32G32_SFLOAT;
             t[Attribute_Float32_3] = VK_FORMAT_R32G32B32_SFLOAT;
             t[Attribute_Float32_4] = VK_FORMAT_R32G32B32A32_SFLOAT;
-            t[Attribute_Int8] = VK_FORMAT_R8_SINT;
-            t[Attribute_UInt8] = VK_FORMAT_R8_UINT;
-            t[Attribute_Int16] = VK_FORMAT_R16_SINT;
-            t[Attribute_UInt16] = VK_FORMAT_R16_UINT;
-            t[Attribute_Int32] = VK_FORMAT_R32_SINT;
-            t[Attribute_UInt32] = VK_FORMAT_R32_UINT;
-            types = t;
+            t[Attribute_Int8]      = VK_FORMAT_R8_SINT;
+            t[Attribute_UInt8]     = VK_FORMAT_R8_UINT;
+            t[Attribute_Int16]     = VK_FORMAT_R16_SINT;
+            t[Attribute_UInt16]    = VK_FORMAT_R16_UINT;
+            t[Attribute_Int32]     = VK_FORMAT_R32_SINT;
+            t[Attribute_UInt32]    = VK_FORMAT_R32_UINT;
+            types                  = t;
         }
 
         // Process attributes
         const u64 attributeCount = shader->attributes.Size();
-        u32 offset = 0;
+        u32 offset               = 0;
         for (u32 i = 0; i < attributeCount; i++)
         {
             // Setup the new attribute
             VkVertexInputAttributeDescription attribute{};
             attribute.location = i;
-            attribute.binding = 0;
-            attribute.offset = offset;
-            attribute.format = types[shader->attributes[i].type];
+            attribute.binding  = 0;
+            attribute.offset   = offset;
+            attribute.format   = types[shader->attributes[i].type];
 
             vulkanShader->config.attributes[i] = attribute;
             offset += shader->attributes[i].size;
         }
 
         // Create descriptor pool
-        VkDescriptorPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-        poolInfo.poolSizeCount = 2;
-        poolInfo.pPoolSizes = vulkanShader->config.poolSizes;
-        poolInfo.maxSets = vulkanShader->config.maxDescriptorSetCount;
-        poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+        poolInfo.poolSizeCount              = 2;
+        poolInfo.pPoolSizes                 = vulkanShader->config.poolSizes;
+        poolInfo.maxSets                    = vulkanShader->config.maxDescriptorSetCount;
+        poolInfo.flags                      = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
         VkResult result = vkCreateDescriptorPool(logicalDevice, &poolInfo, vkAllocator, &vulkanShader->descriptorPool);
         if (!VulkanUtils::IsSuccess(result))
@@ -1224,9 +1261,9 @@ namespace C3D
         // Create descriptor set layouts
         for (u32 i = 0; i < vulkanShader->config.descriptorSetCount; i++)
         {
-            VkDescriptorSetLayoutCreateInfo layoutInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-            layoutInfo.bindingCount = vulkanShader->config.descriptorSets[i].bindingCount;
-            layoutInfo.pBindings = vulkanShader->config.descriptorSets[i].bindings;
+            VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+            layoutInfo.bindingCount                    = vulkanShader->config.descriptorSets[i].bindingCount;
+            layoutInfo.pBindings                       = vulkanShader->config.descriptorSets[i].bindings;
             result = vkCreateDescriptorSetLayout(logicalDevice, &layoutInfo, vkAllocator,
                                                  &vulkanShader->descriptorSetLayouts[i]);
             if (!VulkanUtils::IsSuccess(result))
@@ -1238,23 +1275,23 @@ namespace C3D
         }
 
         // TODO: This shouldn't be here :(
-        const auto fWidth = static_cast<f32>(m_context.frameBufferWidth);
+        const auto fWidth  = static_cast<f32>(m_context.frameBufferWidth);
         const auto fHeight = static_cast<f32>(m_context.frameBufferHeight);
 
         // Viewport
         VkViewport viewport;
-        viewport.x = 0.0f;
-        viewport.y = fHeight;
-        viewport.width = fWidth;
-        viewport.height = -fHeight;
+        viewport.x        = 0.0f;
+        viewport.y        = fHeight;
+        viewport.width    = fWidth;
+        viewport.height   = -fHeight;
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
         // Scissor
         VkRect2D scissor;
         scissor.offset.x = scissor.offset.y = 0;
-        scissor.extent.width = m_context.frameBufferWidth;
-        scissor.extent.height = m_context.frameBufferHeight;
+        scissor.extent.width                = m_context.frameBufferWidth;
+        scissor.extent.height               = m_context.frameBufferHeight;
 
         VkPipelineShaderStageCreateInfo stageCreateInfos[VULKAN_SHADER_MAX_STAGES] = {};
         for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
@@ -1262,23 +1299,23 @@ namespace C3D
             stageCreateInfos[i] = vulkanShader->stages[i].shaderStageCreateInfo;
         }
 
-        VulkanPipelineConfig config = {};
-        config.renderPass = vulkanShader->renderPass;
-        config.stride = shader->attributeStride;
-        config.attributeCount = static_cast<u32>(shader->attributes.Size());
-        config.attributes = vulkanShader->config.attributes;
+        VulkanPipelineConfig config     = {};
+        config.renderPass               = vulkanShader->renderPass;
+        config.stride                   = shader->attributeStride;
+        config.attributeCount           = static_cast<u32>(shader->attributes.Size());
+        config.attributes               = vulkanShader->config.attributes;
         config.descriptorSetLayoutCount = vulkanShader->config.descriptorSetCount;
-        config.descriptorSetLayouts = vulkanShader->descriptorSetLayouts;
-        config.stageCount = vulkanShader->config.stageCount;
-        config.stages = stageCreateInfos;
-        config.viewport = viewport;
-        config.scissor = scissor;
-        config.cullMode = vulkanShader->config.cullMode;
-        config.isWireFrame = false;
-        config.shaderFlags = shader->flags;
-        config.pushConstantRangeCount = shader->pushConstantRangeCount;
-        config.pushConstantRanges = shader->pushConstantRanges;
-        config.topology = GetVkPrimitiveTopology(vulkanShader->config.topology);
+        config.descriptorSetLayouts     = vulkanShader->descriptorSetLayouts;
+        config.stageCount               = vulkanShader->config.stageCount;
+        config.stages                   = stageCreateInfos;
+        config.viewport                 = viewport;
+        config.scissor                  = scissor;
+        config.cullMode                 = vulkanShader->config.cullMode;
+        config.isWireFrame              = false;
+        config.shaderFlags              = shader->flags;
+        config.pushConstantRangeCount   = shader->pushConstantRangeCount;
+        config.pushConstantRanges       = shader->pushConstantRanges;
+        config.topology                 = GetVkPrimitiveTopology(vulkanShader->config.topology);
 
         const bool pipelineCreateResult = vulkanShader->pipeline.Create(&m_context, config);
         if (!pipelineCreateResult)
@@ -1292,7 +1329,7 @@ namespace C3D
 
         // Make sure the UBO is aligned according to device requirements
         shader->globalUboStride = GetAligned(shader->globalUboSize, shader->requiredUboAlignment);
-        shader->uboStride = GetAligned(shader->uboSize, shader->requiredUboAlignment);
+        shader->uboStride       = GetAligned(shader->uboSize, shader->requiredUboAlignment);
 
         // Uniform buffer
         // TODO: max count should be configurable, or perhaps long term support of buffer resizing
@@ -1320,10 +1357,10 @@ namespace C3D
             vulkanShader->descriptorSetLayouts[DESC_SET_INDEX_GLOBAL],
         };
 
-        VkDescriptorSetAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-        allocInfo.descriptorPool = vulkanShader->descriptorPool;
-        allocInfo.descriptorSetCount = 3;
-        allocInfo.pSetLayouts = globalLayouts;
+        VkDescriptorSetAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+        allocInfo.descriptorPool              = vulkanShader->descriptorPool;
+        allocInfo.descriptorSetCount          = 3;
+        allocInfo.pSetLayouts                 = globalLayouts;
         VK_CHECK(vkAllocateDescriptorSets(logicalDevice, &allocInfo, vulkanShader->globalDescriptorSets));
 
         return true;
@@ -1352,34 +1389,34 @@ namespace C3D
             return false;
         }
 
-        const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto internal                            = static_cast<VulkanShader*>(shader->apiSpecificData);
         const VulkanShaderInstanceState* instanceState = &internal->instanceStates[instanceId];
-        shader->boundUboOffset = static_cast<u32>(instanceState->offset);
+        shader->boundUboOffset                         = static_cast<u32>(instanceState->offset);
         return true;
     }
 
     bool VulkanRendererPlugin::ShaderApplyGlobals(Shader* shader)
     {
         const u32 imageIndex = m_context.imageIndex;
-        const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto internal  = static_cast<VulkanShader*>(shader->apiSpecificData);
 
-        VkCommandBuffer commandBuffer = m_context.graphicsCommandBuffers[imageIndex].handle;
+        VkCommandBuffer commandBuffer    = m_context.graphicsCommandBuffers[imageIndex].handle;
         VkDescriptorSet globalDescriptor = internal->globalDescriptorSets[imageIndex];
 
         // Apply UBO first
         VkDescriptorBufferInfo bufferInfo;
         bufferInfo.buffer = internal->uniformBuffer.handle;
         bufferInfo.offset = shader->globalUboOffset;
-        bufferInfo.range = shader->globalUboStride;
+        bufferInfo.range  = shader->globalUboStride;
 
         // Update descriptor sets
-        VkWriteDescriptorSet uboWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-        uboWrite.dstSet = internal->globalDescriptorSets[imageIndex];
-        uboWrite.dstBinding = 0;
-        uboWrite.dstArrayElement = 0;
-        uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboWrite.descriptorCount = 1;
-        uboWrite.pBufferInfo = &bufferInfo;
+        VkWriteDescriptorSet uboWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+        uboWrite.dstSet               = internal->globalDescriptorSets[imageIndex];
+        uboWrite.dstBinding           = 0;
+        uboWrite.dstArrayElement      = 0;
+        uboWrite.descriptorType       = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboWrite.descriptorCount      = 1;
+        uboWrite.pBufferInfo          = &bufferInfo;
 
         VkWriteDescriptorSet descriptorWrites[2];
         descriptorWrites[0] = uboWrite;
@@ -1408,19 +1445,19 @@ namespace C3D
             return false;
         }
 
-        const u32 imageIndex = m_context.imageIndex;
+        const u32 imageIndex          = m_context.imageIndex;
         VkCommandBuffer commandBuffer = m_context.graphicsCommandBuffers[imageIndex].handle;
 
         // Obtain instance data
         VulkanShaderInstanceState* objectState = &internal->instanceStates[shader->boundInstanceId];
-        VkDescriptorSet objectDescriptorSet = objectState->descriptorSetState.descriptorSets[imageIndex];
+        VkDescriptorSet objectDescriptorSet    = objectState->descriptorSetState.descriptorSets[imageIndex];
 
         // We only update if it is needed
         if (needsUpdate)
         {
             VkWriteDescriptorSet descriptorWrites[2] = {};  // Always a max of 2 descriptor sets
-            u32 descriptorCount = 0;
-            u32 descriptorIndex = 0;
+            u32 descriptorCount                      = 0;
+            u32 descriptorIndex                      = 0;
 
             VkDescriptorBufferInfo bufferInfo;
 
@@ -1434,14 +1471,14 @@ namespace C3D
                 {
                     bufferInfo.buffer = internal->uniformBuffer.handle;
                     bufferInfo.offset = objectState->offset;
-                    bufferInfo.range = shader->uboStride;
+                    bufferInfo.range  = shader->uboStride;
 
-                    VkWriteDescriptorSet uboDescriptor = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-                    uboDescriptor.dstSet = objectDescriptorSet;
-                    uboDescriptor.dstBinding = descriptorIndex;
-                    uboDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    uboDescriptor.descriptorCount = 1;
-                    uboDescriptor.pBufferInfo = &bufferInfo;
+                    VkWriteDescriptorSet uboDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+                    uboDescriptor.dstSet               = objectDescriptorSet;
+                    uboDescriptor.dstBinding           = descriptorIndex;
+                    uboDescriptor.descriptorType       = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                    uboDescriptor.descriptorCount      = 1;
+                    uboDescriptor.pBufferInfo          = &bufferInfo;
 
                     descriptorWrites[descriptorCount] = uboDescriptor;
                     descriptorCount++;
@@ -1465,7 +1502,7 @@ namespace C3D
                 {
                     // TODO: only update in the list if actually needing an update
                     const TextureMap* map = internal->instanceStates[shader->boundInstanceId].instanceTextureMaps[i];
-                    const Texture* t = map->texture;
+                    const Texture* t      = map->texture;
 
                     // Ensure the texture is valid.
                     if (t->generation == INVALID_ID)
@@ -1489,10 +1526,10 @@ namespace C3D
                         }
                     }
 
-                    const auto internalData = static_cast<VulkanTextureData*>(t->internalData);
+                    const auto internalData   = static_cast<VulkanTextureData*>(t->internalData);
                     imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                    imageInfos[i].imageView = internalData->image.view;
-                    imageInfos[i].sampler = static_cast<VkSampler>(map->internalData);
+                    imageInfos[i].imageView   = internalData->image.view;
+                    imageInfos[i].sampler     = static_cast<VkSampler>(map->internalData);
 
                     // TODO: change up descriptor state to handle this properly.
                     // Sync frame generation if not using a default texture.
@@ -1500,12 +1537,12 @@ namespace C3D
                     updateSamplerCount++;
                 }
 
-                VkWriteDescriptorSet samplerDescriptor = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-                samplerDescriptor.dstSet = objectDescriptorSet;
-                samplerDescriptor.dstBinding = descriptorIndex;
-                samplerDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                samplerDescriptor.descriptorCount = updateSamplerCount;
-                samplerDescriptor.pImageInfo = imageInfos;
+                VkWriteDescriptorSet samplerDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+                samplerDescriptor.dstSet               = objectDescriptorSet;
+                samplerDescriptor.dstBinding           = descriptorIndex;
+                samplerDescriptor.descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                samplerDescriptor.descriptorCount      = updateSamplerCount;
+                samplerDescriptor.pImageInfo           = imageInfos;
 
                 descriptorWrites[descriptorCount] = samplerDescriptor;
                 descriptorCount++;
@@ -1567,7 +1604,7 @@ namespace C3D
             if (internal->instanceStates[i].id == INVALID_ID)
             {
                 internal->instanceStates[i].id = i;
-                *outInstanceId = i;
+                *outInstanceId                 = i;
                 break;
             }
         }
@@ -1620,7 +1657,7 @@ namespace C3D
             for (u32 j = 0; j < 3; j++)
             {
                 setState->descriptorStates[i].generations[j] = INVALID_ID_U8;
-                setState->descriptorStates[i].ids[j] = INVALID_ID;
+                setState->descriptorStates[i].ids[j]         = INVALID_ID;
             }
         }
 
@@ -1631,12 +1668,12 @@ namespace C3D
             internal->descriptorSetLayouts[DESC_SET_INDEX_INSTANCE],
         };
 
-        VkDescriptorSetAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-        allocInfo.descriptorPool = internal->descriptorPool;
-        allocInfo.descriptorSetCount = 3;
-        allocInfo.pSetLayouts = layouts;
-        const VkResult result = vkAllocateDescriptorSets(m_context.device.logicalDevice, &allocInfo,
-                                                         instanceState->descriptorSetState.descriptorSets);
+        VkDescriptorSetAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+        allocInfo.descriptorPool              = internal->descriptorPool;
+        allocInfo.descriptorSetCount          = 3;
+        allocInfo.pSetLayouts                 = layouts;
+        const VkResult result                 = vkAllocateDescriptorSets(m_context.device.logicalDevice, &allocInfo,
+                                                                         instanceState->descriptorSetState.descriptorSets);
         if (result != VK_SUCCESS)
         {
             m_logger.Error("AcquireShaderInstanceResources() - Error allocating descriptor sets in shader: '{}'.",
@@ -1648,7 +1685,7 @@ namespace C3D
 
     bool VulkanRendererPlugin::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId)
     {
-        const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto internal                      = static_cast<VulkanShader*>(shader->apiSpecificData);
         VulkanShaderInstanceState* instanceState = &internal->instanceStates[instanceId];
 
         // Wait for any pending operations using the descriptor set to finish
@@ -1674,16 +1711,19 @@ namespace C3D
             instanceState->instanceTextureMaps = nullptr;
         }
 
-        internal->uniformBuffer.Free(shader->uboStride, instanceState->offset);
+        if (shader->uboStride != 0)
+        {
+            internal->uniformBuffer.Free(shader->uboStride, instanceState->offset);
+        }
         instanceState->offset = INVALID_ID;
-        instanceState->id = INVALID_ID;
+        instanceState->id     = INVALID_ID;
 
         return true;
     }
 
     bool VulkanRendererPlugin::AcquireTextureMapResources(TextureMap* map)
     {
-        VkSamplerCreateInfo samplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 
         samplerInfo.minFilter = ConvertFilterType("min", map->minifyFilter);
         samplerInfo.magFilter = ConvertFilterType("mag", map->magnifyFilter);
@@ -1693,16 +1733,16 @@ namespace C3D
         samplerInfo.addressModeW = ConvertRepeatType("W", map->repeatW);
 
         // TODO: Configurable
-        samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = 16;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        samplerInfo.anisotropyEnable        = VK_TRUE;
+        samplerInfo.maxAnisotropy           = 16;
+        samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 0.0f;
+        samplerInfo.compareEnable           = VK_FALSE;
+        samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias              = 0.0f;
+        samplerInfo.minLod                  = 0.0f;
+        samplerInfo.maxLod                  = 0.0f;
 
         const VkResult result = vkCreateSampler(m_context.device.logicalDevice, &samplerInfo, m_context.allocator,
                                                 reinterpret_cast<VkSampler*>(&map->internalData));
@@ -1712,6 +1752,9 @@ namespace C3D
                            VulkanUtils::ResultString(result));
             return false;
         }
+
+        const auto samplerName = map->texture->name + "_texture_map_sampler";
+        VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SAMPLER, map->internalData, samplerName);
 
         return true;
     }
@@ -1843,9 +1886,9 @@ namespace C3D
             return false;
         }
 
-        shaderStage->createInfo = {VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+        shaderStage->createInfo          = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
         shaderStage->createInfo.codeSize = res.size;
-        shaderStage->createInfo.pCode = reinterpret_cast<u32*>(res.data);
+        shaderStage->createInfo.pCode    = reinterpret_cast<u32*>(res.data);
 
         VK_CHECK(vkCreateShaderModule(m_context.device.logicalDevice, &shaderStage->createInfo, m_context.allocator,
                                       &shaderStage->handle));
@@ -1854,10 +1897,10 @@ namespace C3D
         Resources.Unload(res);
 
         // Shader stage info
-        shaderStage->shaderStageCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
-        shaderStage->shaderStageCreateInfo.stage = config.stage;
+        shaderStage->shaderStageCreateInfo        = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+        shaderStage->shaderStageCreateInfo.stage  = config.stage;
         shaderStage->shaderStageCreateInfo.module = shaderStage->handle;
-        shaderStage->shaderStageCreateInfo.pName = "main";  // TODO: make this configurable?
+        shaderStage->shaderStageCreateInfo.pName  = "main";  // TODO: make this configurable?
 
         return true;
     }

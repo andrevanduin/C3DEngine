@@ -3,7 +3,7 @@
 #
 cmake_minimum_required (VERSION 3.20)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd26812")
 set(CMAKE_TOOLCHAIN_FILE "E:/Dev/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
@@ -17,6 +17,7 @@ add_compile_definitions(C3D_PLATFORM_WINDOWS)
 add_compile_definitions(C3D_MEMORY_METRICS)
 # add_compile_definitions(C3D_MEMORY_METRICS_POINTERS)
 add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)
+add_compile_definitions(C3D_VULKAN_USE_CUSTOM_ALLOCATOR)
 
 # Include sub-projects.
 add_subdirectory ("tools")

@@ -23,12 +23,12 @@ namespace C3D
     void Texture::Set(TextureType _type, const char* _name, u32 _width, u32 _height, u8 _channelCount,
                       TextureFlagBits _flags, void* _internalData /*  = nullptr*/)
     {
-        type = _type;
-        name = _name;
-        width = _width;
-        height = _height;
+        type         = _type;
+        name         = _name;
+        width        = _width;
+        height       = _height;
         channelCount = _channelCount;
-        flags = _flags;
+        flags        = _flags;
         internalData = _internalData;
     }
 

@@ -179,7 +179,7 @@ namespace C3D
                 return false;
             }
 
-            t->width = width;
+            t->width  = width;
             t->height = height;
 
             if (!t->IsWrapped() && regenerateInternalData)
@@ -250,8 +250,8 @@ namespace C3D
         // this is done in code to eliminate dependencies
         m_logger.Trace("Create default texture...");
         constexpr u32 textureDimensions = 256;
-        constexpr u32 channels = 4;
-        constexpr u32 pixelCount = textureDimensions * textureDimensions;
+        constexpr u32 channels          = 4;
+        constexpr u32 pixelCount        = textureDimensions * textureDimensions;
 
         const auto pixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(pixelCount) * channels);
         std::memset(pixels, 255, sizeof(u8) * pixelCount * channels);
@@ -260,7 +260,7 @@ namespace C3D
         {
             for (u64 col = 0; col < textureDimensions; col++)
             {
-                const u64 index = (row * textureDimensions) + col;
+                const u64 index        = (row * textureDimensions) + col;
                 const u64 indexChannel = index * channels;
                 if (row % 2)
                 {
@@ -318,7 +318,7 @@ namespace C3D
         {
             for (u64 col = 0; col < 16; col++)
             {
-                const u64 index = (row * 16) + col;
+                const u64 index    = (row * 16) + col;
                 const u64 indexBpp = index * channels;
 
                 // Set blue, z-axis by default and alpha
@@ -356,9 +356,9 @@ namespace C3D
         static u32 LOADING_TEXTURE_ID = 0;
 
         LoadingTexture loadingTexture;
-        loadingTexture.id = LOADING_TEXTURE_ID++;
-        loadingTexture.resourceName = name;
-        loadingTexture.outTexture = texture;
+        loadingTexture.id                = LOADING_TEXTURE_ID++;
+        loadingTexture.resourceName      = name;
+        loadingTexture.outTexture        = texture;
         loadingTexture.currentGeneration = texture->generation;
 
         u32 loadingTextureIndex = INVALID_ID;
@@ -367,7 +367,7 @@ namespace C3D
             if (m_loadingTextures[i].id == INVALID_ID)
             {
                 m_loadingTextures[i] = loadingTexture;
-                loadingTextureIndex = i;
+                loadingTextureIndex  = i;
                 break;
             }
         }
@@ -382,8 +382,8 @@ namespace C3D
 
         JobInfo info;
         info.entryPoint = [this, loadingTextureIndex]() { return LoadJobEntryPoint(loadingTextureIndex); };
-        info.onSuccess = [this, loadingTextureIndex]() { LoadJobSuccess(loadingTextureIndex); };
-        info.onFailure = [this, loadingTextureIndex]() {
+        info.onSuccess  = [this, loadingTextureIndex]() { LoadJobSuccess(loadingTextureIndex); };
+        info.onFailure  = [this, loadingTextureIndex]() {
             const auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
 
             m_logger.Error("LoadJobFailure() - Failed to load texture '{}'", loadingTexture.resourceName);
@@ -400,9 +400,9 @@ namespace C3D
                                          const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames,
                                          Texture* texture) const
     {
-        constexpr ImageResourceParams params{false};
+        constexpr ImageResourceParams params{ false };
 
-        u8* pixels = nullptr;
+        u8* pixels    = nullptr;
         u64 imageSize = 0;
 
         for (auto i = 0; i < 6; i++)
@@ -424,12 +424,12 @@ namespace C3D
 
             if (!pixels)
             {
-                texture->width = res.data.width;
-                texture->height = res.data.height;
+                texture->width        = res.data.width;
+                texture->height       = res.data.height;
                 texture->channelCount = res.data.channelCount;
-                texture->flags = 0;
-                texture->generation = 0;
-                texture->name = name;
+                texture->flags        = 0;
+                texture->generation   = 0;
+                texture->name         = name;
 
                 imageSize = static_cast<u64>(texture->width) * texture->height * texture->channelCount;
                 pixels =
@@ -470,10 +470,9 @@ namespace C3D
 
         // Zero out the memory for the texture
         texture->name.Clear();
-        std::memset(texture, 0, sizeof(Texture));
 
         // Invalidate the id and generation
-        texture->id = INVALID_ID;
+        texture->id         = INVALID_ID;
         texture->generation = INVALID_ID;
     }
 
@@ -506,10 +505,12 @@ namespace C3D
             // If reference count is 0 and we want to auto release, we destroy the texture
             if (ref.referenceCount == 0 && ref.autoRelease)
             {
+                // Take a copy of the name since it will be cleared by DestroyTexture()
+                auto nameCopy = ref.texture.name;
+                // Destroy the texture
                 DestroyTexture(&ref.texture);
-
-                // Reset the reference
-                ref.autoRelease = false;
+                // Delete the reference
+                m_registeredTextures.Delete(nameCopy);
                 m_logger.Trace(
                     "ProcessTextureReference() - Released texture '{}'. Texture unloaded because refCount = 0 and "
                     "autoRelease = true",
@@ -587,7 +588,7 @@ namespace C3D
 
     bool TextureSystem::LoadJobEntryPoint(u32 loadingTextureIndex)
     {
-        constexpr ImageResourceParams resourceParams{true};
+        constexpr ImageResourceParams resourceParams{ true };
 
         auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
         const auto result =
@@ -597,11 +598,11 @@ namespace C3D
             const ImageResourceData& resourceData = loadingTexture.imageResource.data;
 
             // Use our temporary texture to load into
-            loadingTexture.tempTexture.width = resourceData.width;
-            loadingTexture.tempTexture.height = resourceData.height;
+            loadingTexture.tempTexture.width        = resourceData.width;
+            loadingTexture.tempTexture.height       = resourceData.height;
             loadingTexture.tempTexture.channelCount = resourceData.channelCount;
 
-            loadingTexture.currentGeneration = loadingTexture.outTexture->generation;
+            loadingTexture.currentGeneration      = loadingTexture.outTexture->generation;
             loadingTexture.outTexture->generation = INVALID_ID;
 
             const u64 totalSize = static_cast<u64>(loadingTexture.tempTexture.width) *
@@ -619,7 +620,7 @@ namespace C3D
             }
 
             // Take a copy of the name
-            loadingTexture.tempTexture.name = loadingTexture.resourceName.Data();
+            loadingTexture.tempTexture.name       = loadingTexture.resourceName.Data();
             loadingTexture.tempTexture.generation = INVALID_ID;
             loadingTexture.tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
         }
@@ -630,7 +631,7 @@ namespace C3D
     void TextureSystem::LoadJobSuccess(u32 loadingTextureIndex)
     {
         // TODO: This still handles the GPU upload. This can't be jobified before our renderer supports multiThreading.
-        auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
+        auto& loadingTexture                  = m_loadingTextures[loadingTextureIndex];
         const ImageResourceData& resourceData = loadingTexture.imageResource.data;
 
         // Acquire internal texture resources and upload to GPU.

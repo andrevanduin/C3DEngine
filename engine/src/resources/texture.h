@@ -1,6 +1,6 @@
 
 #pragma once
-#include "containers/cstring.h"
+#include "containers/string.h"
 #include "core/defines.h"
 
 namespace C3D
@@ -9,25 +9,25 @@ namespace C3D
 
     enum class TextureUse
     {
-        Unknown = 0x0,
-        Diffuse = 0x1,
+        Unknown  = 0x0,
+        Diffuse  = 0x1,
         Specular = 0x2,
-        Normal = 0x3,
-        CubeMap = 0x4,
+        Normal   = 0x3,
+        CubeMap  = 0x4,
     };
 
     enum class TextureFilter
     {
         ModeNearest = 0x0,
-        ModeLinear = 0x1,
+        ModeLinear  = 0x1,
     };
 
     enum class TextureRepeat
     {
-        Repeat = 0x1,
+        Repeat         = 0x1,
         MirroredRepeat = 0x2,
-        ClampToEdge = 0x3,
-        ClampToBorder = 0x4,
+        ClampToEdge    = 0x3,
+        ClampToBorder  = 0x4,
     };
 
     enum TextureFlag
@@ -89,17 +89,17 @@ namespace C3D
         [[nodiscard]] bool IsWritable() const;
         [[nodiscard]] bool IsWrapped() const;
 
-        u32 id = INVALID_ID;
+        u32 id    = INVALID_ID;
         u32 width = 0, height = 0;
 
         TextureType type;
 
-        u8 channelCount = 0;
+        u8 channelCount       = 0;
         TextureFlagBits flags = TextureFlag::None;
 
-        CString<TEXTURE_NAME_MAX_LENGTH> name;
+        String name;
 
-        u32 generation = INVALID_ID;
+        u32 generation     = INVALID_ID;
         void* internalData = nullptr;
     };
 

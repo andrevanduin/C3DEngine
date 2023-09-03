@@ -2,6 +2,7 @@
 #include "dynamic_array_tests.h"
 
 #include <containers/dynamic_array.h>
+#include <containers/string.h>
 #include <core/defines.h>
 #include <core/logger.h>
 #include <core/metrics/metrics.h>
@@ -163,7 +164,7 @@ u8 DynamicArrayShouldAllocateLargeBlocks()
     ExpectShouldBe(0, array.Size());
     ExpectShouldBe(sizeof(C3D::Vertex3D) * 32768, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
-    constexpr auto element = C3D::Vertex3D{vec3(0), vec3(0), vec2(1), vec4(1), vec4(4)};
+    constexpr auto element = C3D::Vertex3D{ vec3(0), vec3(0), vec2(1), vec4(1), vec4(4) };
     array.PushBack(element);
 
     ExpectShouldBe(element.position, array[0].position);
@@ -190,7 +191,7 @@ u8 DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize()
     ExpectShouldBe(0, array.Size());
     ExpectShouldBe(sizeof(C3D::Vertex3D) * 4, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
-    constexpr auto element = C3D::Vertex3D{vec3(0), vec3(0), vec2(1), vec4(1), vec4(4)};
+    constexpr auto element = C3D::Vertex3D{ vec3(0), vec3(0), vec2(1), vec4(1), vec4(4) };
     array.PushBack(element);
 
     ExpectShouldBe(element.position, array[0].position);
@@ -289,7 +290,7 @@ struct TestElement
     }
 
     TestElement(const TestElement&) = delete;
-    TestElement(TestElement&&) = delete;
+    TestElement(TestElement&&)      = delete;
 
     TestElement& operator=(const TestElement& other)
     {
@@ -421,7 +422,7 @@ u8 DynamicArrayEraseByIndexLast()
 
 u8 DynamicArrayShouldInsert()
 {
-    C3D::DynamicArray array = {1, 2, 4, 5};
+    C3D::DynamicArray array = { 1, 2, 4, 5 };
     array.Insert(array.begin() + 2, 3);
 
     for (u64 i = 0; i < array.Size(); i++)
@@ -434,8 +435,8 @@ u8 DynamicArrayShouldInsert()
 
 u8 DynamicArrayShouldInsertRange()
 {
-    C3D::DynamicArray array = {1, 6};
-    C3D::DynamicArray range = {2, 3, 4, 5};
+    C3D::DynamicArray array = { 1, 6 };
+    C3D::DynamicArray range = { 2, 3, 4, 5 };
 
     array.Insert(array.begin() + 1, range.begin(), range.end());
 
@@ -449,7 +450,7 @@ u8 DynamicArrayShouldInsertRange()
 
 u8 DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled()
 {
-    C3D::DynamicArray array = {0, 1, 2, 3};
+    C3D::DynamicArray array = { 0, 1, 2, 3 };
     array.Reserve(32);
 
     for (u64 i = 0; i < array.Size(); i++)
@@ -524,6 +525,30 @@ u8 DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize()
     return true;
 }
 
+u8 DynamicArrayShouldRemove()
+{
+    C3D::DynamicArray<C3D::String> array;
+    array.Reserve(10);
+
+    array.PushBack("Test");
+    array.PushBack("Test2");
+    array.PushBack("Test3");
+    array.PushBack("Test4");
+    array.PushBack("Test5");
+
+    ExpectShouldBe(5, array.Size());
+    ExpectToBeTrue(array.Remove("Test3"));
+
+    ExpectShouldBe("Test", array[0]);
+    ExpectShouldBe("Test2", array[1]);
+    ExpectShouldBe("Test4", array[2]);
+    ExpectShouldBe("Test5", array[3]);
+
+    ExpectShouldBe(4, array.Size());
+
+    return true;
+}
+
 void DynamicArray::RegisterTests(TestManager* manager)
 {
     manager->StartType("DynamicArray");
@@ -569,4 +594,5 @@ void DynamicArray::RegisterTests(TestManager* manager)
     manager->Register(
         DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize,
         "Dynamic array should not do anything when resize is called with a smaller size then current capacity");
+    manager->Register(DynamicArrayShouldRemove, "Dynamic array should be able to remove element by value");
 }

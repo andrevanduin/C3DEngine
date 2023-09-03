@@ -14,7 +14,7 @@ namespace C3D
     bool Skybox::Create(const SystemManager* pSystemsManager, const SkyboxConfig& config)
     {
         m_pSystemsManager = pSystemsManager;
-        m_config = config;
+        m_config          = config;
         return true;
     }
 
@@ -36,6 +36,9 @@ namespace C3D
 
     bool Skybox::Load()
     {
+        // Acquire our skybox texture
+        cubeMap.texture = Textures.AcquireCube(m_config.cubeMapName.Data(), true);
+
         // Acquire resources for our cube map
         if (!Renderer.AcquireTextureMapResources(&cubeMap))
         {
@@ -43,17 +46,14 @@ namespace C3D
             return false;
         }
 
-        // Acquire our skybox texture
-        cubeMap.texture = Textures.AcquireCube(m_config.cubeMapName.Data(), true);
-
         // Build the cube geometry based on the config
-        g = Geometric.AcquireFromConfig(m_skyboxGeometryConfig, true);
+        g           = Geometric.AcquireFromConfig(m_skyboxGeometryConfig, true);
         frameNumber = INVALID_ID_U64;
 
         // Get our builtin skybox shader
         // TODO: Allow configurable shader here
-        const auto shader = Shaders.Get("Shader.Builtin.Skybox");
-        TextureMap* maps[1] = {&cubeMap};
+        const auto shader   = Shaders.Get("Shader.Builtin.Skybox");
+        TextureMap* maps[1] = { &cubeMap };
 
         // Acquire our shader instance resources
         if (!Renderer.AcquireShaderInstanceResources(shader, maps, &instanceId))
@@ -77,6 +77,11 @@ namespace C3D
         frameNumber = INVALID_ID_U64;
 
         Geometric.DisposeConfig(m_skyboxGeometryConfig);
+        if (!m_config.cubeMapName.Empty())
+        {
+            Textures.Release(m_config.cubeMapName.Data());
+            m_config.cubeMapName.Clear();
+        }
 
         Geometric.Release(g);
 

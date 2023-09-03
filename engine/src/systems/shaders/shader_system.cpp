@@ -20,7 +20,7 @@ namespace C3D
             return false;
         }
 
-        m_config = config;
+        m_config          = config;
         m_currentShaderId = INVALID_ID;
 
         m_shaders.Create(config.maxShaderCount);
@@ -46,7 +46,7 @@ namespace C3D
 
         Shader shader;
         shader.state = ShaderState::NotCreated;
-        shader.name = config.name;
+        shader.name  = config.name;
 
         // Setup our dynamic arrays
         shader.globalTextureMaps.Reserve(m_config.maxGlobalTextures + 1);
@@ -141,7 +141,7 @@ namespace C3D
         // Only perform the use command if the shader id is different from the current
         if (m_currentShaderId != shaderId)
         {
-            Shader* shader = GetById(shaderId);
+            Shader* shader    = GetById(shaderId);
             m_currentShaderId = shaderId;
             if (!Renderer.UseShader(shader))
             {
@@ -182,7 +182,7 @@ namespace C3D
             m_logger.Error("SetUniform() - Called with no Shader in use.");
             return false;
         }
-        Shader* shader = &m_shaders.GetByIndex(m_currentShaderId);
+        Shader* shader  = &m_shaders.GetByIndex(m_currentShaderId);
         const u16 index = GetUniformIndex(shader, name);
         if (index == INVALID_ID_U16)
         {
@@ -194,7 +194,7 @@ namespace C3D
 
     bool ShaderSystem::SetUniformByIndex(const u16 index, const void* value)
     {
-        Shader* shader = &m_shaders.GetByIndex(m_currentShaderId);
+        Shader* shader               = &m_shaders.GetByIndex(m_currentShaderId);
         const ShaderUniform* uniform = &shader->uniforms.GetByIndex(index);
         if (shader->boundScope != uniform->scope)
         {
@@ -224,7 +224,7 @@ namespace C3D
 
     bool ShaderSystem::BindInstance(const u32 instanceId)
     {
-        Shader* shader = &m_shaders.GetByIndex(m_currentShaderId);
+        Shader* shader          = &m_shaders.GetByIndex(m_currentShaderId);
         shader->boundInstanceId = instanceId;
         return Renderer.ShaderBindInstance(shader, instanceId);
     }
@@ -307,17 +307,17 @@ namespace C3D
             TextureMap defaultMap(TextureUse::Unknown, TextureFilter::ModeLinear, TextureFilter::ModeLinear,
                                   TextureRepeat::Repeat);
 
+            // Allocate a pointer assign the texture and push into global texture maps.
+            // NOTE: This allocation is only done for global texture maps.
+            auto* map    = Memory.Allocate<TextureMap>(MemoryType::RenderSystem);
+            *map         = defaultMap;
+            map->texture = Textures.GetDefault();
+
             if (!Renderer.AcquireTextureMapResources(&defaultMap))
             {
                 m_logger.Error("AddSampler() - Failed to acquire global texture map resources.");
                 return false;
             }
-
-            // Allocate a pointer assign the texture and push into global texture maps.
-            // NOTE: This allocation is only done for global texture maps.
-            auto* map = Memory.Allocate<TextureMap>(MemoryType::RenderSystem);
-            *map = defaultMap;
-            map->texture = Textures.GetDefault();
 
             shader->globalTextureMaps.PushBack(map);
         }
@@ -370,7 +370,7 @@ namespace C3D
         ShaderUniform entry{};
         entry.index = uniformCount;
         entry.scope = scope;
-        entry.type = type;
+        entry.type  = type;
         // If we are adding a sampler just use the provided location otherwise the location is equal to the index
         entry.location = isSampler ? setLocation : entry.index;
 
@@ -378,15 +378,15 @@ namespace C3D
         if (scope != ShaderScope::Local)
         {
             entry.setIndex = static_cast<u8>(scope);
-            entry.offset = isSampler ? 0 : isGlobal ? shader->globalUboSize : shader->uboSize;
-            entry.size = isSampler ? 0 : size;
+            entry.offset   = isSampler ? 0 : isGlobal ? shader->globalUboSize : shader->uboSize;
+            entry.size     = isSampler ? 0 : size;
         }
         else
         {
             entry.setIndex = INVALID_ID_U8;
-            const Range r = GetAlignedRange(shader->pushConstantSize, size, 4);
-            entry.offset = r.offset;
-            entry.size = static_cast<u16>(r.size);
+            const Range r  = GetAlignedRange(shader->pushConstantSize, size, 4);
+            entry.offset   = r.offset;
+            entry.size     = static_cast<u16>(r.size);
 
             // Keep track in the shader for use in initialization
             shader->pushConstantRanges[shader->pushConstantRangeCount] = r;

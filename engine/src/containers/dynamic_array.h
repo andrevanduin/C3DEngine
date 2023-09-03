@@ -15,15 +15,15 @@ namespace C3D
 
     public:
         constexpr static auto default_capacity = 4;
-        constexpr static auto resize_factor = 1.5f;
+        constexpr static auto resize_factor    = 1.5f;
 
-        using value_type = T;
-        using reference = value_type&;
+        using value_type      = T;
+        using reference       = value_type&;
         using difference_type = ptrdiff_t;
-        using pointer = value_type*;
-        using const_pointer = const value_type*;
-        using iterator = Iterator<T>;
-        using const_iterator = ConstIterator<T>;
+        using pointer         = value_type*;
+        using const_pointer   = const value_type*;
+        using iterator        = Iterator<T>;
+        using const_iterator  = ConstIterator<T>;
 
         DynamicArray(Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
@@ -39,7 +39,7 @@ namespace C3D
         {
             other.m_capacity = 0;
             // Take all data from other and null out other so it does not call Free() twice on the sa
-            other.m_size = 0;
+            other.m_size     = 0;
             other.m_elements = nullptr;
         }
 
@@ -54,14 +54,14 @@ namespace C3D
 
         DynamicArray& operator=(DynamicArray&& other) noexcept
         {
-            m_elements = other.GetData();
+            m_elements  = other.GetData();
             m_allocator = other.m_allocator;
-            m_size = other.Size();
-            m_capacity = other.Capacity();
+            m_size      = other.Size();
+            m_capacity  = other.Capacity();
 
             // Null out "other" to ensure we don't double free
             other.m_capacity = 0;
-            other.m_size = 0;
+            other.m_size     = 0;
             other.m_elements = nullptr;
 
             return *this;
@@ -349,7 +349,7 @@ namespace C3D
             // Then we copy over the elements from the provided pointer into our newly allocated memory
             std::copy_n(elements, count, m_elements);
 
-            m_size = count;
+            m_size     = count;
             m_capacity = count;
         }
 
@@ -374,7 +374,7 @@ namespace C3D
                 std::copy_n(other.begin(), other.m_size, begin());
             }
 
-            m_size = other.m_size;
+            m_size     = other.m_size;
             m_capacity = other.m_size;
         }
 
@@ -397,11 +397,11 @@ namespace C3D
         void Reset()
         {
             m_elements = nullptr;
-            m_size = 0;
+            m_size     = 0;
             m_capacity = 0;
         }
 
-        /*
+        /**
          * @brief Removes the element at the provided iterator from the array.
          * If you remove an element all elements to the right of it will be copied over
          * and moved to the left one spot effectively shrinking the size by 1 but keeping the same capacity.
@@ -425,7 +425,7 @@ namespace C3D
             m_size--;
         }
 
-        /*
+        /**
          * @brief Removes the element at the provided index from the array.
          * If you remove an element all elements to the right of it will be copied over
          * and moved to the left one spot effectively shrinking the size by 1 but keeping the same capacity.
@@ -447,7 +447,36 @@ namespace C3D
             m_size--;
         }
 
-        /*
+        /** @brief Removes the first matching element with item from the dynamic array.
+         * If you want to remove all matching items in the array use RemoveAll() instead.
+         *
+         * @return True if item was found (and removed), false otherwise
+         */
+        bool Remove(const T& item)
+        {
+            for (u64 i = 0; i < m_size; i++)
+            {
+                if (m_elements[i] == item)
+                {
+                    // Deconstruct the found element
+                    m_elements[i].~T();
+                    // We need to move all elements after the erased element one spot to the left
+                    // in order for the dynamic array to be contiguous again
+                    // We start moving from 1 element to the right of our erased element
+                    const auto moveStart = begin() + i + 1;
+                    // We move them one spot to the left (starting at our erased element)
+                    const auto dest = begin() + i;
+                    std::move(moveStart, end(), dest);
+
+                    // Decrease the size by one for the removed element
+                    m_size--;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
          * @brief Set a pointer to an allocator (must have a base type of BaseAllocator)
          * This method must be used if the allocator could not be set during initialization
          * because the global memory system was not yet setup for example.
@@ -520,7 +549,7 @@ namespace C3D
         {
             // Allocate memory for the new capacity
             T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, capacity);
-            u64 newSize = 0;
+            u64 newSize    = 0;
 
             // If there exists an element pointer
             if (m_elements && m_size > 0)
@@ -537,7 +566,7 @@ namespace C3D
             // Set our new element pointer, capacity and size
             m_elements = newElements;
             m_capacity = capacity;
-            m_size = newSize;
+            m_size     = newSize;
         }
 
         void Free()
@@ -551,7 +580,7 @@ namespace C3D
                 // Reset everything to initial values
                 m_elements = nullptr;
                 m_capacity = 0;
-                m_size = 0;
+                m_size     = 0;
             }
         }
 

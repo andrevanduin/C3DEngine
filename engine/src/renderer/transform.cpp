@@ -1,140 +1,170 @@
 
 #include "transform.h"
 
+#include "math/c3d_math.h"
+
 namespace C3D
 {
-	Transform::Transform()
-		:  m_position(0), m_scale(1), m_rotation(1.0f, 0, 0, 0), m_local(1.0f)
-	{}
+    Transform::Transform() : m_position(0), m_scale(1), m_rotation(1.0f, 0, 0, 0), m_local(1.0f) {}
 
-	Transform::Transform(const vec3& position)
-		: m_position(position), m_scale(1), m_rotation(1.0f, 0, 0, 0), m_local(1.0f), m_needsUpdate(true)
-	{}
+    Transform::Transform(const vec3& position)
+        : m_position(position), m_scale(1), m_rotation(1.0f, 0, 0, 0), m_local(1.0f), m_needsUpdate(true)
+    {}
 
-	Transform::Transform(const quat& rotation)
-		: m_position(0), m_scale(1), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
-	{
-	}
+    Transform::Transform(const quat& rotation)
+        : m_position(0), m_scale(1), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
+    {}
 
-	Transform::Transform(const vec3& position, const quat& rotation)
-		: m_position(position), m_scale(1), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
-	{
+    Transform::Transform(const vec3& position, const quat& rotation)
+        : m_position(position), m_scale(1), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
+    {}
 
-	}
+    Transform::Transform(const vec3& position, const quat& rotation, const vec3& scale)
+        : m_position(position), m_scale(scale), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
+    {}
 
-	Transform::Transform(const vec3& position, const quat& rotation, const vec3& scale)
-		: m_position(position), m_scale(scale), m_rotation(rotation), m_local(1.0f), m_needsUpdate(true)
-	{
-	}
+    Transform* Transform::GetParent() const { return m_parent; }
 
-	Transform* Transform::GetParent() const
-	{
-		return m_parent;
-	}
+    void Transform::SetParent(Transform* parent)
+    {
+        m_parent = parent;
+        m_needsUpdate = true;
+    }
 
-	void Transform::SetParent(Transform* parent)
-	{
-		m_parent = parent;
-		m_needsUpdate = true;
-	}
+    vec3 Transform::GetPosition() const { return m_position; }
 
-	vec3 Transform::GetPosition() const
-	{
-		return m_position;
-	}
+    void Transform::SetPosition(const vec3& position)
+    {
+        m_position = position;
+        m_needsUpdate = true;
+    }
 
-	void Transform::SetPosition(const vec3& position)
-	{
-		m_position = position;
-		m_needsUpdate = true;
-	}
+    void Transform::Translate(const vec3& translation)
+    {
+        m_position += translation;
+        m_needsUpdate = true;
+    }
 
-	void Transform::Translate(const vec3& translation)
-	{
-		m_position += translation;
-		m_needsUpdate = true;
-	}
+    quat Transform::GetRotation() const { return m_rotation; }
 
-	quat Transform::GetRotation() const
-	{
-		return m_rotation;
-	}
+    void Transform::SetRotation(const quat& rotation)
+    {
+        m_rotation = rotation;
+        m_needsUpdate = true;
+    }
 
-	void Transform::SetRotation(const quat& rotation)
-	{
-		m_rotation = rotation;
-		m_needsUpdate = true;
-	}
+    void Transform::SetEulerRotation(const vec3& rotation)
+    {
+        // TODO: Check this conversion ???
+        m_rotation.x = DegToRad(rotation.x);
+        m_rotation.y = DegToRad(rotation.y);
+        m_rotation.z = DegToRad(rotation.z);
+        m_rotation.w = 1.0;
+    }
 
-	void Transform::Rotate(const quat& rotation)
-	{
-		m_rotation *= rotation;
-		m_needsUpdate = true;
-	}
+    void Transform::Rotate(const quat& rotation)
+    {
+        m_rotation *= rotation;
+        m_needsUpdate = true;
+    }
 
-	vec3 Transform::GetScale() const
-	{
-		return m_scale;
-	}
+    vec3 Transform::GetScale() const { return m_scale; }
 
-	void Transform::SetScale(const vec3& scale)
-	{
-		m_scale = scale;
-		m_needsUpdate = true;
-	}
+    void Transform::SetScale(const vec3& scale)
+    {
+        m_scale = scale;
+        m_needsUpdate = true;
+    }
 
-	void Transform::Scale(const vec3& scale)
-	{
-		m_scale *= scale;
-		m_needsUpdate = true;
-	}
+    void Transform::Scale(const vec3& scale)
+    {
+        m_scale *= scale;
+        m_needsUpdate = true;
+    }
 
-	void Transform::SetPositionRotation(const vec3& position, const quat& rotation)
-	{
-		m_position = position;
-		m_rotation = rotation;
-		m_needsUpdate = true;
-	}
+    void Transform::SetPositionRotation(const vec3& position, const quat& rotation)
+    {
+        m_position = position;
+        m_rotation = rotation;
+        m_needsUpdate = true;
+    }
 
-	void Transform::SetPositionRotationScale(const vec3& position, const quat& rotation, const vec3& scale)
-	{
-		m_position = position;
-		m_rotation = rotation;
-		m_scale = scale;
-		m_needsUpdate = true;
-	}
+    void Transform::SetPositionRotation(const vec3& position, const vec3& rotation)
+    {
+        m_position = position;
+        m_rotation = glm::quat(rotation);
+        m_needsUpdate = true;
+    }
 
-	void Transform::TranslateRotate(const vec3& translation, const quat& rotation)
-	{
-		m_position += translation;
-		m_rotation *= rotation;
-		m_needsUpdate = true;
-	}
+    void Transform::SetPositionRotationScale(const vec3& position, const quat& rotation, const vec3& scale)
+    {
+        m_position = position;
+        m_rotation = rotation;
+        m_scale = scale;
+        m_needsUpdate = true;
+    }
 
-	mat4 Transform::GetLocal()
-	{
-		if (m_needsUpdate)
-		{
-			const mat4 t = translate(m_position);
-			const mat4 r = mat4_cast(m_rotation);
-			const mat4 s = scale(m_scale);
+    void Transform::SetPositionRotationScale(const vec3& position, const vec3& rotation, const vec3& scale)
+    {
+        m_position = position;
+        m_rotation = glm::quat(rotation);
+        m_scale = scale;
+        m_needsUpdate = true;
+    }
 
-			m_needsUpdate = false;
-			m_local = t * r * s;
-			return m_local;
-		}
+    void Transform::SetPositionScale(const vec3& position, const vec3& scale)
+    {
+        m_position = position;
+        m_scale = scale;
+        m_needsUpdate = true;
+    }
 
-		return m_local;
-	}
+    void Transform::SetRotationScale(const quat& rotation, const vec3& scale)
+    {
+        m_rotation = rotation;
+        m_scale = scale;
+        m_needsUpdate = true;
+    }
 
-	mat4 Transform::GetWorld()
-	{
-		const mat4 local = GetLocal();
-		if (m_parent)
-		{
-			const mat4 parent = m_parent->GetWorld();
-			return parent * local;
-		}
-		return local;
-	}
-}
+    void Transform::SetRotationScale(const vec3& rotation, const vec3& scale)
+    {
+        m_rotation.x = DegToRad(rotation.x);
+        m_rotation = glm::quat(rotation);
+        m_scale = scale;
+        m_needsUpdate = true;
+    }
+
+    void Transform::TranslateRotate(const vec3& translation, const quat& rotation)
+    {
+        m_position += translation;
+        m_rotation *= rotation;
+        m_needsUpdate = true;
+    }
+
+    mat4 Transform::GetLocal() const
+    {
+        if (m_needsUpdate)
+        {
+            const mat4 t = translate(m_position);
+            const mat4 r = mat4_cast(m_rotation);
+            const mat4 s = scale(m_scale);
+
+            m_needsUpdate = false;
+            m_local = t * r * s;
+            return m_local;
+        }
+
+        return m_local;
+    }
+
+    mat4 Transform::GetWorld() const
+    {
+        const mat4 local = GetLocal();
+        if (m_parent)
+        {
+            const mat4 parent = m_parent->GetWorld();
+            return parent * local;
+        }
+        return local;
+    }
+}  // namespace C3D

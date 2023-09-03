@@ -12,27 +12,112 @@ namespace C3D
 {
     static u32 global_scene_id = 0;
 
-    SimpleScene::SimpleScene() : m_logger("SIMPLE_SCENE") {}
+    SimpleScene::SimpleScene() : m_logger("SIMPLE_SCENE"), m_name("NO_NAME"), m_description("NO_DESCRIPTION") {}
 
-    bool SimpleScene::Create(const SystemManager* pSystemsManager)
+    bool SimpleScene::Create(const SystemManager* pSystemsManager) { return Create(pSystemsManager, {}); }
+
+    bool SimpleScene::Create(const SystemManager* pSystemsManager, const SimpleSceneConfig& config)
     {
         m_pSystemsManager = pSystemsManager;
 
         m_enabled = false;
-        m_state = SceneState::Uninitialized;
-        m_id = global_scene_id++;
+        m_state   = SceneState::Uninitialized;
+        m_id      = global_scene_id++;
 
         m_skybox = nullptr;
-        m_directionalLight = nullptr;
 
-        // TODO: Process config
+        m_meshes.Create(1024);
 
+        m_config = config;
         return true;
     }
 
     bool SimpleScene::Initialize()
     {
-        // TODO: Process configuration and setup hierarchy
+        if (!m_config.name.Empty())
+        {
+            m_name = m_config.name;
+        }
+
+        if (!m_config.description.Empty())
+        {
+            m_description = m_config.description;
+        }
+
+        if (!m_config.skyboxConfig.name.Empty() && !m_config.skyboxConfig.cubemapName.Empty())
+        {
+            SkyboxConfig config = { m_config.skyboxConfig.cubemapName };
+            m_skybox            = Memory.New<Skybox>(MemoryType::Scene);
+            if (!m_skybox->Create(m_pSystemsManager, config))
+            {
+                m_logger.Error("Create() - Failed to create skybox from config");
+                Memory.Delete(MemoryType::Scene, m_skybox);
+                return false;
+            }
+
+            AddSkybox(m_config.skyboxConfig.name, m_skybox);
+        }
+
+        if (!m_config.directionalLightConfig.name.Empty())
+        {
+            const auto dirLight = DirectionalLight(m_config.directionalLightConfig);
+            m_directionalLight  = m_config.directionalLightConfig.name;
+
+            if (!Lights.AddDirectionalLight(dirLight))
+            {
+                m_logger.Error("Create() - Failed to add directional light from config");
+                return false;
+            }
+        }
+
+        if (!m_config.pointLights.Empty())
+        {
+            for (auto& pointLightConfig : m_config.pointLights)
+            {
+                AddPointLight(PointLight(pointLightConfig));
+            }
+        }
+
+        if (!m_config.meshes.Empty())
+        {
+            for (auto& meshConfig : m_config.meshes)
+            {
+                if (meshConfig.name.Empty() || meshConfig.resourceName.Empty())
+                {
+                    m_logger.Warn("Initialize() - Mesh with empty name or empty resource name provided. Skipping");
+                    continue;
+                }
+
+                auto config = MeshConfig(meshConfig);
+                Mesh mesh(config);
+                if (!mesh.Create(m_pSystemsManager, config))
+                {
+                    m_logger.Error("Initialize() - Failed to create mesh: '{}'. Skipping", meshConfig.name);
+                    continue;
+                }
+                mesh.transform = meshConfig.transform;
+                m_meshes.Set(meshConfig.name, mesh);
+            }
+        }
+
+        // Handle mesh hierarchy
+        for (auto& mesh : m_meshes)
+        {
+            if (!mesh.config.parentName.Empty())
+            {
+                try
+                {
+                    auto& parent = GetMesh(mesh.config.parentName);
+                    mesh.transform.SetParent(&parent.transform);
+                } catch (const std::invalid_argument& exc)
+                {
+                    m_logger.Warn(
+                        "Initialize() - Mesh: '{}' was configured to have mesh named: '{}' as a parent. But the parent "
+                        "does not exist in this scene",
+                        mesh.config.name, mesh.config.parentName);
+                }
+            }
+        }
 
         if (m_skybox)
         {
@@ -44,9 +129,9 @@ namespace C3D
             }
         }
 
-        for (auto mesh : m_meshes)
+        for (auto& mesh : m_meshes)
         {
-            if (!mesh->Initialize())
+            if (!mesh.Initialize())
             {
                 m_logger.Error("Initialize() - Failed to initialize mesh");
                 return false;
@@ -72,11 +157,11 @@ namespace C3D
             }
         }
 
-        for (auto mesh : m_meshes)
+        for (auto& mesh : m_meshes)
         {
-            if (!mesh->Load())
+            if (!mesh.Load())
             {
-                m_logger.Error("Initialize() - Failed to initialize mesh");
+                m_logger.Error("Load() - Failed to load mesh");
                 return false;
             }
         }
@@ -85,43 +170,29 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::Unload()
+    bool SimpleScene::Unload(bool immediate /* = false*/)
     {
         m_state = SceneState::Unloading;
-
-        if (m_skybox)
+        if (immediate)
         {
-            if (!m_skybox->Unload())
-            {
-                m_logger.Error("Unload() - Failed to unload skybox");
-            }
+            UnloadInternal();
         }
-
-        for (auto mesh : m_meshes)
-        {
-            if (mesh->generation == INVALID_ID_U8) continue;
-
-            if (!mesh->Unload())
-            {
-                m_logger.Error("Unload() - Failed to unload mesh");
-            }
-        }
-
-        if (m_directionalLight)
-        {
-            RemoveDirectionalLight(m_directionalLight);
-        }
-
-        for (auto light : m_pointLights)
-        {
-            RemovePointLight(light);
-        }
-
-        m_state = SceneState::Unloaded;
         return true;
     }
 
-    bool SimpleScene::Update(FrameData& frameData) { return true; }
+    bool SimpleScene::Update(FrameData& frameData)
+    {
+        if (m_state == SceneState::Unloading)
+        {
+            UnloadInternal();
+            return true;
+        }
+
+        if (m_state != SceneState::Loaded) return true;
+
+        // TODO: Update the scene
+        return true;
+    }
 
     bool SimpleScene::PopulateRenderPacket(FrameData& frameData, RenderPacket& packet)
     {
@@ -135,7 +206,7 @@ namespace C3D
                 const auto view = viewPacket.view;
                 if (view->type == RenderViewKnownType::Skybox)
                 {
-                    SkyboxPacketData skyboxData = {m_skybox};
+                    SkyboxPacketData skyboxData = { m_skybox };
                     if (!Views.BuildPacket(view, frameData.frameAllocator, &skyboxData, &viewPacket))
                     {
                         m_logger.Error("PopulateRenderPacket() - Failed to populate render packet with skybox data");
@@ -156,17 +227,17 @@ namespace C3D
                 m_worldGeometries.SetAllocator(frameData.frameAllocator);
                 m_worldGeometries.Reserve(512);
 
-                for (const auto mesh : m_meshes)
+                for (const auto& mesh : m_meshes)
                 {
                     // auto meshSet = false;
 
-                    if (mesh->generation != INVALID_ID_U8)
+                    if (mesh.generation != INVALID_ID_U8)
                     {
-                        mat4 model = mesh->transform.GetWorld();
+                        mat4 model = mesh.transform.GetWorld();
 
-                        for (const auto geometry : mesh->geometries)
+                        for (const auto geometry : mesh.geometries)
                         {
-                            m_worldGeometries.EmplaceBack(model, geometry, mesh->uniqueId);
+                            m_worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
                             frameData.drawnMeshCount++;
 
                             /*
@@ -238,15 +309,15 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::AddDirectionalLight(DirectionalLight* light)
+    bool SimpleScene::AddDirectionalLight(const String& name, DirectionalLight& light)
     {
-        if (!light)
+        if (name.Empty())
         {
-            m_logger.Error("AddDirectionalLight() - Invalid light provided");
+            m_logger.Error("AddDirectionalLight() - Empty name provided");
             return false;
         }
 
-        if (m_directionalLight)
+        if (!m_directionalLight.Empty())
         {
             // TODO: Do resource unloading when required
             if (!Lights.RemoveDirectionalLight(m_directionalLight))
@@ -256,78 +327,73 @@ namespace C3D
             }
         }
 
-        m_directionalLight = light;
+        m_directionalLight = name;
         return Lights.AddDirectionalLight(light);
     }
 
-    bool SimpleScene::RemoveDirectionalLight(DirectionalLight* light)
+    bool SimpleScene::RemoveDirectionalLight(const String& name)
     {
-        if (!light)
+        if (name.Empty())
         {
-            m_logger.Error("RemoveDirectionalLight() - Invalid light provided");
+            m_logger.Error("RemoveDirectionalLight() - Empty name provided");
             return false;
         }
 
-        if (m_directionalLight == light)
+        if (m_directionalLight)
         {
-            m_directionalLight = nullptr;
-            return Lights.RemoveDirectionalLight(light);
+            const auto result  = Lights.RemoveDirectionalLight(m_directionalLight);
+            m_directionalLight = "";
+            return result;
         }
 
         m_logger.Warn("RemoveDirectionalLight() - Could not remove since provided light is not part of this scene");
         return false;
     }
 
-    bool SimpleScene::AddPointLight(PointLight* light)
+    bool SimpleScene::AddPointLight(const PointLight& light)
     {
-        if (!light)
-        {
-            m_logger.Error("AddPointLight() - Invalid light provided");
-            return false;
-        }
-
         if (!Lights.AddPointLight(light))
         {
             m_logger.Error("AddPointLight() - Failed to add point light to lighting system");
             return false;
         }
-
-        m_pointLights.PushBack(light);
+        m_pointLights.PushBack(light.name);
         return true;
     }
 
-    bool SimpleScene::RemovePointLight(PointLight* light)
+    bool SimpleScene::RemovePointLight(const String& name)
     {
-        if (!light)
+        auto result = Lights.RemovePointLight(name);
+        if (result)
         {
-            m_logger.Error("RemovePointLight() - Invalid light provided");
-            return false;
+            m_pointLights.Remove(name);
+            return true;
         }
 
-        for (auto l : m_pointLights)
-        {
-            if (l == light)
-            {
-                return Lights.RemovePointLight(light);
-            }
-        }
-
-        m_logger.Warn("RemovePointLight() - Failed to remove light that is not part of the scene");
+        m_logger.Error("RemovePointLight() - Failed to remove Point Light");
         return false;
     }
 
-    bool SimpleScene::AddMesh(Mesh* mesh)
+    PointLight* SimpleScene::GetPointLight(const String& name) { return Lights.GetPointLight(name); }
+
+    bool SimpleScene::AddMesh(const String& name, Mesh& mesh)
     {
-        if (!mesh)
+        if (name.Empty())
         {
-            m_logger.Error("AddMesh() - Invalid mesh provided");
+            m_logger.Error("AddMesh() - Empty name provided");
+            return false;
+        }
+
+        if (m_meshes.Has(name))
+        {
+            m_logger.Error("AddMesh() - A mesh with the name '{}' already exists", name);
             return false;
         }
 
         if (m_state >= SceneState::Initialized)
         {
-            // The scene has already been initialized so we need to initialize the skybox now
-            if (!mesh->Initialize())
+            // The scene has already been initialized so we need to initialize the mesh now
+            if (!mesh.Initialize())
             {
                 m_logger.Error("AddMesh() - Failed to initialize mesh");
                 return false;
@@ -336,21 +402,51 @@ namespace C3D
 
         if (m_state >= SceneState::Loading)
         {
-            if (!mesh->Load())
+            if (!mesh.Load())
             {
                 m_logger.Error("AddMesh() - Failed to load mesh");
                 return false;
             }
         }
 
-        m_meshes.PushBack(mesh);
+        m_meshes.Set(name, mesh);
         return true;
     }
 
-    bool SimpleScene::RemoveMesh(Mesh* mesh) { return true; }
-
-    bool SimpleScene::AddSkybox(Skybox* skybox)
+    bool SimpleScene::RemoveMesh(const String& name)
     {
+        if (name.Empty())
+        {
+            m_logger.Error("RemoveMesh() - Empty name provided");
+            return false;
+        }
+
+        if (!m_meshes.Has(name))
+        {
+            m_logger.Error("RemoveMesh() - Unknown name provided");
+            return false;
+        }
+
+        auto& mesh = m_meshes.Get(name);
+        if (!mesh.Unload())
+        {
+            m_logger.Error("RemoveMesh() - Failed to unload mesh");
+            return false;
+        }
+
+        return true;
+    }
+
+    Mesh& SimpleScene::GetMesh(const String& name) { return m_meshes.Get(name); }
+
+    bool SimpleScene::AddSkybox(const String& name, Skybox* skybox)
+    {
+        if (name.Empty())
+        {
+            m_logger.Error("AddSkybox() - Empty name provided");
+            return false;
+        }
+
         if (!skybox)
         {
             m_logger.Error("AddSkybox() - Invalid skybox provided");
@@ -384,25 +480,65 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::RemoveSkybox(Skybox* skybox) { return true; }
-
-    bool SimpleScene::Destroy()
+    bool SimpleScene::RemoveSkybox(const String& name)
     {
-        if (m_state == SceneState::Loaded)
+        if (name.Empty())
         {
-            if (!Unload())
+            m_logger.Error("RemoveSkybox() - Empty name provided");
+            return false;
+        }
+
+        if (m_skybox)
+        {
+            m_skybox = nullptr;
+            return true;
+        }
+
+        m_logger.Warn("RemoveSkybox() - Could not remove since scene does not have a skybox");
+        return false;
+    }
+
+    void SimpleScene::UnloadInternal()
+    {
+        if (m_skybox)
+        {
+            if (!m_skybox->Unload())
             {
-                m_logger.Error("Destroy() - Failed to unload the scene before destroying");
-                return false;
+                m_logger.Error("Unload() - Failed to unload skybox");
+            }
+
+            m_skybox->Destroy();
+        }
+
+        for (auto& mesh : m_meshes)
+        {
+            if (mesh.generation == INVALID_ID_U8) continue;
+
+            if (!mesh.Unload())
+            {
+                m_logger.Error("Unload() - Failed to unload mesh");
             }
         }
 
+        if (m_directionalLight)
+        {
+            Lights.RemoveDirectionalLight(m_directionalLight);
+        }
+
+        for (auto& light : m_pointLights)
+        {
+            Lights.RemovePointLight(light);
+        }
+
+        m_state = SceneState::Unloaded;
+
         m_pointLights.Destroy();
         m_meshes.Destroy();
-        m_directionalLight = nullptr;
-        m_skybox = nullptr;
+
+        m_directionalLight = "";
+        m_skybox           = nullptr;
+        m_enabled          = false;
 
         m_state = SceneState::Uninitialized;
-        return true;
     }
 }  // namespace C3D

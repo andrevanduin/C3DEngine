@@ -1,12 +1,14 @@
 
 #pragma once
 #include "containers/dynamic_array.h"
+#include "containers/hash_map.h"
 #include "core/defines.h"
 #include "renderer/render_view.h"
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
 #include "resources/geometry.h"
 #include "resources/mesh.h"
+#include "simple_scene_config.h"
 
 namespace C3D
 {
@@ -44,6 +46,7 @@ namespace C3D
          * @return True if successful, false otherwise
          */
         bool Create(const SystemManager* pSystemsManager);
+        bool Create(const SystemManager* pSystemsManager, const SimpleSceneConfig& config);
 
         /**
          * @brief Initializes the scene. Processes configuration and sets up the hierarchy
@@ -61,12 +64,15 @@ namespace C3D
         bool Load();
 
         /**
-         * @brief Unloads the scene. Deallocates the resources for the scene.
-         * After calling this method the scene is in an unloaded state ready to be destroyed.
+         * @brief Marks the scene to be unloaded. Will start unloading as soon as possible.
+         *
+         * @param immediate Boolean specifying if the unload should immediatly happen
+         * Can have unforseen consequences so this flag should only be set to true when you have no other options.
+         * For example on application shutdown.
          *
          * @return True if successful, false otherwise
          */
-        bool Unload();
+        bool Unload(bool immediate = false);
 
         /**
          * @brief Updates the scene.
@@ -85,41 +91,44 @@ namespace C3D
          */
         bool PopulateRenderPacket(FrameData& frameData, RenderPacket& packet);
 
-        bool AddDirectionalLight(DirectionalLight* light);
-        bool RemoveDirectionalLight(DirectionalLight* light);
+        bool AddDirectionalLight(const String& name, DirectionalLight& light);
+        bool RemoveDirectionalLight(const String& name);
 
-        bool AddPointLight(PointLight* light);
-        bool RemovePointLight(PointLight* light);
+        bool AddPointLight(const PointLight& light);
+        bool RemovePointLight(const String& name);
+        PointLight* GetPointLight(const String& name);
 
-        bool AddMesh(Mesh* mesh);
-        bool RemoveMesh(Mesh* mesh);
+        bool AddMesh(const String& name, Mesh& mesh);
+        bool RemoveMesh(const String& name);
+        Mesh& GetMesh(const String& name);
 
-        bool AddSkybox(Skybox* skybox);
-        bool RemoveSkybox(Skybox* skybox);
-
-        /**
-         * @brief Destroys the given scene. Performs an unload first if the scene is loaded
-         *
-         * @return True if successful, false otherwise
-         */
-        bool Destroy();
+        bool AddSkybox(const String& name, Skybox* skybox);
+        bool RemoveSkybox(const String& name);
 
         [[nodiscard]] u32 GetId() const { return m_id; }
         [[nodiscard]] SceneState GetState() const { return m_state; }
         [[nodiscard]] bool IsEnabled() const { return m_enabled; }
 
     private:
+        /** @brief Unloads the scene. Deallocates the resources for the scene.
+         * After calling this method the scene is in an unloaded state ready to be destroyed.*/
+        void UnloadInternal();
+
         LoggerInstance<16> m_logger;
 
-        u32 m_id = INVALID_ID;
+        u32 m_id           = INVALID_ID;
         SceneState m_state = SceneState::Uninitialized;
-        bool m_enabled = false;
+        bool m_enabled     = false;
 
-        DirectionalLight* m_directionalLight = nullptr;
+        SimpleSceneConfig m_config;
+        String m_name;
+        String m_description;
+
         Skybox* m_skybox = nullptr;
 
-        DynamicArray<PointLight*> m_pointLights;
-        DynamicArray<Mesh*> m_meshes;
+        String m_directionalLight;
+        DynamicArray<String> m_pointLights;
+        HashMap<String, Mesh> m_meshes;
 
         DynamicArray<GeometryRenderData, LinearAllocator> m_worldGeometries;
 

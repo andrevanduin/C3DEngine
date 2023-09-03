@@ -4,7 +4,7 @@
 #include <core/frame_data.h>
 #include <math/frustum.h>
 #include <resources/mesh.h>
-#include <resources/simple_scene.h>
+#include <resources/scene/simple_scene.h>
 #include <resources/ui_text.h>
 #include <systems/lights/light_system.h>
 
@@ -22,16 +22,7 @@ struct GameState final : C3D::ApplicationState
     // TEMP
     C3D::SimpleScene simpleScene;
 
-    C3D::Skybox skybox;
-
-    C3D::Mesh meshes[10];
-    C3D::Mesh* carMesh = nullptr;
-    C3D::Mesh* sponzaMesh = nullptr;
-
-    C3D::DirectionalLight dirLight;
-    C3D::PointLight pLights[3];
-
-    bool modelsLoaded = false;
+    C3D::PointLight* pLights[4];
 
     C3D::UIMesh uiMeshes[10];
     C3D::UIText testText;

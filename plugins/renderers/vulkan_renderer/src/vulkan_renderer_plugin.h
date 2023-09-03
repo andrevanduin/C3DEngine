@@ -20,10 +20,10 @@ namespace C3D
         VulkanRendererPlugin();
 
         VulkanRendererPlugin(const VulkanRendererPlugin& other) = delete;
-        VulkanRendererPlugin(VulkanRendererPlugin&& other) = delete;
+        VulkanRendererPlugin(VulkanRendererPlugin&& other)      = delete;
 
         VulkanRendererPlugin& operator=(const VulkanRendererPlugin& other) = delete;
-        VulkanRendererPlugin& operator=(VulkanRendererPlugin&& other) = delete;
+        VulkanRendererPlugin& operator=(VulkanRendererPlugin&& other)      = delete;
 
         ~VulkanRendererPlugin() override = default;
 

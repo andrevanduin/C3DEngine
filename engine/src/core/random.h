@@ -2,13 +2,13 @@
 #pragma once
 #include <random>
 
-#include "containers/dynamic_array.h"
 #include "containers/array.h"
+#include "containers/dynamic_array.h"
 
 namespace C3D
 {
-	class __declspec(dllexport) Random
-	{
+    class C3D_API Random
+    {
     public:
         explicit Random(Array<u32, 8> seedData = GenerateSeedData())
         {
@@ -16,18 +16,30 @@ namespace C3D
             m_generator.seed(seedSeq);
         }
 
-        template <typename T>
-        [[nodiscard]] T Generate(const T low, const T high)
+        [[nodiscard]] int Generate(const int low, const int high)
         {
             std::uniform_int_distribution distribution(low, high);
             return distribution(m_generator);
         }
 
-        template <typename T>
-        DynamicArray<T> Generate(int amount, const T low, const T high)
+        DynamicArray<int> Generate(int amount, const int low, const int high)
         {
             std::uniform_int_distribution distribution(low, high);
-            DynamicArray<T> values(amount);
+            DynamicArray<int> values(amount);
+            std::generate(values.begin(), values.end(), [&] { return distribution(m_generator); });
+            return values;
+        }
+
+        [[nodiscard]] float Generate(const float low, const float high)
+        {
+            std::uniform_real_distribution distribution(low, high);
+            return distribution(m_generator);
+        }
+
+        DynamicArray<float> Generate(int amount, const float low, const float high)
+        {
+            std::uniform_real_distribution distribution(low, high);
+            DynamicArray<float> values(amount);
             std::generate(values.begin(), values.end(), [&] { return distribution(m_generator); });
             return values;
         }
@@ -42,5 +54,5 @@ namespace C3D
             std::generate(randomData.begin(), randomData.end(), std::ref(randomSource));
             return randomData;
         }
-	};
-}
+    };
+}  // namespace C3D

@@ -3,6 +3,7 @@
 #include <array>
 
 #include "containers/hash_map.h"
+#include "containers/string.h"
 #include "core/defines.h"
 #include "core/logger.h"
 #include "resources/loaders/image_loader.h"
@@ -11,11 +12,11 @@
 
 namespace C3D
 {
-    constexpr auto DEFAULT_TEXTURE_NAME = "default";
-    constexpr auto DEFAULT_DIFFUSE_TEXTURE_NAME = "defaultDiffuse";
+    constexpr auto DEFAULT_TEXTURE_NAME          = "default";
+    constexpr auto DEFAULT_DIFFUSE_TEXTURE_NAME  = "defaultDiffuse";
     constexpr auto DEFAULT_SPECULAR_TEXTURE_NAME = "defaultSpecular";
-    constexpr auto DEFAULT_NORMAL_TEXTURE_NAME = "defaultNormal";
-    constexpr auto MAX_LOADING_TEXTURES = 128;
+    constexpr auto DEFAULT_NORMAL_TEXTURE_NAME   = "defaultNormal";
+    constexpr auto MAX_LOADING_TEXTURES          = 128;
 
     struct TextureSystemConfig
     {
@@ -95,7 +96,7 @@ namespace C3D
         Texture m_defaultSpecularTexture;
         Texture m_defaultNormalTexture;
 
-        HashMap<CString<TEXTURE_NAME_MAX_LENGTH>, TextureReference> m_registeredTextures;
+        HashMap<String, TextureReference> m_registeredTextures;
 
         Array<LoadingTexture, MAX_LOADING_TEXTURES> m_loadingTextures;
     };

@@ -10,10 +10,12 @@ namespace C3D
 {
     Mesh::Mesh() : m_logger("MESH") {}
 
-    bool Mesh::Create(const SystemManager* pSystemsManager, const MeshConfig& config)
+    Mesh::Mesh(const MeshConfig& cfg) : m_logger("MESH"), config(cfg) {}
+
+    bool Mesh::Create(const SystemManager* pSystemsManager, const MeshConfig& cfg)
     {
         m_pSystemsManager = pSystemsManager;
-        m_config = config;
+        config = cfg;
         generation = INVALID_ID_U8;
 
         return true;
@@ -21,9 +23,9 @@ namespace C3D
 
     bool Mesh::Initialize()
     {
-        if (m_config.resourceName) return true;
+        if (config.resourceName) return true;
 
-        const auto geometryCount = m_config.geometryConfigs.Size();
+        const auto geometryCount = config.geometryConfigs.Size();
         if (geometryCount == 0) return false;
 
         // Reserve enough space for our geometry pointers in advance
@@ -34,15 +36,15 @@ namespace C3D
 
     bool Mesh::Load()
     {
-        if (m_config.resourceName)
+        if (config.resourceName)
         {
             return LoadFromResource();
         }
 
-        for (auto& config : m_config.geometryConfigs)
+        for (auto& gConfig : config.geometryConfigs)
         {
-            geometries.PushBack(Geometric.AcquireFromConfig(config, true));
-            Geometric.DisposeConfig(config);
+            geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
+            Geometric.DisposeConfig(gConfig);
         }
 
         generation = 0;
@@ -81,7 +83,7 @@ namespace C3D
         generation = INVALID_ID_U8;
 
         JobInfo info;
-        info.entryPoint = [this]() { return Resources.Load(m_config.resourceName, m_resource); };
+        info.entryPoint = [this]() { return Resources.Load(config.resourceName, m_resource); };
         info.onSuccess = [this]() { LoadJobSuccess(); };
         info.onFailure = [this]() { LoadJobFailure(); };
 
@@ -105,7 +107,7 @@ namespace C3D
         uniqueId = Identifier::GetNewId(this);
 
         clock.Update();
-        m_logger.Info("LoadJobSuccess() - Successfully loaded: '{}' in {:.4f} ms", m_config.resourceName,
+        m_logger.Info("LoadJobSuccess() - Successfully loaded: '{}' in {:.4f} ms", config.resourceName,
                       clock.GetElapsedMs());
         clock.Start();
 
@@ -117,9 +119,7 @@ namespace C3D
 
     void Mesh::LoadJobFailure()
     {
-        // const auto meshParams = static_cast<MeshLoadParams*>(data);
-
-        m_logger.Error("LoadJobFailure() - Failed to load: '{}'", m_config.resourceName);
+        m_logger.Error("LoadJobFailure() - Failed to load: '{}'", config.resourceName);
 
         Resources.Unload(m_resource);
     }

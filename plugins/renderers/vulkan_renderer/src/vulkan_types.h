@@ -78,6 +78,16 @@ namespace C3D
         bool recreatingSwapChain;
         bool renderFlagChanged;
 
+#if defined(_DEBUG)
+        /** @brief Function pointer to set debug object names. */
+        PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT;
+        /** @brief Function pointer to set debug object tag data. */
+        PFN_vkSetDebugUtilsObjectTagEXT pfnSetDebugUtilsObjectTagEXT;
+        /** @brief Function pointer to set the start of a debug label for a cmd. */
+        PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
+        /** @brief Function pointer to set the end of a debug label for a cmd. */
+        PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
+#endif
         [[nodiscard]] i32 FindMemoryIndex(const u32 typeFilter, const u32 propertyFlags) const
         {
             VkPhysicalDeviceMemoryProperties memoryProperties;

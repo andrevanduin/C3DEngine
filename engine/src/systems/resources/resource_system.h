@@ -28,9 +28,13 @@ namespace C3D
 
         template <typename Type>
         C3D_API bool Load(const char* name, Type& resource);
+        template <typename Type>
+        C3D_API bool Load(const String& name, Type& resource);
 
         template <typename Type, typename Params>
         C3D_API bool Load(const char* name, Type& resource, const Params& params);
+        template <typename Type, typename Params>
+        C3D_API bool Load(const String& name, Type& resource, const Params& params);
 
         template <typename Type>
         C3D_API void Unload(Type& resource) const;
@@ -73,6 +77,12 @@ namespace C3D
         return false;
     }
 
+    template <typename Type>
+    bool ResourceSystem::Load(const String& name, Type& resource)
+    {
+        return Load(name.Data(), resource);
+    }
+
     template <typename Type, typename Params>
     bool ResourceSystem::Load(const char* name, Type& resource, const Params& params)
     {
@@ -94,6 +104,12 @@ namespace C3D
         resource.loaderId = INVALID_ID;
         m_logger.Error("Load() No loader for type of resource at '{}' was found", name);
         return false;
+    }
+
+    template <typename Type, typename Params>
+    bool ResourceSystem::Load(const String& name, Type& resource, const Params& params)
+    {
+        return Load(name.Data(), resource, params);
     }
 
     template <typename Type>

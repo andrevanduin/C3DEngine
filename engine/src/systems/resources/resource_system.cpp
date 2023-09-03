@@ -10,6 +10,7 @@
 #include "resources/loaders/material_loader.h"
 #include "resources/loaders/mesh_loader.h"
 #include "resources/loaders/shader_loader.h"
+#include "resources/loaders/simple_scene_loader.h"
 #include "resources/loaders/text_loader.h"
 
 namespace C3D
@@ -26,6 +27,7 @@ namespace C3D
         m_loaderTypes[ToUnderlying(ResourceType::Shader)] = "Shader";
         m_loaderTypes[ToUnderlying(ResourceType::BitmapFont)] = "BitmapFont";
         m_loaderTypes[ToUnderlying(ResourceType::SystemFont)] = "SystemFont";
+        m_loaderTypes[ToUnderlying(ResourceType::SimpleScene)] = "SimpleScene";
         m_loaderTypes[ToUnderlying(ResourceType::Custom)] = "Custom";
     }
 
@@ -52,9 +54,11 @@ namespace C3D
         const auto meshLoader = Memory.New<ResourceLoader<MeshResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto bitmapFontLoader =
             Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
+        const auto simpleSceneLoader =
+            Memory.New<ResourceLoader<SimpleSceneConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
 
-        for (IResourceLoader* loaders[7] = {textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader,
-                                            meshLoader, bitmapFontLoader};
+        for (IResourceLoader* loaders[8] = {textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader,
+                                            meshLoader, bitmapFontLoader, simpleSceneLoader};
              const auto loader : loaders)
         {
             if (!RegisterLoader(loader))
@@ -110,7 +114,7 @@ namespace C3D
 
         newLoader->id = static_cast<u32>(m_registeredLoaders.Size());
         m_registeredLoaders.PushBack(newLoader);
-        m_logger.Trace("{}Loader registered", m_loaderTypes[ToUnderlying(newLoader->type)]);
+        m_logger.Info("{}Loader registered", m_loaderTypes[ToUnderlying(newLoader->type)]);
         return true;
     }
 
