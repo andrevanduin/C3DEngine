@@ -7,105 +7,130 @@ namespace C3D
     bool LightSystem::Init()
     {
         // NOTE: Perform some kind of config/init here?
-        m_logger.Info("Init() - Successfull");
+        m_pointLights.Create(128);
         m_initialized = true;
+        m_logger.Info("Init() - Successfull");
         return true;
     }
 
     void LightSystem::Shutdown()
     {
         // NOTE: Perform some kind of cleanup here?
-        m_logger.Info("Shutdown() - Successfull");
+        m_pointLights.Destroy();
         m_initialized = false;
+        m_logger.Info("Shutdown() - Successfull");
     }
 
-    bool LightSystem::AddDirectionalLight(DirectionalLight* light)
+    bool LightSystem::AddDirectionalLight(const DirectionalLight& light)
     {
-        if (!light)
+        if (light.name.Empty())
         {
-            m_logger.Error("AddDirectionalLight() - Failed to add DirectionalLight since the pointer is not valid");
+            m_logger.Error("AddDirectionalLight() - Failed to add DirectionalLight since the name is invalid");
             return false;
         }
-
         m_directionalLight = light;
         return true;
     }
 
-    bool LightSystem::RemoveDirectionalLight(DirectionalLight* light)
+    bool LightSystem::RemoveDirectionalLight(const String& name)
     {
-        if (light == m_directionalLight)
+        if (name.Empty())
         {
-            m_directionalLight = nullptr;
+            m_logger.Error("RemoveDirectionalLight() - Failed to remove DirectionalLight since the name is invalid");
+            return false;
+        }
+
+        if (m_directionalLight.name.Empty())
+        {
+            m_logger.Warn("RemoveDirectionalLight() - Tried removing Directional Light that is not present");
             return true;
         }
 
-        m_logger.Error("RemoveDirectionalLight() - Failed to remove Directional Light");
+        if (m_directionalLight.name == name)
+        {
+            m_directionalLight.name = "";
+            return true;
+        }
+
+        m_logger.Error(
+            "RemoveDirectionalLight() - Tried to remove Directional Light named: '{}' but current light is named: '{}'",
+            name, m_directionalLight.name);
         return false;
     }
 
-    bool LightSystem::AddPointLight(PointLight* pLight)
+    bool LightSystem::AddPointLight(const PointLight& pLight)
     {
-        if (!pLight)
+        if (pLight.name.Empty())
         {
-            m_logger.Error("AddPointLight() - Failed to add Point Light since the pointer is not valid");
+            m_logger.Error("AddPointLight() - Failed to add Point Light since the name is not valid");
             return false;
         }
 
-        for (auto& light : m_pointLights)
+        if (m_pointLights.Has(pLight.name))
         {
-            if (!light)
-            {
-                light = pLight;
-                return true;
-            }
-        }
-
-        m_logger.Error("AddPointLight() - Failed to add Point Light: no more room for Point Lights (MAX = {})",
-                       MAX_POINT_LIGHTS);
-        return false;
-    }
-
-    bool LightSystem::RemovePointLight(PointLight* pLight)
-    {
-        if (!pLight)
-        {
-            m_logger.Error("AddPointLight() - Failed to remove Point Light since the pointer is not valid");
+            m_logger.Error("AddPointLight() - Failed to add Point Light since the there is already a light named: '{}'",
+                           pLight.name);
             return false;
         }
 
-        for (auto light : m_pointLights)
+        if (m_pointLights.Count() >= MAX_POINT_LIGHTS)
         {
-            if (light == pLight)
+            m_logger.Error("AddPointLight() - Failed to add Point Light: no more room for Point Lights (MAX = {})",
+                           MAX_POINT_LIGHTS);
+            return false;
+        }
+
+        m_pointLights.Set(pLight.name, pLight);
+        m_cacheInvalid = true;
+        return true;
+    }
+
+    bool LightSystem::RemovePointLight(const String& name)
+    {
+        if (name.Empty())
+        {
+            m_logger.Error("RemovePointLight() - Failed to remove Point Light since the name is not valid");
+            return false;
+        }
+
+        if (!m_pointLights.Has(name))
+        {
+            m_logger.Error("RemovePointLight() - Failed to remove Point Light since none exist with the name: '{}'",
+                           name);
+            return false;
+        }
+
+        m_pointLights.Delete(name);
+        m_cacheInvalid = true;
+        return true;
+    }
+
+    u32 LightSystem::GetPointLightCount() const { return m_pointLights.Count(); }
+
+    PointLight* LightSystem::GetPointLight(const String& name)
+    {
+        if (m_pointLights.Has(name))
+        {
+            return &m_pointLights.Get(name);
+        }
+
+        m_logger.Error("GetPointLight() - No Point Light exists with the name: '{}'", name);
+        return nullptr;
+    }
+
+    DynamicArray<PointLightData>& LightSystem::GetPointLights() const
+    {
+        if (m_cacheInvalid)
+        {
+            m_pointLightCache.Clear();
+            for (const auto& l : m_pointLights)
             {
-                light = nullptr;
-                return true;
+                m_pointLightCache.PushBack(l.data);
             }
+            m_cacheInvalid = false;
         }
-
-        m_logger.Error("RemovePointLight() - Failed to remove Point Light");
-        return false;
-    }
-    u32 LightSystem::GetPointLightCount()
-    {
-        u32 counter = 0;
-        for (auto l : m_pointLights)
-        {
-            if (l) counter++;
-        }
-        return counter;
-    }
-
-    DynamicArray<PointLight>& LightSystem::GetPointLights()
-    {
-        m_pointLightCache.Clear();
-
-        for (auto l : m_pointLights)
-        {
-            if (l) m_pointLightCache.PushBack(*l);
-        }
-
         return m_pointLightCache;
     }
 
-    DirectionalLight* LightSystem::GetDirectionalLight() { return m_directionalLight; }
+    DirectionalLight* LightSystem::GetDirectionalLight() { return &m_directionalLight; }
 }  // namespace C3D

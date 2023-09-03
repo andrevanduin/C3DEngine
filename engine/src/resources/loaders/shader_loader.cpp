@@ -144,10 +144,6 @@ namespace C3D
 
         // Cleanup uniforms
         data.uniforms.Destroy();
-
-        // Memory.Free(data->renderPassName, StringLength(data->renderPassName) + 1, MemoryType::String);
-        // data->renderPassName = nullptr;
-
         data.name.Destroy();
 
         resource.name.Destroy();

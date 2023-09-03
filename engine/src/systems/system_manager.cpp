@@ -19,7 +19,7 @@ namespace C3D
 
     void SystemManager::Shutdown()
     {
-        m_logger.Info("Shutting down all Systems");
+        m_logger.Info("Shutdown() - Started");
 
         for (const auto system : m_systems)
         {
@@ -27,8 +27,7 @@ namespace C3D
             m_allocator.Delete(MemoryType::CoreSystem, system);
         }
 
-        m_logger.Info("Destroying Linear Allocator");
         m_allocator.Destroy();
-        m_logger.Info("Shutdown finished");
+        m_logger.Info("Shutdown() - Finished");
     }
 }  // namespace C3D

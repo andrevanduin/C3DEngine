@@ -11,7 +11,7 @@ namespace C3D
     RenderView::RenderView(const u16 _id, const RenderViewConfig& config)
         : id(_id),
           name(config.name),
-          type(),
+          type(config.type),
           m_width(config.width),
           m_height(config.height),
           m_customShaderName(nullptr),

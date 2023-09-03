@@ -15,6 +15,7 @@ namespace C3D
 		void Stop();
 
 		[[nodiscard]] f64 GetElapsed() const;
+		[[nodiscard]] f64 GetElapsedMs() const;
 
 	private:
 		f64 m_elapsedTime;

@@ -39,6 +39,8 @@ namespace C3D
 
     void LinearAllocator::Destroy()
     {
+        m_logger.Info("Destroy()");
+
         // First we free all our memory
         FreeAll();
         // Then if we actually own the memory block we free the block

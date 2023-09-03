@@ -141,6 +141,20 @@ namespace C3D
             }
         }
 
+        /**
+         * @brief Clears all the entries from the hashmap without destroying underlying memory
+         * meaning you can keep using the hashmap as if it was just freshly created
+         */
+        void Clear()
+        {
+            for (u64 i = 0; i < m_size; i++)
+            {
+                m_nodes[i].occupied = false;
+                m_nodes[i].element.~Value();
+            }
+            m_count = 0;
+        }
+
         void Destroy()
         {
             // Call the destructor for all elements

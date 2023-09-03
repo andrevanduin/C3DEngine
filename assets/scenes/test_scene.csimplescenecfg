@@ -1,0 +1,58 @@
+# This is a sample of a very simple scene
+# The first line should be !version = <parser version>
+!version = 1
+[Scene]
+name = test_scene
+description = A simple test scene.
+[/Scene]
+
+[Skybox]
+name = skybox
+cubemapName = skybox
+[/Skybox]
+
+[DirectionalLight]
+name = sun
+color = 0.4 0.4 0.2 1.0
+direction = -0.57735 -0.57735 -0.57735 0.0
+[/DirectionalLight]
+
+[Mesh]
+name = sponza
+resourceName = sponza
+transform = 15.0 0.0 1.0 0.0 0.0 0.0 1.0 0.05 0.05 0.05
+[/Mesh]
+
+[Mesh]
+name = falcon
+resourceName = falcon
+transform = 15.0 0.0 1.0 0.0 0.0 0.0 1.0 10.0 10.0 10.0
+parent = sponza
+[/Mesh]
+
+[PointLight]
+name = point_light_0
+color = 1.0 0.0 0.0 1.0
+position = -5.5 2.0 -5.5 0.0
+constant = 1.0
+linear = 0.35
+quadratic = 0.44
+[/PointLight]
+
+[PointLight]
+name = point_light_1
+color = 0.0 1.0 0.0 1.0
+position = 5.5 2.0 -5.5 0.0
+constant = 1.0
+linear = 0.35
+quadratic = 0.44
+[/PointLight]
+
+[PointLight]
+name = point_light_2
+color = 0.0 0.0 1.0 1.0
+position = 4.5 2.0 -5.5 0.0
+constant = 1.0
+linear = 0.35
+quadratic = 0.44
+[/PointLight]

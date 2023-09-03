@@ -21,7 +21,7 @@ namespace C3D
         virtual ~ISystem() = default;
 
         virtual void Shutdown() = 0;
-        virtual void Update(const FrameData* frameData) = 0;
+        virtual void Update(const FrameData& frameData) = 0;
 
     protected:
         bool m_initialized = false;
@@ -49,7 +49,7 @@ namespace C3D
             m_initialized = false;
         }
 
-        void Update(const FrameData* frameData) override {}
+        void Update(const FrameData& frameData) override {}
 
     protected:
         LoggerInstance<32> m_logger;
@@ -77,7 +77,7 @@ namespace C3D
             m_initialized = false;
         }
 
-        void Update(const FrameData* frameData) override {}
+        void Update(const FrameData& frameData) override {}
 
     protected:
         LoggerInstance<32> m_logger;

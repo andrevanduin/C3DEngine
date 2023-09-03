@@ -34,7 +34,7 @@ namespace C3D
           m_pSystemsManager(&m_systemsManager)
     {
         m_application->m_pSystemsManager = &m_systemsManager;
-        m_application->m_pConsole = pConsole;
+        m_application->m_pConsole        = pConsole;
     }
 
     void Engine::Init()
@@ -89,11 +89,11 @@ namespace C3D
 
         m_systemsManager.Init();
 
-        constexpr ResourceSystemConfig resourceSystemConfig{32, "../../../assets"};
-        constexpr ShaderSystemConfig shaderSystemConfig{128, 128, 31, 31};
-        const CVarSystemConfig cVarSystemConfig{31, m_pConsole};
-        const RenderSystemConfig renderSystemConfig{"TestEnv", appState->rendererPlugin,
-                                                    FlagVSyncEnabled | FlagPowerSavingEnabled, m_window};
+        constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
+        constexpr ShaderSystemConfig shaderSystemConfig{ 128, 128, 31, 31 };
+        const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
+        const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin,
+                                                     FlagVSyncEnabled | FlagPowerSavingEnabled, m_window };
 
         // Init before boot systems
         m_systemsManager.RegisterSystem<Platform>(PlatformSystemType);                  // Platform (OS) System
@@ -134,10 +134,10 @@ namespace C3D
             jobThreadTypes[1] = JobTypeResourceLoad;
         }
 
-        const JobSystemConfig jobSystemConfig{maxThreadCount, jobThreadTypes};
-        constexpr TextureSystemConfig textureSystemConfig{65536};
-        constexpr CameraSystemConfig cameraSystemConfig{61};
-        constexpr RenderViewSystemConfig viewSystemConfig{251};
+        const JobSystemConfig jobSystemConfig{ maxThreadCount, jobThreadTypes };
+        constexpr TextureSystemConfig textureSystemConfig{ 65536 };
+        constexpr CameraSystemConfig cameraSystemConfig{ 61 };
+        constexpr RenderViewSystemConfig viewSystemConfig{ 251 };
 
         m_systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);              // Job System
         m_systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
@@ -168,15 +168,15 @@ namespace C3D
             }
         }
 
-        constexpr MaterialSystemConfig materialSystemConfig{4096};
-        constexpr GeometrySystemConfig geometrySystemConfig{4096};
+        constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
+        constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
         m_systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System
         m_systemsManager.RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig);  // Geometry System
         m_systemsManager.RegisterSystem<LightSystem>(LightSystemType);                              // Light System
 
         m_state.initialized = true;
-        m_state.lastTime = 0;
+        m_state.lastTime    = 0;
 
         m_application->OnResize();
         Renderer.OnResize(appState->width, appState->height);
@@ -195,9 +195,9 @@ namespace C3D
 
         m_state.lastTime = clock.GetElapsed();
 
-        u8 frameCount = 0;
+        u8 frameCount                    = 0;
         constexpr f64 targetFrameSeconds = 1.0 / 60.0;
-        f64 frameElapsedTime = 0;
+        f64 frameElapsedTime             = 0;
 
         m_application->OnRun(m_frameData);
 
@@ -210,8 +210,8 @@ namespace C3D
             if (!m_state.suspended)
             {
                 clock.Update();
-                const f64 currentTime = clock.GetElapsed();
-                const f64 delta = currentTime - m_state.lastTime;
+                const f64 currentTime    = clock.GetElapsed();
+                const f64 delta          = currentTime - m_state.lastTime;
                 const f64 frameStartTime = OS.GetAbsoluteTime();
 
                 m_frameData.totalTime = currentTime;
@@ -220,11 +220,14 @@ namespace C3D
                 // Reset our frame allocator (freeing all memory used previous frame)
                 m_frameData.frameAllocator->FreeAll();
 
-                Jobs.Update(&m_frameData);
+                Jobs.Update(m_frameData);
                 Metrics.Update(frameElapsedTime);
                 OS.WatchFiles();
 
                 OnUpdate();
+
+                // Reset our drawn mesh count for the next frame
+                m_frameData.drawnMeshCount = 0;
 
                 // TODO: Refactor packet creation
                 RenderPacket packet;
@@ -251,7 +254,7 @@ namespace C3D
                 }
 
                 const f64 frameEndTime = OS.GetAbsoluteTime();
-                frameElapsedTime = frameEndTime - frameStartTime;
+                frameElapsedTime       = frameEndTime - frameStartTime;
 
                 if (const f64 remainingSeconds = targetFrameSeconds - frameElapsedTime; remainingSeconds > 0)
                 {
@@ -266,7 +269,7 @@ namespace C3D
                     frameCount++;
                 }
 
-                Input.Update(&m_frameData);
+                Input.Update(m_frameData);
 
                 m_state.lastTime = currentTime;
             }
@@ -277,17 +280,19 @@ namespace C3D
 
     void Engine::Quit() { m_state.running = false; }
 
-    void Engine::OnUpdate() const
+    void Engine::OnUpdate()
     {
         m_pConsole->OnUpdate();
         m_application->OnUpdate(m_frameData);
+
+        const auto jan = 0xAFFFFFFF;
     }
 
     void Engine::OnResize(const u32 width, const u32 height) const
     {
         const auto appState = m_application->m_appState;
-        appState->width = width;
-        appState->height = height;
+        appState->width     = width;
+        appState->height    = height;
 
         m_application->OnResize();
         Renderer.OnResize(width, height);
@@ -297,7 +302,7 @@ namespace C3D
     {
         const auto appState = m_application->m_appState;
 
-        *width = appState->width;
+        *width  = appState->width;
         *height = appState->height;
     }
 
@@ -307,9 +312,9 @@ namespace C3D
 
     void Engine::OnApplicationLibraryReload(Application* app)
     {
-        m_application = app;
+        m_application                    = app;
         m_application->m_pSystemsManager = &m_systemsManager;
-        m_application->m_pConsole = m_pConsole;
+        m_application->m_pConsole        = m_pConsole;
         m_application->OnLibraryLoad();
     }
 
@@ -346,7 +351,7 @@ namespace C3D
             switch (e.type)
             {
                 case SDL_QUIT:
-                    m_state.running = false;
+                    Quit();
                     break;
                 case SDL_KEYDOWN:
                     Input.ProcessKey(e.key.keysym.sym, InputState::Down);
@@ -404,8 +409,8 @@ namespace C3D
     {
         if (code == EventCodeResized)
         {
-            const u16 width = context.data.u16[0];
-            const u16 height = context.data.u16[1];
+            const u16 width     = context.data.u16[0];
+            const u16 height    = context.data.u16[1];
             const auto appState = m_application->m_appState;
 
             // We only update out width and height if they actually changed
@@ -450,7 +455,7 @@ namespace C3D
             m_logger.Info("Window has regained focus - resuming application");
             m_state.suspended = false;
 
-            const u16 width = context.data.u16[0];
+            const u16 width  = context.data.u16[0];
             const u16 height = context.data.u16[1];
 
             OnResize(width, height);

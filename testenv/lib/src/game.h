@@ -1,12 +1,5 @@
 
 #pragma once
-#include <core/engine.h>
-#include <math/frustum.h>
-#include <renderer/camera.h>
-#include <resources/mesh.h>
-#include <systems/events/event_system.h>
-#include <systems/lights/light_system.h>
-
 #include "game_state.h"
 
 extern "C" {
@@ -20,10 +13,10 @@ public:
     explicit TestEnv(C3D::ApplicationState* state);
 
     bool OnBoot() override;
-    bool OnRun(const C3D::FrameData& frameData) override;
+    bool OnRun(C3D::FrameData& frameData) override;
 
-    void OnUpdate(const C3D::FrameData& frameData) override;
-    bool OnRender(C3D::RenderPacket& packet, const C3D::FrameData& frameData) override;
+    void OnUpdate(C3D::FrameData& frameData) override;
+    bool OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData) override;
 
     void OnResize() override;
 
@@ -36,7 +29,9 @@ private:
     bool ConfigureRenderViews() const;
 
     bool OnEvent(u16 code, void* sender, const C3D::EventContext& context) const;
-    bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context) const;
+    bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context);
+
+    bool LoadTestScene();
 
     GameState* m_state;
 };

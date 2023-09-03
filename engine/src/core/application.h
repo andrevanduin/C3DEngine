@@ -41,10 +41,10 @@ namespace C3D
         virtual ~Application() = default;
 
         virtual bool OnBoot() = 0;
-        virtual bool OnRun(const FrameData& frameData) = 0;
+        virtual bool OnRun(FrameData& frameData) = 0;
 
-        virtual void OnUpdate(const FrameData& frameData) = 0;
-        virtual bool OnRender(RenderPacket& packet, const FrameData& frameData) = 0;
+        virtual void OnUpdate(FrameData& frameData) = 0;
+        virtual bool OnRender(RenderPacket& packet, FrameData& frameData) = 0;
 
         virtual void OnResize() = 0;
 

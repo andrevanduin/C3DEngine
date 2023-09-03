@@ -105,9 +105,9 @@ namespace C3D
         return &m_default2DGeometry;
     }
 
-    GeometryConfig<Vertex3D, u32> GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount,
-                                                                      u32 ySegmentCount, f32 tileX, f32 tileY,
-                                                                      const String& name, const String& materialName)
+    GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount,
+                                                       f32 tileX, f32 tileY, const String& name,
+                                                       const String& materialName)
     {
         if (width == 0.f) width = 1.0f;
         if (height == 0.f) height = 1.0f;
@@ -116,7 +116,7 @@ namespace C3D
         if (tileX == 0.f) tileX = 1.0f;
         if (tileY == 0.f) tileY = 1.0f;
 
-        GeometryConfig<Vertex3D, u32> config{};
+        GeometryConfig config{};
         config.vertices.Resize(xSegmentCount * ySegmentCount * 4);
         config.indices.Resize(xSegmentCount * ySegmentCount * 6);
 
@@ -204,16 +204,15 @@ namespace C3D
         return config;
     }
 
-    GeometryConfig<Vertex3D, u32> GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX,
-                                                                     f32 tileY, const String& name,
-                                                                     const String& materialName)
+    GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY,
+                                                      const String& name, const String& materialName)
     {
         if (width == 0.f) width = 1.0f;
         if (height == 0.f) height = 1.0f;
         if (tileX == 0.f) tileX = 1.0f;
         if (tileY == 0.f) tileY = 1.0f;
 
-        GeometryConfig<Vertex3D, u32> config;
+        GeometryConfig config;
         config.vertices.Resize(4 * 6);  // 4 Vertices per side with 6 sides
         config.indices.Resize(6 * 6);   // 6 indices per side with 6 sides
 

@@ -1,47 +1,49 @@
 
 #pragma once
-#include <vulkan/vulkan.h>
-
+#include <containers/string.h>
 #include <core/defines.h>
 #include <resources/texture.h>
+#include <vulkan/vulkan.h>
 
 #include "vulkan_command_buffer.h"
 
 namespace C3D
 {
-	struct VulkanContext;
+    struct VulkanContext;
 
-	class VulkanImage
-	{
-	public:
-		VulkanImage();
+    class VulkanImage
+    {
+    public:
+        ~VulkanImage();
 
-		~VulkanImage();
+        void Create(const VulkanContext* context, const String& name, TextureType type, u32 _width, u32 _height,
+                    VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags,
+                    bool createView, VkImageAspectFlags viewAspectFlags);
 
-		void Create(const VulkanContext* context, TextureType type, u32 _width, u32 _height, VkFormat format,
-			VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags, bool createView,
-			VkImageAspectFlags viewAspectFlags);
+        void CreateView(const VulkanContext* context, TextureType type, VkFormat format,
+                        VkImageAspectFlags aspectFlags);
 
-		void CreateView(const VulkanContext* context, TextureType type, VkFormat format, VkImageAspectFlags aspectFlags);
+        void TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer, TextureType type,
+                              VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) const;
 
-		void TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer, TextureType type, VkFormat format, 
-			VkImageLayout oldLayout, VkImageLayout newLayout) const;
+        void CopyFromBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
+        void CopyToBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
+        void CopyPixelToBuffer(TextureType type, VkBuffer buffer, u32 x, u32 y,
+                               const VulkanCommandBuffer* commandBuffer) const;
 
-		void CopyFromBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
-		void CopyToBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
-		void CopyPixelToBuffer(TextureType type, VkBuffer buffer, u32 x, u32 y, const VulkanCommandBuffer* commandBuffer) const;
+        void Destroy();
 
-		void Destroy();
+        VkImage handle   = nullptr;
+        VkImageView view = nullptr;
 
-		VkImage handle;
-		VkImageView view;
+        u32 width = 0, height = 0;
 
-		u32 width, height;
-	private:
-		VkDeviceMemory m_memory;
-		VkMemoryRequirements m_memoryRequirements;
-		VkMemoryPropertyFlags m_memoryFlags;
+    private:
+        String m_name;
+        VkDeviceMemory m_memory = nullptr;
+        VkMemoryRequirements m_memoryRequirements;
+        VkMemoryPropertyFlags m_memoryFlags = 0;
 
-		const VulkanContext* m_context;
-	};
-}
+        const VulkanContext* m_context = nullptr;
+    };
+}  // namespace C3D

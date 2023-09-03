@@ -2,97 +2,150 @@
 #include "mesh.h"
 
 #include "core/identifier.h"
+#include "systems/geometry/geometry_system.h"
 #include "systems/jobs/job_system.h"
 #include "systems/resources/resource_system.h"
 
 namespace C3D
 {
-    Mesh::Mesh() {}
+    Mesh::Mesh() : m_logger("MESH") {}
 
-    bool Mesh::LoadCube(const SystemManager* pSystemsManager, const f32 width, const f32 height, const f32 depth,
-                        const f32 tileX, const f32 tileY, const String& name, const String& materialName)
+    Mesh::Mesh(const MeshConfig& cfg) : m_logger("MESH"), config(cfg) {}
+
+    bool Mesh::Create(const SystemManager* pSystemsManager, const MeshConfig& cfg)
     {
         m_pSystemsManager = pSystemsManager;
-
-        auto cubeConfig = Geometric.GenerateCubeConfig(width, height, depth, tileX, tileY, name, materialName);
-
-        geometries.PushBack(Geometric.AcquireFromConfig(cubeConfig, true));
-        transform = Transform();
-        generation = 0;
-        uniqueId = Identifier::GetNewId(this);
-
-        Geometric.DisposeConfig(&cubeConfig);
-
-        return true;
-    }
-
-    bool Mesh::LoadFromResource(const SystemManager* pSystemsManager, const char* resourceName)
-    {
-        m_pSystemsManager = pSystemsManager;
+        config = cfg;
         generation = INVALID_ID_U8;
 
-        MeshLoadParams params;
-        params.resourceName = resourceName;
-        params.outMesh = this;
-
-        JobInfo<MeshLoadParams, MeshLoadParams> info;
-        info.entryPoint = [this](void* data, void* resultData) { return LoadJobEntryPoint(data, resultData); };
-        info.onSuccess = [this](void* data) { LoadJobSuccess(data); };
-        info.onFailure = [this](void* data) { LoadJobFailure(data); };
-        info.input = params;
-
-        Jobs.Submit(info);
         return true;
     }
 
-    void Mesh::Unload()
+    bool Mesh::Initialize()
+    {
+        if (config.resourceName) return true;
+
+        const auto geometryCount = config.geometryConfigs.Size();
+        if (geometryCount == 0) return false;
+
+        // Reserve enough space for our geometry pointers in advance
+        geometries.Reserve(geometryCount);
+
+        return true;
+    }
+
+    bool Mesh::Load()
+    {
+        if (config.resourceName)
+        {
+            return LoadFromResource();
+        }
+
+        for (auto& gConfig : config.geometryConfigs)
+        {
+            geometries.PushBack(Geometric.AcquireFromConfig(gConfig, true));
+            Geometric.DisposeConfig(gConfig);
+        }
+
+        generation = 0;
+        uniqueId = Identifier::GetNewId(this);
+        return true;
+    }
+
+    bool Mesh::Unload()
     {
         for (const auto geometry : geometries)
         {
             Geometric.Release(geometry);
         }
         generation = INVALID_ID_U8;
-        geometries.Clear();
+        geometries.Destroy();
+        return true;
     }
 
-    bool Mesh::LoadJobEntryPoint(void* data, void* resultData) const
+    bool Mesh::Destroy()
     {
-        const auto loadParams = static_cast<MeshLoadParams*>(data);
+        if (!geometries.Empty())
+        {
+            if (!Unload())
+            {
+                m_logger.Error("Destory() - failed to unload");
+                return false;
+            }
+        }
 
-        const bool result = Resources.Load(loadParams->resourceName.Data(), loadParams->meshResource);
-
-        // NOTE: The load params are also used as the result data here, only the meshResource field is populated now.
-        const auto rData = static_cast<MeshLoadParams*>(resultData);
-        *rData = *loadParams;
-
-        return result;
+        Identifier::ReleaseId(uniqueId);
+        return true;
     }
 
-    void Mesh::LoadJobSuccess(void* data) const
+    bool Mesh::LoadFromResource()
     {
-        const auto meshParams = static_cast<MeshLoadParams*>(data);
+        generation = INVALID_ID_U8;
+
+        JobInfo info;
+        info.entryPoint = [this]() { return Resources.Load(config.resourceName, m_resource); };
+        info.onSuccess = [this]() { LoadJobSuccess(); };
+        info.onFailure = [this]() { LoadJobFailure(); };
+
+        Jobs.Submit(std::move(info));
+        return true;
+    }
+
+    void Mesh::LoadJobSuccess()
+    {
+        Clock clock(m_pSystemsManager->GetSystemPtr<Platform>(PlatformSystemType));
+        clock.Start();
 
         // NOTE: This also handles the GPU upload. Can't be jobified until the renderer is multiThreaded.
-        auto& configs = meshParams->meshResource.geometryConfigs;
         // We can reserve enough space for our geometries instead of reallocating everytime the dynamic array grows
-        meshParams->outMesh->geometries.Reserve(configs.Size());
-        for (auto& c : configs)
+        geometries.Reserve(m_resource.geometryConfigs.Size());
+        for (auto& c : m_resource.geometryConfigs)
         {
-            meshParams->outMesh->geometries.PushBack(Geometric.AcquireFromConfig(c, true));
+            geometries.PushBack(Geometric.AcquireFromConfig(c, true));
         }
-        meshParams->outMesh->generation++;
+        generation++;
+        uniqueId = Identifier::GetNewId(this);
 
-        Logger::Trace("[MESH] - Successfully loaded: '{}'.", meshParams->resourceName);
+        clock.Update();
+        m_logger.Info("LoadJobSuccess() - Successfully loaded: '{}' in {:.4f} ms", config.resourceName,
+                      clock.GetElapsedMs());
+        clock.Start();
 
-        Resources.Unload(meshParams->meshResource);
+        Resources.Unload(m_resource);
+
+        clock.Update();
+        m_logger.Info("LoadJobSuccess() - Resources.Unload took: {:.4f} ms", clock.GetElapsedMs());
     }
 
-    void Mesh::LoadJobFailure(void* data) const
+    void Mesh::LoadJobFailure()
     {
-        const auto meshParams = static_cast<MeshLoadParams*>(data);
+        m_logger.Error("LoadJobFailure() - Failed to load: '{}'", config.resourceName);
 
-        Logger::Error("[MESH] - Failed to load: '{}'.", meshParams->resourceName);
-
-        Resources.Unload(meshParams->meshResource);
+        Resources.Unload(m_resource);
     }
+
+    UIMesh::UIMesh() : m_logger("UI_MESH") {}
+
+    bool UIMesh::LoadFromConfig(const SystemManager* pSystemsManager, const UIGeometryConfig& config)
+    {
+        m_pSystemsManager = pSystemsManager;
+
+        uniqueId = Identifier::GetNewId(this);
+        geometries.PushBack(Geometric.AcquireFromConfig(config, true));
+        generation = 0;
+
+        return true;
+    }
+
+    bool UIMesh::Unload()
+    {
+        for (const auto geometry : geometries)
+        {
+            Geometric.Release(geometry);
+        }
+        generation = INVALID_ID_U8;
+        geometries.Destroy();
+        return true;
+    }
+
 }  // namespace C3D

@@ -115,13 +115,13 @@ namespace C3D
                                   const u32 presentImageIndex)
     {
         // Return the image to the SwapChain for presentation
-        VkPresentInfoKHR presentInfo = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
+        VkPresentInfoKHR presentInfo   = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &renderCompleteSemaphore;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &handle;
-        presentInfo.pImageIndices = &presentImageIndex;
-        presentInfo.pResults = nullptr;
+        presentInfo.pWaitSemaphores    = &renderCompleteSemaphore;
+        presentInfo.swapchainCount     = 1;
+        presentInfo.pSwapchains        = &handle;
+        presentInfo.pImageIndices      = &presentImageIndex;
+        presentInfo.pResults           = nullptr;
 
         const auto result = vkQueuePresentKHR(presentQueue, &presentInfo);
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
@@ -144,10 +144,10 @@ namespace C3D
     {
         m_pSystemsManager = pSystemsManager;
 
-        VkExtent2D extent = {width, height};
-        m_flags = flags;
-        imageFormat = GetSurfaceFormat(context);
-        m_presentMode = GetPresentMode(context);
+        VkExtent2D extent = { width, height };
+        m_flags           = flags;
+        imageFormat       = GetSurfaceFormat(context);
+        m_presentMode     = GetPresentMode(context);
 
         // Query SwapChain support again to see if anything changed since last time (for example different resolution or
         // monitor)
@@ -161,7 +161,7 @@ namespace C3D
         const VkExtent2D min = context->device.swapChainSupport.capabilities.minImageExtent;
         const VkExtent2D max = context->device.swapChainSupport.capabilities.maxImageExtent;
 
-        extent.width = C3D_CLAMP(extent.width, min.width, max.width);
+        extent.width  = C3D_CLAMP(extent.width, min.width, max.width);
         extent.height = C3D_CLAMP(extent.height, min.height, max.height);
 
         u32 imgCount = context->device.swapChainSupport.capabilities.minImageCount + 1;
@@ -173,35 +173,35 @@ namespace C3D
 
         maxFramesInFlight = static_cast<u8>(imgCount) - 1;
 
-        VkSwapchainCreateInfoKHR swapChainCreateInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
-        swapChainCreateInfo.surface = context->surface;
-        swapChainCreateInfo.minImageCount = imgCount;
-        swapChainCreateInfo.imageFormat = imageFormat.format;
-        swapChainCreateInfo.imageColorSpace = imageFormat.colorSpace;
-        swapChainCreateInfo.imageExtent = extent;
-        swapChainCreateInfo.imageArrayLayers = 1;
-        swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+        swapChainCreateInfo.surface                  = context->surface;
+        swapChainCreateInfo.minImageCount            = imgCount;
+        swapChainCreateInfo.imageFormat              = imageFormat.format;
+        swapChainCreateInfo.imageColorSpace          = imageFormat.colorSpace;
+        swapChainCreateInfo.imageExtent              = extent;
+        swapChainCreateInfo.imageArrayLayers         = 1;
+        swapChainCreateInfo.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
         if (context->device.graphicsQueueIndex != context->device.presentQueueIndex)
         {
-            const u32 queueFamilyIndices[] = {context->device.graphicsQueueIndex, context->device.presentQueueIndex};
+            const u32 queueFamilyIndices[] = { context->device.graphicsQueueIndex, context->device.presentQueueIndex };
 
-            swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            swapChainCreateInfo.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
             swapChainCreateInfo.queueFamilyIndexCount = 2;
-            swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+            swapChainCreateInfo.pQueueFamilyIndices   = queueFamilyIndices;
         }
         else
         {
-            swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            swapChainCreateInfo.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
             swapChainCreateInfo.queueFamilyIndexCount = 0;
-            swapChainCreateInfo.pQueueFamilyIndices = nullptr;
+            swapChainCreateInfo.pQueueFamilyIndices   = nullptr;
         }
 
-        swapChainCreateInfo.preTransform = context->device.swapChainSupport.capabilities.currentTransform;
+        swapChainCreateInfo.preTransform   = context->device.swapChainSupport.capabilities.currentTransform;
         swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        swapChainCreateInfo.presentMode = m_presentMode;
-        swapChainCreateInfo.clipped = VK_TRUE;
-        swapChainCreateInfo.oldSwapchain = nullptr;  // TODO: pass the old SwapChain here for better performance
+        swapChainCreateInfo.presentMode    = m_presentMode;
+        swapChainCreateInfo.clipped        = VK_TRUE;
+        swapChainCreateInfo.oldSwapchain   = nullptr;  // TODO: pass the old SwapChain here for better performance
 
         VK_CHECK(
             vkCreateSwapchainKHR(context->device.logicalDevice, &swapChainCreateInfo, context->allocator, &handle));
@@ -219,7 +219,7 @@ namespace C3D
                 const auto internalData = Memory.New<VulkanImage>(MemoryType::Texture);
 
                 char texName[38] = "__internal_vulkan_swapChain_image_0__";
-                texName[34] = '0' + static_cast<char>(i);
+                texName[34]      = '0' + static_cast<char>(i);
 
                 Textures.WrapInternal(texName, extent.width, extent.height, 4, false, true, false, internalData,
                                       &renderTextures[i]);
@@ -246,9 +246,9 @@ namespace C3D
         {
             // Update the internal image for each.
             const auto image = static_cast<VulkanImage*>(renderTextures[i].internalData);
-            image->handle = swapChainImages[i];
-            image->width = extent.width;
-            image->height = extent.height;
+            image->handle    = swapChainImages[i];
+            image->width     = extent.width;
+            image->height    = extent.height;
         }
 
         // Views
@@ -256,15 +256,15 @@ namespace C3D
         {
             const auto image = static_cast<VulkanImage*>(renderTextures[i].internalData);
 
-            VkImageViewCreateInfo viewInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-            viewInfo.image = image->handle;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.format = imageFormat.format;
-            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            viewInfo.subresourceRange.baseMipLevel = 0;
-            viewInfo.subresourceRange.levelCount = 1;
+            VkImageViewCreateInfo viewInfo           = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+            viewInfo.image                           = image->handle;
+            viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+            viewInfo.format                          = imageFormat.format;
+            viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            viewInfo.subresourceRange.baseMipLevel   = 0;
+            viewInfo.subresourceRange.levelCount     = 1;
             viewInfo.subresourceRange.baseArrayLayer = 0;
-            viewInfo.subresourceRange.layerCount = 1;
+            viewInfo.subresourceRange.layerCount     = 1;
 
             VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewInfo, context->allocator, &image->view));
         }
@@ -285,8 +285,9 @@ namespace C3D
         for (u32 i = 0; i < imageCount; i++)
         {
             // Create a depth image and it's view
+            const auto name  = String::FromFormat("swapchain_image_{}", i);
             const auto image = Memory.Allocate<VulkanImage>(MemoryType::Texture);
-            image->Create(context, TextureType::Type2D, extent.width, extent.height, context->device.depthFormat,
+            image->Create(context, name, TextureType::Type2D, extent.width, extent.height, context->device.depthFormat,
                           VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_DEPTH_BIT);
 

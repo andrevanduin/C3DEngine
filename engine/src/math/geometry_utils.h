@@ -10,5 +10,5 @@ namespace C3D::GeometryUtils
 
 	void GenerateTangents(Vertex3D* vertices, u64 indexCount, const u32* indices);
 
-	void DeduplicateVertices(GeometryConfig<Vertex3D, u32>& config);
+	void DeduplicateVertices(GeometryConfig& config);
 }

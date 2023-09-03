@@ -33,7 +33,7 @@ namespace C3D
         void Run();
         void Quit();
 
-        void OnUpdate() const;
+        void OnUpdate();
 
         void OnResize(u32 width, u32 height) const;
 
