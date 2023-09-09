@@ -37,7 +37,8 @@ namespace C3D
 
         bool OnBuildPacket(LinearAllocator* frameAllocator, void* data, RenderViewPacket* outPacket) override;
 
-        bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) override;
+        bool OnRender(const FrameData& frameData, const RenderViewPacket* packet, u64 frameNumber,
+                      u64 renderTargetIndex) override;
 
         void GetMatrices(mat4* outView, mat4* outProjection);
 
@@ -55,11 +56,11 @@ namespace C3D
         Texture m_colorTargetAttachmentTexture;
         Texture m_depthTargetAttachmentTexture;
 
-        u32 m_instanceCount;
+        u32 m_instanceCount = 0;
         DynamicArray<bool> m_instanceUpdated;
 
         RegisteredEventCallback m_onEventCallback;
 
-        i16 m_mouseX, m_mouseY;
+        i16 m_mouseX = 0, m_mouseY = 0;
     };
 }  // namespace C3D

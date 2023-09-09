@@ -30,29 +30,29 @@ namespace C3D
 
     struct MaterialUniformLocations
     {
-        u16 projection = INVALID_ID_U16;
-        u16 view = INVALID_ID_U16;
-        u16 ambientColor = INVALID_ID_U16;
-        u16 shininess = INVALID_ID_U16;
-        u16 viewPosition = INVALID_ID_U16;
-        u16 diffuseColor = INVALID_ID_U16;
-        u16 diffuseTexture = INVALID_ID_U16;
+        u16 projection      = INVALID_ID_U16;
+        u16 view            = INVALID_ID_U16;
+        u16 ambientColor    = INVALID_ID_U16;
+        u16 shininess       = INVALID_ID_U16;
+        u16 viewPosition    = INVALID_ID_U16;
+        u16 diffuseColor    = INVALID_ID_U16;
+        u16 diffuseTexture  = INVALID_ID_U16;
         u16 specularTexture = INVALID_ID_U16;
-        u16 normalTexture = INVALID_ID_U16;
-        u16 model = INVALID_ID_U16;
-        u16 renderMode = INVALID_ID_U16;
-        u16 dirLight = INVALID_ID_U16;
-        u16 pLights = INVALID_ID_U16;
-        u16 numPLights = INVALID_ID_U16;
+        u16 normalTexture   = INVALID_ID_U16;
+        u16 model           = INVALID_ID_U16;
+        u16 renderMode      = INVALID_ID_U16;
+        u16 dirLight        = INVALID_ID_U16;
+        u16 pLights         = INVALID_ID_U16;
+        u16 numPLights      = INVALID_ID_U16;
     };
 
     struct UiUniformLocations
     {
-        u16 projection = INVALID_ID_U16;
-        u16 view = INVALID_ID_U16;
-        u16 diffuseColor = INVALID_ID_U16;
+        u16 projection     = INVALID_ID_U16;
+        u16 view           = INVALID_ID_U16;
+        u16 diffuseColor   = INVALID_ID_U16;
         u16 diffuseTexture = INVALID_ID_U16;
-        u16 model = INVALID_ID_U16;
+        u16 model          = INVALID_ID_U16;
     };
 
     class C3D_API MaterialSystem final : public SystemWithConfig<MaterialSystemConfig>
@@ -87,7 +87,7 @@ namespace C3D
 
         Material m_defaultMaterial;
         // Hashtable to map names to material-references
-        HashMap<CString<256>, MaterialReference> m_registeredMaterials;
+        HashMap<String, MaterialReference> m_registeredMaterials;
 
         // Known locations for the material shader
         MaterialUniformLocations m_materialLocations;

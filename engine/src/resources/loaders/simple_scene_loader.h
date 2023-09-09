@@ -13,7 +13,8 @@ namespace C3D
         Mesh,
         Skybox,
         DirectionalLight,
-        PointLight
+        PointLight,
+        Terrain
     };
 
     template <>
@@ -30,12 +31,15 @@ namespace C3D
         bool ParseTagContent(const String& line, const String& fileName, u32 lineNumber, u32& version,
                              ParserTagType type, SimpleSceneConfig& cfg) const;
 
-        std::pair<bool, String> ParseScene(const String& name, const String& value, SimpleSceneConfig& cfg) const;
-        std::pair<bool, String> ParseSkybox(const String& name, const String& value, SimpleSceneConfig& cfg) const;
-        std::pair<bool, String> ParseDirectionalLight(const String& name, const String& value,
+        void ParseScene(const String& name, const String& value, SimpleSceneConfig& cfg) const;
+        void ParseSkybox(const String& name, const String& value, SimpleSceneConfig& cfg) const;
+        void ParseDirectionalLight(const String& name, const String& value,
                                                       SimpleSceneConfig& cfg) const;
-        std::pair<bool, String> ParsePointLight(const String& name, const String& value, SimpleSceneConfig& cfg) const;
-        std::pair<bool, String> ParseMesh(const String& name, const String& value, SimpleSceneConfig& cfg) const;
+        void ParsePointLight(const String& name, const String& value, SimpleSceneConfig& cfg) const;
+        void ParseMesh(const String& name, const String& value, SimpleSceneConfig& cfg) const;
+        void ParseTerrain(const String& name, const String& value, SimpleSceneConfig& cfg) const;
+
+        Transform ParseTransform(const String& value) const;
 
         ParserTagType ParseTag(const String& line, const String& fileName, u32 lineNumber,
                                SimpleSceneConfig& cfg) const;

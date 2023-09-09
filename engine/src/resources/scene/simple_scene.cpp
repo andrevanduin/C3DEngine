@@ -27,6 +27,10 @@ namespace C3D
         m_skybox = nullptr;
 
         m_meshes.Create(1024);
+        m_terrains.Create(512);
+
+        // Reserve a reasonable amount of space for geometries (to avoid reallocs)
+        m_worldData.worldGeometries.Reserve(512);
 
         m_config = config;
         return true;
@@ -78,26 +82,50 @@ namespace C3D
             }
         }
 
-        if (!m_config.meshes.Empty())
+        for (auto& meshConfig : m_config.meshes)
         {
-            for (auto& meshConfig : m_config.meshes)
+            if (meshConfig.name.Empty() || meshConfig.resourceName.Empty())
             {
-                if (meshConfig.name.Empty() || meshConfig.resourceName.Empty())
-                {
-                    m_logger.Warn("Initialize() - Mesh with empty name or empty resource name provided. Skipping");
-                    continue;
-                }
-
-                auto config = MeshConfig(meshConfig);
-                Mesh mesh(config);
-                if (!mesh.Create(m_pSystemsManager, config))
-                {
-                    m_logger.Error("Initialize() - Failed to create mesh: '{}'. Skipping", meshConfig.name);
-                    continue;
-                }
-                mesh.transform = meshConfig.transform;
-                m_meshes.Set(meshConfig.name, mesh);
+                m_logger.Warn("Initialize() - Mesh with empty name or empty resource name provided. Skipping");
+                continue;
             }
+
+            auto config = MeshConfig(meshConfig);
+            Mesh mesh(config);
+            if (!mesh.Create(m_pSystemsManager, config))
+            {
+                m_logger.Error("Initialize() - Failed to create Mesh: '{}'. Skipping", meshConfig.name);
+                continue;
+            }
+            mesh.transform = meshConfig.transform;
+            m_meshes.Set(meshConfig.name, mesh);
+        }
+
+        for (auto& terrainConfig : m_config.terrains)
+        {
+            if (terrainConfig.name.Empty() || terrainConfig.resourceName.Empty())
+            {
+                m_logger.Warn("Initialize() - Terrain with empty name or empty resource name provided. Skipping");
+                continue;
+            }
+
+            auto config = TerrainConfig(terrainConfig);
+            // TODO: Load terrain from resource instead of hardcoding it here
+            config.tileCountX = 100;
+            config.tileCountZ = 100;
+            config.tileScaleX = 1.0f;
+            config.tileScaleZ = 1.0f;
+
+            Terrain terrain;
+            if (!terrain.Create(m_pSystemsManager, config))
+            {
+                m_logger.Error("Initialize() - Failed to create Terrain: '{}'. Skipping.", terrainConfig.name);
+                continue;
+            }
+
+            terrain.SetTransform(terrainConfig.transform);
+
+            m_terrains.Set(terrainConfig.name, terrain);
         }
 
         // Handle mesh hierarchy
@@ -109,11 +137,12 @@ namespace C3D
                 {
                     auto& parent = GetMesh(mesh.config.parentName);
                     mesh.transform.SetParent(&parent.transform);
-                } catch (const std::invalid_argument& exc)
+                }
+                catch (const std::invalid_argument& exc)
                 {
                     m_logger.Warn(
                         "Initialize() - Mesh: '{}' was configured to have mesh named: '{}' as a parent. But the parent "
-                        "does not exist in this scene",
+                        "does not exist in this scene.",
                         mesh.config.name, mesh.config.parentName);
                 }
             }
@@ -123,9 +152,8 @@ namespace C3D
         {
             if (!m_skybox->Initialize())
             {
-                m_logger.Error("Initialize() - Failed to initialize skybox");
+                m_logger.Error("Initialize() - Failed to initialize Skybox.");
                 m_skybox = nullptr;
-                return false;
             }
         }
 
@@ -133,8 +161,15 @@ namespace C3D
         {
             if (!mesh.Initialize())
             {
-                m_logger.Error("Initialize() - Failed to initialize mesh");
-                return false;
+                m_logger.Error("Initialize() - Failed to initialize Mesh: '{}'.", mesh.GetName());
+            }
+        }
+
+        for (auto& terrain : m_terrains)
+        {
+            if (!terrain.Initialize())
+            {
+                m_logger.Error("Initialize() - Failed to inialize Terrain: '{}'.", terrain.GetName());
             }
         }
 
@@ -153,7 +188,6 @@ namespace C3D
             {
                 m_logger.Error("Load() - Failed to load skybox");
                 m_skybox = nullptr;
-                return false;
             }
         }
 
@@ -161,8 +195,15 @@ namespace C3D
         {
             if (!mesh.Load())
             {
-                m_logger.Error("Load() - Failed to load mesh");
-                return false;
+                m_logger.Error("Load() - Failed to load Mesh: '{}'.", mesh.GetName());
+            }
+        }
+
+        for (auto& terrain : m_terrains)
+        {
+            if (!terrain.Load())
+            {
+                m_logger.Error("Load() - Failed to load Terrain: '{}'.", terrain.GetName());
             }
         }
 
@@ -222,10 +263,9 @@ namespace C3D
             const auto view = viewPacket.view;
             if (view->type == RenderViewKnownType::World)
             {
-                // Reserve a reasonable amount of space for our world geometries
-                m_worldGeometries.Reset();
-                m_worldGeometries.SetAllocator(frameData.frameAllocator);
-                m_worldGeometries.Reserve(512);
+                // Clear our world geometries
+                m_worldData.worldGeometries.Clear();
+                m_worldData.terrainGeometries.Clear();
 
                 for (const auto& mesh : m_meshes)
                 {
@@ -237,7 +277,7 @@ namespace C3D
 
                         for (const auto geometry : mesh.geometries)
                         {
-                            m_worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
+                            m_worldData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
                             frameData.drawnMeshCount++;
 
                             /*
@@ -271,17 +311,6 @@ namespace C3D
                                     C3D::Abs(extentsMax.z - center.z),
                             };
 
-                            if (!m_hasPrimitives[count])
-                            {
-                                    // Only add primitives for the mesh once
-                                    auto pMesh = m_primitiveRenderer.AddBox(geometry->center, halfExtents);
-                                    pMesh->transform.SetParent(&mesh.transform);
-
-                                    m_primitiveMeshes[m_primitiveMeshCount] = pMesh;
-                                    m_primitiveMeshCount++;
-                                    meshSet = true;
-                            }
-
                             if (m_cameraFrustum.IntersectsWithAABB({ geometry->center, halfExtents }))
                             {
                                     m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
@@ -289,15 +318,25 @@ namespace C3D
                             }*/
                         }
                     }
-
-                    /*
-                    if (meshSet)
-                    {
-                            m_hasPrimitives[count] = true;
-                    }*/
                 }
 
-                if (!Views.BuildPacket(view, frameData.frameAllocator, &m_worldGeometries, &viewPacket))
+                for (auto& terrain : m_terrains)
+                {
+                    // TODO: Check terrain generation
+                    // TODO: Frustum culling
+                    auto model    = terrain.GetModel();
+                    auto geometry = terrain.GetGeometry();
+                    // TODO: Add unique id to terrain for object picking
+                    auto uniqueId = 0;
+
+                    m_worldData.terrainGeometries.EmplaceBack(model, geometry, uniqueId);
+
+                    // TODO: Seperate counter for terrain meshes/geometry
+                    frameData.drawnMeshCount++;
+                }
+
+                // World
+                if (!Views.BuildPacket(view, frameData.frameAllocator, &m_worldData, &viewPacket))
                 {
                     m_logger.Error("PopulateRenderPacket() - Failed to populate render packet with world data");
                     return false;
@@ -395,16 +434,17 @@ namespace C3D
             // The scene has already been initialized so we need to initialize the mesh now
             if (!mesh.Initialize())
             {
-                m_logger.Error("AddMesh() - Failed to initialize mesh");
+                m_logger.Error("AddMesh() - Failed to initialize mesh: '{}'", name);
                 return false;
             }
         }
 
         if (m_state >= SceneState::Loading)
         {
+            // The scene has already been loaded (or is loading currently) so we need to load the mesh now
             if (!mesh.Load())
             {
-                m_logger.Error("AddMesh() - Failed to load mesh");
+                m_logger.Error("AddMesh() - Failed to load mesh: '{}'", name);
                 return false;
             }
         }
@@ -434,10 +474,76 @@ namespace C3D
             return false;
         }
 
+        m_meshes.Delete(name);
         return true;
     }
 
     Mesh& SimpleScene::GetMesh(const String& name) { return m_meshes.Get(name); }
+
+    bool SimpleScene::AddTerrain(const String& name, Terrain& terrain)
+    {
+        if (name.Empty())
+        {
+            m_logger.Error("AddTerrain() - Empty name provided");
+            return false;
+        }
+
+        if (m_terrains.Has(name))
+        {
+            m_logger.Error("AddTerrain() - A terrain with the name '{}' already exists", name);
+            return false;
+        }
+
+        if (m_state >= SceneState::Initialized)
+        {
+            // The scene has already been initialized so we need to initialize the terrain now
+            if (!terrain.Initialize())
+            {
+                m_logger.Error("AddTerrain() - Failed to initialize terrain: '{}'", name);
+                return false;
+            }
+        }
+
+        if (m_state >= SceneState::Loading)
+        {
+            // The scene has already been loaded (or is loading currently) so we need to load the terrain now
+            if (!terrain.Load())
+            {
+                m_logger.Error("AddTerrain() - Failed to load terrain: '{}'", name);
+                return false;
+            }
+        }
+
+        m_terrains.Set(name, terrain);
+        return true;
+    }
+
+    bool SimpleScene::RemoveTerrain(const String& name)
+    {
+        if (name.Empty())
+        {
+            m_logger.Error("RemoveTerrain() - Empty name provided");
+            return false;
+        }
+
+        if (!m_terrains.Has(name))
+        {
+            m_logger.Error("RemoveTerrain() - Unknown name provided: '{}'", name);
+            return false;
+        }
+
+        auto& terrain = m_terrains.Get(name);
+        if (!terrain.Unload())
+        {
+            m_logger.Error("RemoveTerrain() - Failed to unload terrain: '{}'", name);
+            return false;
+        }
+
+        m_terrains.Delete(name);
+        return true;
+    }
+
+    Terrain& SimpleScene::GetTerrain(const String& name) { return m_terrains.Get(name); }
 
     bool SimpleScene::AddSkybox(const String& name, Skybox* skybox)
     {
@@ -516,7 +622,15 @@ namespace C3D
 
             if (!mesh.Unload())
             {
-                m_logger.Error("Unload() - Failed to unload mesh");
+                m_logger.Error("Unload() - Failed to unload Mesh: '{}'", mesh.GetName());
+            }
+        }
+
+        for (auto& terrain : m_terrains)
+        {
+            if (!terrain.Unload())
+            {
+                m_logger.Error("Unload() - Failed to unload Terrain: '{}'", terrain.GetName());
             }
         }
 
@@ -534,6 +648,8 @@ namespace C3D
 
         m_pointLights.Destroy();
         m_meshes.Destroy();
+        m_worldData.terrainGeometries.Destroy();
+        m_worldData.worldGeometries.Destroy();
 
         m_directionalLight = "";
         m_skybox           = nullptr;

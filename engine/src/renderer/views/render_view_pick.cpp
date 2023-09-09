@@ -16,18 +16,13 @@
 namespace C3D
 {
     RenderViewPick::RenderViewPick(const RenderViewConfig& config)
-        : RenderView(ToUnderlying(RenderViewKnownType::Pick), config),
-          m_uiShaderInfo(),
-          m_worldShaderInfo(),
-          m_instanceCount(0),
-          m_mouseX(0),
-          m_mouseY(0)
+        : RenderView(ToUnderlying(RenderViewKnownType::Pick), config)
     {}
 
     bool RenderViewPick::OnCreate()
     {
         m_worldShaderInfo.pass = passes[0];
-        m_uiShaderInfo.pass = passes[1];
+        m_uiShaderInfo.pass    = passes[1];
 
         // UI Shader
         constexpr auto uiShaderName = "Shader.Builtin.UIPick";
@@ -48,15 +43,15 @@ namespace C3D
         m_uiShaderInfo.shader = Shaders.Get(uiShaderName);
 
         // Get the uniform locations
-        m_uiShaderInfo.idColorLocation = Shaders.GetUniformIndex(m_uiShaderInfo.shader, "idColor");
-        m_uiShaderInfo.modelLocation = Shaders.GetUniformIndex(m_uiShaderInfo.shader, "model");
+        m_uiShaderInfo.idColorLocation    = Shaders.GetUniformIndex(m_uiShaderInfo.shader, "idColor");
+        m_uiShaderInfo.modelLocation      = Shaders.GetUniformIndex(m_uiShaderInfo.shader, "model");
         m_uiShaderInfo.projectionLocation = Shaders.GetUniformIndex(m_uiShaderInfo.shader, "projection");
-        m_uiShaderInfo.viewLocation = Shaders.GetUniformIndex(m_uiShaderInfo.shader, "view");
+        m_uiShaderInfo.viewLocation       = Shaders.GetUniformIndex(m_uiShaderInfo.shader, "view");
 
         // Default UI properties
         m_uiShaderInfo.nearClip = -100.0f;
-        m_uiShaderInfo.farClip = 100.0f;
-        m_uiShaderInfo.fov = 0;
+        m_uiShaderInfo.farClip  = 100.0f;
+        m_uiShaderInfo.fov      = 0;
         m_uiShaderInfo.projection =
             glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
         m_uiShaderInfo.view = mat4(1.0f);
@@ -79,18 +74,18 @@ namespace C3D
         m_worldShaderInfo.shader = Shaders.Get(worldShaderName);
 
         // Get the uniform locations
-        m_worldShaderInfo.idColorLocation = Shaders.GetUniformIndex(m_worldShaderInfo.shader, "idColor");
-        m_worldShaderInfo.modelLocation = Shaders.GetUniformIndex(m_worldShaderInfo.shader, "model");
+        m_worldShaderInfo.idColorLocation    = Shaders.GetUniformIndex(m_worldShaderInfo.shader, "idColor");
+        m_worldShaderInfo.modelLocation      = Shaders.GetUniformIndex(m_worldShaderInfo.shader, "model");
         m_worldShaderInfo.projectionLocation = Shaders.GetUniformIndex(m_worldShaderInfo.shader, "projection");
-        m_worldShaderInfo.viewLocation = Shaders.GetUniformIndex(m_worldShaderInfo.shader, "view");
+        m_worldShaderInfo.viewLocation       = Shaders.GetUniformIndex(m_worldShaderInfo.shader, "view");
 
         // Default world properties
-        m_worldShaderInfo.nearClip = 0.1f;
-        m_worldShaderInfo.farClip = 1000.0f;
-        m_worldShaderInfo.fov = DegToRad(45.0f);
+        m_worldShaderInfo.nearClip   = 0.1f;
+        m_worldShaderInfo.farClip    = 1000.0f;
+        m_worldShaderInfo.fov        = DegToRad(45.0f);
         m_worldShaderInfo.projection = glm::perspective(m_worldShaderInfo.fov, 1280 / 720.0f,
                                                         m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
-        m_worldShaderInfo.view = mat4(1.0f);
+        m_worldShaderInfo.view       = mat4(1.0f);
 
         m_instanceCount = 0;
 
@@ -117,9 +112,9 @@ namespace C3D
 
     void RenderViewPick::OnResize()
     {
-        const auto fWidth = static_cast<f32>(m_width);
+        const auto fWidth  = static_cast<f32>(m_width);
         const auto fHeight = static_cast<f32>(m_height);
-        const auto aspect = fWidth / fHeight;
+        const auto aspect  = fWidth / fHeight;
 
         m_uiShaderInfo.projection =
             glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
@@ -136,14 +131,14 @@ namespace C3D
         }
 
         const auto packetData = static_cast<PickPacketData*>(data);
-        outPacket->view = this;
+        outPacket->view       = this;
 
         // TODO: Get active camera
-        const auto worldCam = Cam.GetDefault();
+        const auto worldCam    = Cam.GetDefault();
         m_worldShaderInfo.view = worldCam->GetViewMatrix();
 
         packetData->uiGeometryCount = 0;
-        outPacket->extendedData = frameAllocator->New<PickPacketData>(MemoryType::RenderView);
+        outPacket->extendedData     = frameAllocator->New<PickPacketData>(MemoryType::RenderView);
 
         u32 highestInstanceId = 0;
         // Iterate all geometries in world data
@@ -193,11 +188,12 @@ namespace C3D
 
         // Copy over the packet data
         auto outPickPacketData = static_cast<PickPacketData*>(outPacket->extendedData);
-        *outPickPacketData = *packetData;
+        *outPickPacketData     = *packetData;
         return true;
     }
 
-    bool RenderViewPick::OnRender(const RenderViewPacket* packet, u64 frameNumber, const u64 renderTargetIndex)
+    bool RenderViewPick::OnRender(const FrameData& frameData, const RenderViewPacket* packet, u64 frameNumber,
+                                  u64 renderTargetIndex)
     {
         // We start at the 0-th pass (world)
         auto pass = passes[0];
@@ -246,7 +242,7 @@ namespace C3D
             // Draw world geometries. Start from 0 since world geometries are added first
             for (u32 i = 0; i < packetData->worldMeshData->Size(); i++)
             {
-                auto& geo = packet->geometries[i];
+                auto& geo         = packet->geometries[i];
                 currentInstanceId = geo.uniqueId;
 
                 if (!Shaders.BindInstance(currentInstanceId))
@@ -318,7 +314,7 @@ namespace C3D
             // Draw our ui geometries. We start where the world geometries left off.
             for (u64 i = packetData->worldMeshData->Size(); i < packet->geometries.Size(); i++)
             {
-                auto& geo = packet->geometries[i];
+                auto& geo         = packet->geometries[i];
                 currentInstanceId = geo.uniqueId;
 
                 if (!Shaders.BindInstance(currentInstanceId))
@@ -391,8 +387,8 @@ namespace C3D
             }
         }
 
-        u8 pixelRgba[4] = {0};
-        u8* pixel = &pixelRgba[0];
+        u8 pixelRgba[4] = { 0 };
+        u8* pixel       = &pixelRgba[0];
 
         const u16 xCoord = C3D_CLAMP(m_mouseX, 0, m_width - 1);
         const u16 yCoord = C3D_CLAMP(m_mouseY, 0, m_height - 1);
@@ -447,17 +443,17 @@ namespace C3D
         // Generate a UUID to act as the name
         const auto textureNameUUID = UUIDS::Generate();
 
-        const u32 width = passes[passIndex]->renderArea.z;
-        const u32 height = passes[passIndex]->renderArea.w;
+        const u32 width                = passes[passIndex]->renderArea.z;
+        const u32 height               = passes[passIndex]->renderArea.w;
         constexpr bool hasTransparency = false;  // TODO: make this configurable
 
-        attachment->texture->id = INVALID_ID;
-        attachment->texture->type = TextureType::Type2D;
-        attachment->texture->name = textureNameUUID.value;
-        attachment->texture->width = width;
-        attachment->texture->height = height;
+        attachment->texture->id           = INVALID_ID;
+        attachment->texture->type         = TextureType::Type2D;
+        attachment->texture->name         = textureNameUUID.value;
+        attachment->texture->width        = width;
+        attachment->texture->height       = height;
         attachment->texture->channelCount = 4;  // TODO: Configurable
-        attachment->texture->generation = INVALID_ID;
+        attachment->texture->generation   = INVALID_ID;
         attachment->texture->flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
         attachment->texture->flags |= TextureFlag::IsWritable;
         if (attachment->type == RenderTargetAttachmentType::Depth)

@@ -28,8 +28,8 @@ namespace C3D
 
         // Try different extensions. First try our optimized binary format, otherwise we try obj.
         SupportedMeshFileType supportedFileTypes[MESH_LOADER_EXTENSION_COUNT] = {
-            {"csm", MeshFileType::Csm, true},
-            {"obj", MeshFileType::Obj, false},
+            { "csm", MeshFileType::Csm, true },
+            { "obj", MeshFileType::Obj, false },
         };
 
         for (const auto fileType : supportedFileTypes)
@@ -115,7 +115,7 @@ namespace C3D
         DynamicArray<MeshGroupData> groups(4);
 
         char materialFileName[512] = {};
-        char name[512] = {};
+        char name[512]             = {};
 
         u8 currentMaterialNameCount = 0;
         char materialNames[32][64];
@@ -173,7 +173,7 @@ namespace C3D
                     for (u64 i = 0; i < groups.Size(); i++)
                     {
                         GeometryConfig newData = {};
-                        newData.name = name;
+                        newData.name           = name;
 
                         if (i > 0)
                         {
@@ -204,7 +204,7 @@ namespace C3D
         for (u64 i = 0; i < groups.Size(); i++)
         {
             GeometryConfig newData = {};
-            newData.name = name;
+            newData.name           = name;
 
             if (i > 0)
             {
@@ -309,18 +309,18 @@ namespace C3D
                                                         DynamicArray<MeshFaceData>& faces,
                                                         GeometryConfig* outData) const
     {
-        auto indices = DynamicArray<u32>(32768);
+        auto indices  = DynamicArray<u32>(32768);
         auto vertices = DynamicArray<Vertex3D>(32768);
 
-        bool extentSet = false;
+        bool extentSet      = false;
         outData->minExtents = vec3(0);
         outData->maxExtents = vec3(0);
 
-        u64 faceCount = faces.Size();
-        u64 normalCount = normals.Size();
+        u64 faceCount          = faces.Size();
+        u64 normalCount        = normals.Size();
         u64 texCoordinateCount = texCoords.Size();
 
-        bool skipNormals = false;
+        bool skipNormals            = false;
         bool skipTextureCoordinates = false;
 
         if (normalCount == 0)
@@ -347,7 +347,7 @@ namespace C3D
 
                 Vertex3D vertex{};
 
-                vec3 pos = positions[indexData.positionIndex - 1];
+                vec3 pos        = positions[indexData.positionIndex - 1];
                 vertex.position = pos;
 
                 // Check extents - min
@@ -412,7 +412,7 @@ namespace C3D
         }
 
         outData->vertices = vertices;
-        outData->indices = indices;
+        outData->indices  = indices;
     }
 
     bool ResourceLoader<MeshResource>::ImportObjMaterialLibraryFile(const char* mtlFilePath) const
@@ -573,7 +573,7 @@ namespace C3D
                 config = {};
             }
 
-            hitName = true;
+            hitName     = true;
             config.name = materialName;
         }
     }

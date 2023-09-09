@@ -5,17 +5,19 @@
 
 namespace C3D
 {
+    constexpr u8 TERRAIN_MAX_MATERIAL_COUNT = 8;
+
     struct Vertex3D
     {
-        /* @brief: The position of the vertex. */
+        /** @brief The position of the vertex. */
         vec3 position;
-        /* @brief: The normal of the vertex. */
+        /** @brief The normal of the vertex. */
         vec3 normal;
-        /* @brief: The texture coordinates (u, v). */
+        /** @brief The texture coordinates (u, v). */
         vec2 texture;
-        /* @brief: The color of the vertex. */
+        /** @brief The color of the vertex. */
         vec4 color;
-        /* @brief: The tangent of the vertex. */
+        /** @brief The tangent of the vertex. */
         vec3 tangent;
 
         bool operator==(const Vertex3D& other) const
@@ -36,6 +38,23 @@ namespace C3D
 
         vec2 position;
         vec2 texture;
+    };
+
+    struct TerrainVertex
+    {
+        /** @brief The position of the vertex. */
+        vec3 position;
+        /** @brief The normal of the vertex. */
+        vec3 normal;
+        /** @brief The texture coordinates (u, v). */
+        vec2 texture;
+        /** @brief The color of the vertex. */
+        vec4 color;
+        /** @brief The tangent of the vertex. */
+        vec3 tangent;
+        // TODO: Materials!
+        /** @brief A collection of material weights for this vertex. */
+        // f32 materialWeights[TERRAIN_MAX_MATERIAL_COUNT];
     };
 }  // namespace C3D
 

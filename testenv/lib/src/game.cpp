@@ -77,13 +77,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
         return false;
     }
 
-    // World meshes
-    for (u32 i = 0; i < 10; i++)
-    {
-        m_state->meshes[i].generation   = INVALID_ID_U8;
-        m_state->uiMeshes[i].generation = INVALID_ID_U8;
-    }
-
     // Load up our test ui geometry
     C3D::UIGeometryConfig uiConfig = {};
     uiConfig.vertices.Resize(4);

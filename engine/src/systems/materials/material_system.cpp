@@ -93,13 +93,19 @@ namespace C3D
 
     Material* MaterialSystem::Acquire(const char* name)
     {
+        if (!name)
+        {
+            m_logger.Error("Acquire() - Tried loading material with non-existent name");
+            return nullptr;
+        }
+
         if (m_registeredMaterials.Has(name))
         {
             // The material already exists
             MaterialReference& ref = m_registeredMaterials.Get(name);
             ref.referenceCount++;
 
-            m_logger.Trace("Material {} already exists. The refCount is now {}", name, ref.referenceCount);
+            m_logger.Trace("Acquire() - Material {} already exists. The refCount is now {}", name, ref.referenceCount);
 
             return &ref.material;
         }
@@ -107,7 +113,7 @@ namespace C3D
         MaterialResource materialResource{};
         if (!Resources.Load(name, materialResource))
         {
-            m_logger.Error("Failed to load material resource. Returning nullptr");
+            m_logger.Error("Acquire() - Failed to load material resource: '{}'. Returning nullptr", name);
             return nullptr;
         }
 
@@ -116,7 +122,7 @@ namespace C3D
 
         if (!m)
         {
-            m_logger.Error("Failed to load material resource. Returning nullptr");
+            m_logger.Error("Acquire() - Failed to load material resource: '{}'. Returning nullptr", name);
         }
         return m;
     }

@@ -256,7 +256,7 @@ namespace C3D
                       m_context.frameBufferSizeGeneration);
     }
 
-    bool VulkanRendererPlugin::BeginFrame(const FrameData* frameData)
+    bool VulkanRendererPlugin::BeginFrame(const FrameData& frameData)
     {
         const auto& device = m_context.device;
 
@@ -334,7 +334,7 @@ namespace C3D
         return true;
     }
 
-    bool VulkanRendererPlugin::EndFrame(const FrameData* frameData)
+    bool VulkanRendererPlugin::EndFrame(const FrameData& frameData)
     {
         const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
 
@@ -561,6 +561,29 @@ namespace C3D
     }
 
     void VulkanRendererPlugin::DrawGeometry(const GeometryRenderData& data)
+    {
+        // Simply ignore if there is no geometry to draw
+        if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
+
+        const auto bufferData        = &m_geometries[data.geometry->internalId];
+        const bool includesIndexData = bufferData->indexCount > 0;
+
+        if (!m_objectVertexBuffer.Draw(bufferData->vertexBufferOffset, bufferData->vertexCount, includesIndexData))
+        {
+            m_logger.Error("DrawGeometry() - Failed to draw vertex buffer.");
+            return;
+        }
+
+        if (includesIndexData)
+        {
+            if (!m_objectIndexBuffer.Draw(bufferData->indexBufferOffset, bufferData->indexCount, false))
+            {
+                m_logger.Error("DrawGeometry() - Failed to draw index buffer.");
+            }
+        }
+    }
+
+    void VulkanRendererPlugin::DrawTerrainGeometry(const GeometryRenderData& data)
     {
         // Simply ignore if there is no geometry to draw
         if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
@@ -859,7 +882,7 @@ namespace C3D
 
         // Vertex data
         internalData->vertexCount       = static_cast<u32>(vertexCount);
-        internalData->vertexElementSize = sizeof(Vertex3D);
+        internalData->vertexElementSize = vertexSize;
         u64 totalSize                   = vertexCount * vertexSize;
 
         if (!m_objectVertexBuffer.Allocate(totalSize, &internalData->vertexBufferOffset))
@@ -878,7 +901,7 @@ namespace C3D
         if (indexCount && indices)
         {
             internalData->indexCount       = static_cast<u32>(indexCount);
-            internalData->indexElementSize = sizeof(u32);
+            internalData->indexElementSize = indexSize;
             totalSize                      = indexCount * indexSize;
 
             if (!m_objectIndexBuffer.Allocate(totalSize, &internalData->indexBufferOffset))

@@ -44,16 +44,16 @@ namespace C3D
 
         Resources.Unload(res);
 
-        m_shader = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
-        m_diffuseMapLocation = Shaders.GetUniformIndex(m_shader, "diffuseTexture");
+        m_shader               = Shaders.Get(m_customShaderName ? m_customShaderName.Data() : shaderName);
+        m_diffuseMapLocation   = Shaders.GetUniformIndex(m_shader, "diffuseTexture");
         m_diffuseColorLocation = Shaders.GetUniformIndex(m_shader, "diffuseColor");
-        m_modelLocation = Shaders.GetUniformIndex(m_shader, "model");
+        m_modelLocation        = Shaders.GetUniformIndex(m_shader, "model");
 
         // TODO: Set this from configuration
         m_nearClip = -100.0f;
-        m_farClip = 100.0f;
+        m_farClip  = 100.0f;
 
-        const auto fWidth = static_cast<f32>(m_width);
+        const auto fWidth  = static_cast<f32>(m_width);
         const auto fHeight = static_cast<f32>(m_height);
 
         m_projectionMatrix = glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_nearClip, m_farClip);
@@ -77,10 +77,10 @@ namespace C3D
 
         const auto uiData = static_cast<UIPacketData*>(data);
 
-        outPacket->view = this;
+        outPacket->view             = this;
         outPacket->projectionMatrix = m_projectionMatrix;
-        outPacket->viewMatrix = m_viewMatrix;
-        outPacket->extendedData = frameAllocator->Allocate<UIPacketData>(MemoryType::RenderView);
+        outPacket->viewMatrix       = m_viewMatrix;
+        outPacket->extendedData     = frameAllocator->Allocate<UIPacketData>(MemoryType::RenderView);
         *static_cast<UIPacketData*>(outPacket->extendedData) = *uiData;
 
         for (const auto mesh : uiData->meshData.meshes)
@@ -94,7 +94,8 @@ namespace C3D
         return true;
     }
 
-    bool RenderViewUi::OnRender(const RenderViewPacket* packet, const u64 frameNumber, const u64 renderTargetIndex)
+    bool RenderViewUi::OnRender(const FrameData& frameData, const RenderViewPacket* packet, u64 frameNumber,
+                                u64 renderTargetIndex)
     {
         for (const auto pass : passes)
         {

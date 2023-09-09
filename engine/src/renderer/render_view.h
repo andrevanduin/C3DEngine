@@ -19,8 +19,8 @@ namespace C3D
 
     enum class RenderViewKnownType
     {
-        World = 0x01,
-        UI = 0x02,
+        World  = 0x01,
+        UI     = 0x02,
         Skybox = 0x03,
         /* @brief A view that simply only renders ui and world objects for the purpose of mouse picking. */
         Pick = 0x04,
@@ -29,13 +29,13 @@ namespace C3D
     enum class RenderViewViewMatrixSource
     {
         SceneCamera = 0x01,
-        UiCamera = 0x02,
+        UiCamera    = 0x02,
         LightCamera = 0x03,
     };
 
     enum class RenderViewProjectionMatrixSource
     {
-        DefaultPerspective = 0x01,
+        DefaultPerspective  = 0x01,
         DefaultOrthographic = 0x02,
     };
 
@@ -71,10 +71,10 @@ namespace C3D
         RenderView(u16 _id, const RenderViewConfig& config);
 
         RenderView(const RenderView&) = delete;
-        RenderView(RenderView&&) = delete;
+        RenderView(RenderView&&)      = delete;
 
         RenderView& operator=(const RenderView&) = delete;
-        RenderView& operator=(RenderView&&) = delete;
+        RenderView& operator=(RenderView&&)      = delete;
 
         virtual ~RenderView() = default;
 
@@ -91,7 +91,8 @@ namespace C3D
         virtual bool OnBuildPacket(LinearAllocator* frameAllocator, void* data, RenderViewPacket* outPacket) = 0;
         virtual void OnDestroyPacket(RenderViewPacket& packet);
 
-        virtual bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) = 0;
+        virtual bool OnRender(const FrameData& frameData, const RenderViewPacket* packet, u64 frameNumber,
+                              u64 renderTargetIndex) = 0;
 
         virtual bool RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment);
 
@@ -112,7 +113,7 @@ namespace C3D
 
         RegisteredEventCallback m_defaultRenderTargetRefreshRequiredCallback;
 
-        char* m_customShaderName;
+        String m_customShaderName;
 
         LoggerInstance<64> m_logger;
 
@@ -143,6 +144,8 @@ namespace C3D
         vec4 ambientColor;
 
         DynamicArray<GeometryRenderData, LinearAllocator> geometries;
+        DynamicArray<GeometryRenderData, LinearAllocator> terrainGeometries;
+
         // @brief The name of the custom shader to use, if not using it is nullptr.
         const char* customShaderName;
         // @brief Holds a pointer to extra data understood by both the object and consuming view.

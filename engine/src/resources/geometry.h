@@ -17,26 +17,26 @@ namespace C3D
         vec3 minExtents;
         vec3 maxExtents;
 
-        CString<GEOMETRY_NAME_MAX_LENGTH> name;
-        CString<MATERIAL_NAME_MAX_LENGTH> materialName;
+        String name;
+        String materialName;
 
         constexpr static u64 GetVertexSize() { return sizeof(VertexType); }
         constexpr static u64 GetIndexSize() { return sizeof(IndexType); }
     };
 
-    using GeometryConfig = IGeometryConfig<Vertex3D, u32>;
+    using GeometryConfig   = IGeometryConfig<Vertex3D, u32>;
     using UIGeometryConfig = IGeometryConfig<Vertex2D, u32>;
 
     struct Geometry
     {
-        u32 id;
-        u32 internalId;
-        u16 generation;
+        u32 id         = INVALID_ID;
+        u32 internalId = INVALID_ID;
+        u16 generation = INVALID_ID_U16;
 
         vec3 center;
         Extents3D extents;
 
-        CString<GEOMETRY_NAME_MAX_LENGTH> name;
-        Material* material;
+        String name;
+        Material* material = nullptr;
     };
 }  // namespace C3D

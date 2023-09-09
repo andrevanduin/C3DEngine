@@ -27,7 +27,7 @@ namespace C3D
         m_skyboxGeometryConfig =
             Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, m_config.cubeMapName, "");
         // Clear out the material name
-        m_skyboxGeometryConfig.materialName[0] = '\0';
+        m_skyboxGeometryConfig.materialName.Clear();
         // Invalidate our id so it's clear that this skybox still needs to be loaded
         instanceId = INVALID_ID;
 

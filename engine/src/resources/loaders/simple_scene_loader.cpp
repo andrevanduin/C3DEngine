@@ -34,13 +34,13 @@ namespace C3D
             return false;
         }
 
-        resource.fullPath = fullPath;
-        resource.name = name;
+        resource.fullPath    = fullPath;
+        resource.name        = name;
         resource.description = "";
 
         String line;
-        u32 lineNumber = 1;
-        u32 version = 0;
+        u32 lineNumber     = 1;
+        u32 version        = 0;
         ParserTagType type = ParserTagType::Invalid;
 
         while (file.ReadLine(line))
@@ -127,133 +127,137 @@ namespace C3D
             return true;
         }
 
-        std::pair<bool, String> result = std::make_pair(false, "Unknown ParserTagType");
-
-        if (type == ParserTagType::Mesh)
+        try
         {
-            result = ParseMesh(varName, value, cfg);
+            switch (type)
+            {
+                case ParserTagType::Mesh:
+                    ParseMesh(varName, value, cfg);
+                    break;
+                case ParserTagType::PointLight:
+                    ParsePointLight(varName, value, cfg);
+                    break;
+                case ParserTagType::Scene:
+                    ParseScene(varName, value, cfg);
+                    break;
+                case ParserTagType::Skybox:
+                    ParseSkybox(varName, value, cfg);
+                    break;
+                case ParserTagType::DirectionalLight:
+                    ParseDirectionalLight(varName, value, cfg);
+                    break;
+                case ParserTagType::Terrain:
+                    ParseTerrain(varName, value, cfg);
+                    break;
+                default:
+                    throw std::exception(
+                        String::FromFormat("Unknown ParserTageType: '{}'.", ToUnderlying(type)).Data());
+                    break;
+            }
         }
-        else if (type == ParserTagType::PointLight)
-        {
-            result = ParsePointLight(varName, value, cfg);
-        }
-        else if (type == ParserTagType::Scene)
-        {
-            result = ParseScene(varName, value, cfg);
-        }
-        else if (type == ParserTagType::Skybox)
-        {
-            result = ParseSkybox(varName, value, cfg);
-        }
-        else if (type == ParserTagType::DirectionalLight)
-        {
-            result = ParseDirectionalLight(varName, value, cfg);
-        }
-
-        if (!result.first)
+        catch (const std::exception& exc)
         {
             m_logger.Error("Load() - Failed to load file: '{}'. Error found on line {}: {}", fileName, lineNumber,
-                           result.second);
+                           exc.what());
             return false;
         }
 
         return true;
     }
 
-    std::pair<bool, String> ResourceLoader<SimpleSceneConfig>::ParseScene(const String& name, const String& value,
-                                                                          SimpleSceneConfig& cfg) const
+    void ResourceLoader<SimpleSceneConfig>::ParseScene(const String& name, const String& value,
+                                                       SimpleSceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
             cfg.name = value;
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("description"))
         {
             cfg.description = value;
-            return std::make_pair(true, "");
         }
-        return std::make_pair(false, String::FromFormat("Unknown element: '{}' specified for Scene", name));
+        else
+        {
+            throw std::exception(String::FromFormat("Unknown element: '{}' specified for Scene", name).Data());
+        }
     }
 
-    std::pair<bool, String> ResourceLoader<SimpleSceneConfig>::ParseSkybox(const String& name, const String& value,
-                                                                           SimpleSceneConfig& cfg) const
+    void ResourceLoader<SimpleSceneConfig>::ParseSkybox(const String& name, const String& value,
+                                                        SimpleSceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
             cfg.skyboxConfig.name = value;
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("cubemapName"))
         {
             cfg.skyboxConfig.cubemapName = value;
-            return std::make_pair(true, "");
         }
-        return std::make_pair(false, String::FromFormat("Unknown element: '{}' specified for Skybox", name));
+        else
+        {
+            throw std::exception(String::FromFormat("Unknown element: '{}' specified for Skybox", name).Data());
+        }
     }
 
-    std::pair<bool, String> ResourceLoader<SimpleSceneConfig>::ParseDirectionalLight(const String& name,
-                                                                                     const String& value,
-                                                                                     SimpleSceneConfig& cfg) const
+    void ResourceLoader<SimpleSceneConfig>::ParseDirectionalLight(const String& name, const String& value,
+                                                                  SimpleSceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
             cfg.directionalLightConfig.name = value;
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("direction"))
         {
             cfg.directionalLightConfig.direction = value.ToVec4();
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("color"))
         {
             cfg.directionalLightConfig.color = value.ToVec4();
-            return std::make_pair(true, "");
         }
-        return std::make_pair(false, String::FromFormat("Unknown element: '{}' specified for Directional Light", name));
+        else
+        {
+            throw std::exception(
+                String::FromFormat("Unknown element: '{}' specified for Directional Light", name).Data());
+        }
     }
 
-    std::pair<bool, String> ResourceLoader<SimpleSceneConfig>::ParsePointLight(const String& name, const String& value,
-                                                                               SimpleSceneConfig& cfg) const
+    void ResourceLoader<SimpleSceneConfig>::ParsePointLight(const String& name, const String& value,
+                                                            SimpleSceneConfig& cfg) const
     {
         auto& pointLight = cfg.pointLights.Back();
 
         if (name.IEquals("name"))
         {
             pointLight.name = value;
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("color"))
         {
             pointLight.color = value.ToVec4();
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("position"))
         {
             pointLight.position = value.ToVec4();
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("constant"))
         {
             pointLight.constant = value.ToF32();
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("linear"))
         {
             pointLight.linear = value.ToF32();
-            return std::make_pair(true, "");
         }
         else if (name.IEquals("quadratic"))
         {
             pointLight.quadratic = value.ToF32();
-            return std::make_pair(true, "");
         }
-        return std::make_pair(false, String::FromFormat("Unknown element: '{}' specified for Point Light", name));
+        else
+        {
+            throw std::exception(String::FromFormat("Unknown element: '{}' specified for Point Light", name).Data());
+        }
     }
 
-    std::pair<bool, String> ResourceLoader<SimpleSceneConfig>::ParseMesh(const String& name, const String& value,
-                                                                         SimpleSceneConfig& cfg) const
+    void ResourceLoader<SimpleSceneConfig>::ParseMesh(const String& name, const String& value,
+                                                      SimpleSceneConfig& cfg) const
     {
         auto& mesh = cfg.meshes.Back();
 
@@ -261,36 +265,13 @@ namespace C3D
         {
             mesh.name = value;
         }
-        else if (name.IEquals("resourceName"))
+        else if (name.IEquals("resourcename"))
         {
             mesh.resourceName = value;
         }
         else if (name.IEquals("transform"))
         {
-            const auto values = value.Split(' ');
-            if (values.Size() == 10)
-            {
-                vec3 pos = {values[0].ToF32(), values[1].ToF32(), values[2].ToF32()};
-                quat rot = {values[6].ToF32(), values[3].ToF32(), values[4].ToF32(), values[5].ToF32()};
-                vec3 scale = {values[7].ToF32(), values[8].ToF32(), values[9].ToF32()};
-                mesh.transform.SetPositionRotationScale(pos, rot, scale);
-            }
-            else if (values.Size() == 9)
-            {
-                vec3 pos = {values[0].ToF32(), values[1].ToF32(), values[2].ToF32()};
-                vec3 rot = {values[3].ToF32(), values[4].ToF32(), values[5].ToF32()};
-                vec3 scale = {values[6].ToF32(), values[7].ToF32(), values[8].ToF32()};
-                mesh.transform.SetPositionRotationScale(pos, rot, scale);
-            }
-            else
-            {
-                return std::make_pair(
-                    false,
-                    String::FromFormat(
-                        "Transform should have 10 values in the form px py pz qx qy qz qw sx sy sz (quaternion mode) "
-                        "or 9 values in the form of px py pz ex ey ez sx sy sz (euler angle mode) but it had {}",
-                        values.Size()));
-            }
+            mesh.transform = ParseTransform(value);
         }
         else if (name.IEquals("parent"))
         {
@@ -298,10 +279,62 @@ namespace C3D
         }
         else
         {
-            return std::make_pair(false, String::FromFormat("Unknown element: '{}' specified for Mesh", name));
+            throw std::exception(String::FromFormat("Unknown element: '{}' specified for Mesh", name).Data());
         }
+    }
 
-        return std::make_pair(true, "");
+    void ResourceLoader<SimpleSceneConfig>::ParseTerrain(const String& name, const String& value,
+                                                         SimpleSceneConfig& cfg) const
+    {
+        auto& terrain = cfg.terrains.Back();
+
+        if (name.IEquals("name"))
+        {
+            terrain.name = value;
+        }
+        else if (name.IEquals("transform"))
+        {
+            terrain.transform = ParseTransform(value);
+        }
+        else if (name.IEquals("resourcename"))
+        {
+            terrain.resourceName = value;
+        }
+        else
+        {
+            throw std::exception(String::FromFormat("Unknown element: '{}' specified for Terrain", name).Data());
+        }
+    }
+
+    Transform ResourceLoader<SimpleSceneConfig>::ParseTransform(const String& value) const
+    {
+        const auto values = value.Split(' ');
+        Transform transform;
+
+        if (values.Size() == 10)
+        {
+            vec3 pos   = { values[0].ToF32(), values[1].ToF32(), values[2].ToF32() };
+            quat rot   = { values[6].ToF32(), values[3].ToF32(), values[4].ToF32(), values[5].ToF32() };
+            vec3 scale = { values[7].ToF32(), values[8].ToF32(), values[9].ToF32() };
+            transform.SetPositionRotationScale(pos, rot, scale);
+        }
+        else if (values.Size() == 9)
+        {
+            vec3 pos   = { values[0].ToF32(), values[1].ToF32(), values[2].ToF32() };
+            vec3 rot   = { values[3].ToF32(), values[4].ToF32(), values[5].ToF32() };
+            vec3 scale = { values[6].ToF32(), values[7].ToF32(), values[8].ToF32() };
+            transform.SetPositionRotationScale(pos, rot, scale);
+        }
+        else
+        {
+            throw std::exception(
+                String::FromFormat(
+                    "Transform should have 10 values in the form px py pz qx qy qz qw sx sy sz (quaternion mode) "
+                    "or 9 values in the form of px py pz ex ey ez sx sy sz (euler angle mode) but it had {}",
+                    values.Size())
+                    .Data());
+        }
+        return transform;
     }
 
     ParserTagType ResourceLoader<SimpleSceneConfig>::ParseTag(const String& line, const String& fileName,
@@ -349,13 +382,18 @@ namespace C3D
         }
         else if (name.IEquals("mesh"))
         {
-            cfg.meshes.EmplaceBack();  // Add a mesh which we will populate in the parseTagContent method
+            cfg.meshes.EmplaceBack();  // Add a mesh which we will populate in the ParseTagContent method
             return ParserTagType::Mesh;
         }
         else if (name.IEquals("pointlight"))
         {
-            cfg.pointLights.EmplaceBack();  // Add a point light which we will populate in the parseTagContent method
+            cfg.pointLights.EmplaceBack();  // Add a point light which we will populate in the ParseTagContent method
             return ParserTagType::PointLight;
+        }
+        else if (name.IEquals("terrain"))
+        {
+            cfg.terrains.EmplaceBack();  // Add a terrain which we will popluate in the ParseTagContent method
+            return ParserTagType::Terrain;
         }
 
         return ParserTagType::Invalid;

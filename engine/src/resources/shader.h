@@ -45,6 +45,7 @@ namespace C3D
     /* @brief the different possible scopes in a shader. */
     enum class ShaderScope
     {
+        None,
         Global,
         Instance,
         Local,
@@ -75,7 +76,7 @@ namespace C3D
         u32 location;
 
         ShaderUniformType type;
-        ShaderScope scope;
+        ShaderScope scope = ShaderScope::None;
     };
 
     struct ShaderConfig
@@ -129,76 +130,57 @@ namespace C3D
 
     enum ShaderFlags
     {
-        ShaderFlagNone = 0x0,
-        ShaderFlagDepthTest = 0x1,
+        ShaderFlagNone       = 0x0,
+        ShaderFlagDepthTest  = 0x1,
         ShaderFlagDepthWrite = 0x2,
     };
     typedef u32 ShaderFlagBits;
 
-    struct Shader
+    class Shader
     {
-        Shader()
-            : id(INVALID_ID),
-              flags(ShaderFlagNone),
-              requiredUboAlignment(0),
-              globalUboSize(0),
-              globalUboStride(0),
-              globalUboOffset(0),
-              uboSize(0),
-              uboStride(0),
-              attributeStride(0),
-              instanceTextureCount(0),
-              boundScope(),
-              boundInstanceId(INVALID_ID),
-              boundUboOffset(0),
-              pushConstantSize(0),
-              pushConstantRangeCount(0),
-              pushConstantRanges{},
-              state(ShaderState::Uninitialized),
-              frameNumber(INVALID_ID_U64),
-              apiSpecificData(nullptr)
-        {}
+    public:
+        u16 GetUniformIndex(const char* uniformName);
 
-        u32 id;
+        u32 id = INVALID_ID;
         String name;
 
-        ShaderFlagBits flags;
+        ShaderFlagBits flags = ShaderFlagNone;
 
-        u64 requiredUboAlignment;
+        u64 requiredUboAlignment = 0;
         // A running total of the size of the global uniform buffer object
-        u64 globalUboSize;
-        u64 globalUboStride;
-        u64 globalUboOffset;
+        u64 globalUboSize   = 0;
+        u64 globalUboStride = 0;
+        u64 globalUboOffset = 0;
 
         // A running total of the size of the instance uniform buffer object
-        u64 uboSize;
-        u64 uboStride;
-        u16 attributeStride;
+        u64 uboSize         = 0;
+        u64 uboStride       = 0;
+        u16 attributeStride = 0;
 
         DynamicArray<TextureMap*> globalTextureMaps;
-        u64 instanceTextureCount;
+        u64 instanceTextureCount = 0;
 
-        ShaderScope boundScope;
-        u32 boundInstanceId;
-        u32 boundUboOffset;
+        ShaderScope boundScope = ShaderScope::None;
+        u32 boundInstanceId    = INVALID_ID;
+        u32 boundUboOffset     = 0;
 
         HashMap<String, ShaderUniform> uniforms;
         DynamicArray<ShaderAttribute> attributes;
 
-        u64 pushConstantSize;
+        u64 pushConstantSize = 0;
         // Note: this is hard-coded because the vulkan spec only guarantees a minimum 128bytes stride
         // The drivers might allocate more but this is not guaranteed on all video cards
-        u64 pushConstantStride = 128;
-        u8 pushConstantRangeCount;
+        u64 pushConstantStride    = 128;
+        u8 pushConstantRangeCount = 0;
         Range pushConstantRanges[32];
 
-        ShaderState state;
+        ShaderState state = ShaderState::Uninitialized;
 
         // @brief used to ensure the shaders globals are only updated once per frame.
-        u64 frameNumber;
+        u64 frameNumber = INVALID_ID_U64;
 
         // A pointer to the Renderer API specific data
         // This memory needs to be managed separately by the current rendering API backend
-        void* apiSpecificData;
+        void* apiSpecificData = nullptr;
     };
 }  // namespace C3D

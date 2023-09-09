@@ -21,9 +21,9 @@ namespace C3D
         m_entry.Create(m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, " ");
         m_cursor.Create(m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "|");
 
-        m_text.SetPosition({5, 5, 0});
-        m_entry.SetPosition({5, 30, 0});
-        m_cursor.SetPosition({5, 30, 0});
+        m_text.SetPosition({ 5, 5, 0 });
+        m_entry.SetPosition({ 5, 30, 0 });
+        m_cursor.SetPosition({ 5, 30, 0 });
 
         Event.Register(EventCodeKeyDown, [this](const u16 code, void* sender, const EventContext& context) {
             return OnKeyDownEvent(code, sender, context);
@@ -85,7 +85,7 @@ namespace C3D
             }
 
             m_text.SetText(buffer.Data());
-            m_entry.SetPosition({5, m_text.GetMaxY() + 5, 0});
+            m_entry.SetPosition({ 5, m_text.GetMaxY() + 5, 0 });
             m_isTextDirty = false;
         }
 
@@ -95,7 +95,7 @@ namespace C3D
             m_isEntryDirty = false;
         }
 
-        m_cursor.SetPosition({m_entry.GetMaxX(), m_text.GetMaxY() + 5, 0});
+        m_cursor.SetPosition({ m_entry.GetMaxX(), m_text.GetMaxY() + 5, 0 });
 
         if (m_isOpen)
         {
@@ -130,9 +130,9 @@ namespace C3D
 
     void UIConsole::WriteLine(const char* line)
     {
-        const auto len = std::strlen(line);
+        const auto len           = std::strlen(line);
         CString<256> currentLine = "";
-        auto currentLineLength = 0;
+        auto currentLineLength   = 0;
 
         for (size_t i = 0; i < len; i++)
         {
@@ -141,7 +141,7 @@ namespace C3D
             if (character == '\n' || currentLineLength >= 255)
             {
                 WriteLineInternal(currentLine);
-                currentLine = "";
+                currentLine       = "";
                 currentLineLength = 0;
             }
             else
@@ -163,7 +163,7 @@ namespace C3D
         m_nextLine++;
 
         m_startIndex = m_nextLine - SHOWN_LINES;
-        m_endIndex = m_nextLine;
+        m_endIndex   = m_nextLine;
 
         m_isTextDirty = true;
     }
@@ -196,7 +196,7 @@ namespace C3D
             }
 
             m_isEntryDirty = true;
-            m_current = m_history[m_currentHistory];
+            m_current      = m_history[m_currentHistory];
             return true;
         }
 
@@ -206,7 +206,7 @@ namespace C3D
             {
                 m_currentHistory++;
                 m_isEntryDirty = true;
-                m_current = m_history[m_currentHistory];
+                m_current      = m_history[m_currentHistory];
                 return true;
             }
 
@@ -222,7 +222,7 @@ namespace C3D
             if (!m_current.Empty())
             {
                 m_current[m_current.Size() - 1] = '\0';
-                m_isEntryDirty = true;
+                m_isEntryDirty                  = true;
             }
             return true;
         }
@@ -346,14 +346,14 @@ namespace C3D
     {
         if (StringUtils::IsEmptyOrWhitespaceOnly(m_current))
         {
-            m_current = "";
+            m_current      = "";
             m_isEntryDirty = true;
             return true;
         }
 
         m_history[m_nextHistory] = m_current;
         m_nextHistory++;
-        m_endHistory = m_nextHistory;
+        m_endHistory     = m_nextHistory;
         m_currentHistory = -1;
 
         const auto args = StringUtils::Split<256, 128>(m_current, ' ');
@@ -378,15 +378,15 @@ namespace C3D
         if (String output = ""; !command.operator()(args, output))
         {
             PrintCommandMessage(LogType::Error, "The command \'{}\' failed to execute:", commandName);
-            m_logger.Error(output.Data());
+            if (!output.Empty()) m_logger.Error(output.Data());
         }
         else
         {
             PrintCommandMessage(LogType::Info, "The command \'{}\' executed successfully:", commandName);
-            m_logger.Info(output.Data());
+            if (!output.Empty()) m_logger.Info(output.Data());
         }
 
-        m_current = "";
+        m_current      = "";
         m_isEntryDirty = true;
         return true;
     }

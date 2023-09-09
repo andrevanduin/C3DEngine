@@ -22,6 +22,13 @@ namespace C3D
         vec4 direction;
     };
 
+    struct SimpleSceneTerrainConfig
+    {
+        String name;
+        String resourceName;
+        Transform transform;
+    };
+
     struct SimpleScenePointLightConfig
     {
         String name;
@@ -45,7 +52,9 @@ namespace C3D
         String description;
         SimpleSceneSkyboxConfig skyboxConfig;
         SimpleSceneDirectionalLightConfig directionalLightConfig;
+
         DynamicArray<SimpleScenePointLightConfig> pointLights;
         DynamicArray<SimpleSceneMeshConfig> meshes;
+        DynamicArray<SimpleSceneTerrainConfig> terrains;
     };
 }  // namespace C3D

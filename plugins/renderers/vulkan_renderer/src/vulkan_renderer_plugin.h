@@ -32,8 +32,8 @@ namespace C3D
 
         void OnResize(u32 width, u32 height) override;
 
-        bool BeginFrame(const FrameData* frameData) override;
-        bool EndFrame(const FrameData* frameData) override;
+        bool BeginFrame(const FrameData& frameData) override;
+        bool EndFrame(const FrameData& frameData) override;
 
         void SetViewport(const vec4& rect) override;
         void ResetViewport() override;
@@ -46,6 +46,7 @@ namespace C3D
         bool EndRenderPass(RenderPass* pass) override;
 
         void DrawGeometry(const GeometryRenderData& data) override;
+        void DrawTerrainGeometry(const GeometryRenderData& data) override;
 
         void CreateTexture(const u8* pixels, Texture* texture) override;
         void CreateWritableTexture(Texture* texture) override;

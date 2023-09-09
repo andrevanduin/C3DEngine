@@ -6,8 +6,10 @@
 #include "renderer/render_view.h"
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
+#include "renderer/views/render_view_world.h"
 #include "resources/geometry.h"
 #include "resources/mesh.h"
+#include "resources/terrain.h"
 #include "simple_scene_config.h"
 
 namespace C3D
@@ -102,6 +104,10 @@ namespace C3D
         bool RemoveMesh(const String& name);
         Mesh& GetMesh(const String& name);
 
+        bool AddTerrain(const String& name, Terrain& terrain);
+        bool RemoveTerrain(const String& name);
+        Terrain& GetTerrain(const String& name);
+
         bool AddSkybox(const String& name, Skybox* skybox);
         bool RemoveSkybox(const String& name);
 
@@ -128,9 +134,11 @@ namespace C3D
 
         String m_directionalLight;
         DynamicArray<String> m_pointLights;
-        HashMap<String, Mesh> m_meshes;
 
-        DynamicArray<GeometryRenderData, LinearAllocator> m_worldGeometries;
+        HashMap<String, Mesh> m_meshes;
+        HashMap<String, Terrain> m_terrains;
+
+        RenderViewWorldData m_worldData;
 
         Transform m_transform;
 

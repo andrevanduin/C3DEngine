@@ -9,6 +9,7 @@ BraceWrapping:
   AfterStruct: true
   AfterCaseLabel: true
   AfterControlStatement: true
+  BeforeCatch: true
   BeforeElse: true
 IndentWidth: 4
 NamespaceIndentation: All

@@ -18,7 +18,8 @@ namespace C3D
 
         bool OnBuildPacket(LinearAllocator* frameAllocator, void* data, RenderViewPacket* outPacket) override;
 
-        bool OnRender(const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) override;
+        bool OnRender(const FrameData& frameData, const RenderViewPacket* packet, u64 frameNumber,
+                      u64 renderTargetIndex) override;
 
     private:
         Shader* m_shader;

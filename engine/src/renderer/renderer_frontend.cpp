@@ -17,7 +17,7 @@ namespace C3D
 
     bool RenderSystem::Init(const RenderSystemConfig& config)
     {
-        m_config = config;
+        m_config        = config;
         m_backendPlugin = config.rendererPlugin;
         if (!m_backendPlugin)
         {
@@ -28,8 +28,8 @@ namespace C3D
         RendererPluginConfig rendererPluginConfig{};
         rendererPluginConfig.applicationName = m_config.applicationName;
         rendererPluginConfig.pSystemsManager = m_pSystemsManager;
-        rendererPluginConfig.flags = m_config.flags;
-        rendererPluginConfig.pWindow = m_config.pWindow;
+        rendererPluginConfig.flags           = m_config.flags;
+        rendererPluginConfig.pWindow         = m_config.pWindow;
 
         if (!m_backendPlugin->Init(rendererPluginConfig, &m_windowRenderTargetCount))
         {
@@ -54,13 +54,13 @@ namespace C3D
 
     void RenderSystem::OnResize(const u32 width, const u32 height)
     {
-        m_resizing = true;
-        m_frameBufferWidth = width;
+        m_resizing          = true;
+        m_frameBufferWidth  = width;
         m_frameBufferHeight = height;
         m_framesSinceResize = 0;
     }
 
-    bool RenderSystem::DrawFrame(RenderPacket* packet, const FrameData* frameData)
+    bool RenderSystem::DrawFrame(RenderPacket* packet, const FrameData& frameData)
     {
         m_backendPlugin->frameNumber++;
 
@@ -75,7 +75,7 @@ namespace C3D
                 m_backendPlugin->OnResize(m_frameBufferWidth, m_frameBufferHeight);
 
                 m_framesSinceResize = 0;
-                m_resizing = false;
+                m_resizing          = false;
             }
             else
             {
@@ -93,7 +93,8 @@ namespace C3D
             // Render each view
             for (auto& viewPacket : packet->views)
             {
-                if (!Views.OnRender(viewPacket.view, &viewPacket, m_backendPlugin->frameNumber, attachmentIndex))
+                if (!Views.OnRender(frameData, viewPacket.view, &viewPacket, m_backendPlugin->frameNumber,
+                                    attachmentIndex))
                 {
                     m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.", viewPacket.view->name);
                     return false;
@@ -159,13 +160,15 @@ namespace C3D
                                                indices);
     }
 
-    void RenderSystem::DestroyTexture(Texture* texture) const { return m_backendPlugin->DestroyTexture(texture); }
+    void RenderSystem::DestroyTexture(Texture* texture) const { m_backendPlugin->DestroyTexture(texture); }
 
-    void RenderSystem::DestroyGeometry(Geometry* geometry) const { return m_backendPlugin->DestroyGeometry(geometry); }
+    void RenderSystem::DestroyGeometry(Geometry* geometry) const { m_backendPlugin->DestroyGeometry(geometry); }
 
-    void RenderSystem::DrawGeometry(const GeometryRenderData& data) const
+    void RenderSystem::DrawGeometry(const GeometryRenderData& data) const { m_backendPlugin->DrawGeometry(data); }
+
+    void RenderSystem::DrawTerrainGeometry(const GeometryRenderData& data) const
     {
-        return m_backendPlugin->DrawGeometry(data);
+        m_backendPlugin->DrawTerrainGeometry(data);
     }
 
     bool RenderSystem::BeginRenderPass(RenderPass* pass, RenderTarget* target) const

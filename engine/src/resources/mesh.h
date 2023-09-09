@@ -51,7 +51,9 @@ namespace C3D
 
         bool Destroy();
 
-        u32 uniqueId = INVALID_ID;
+        const String& GetName() const { return config.name; }
+
+        u32 uniqueId  = INVALID_ID;
         u8 generation = INVALID_ID_U8;
 
         DynamicArray<Geometry*> geometries;
@@ -81,7 +83,7 @@ namespace C3D
 
         bool Unload();
 
-        u32 uniqueId = INVALID_ID;
+        u32 uniqueId  = INVALID_ID;
         u8 generation = INVALID_ID_U8;
 
         DynamicArray<Geometry*> geometries;

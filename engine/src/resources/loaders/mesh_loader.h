@@ -120,7 +120,7 @@ namespace C3D
             IGeometryConfig<VertexType, IndexType> g = {};
 
             // Vertices (size / count / array)
-            u64 vertexSize = 0;
+            u64 vertexSize  = 0;
             u64 vertexCount = 0;
 
             file.Read(&vertexSize);
@@ -130,7 +130,7 @@ namespace C3D
             file.Read(g.vertices.GetData(), vertexCount);
 
             // Indices (size / count / array)
-            u64 indexSize = 0;
+            u64 indexSize  = 0;
             u64 indexCount = 0;
 
             file.Read(&indexSize);
@@ -196,7 +196,7 @@ namespace C3D
         {
             // Vertices (size / count / array)
             constexpr u64 vertexSize = IGeometryConfig<VertexType, IndexType>::GetVertexSize();
-            const u64 vertexCount = geometry.vertices.Size();
+            const u64 vertexCount    = geometry.vertices.Size();
 
             file.Write(&vertexSize);
             file.Write(&vertexCount);
@@ -204,7 +204,7 @@ namespace C3D
 
             // Indices (size / count / array)
             constexpr u64 indexSize = IGeometryConfig<VertexType, IndexType>::GetIndexSize();
-            const u64 indexCount = geometry.indices.Size();
+            const u64 indexCount    = geometry.indices.Size();
 
             file.Write(&indexSize);
             file.Write(&indexCount);

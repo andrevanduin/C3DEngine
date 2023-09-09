@@ -150,12 +150,12 @@ namespace C3D
         }
     }
 
-    bool RenderViewSystem::OnRender(RenderView* view, const RenderViewPacket* packet, const u64 frameNumber,
-                                    const u64 renderTargetIndex) const
+    bool RenderViewSystem::OnRender(const FrameData& frameData, RenderView* view, const RenderViewPacket* packet,
+                                    const u64 frameNumber, const u64 renderTargetIndex) const
     {
         if (view && packet)
         {
-            return view->OnRender(packet, frameNumber, renderTargetIndex);
+            return view->OnRender(frameData, packet, frameNumber, renderTargetIndex);
         }
 
         m_logger.Error("OnRender() - Requires a valid pointer to a view and packet.");

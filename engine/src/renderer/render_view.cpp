@@ -14,7 +14,7 @@ namespace C3D
           type(config.type),
           m_width(config.width),
           m_height(config.height),
-          m_customShaderName(nullptr),
+          m_customShaderName(config.customShaderName),
           m_logger(config.name.Data()),
           m_pSystemsManager(config.pSystemsManager)
     {
@@ -38,7 +38,7 @@ namespace C3D
     {
         if (width != m_width || height != m_height)
         {
-            m_width = static_cast<u16>(width);
+            m_width  = static_cast<u16>(width);
             m_height = static_cast<u16>(height);
 
             for (const auto pass : passes)
@@ -50,7 +50,11 @@ namespace C3D
         }
     }
 
-    void RenderView::OnDestroyPacket(RenderViewPacket& packet) { packet.geometries.Clear(); }
+    void RenderView::OnDestroyPacket(RenderViewPacket& packet)
+    {
+        packet.geometries.Clear();
+        packet.terrainGeometries.Clear();
+    }
 
     void RenderView::OnResize() {}
 

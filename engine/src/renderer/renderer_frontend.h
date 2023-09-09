@@ -38,7 +38,7 @@ namespace C3D
 
         void OnResize(u32 width, u32 height);
 
-        bool DrawFrame(RenderPacket* packet, const FrameData* frameData);
+        bool DrawFrame(RenderPacket* packet, const FrameData& frameData);
 
         void SetViewport(const vec4& rect) const;
         void ResetViewport() const;
@@ -63,6 +63,7 @@ namespace C3D
                             u64 indexCount, const void* indices) const;
         void DestroyGeometry(Geometry* geometry) const;
         void DrawGeometry(const GeometryRenderData& data) const;
+        void DrawTerrainGeometry(const GeometryRenderData& data) const;
 
         bool BeginRenderPass(RenderPass* pass, RenderTarget* target) const;
         bool EndRenderPass(RenderPass* pass) const;
@@ -113,7 +114,7 @@ namespace C3D
         u8 m_windowRenderTargetCount = 0;
         u32 m_frameBufferWidth = 1280, m_frameBufferHeight = 720;
 
-        bool m_resizing = false;
+        bool m_resizing        = false;
         u8 m_framesSinceResize = 0;
 
         RendererPlugin* m_backendPlugin = nullptr;
