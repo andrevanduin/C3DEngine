@@ -18,15 +18,23 @@ namespace C3D
 
     void Clock::Start()
     {
-        m_startTime = m_operatingSystem->GetAbsoluteTime();
+        m_startTime   = m_operatingSystem->GetAbsoluteTime();
         m_elapsedTime = 0;
     }
 
     void Clock::Stop() { m_startTime = 0; }
 
-    /** @brief Returns the elepased time in seconds between clock.Start() and clock.Update() */
-    f64 Clock::GetElapsed() const { return m_elapsedTime; }
+    /** @brief Returns the elepased time in seconds since clock.Start(). */
+    f64 Clock::GetElapsed()
+    {
+        Update();
+        return m_elapsedTime;
+    }
 
-    /** @brief Returns the elepased time in milliseconds between clock.Start() and clock.Update() */
-    f64 Clock::GetElapsedMs() const { return m_elapsedTime * 1000; }
+    /** @brief Returns the elepased time in milliseconds since clock.Start(). */
+    f64 Clock::GetElapsedMs()
+    {
+        Update();
+        return m_elapsedTime * 1000;
+    }
 }  // namespace C3D

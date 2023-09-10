@@ -61,13 +61,6 @@ namespace C3D
         TypeCube,
     };
 
-    struct ImageResourceData
-    {
-        u8 channelCount;
-        u32 width, height;
-        u8* pixels;
-    };
-
     struct ImageResourceParams
     {
         /* @brief Indicated if the image should be flipped on the y-axis when loaded. */

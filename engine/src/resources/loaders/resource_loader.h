@@ -14,10 +14,10 @@ namespace C3D
                         ResourceType type, const char* customType, const char* path);
 
         IResourceLoader(const IResourceLoader& other) = delete;
-        IResourceLoader(IResourceLoader&& other) = delete;
+        IResourceLoader(IResourceLoader&& other)      = delete;
 
         IResourceLoader& operator=(const IResourceLoader& other) = default;
-        IResourceLoader& operator=(IResourceLoader&& other) = delete;
+        IResourceLoader& operator=(IResourceLoader&& other)      = delete;
 
         virtual ~IResourceLoader() = default;
 
@@ -43,5 +43,6 @@ namespace C3D
         {}
 
         bool Load(const char* name, T& resource) const;
+        void Unload(T& resource) const;
     };
 }  // namespace C3D

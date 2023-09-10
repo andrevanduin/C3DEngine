@@ -11,6 +11,7 @@
 #include "resources/loaders/mesh_loader.h"
 #include "resources/loaders/shader_loader.h"
 #include "resources/loaders/simple_scene_loader.h"
+#include "resources/loaders/terrain_loader.h"
 #include "resources/loaders/text_loader.h"
 
 namespace C3D
@@ -18,17 +19,18 @@ namespace C3D
     ResourceSystem::ResourceSystem(const SystemManager* pSystemsManager)
         : SystemWithConfig(pSystemsManager, "RESOURCE_SYSTEM"), m_loaderTypes{}
     {
-        m_loaderTypes[ToUnderlying(ResourceType::None)] = "None";
-        m_loaderTypes[ToUnderlying(ResourceType::Text)] = "Text";
-        m_loaderTypes[ToUnderlying(ResourceType::Binary)] = "Binary";
-        m_loaderTypes[ToUnderlying(ResourceType::Image)] = "Image";
-        m_loaderTypes[ToUnderlying(ResourceType::Material)] = "Material";
-        m_loaderTypes[ToUnderlying(ResourceType::Mesh)] = "StaticMesh";
-        m_loaderTypes[ToUnderlying(ResourceType::Shader)] = "Shader";
-        m_loaderTypes[ToUnderlying(ResourceType::BitmapFont)] = "BitmapFont";
-        m_loaderTypes[ToUnderlying(ResourceType::SystemFont)] = "SystemFont";
+        m_loaderTypes[ToUnderlying(ResourceType::None)]        = "None";
+        m_loaderTypes[ToUnderlying(ResourceType::Text)]        = "Text";
+        m_loaderTypes[ToUnderlying(ResourceType::Binary)]      = "Binary";
+        m_loaderTypes[ToUnderlying(ResourceType::Image)]       = "Image";
+        m_loaderTypes[ToUnderlying(ResourceType::Material)]    = "Material";
+        m_loaderTypes[ToUnderlying(ResourceType::Mesh)]        = "StaticMesh";
+        m_loaderTypes[ToUnderlying(ResourceType::Shader)]      = "Shader";
+        m_loaderTypes[ToUnderlying(ResourceType::BitmapFont)]  = "BitmapFont";
+        m_loaderTypes[ToUnderlying(ResourceType::SystemFont)]  = "SystemFont";
         m_loaderTypes[ToUnderlying(ResourceType::SimpleScene)] = "SimpleScene";
-        m_loaderTypes[ToUnderlying(ResourceType::Custom)] = "Custom";
+        m_loaderTypes[ToUnderlying(ResourceType::Terrain)]     = "Terrain";
+        m_loaderTypes[ToUnderlying(ResourceType::Custom)]      = "Custom";
     }
 
     bool ResourceSystem::Init(const ResourceSystemConfig& config)
@@ -39,7 +41,7 @@ namespace C3D
             return false;
         }
 
-        m_config = config;
+        m_config      = config;
         m_initialized = true;
 
         const auto textLoader = Memory.New<ResourceLoader<TextResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
@@ -56,9 +58,11 @@ namespace C3D
             Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto simpleSceneLoader =
             Memory.New<ResourceLoader<SimpleSceneConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
+        const auto terrainLoader =
+            Memory.New<ResourceLoader<TerrainConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
 
-        for (IResourceLoader* loaders[8] = {textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader,
-                                            meshLoader, bitmapFontLoader, simpleSceneLoader};
+        for (IResourceLoader* loaders[9] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader,
+                                             meshLoader, bitmapFontLoader, simpleSceneLoader, terrainLoader };
              const auto loader : loaders)
         {
             if (!RegisterLoader(loader))

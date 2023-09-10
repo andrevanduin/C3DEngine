@@ -168,15 +168,17 @@ namespace C3D
     {
         if (File::Exists(path))
         {
-            m_logger.Info("WriteCsmFile() - File: {} already exists and will be overwritten", path);
+            m_logger.Info("WriteCsmFile() - File: '{}' already exists and will be overwritten.", path);
         }
 
         File file;
         if (!file.Open(path, FileModeWrite | FileModeBinary))
         {
-            m_logger.Error("WriteCsmFile() - Failed to open path {}", path);
+            m_logger.Error("WriteCsmFile() - Failed to open path '{}'.", path);
             return false;
         }
+
+        m_logger.Info("WriteCsmFile() - Started writing CSM file to: '{}'.", path);
 
         // Version
         constexpr u16 version = 0x0001u;
@@ -224,7 +226,7 @@ namespace C3D
             file.Write(&geometry.maxExtents);
         }
 
-        m_logger.Info("WriteCsmFile() - {} Bytes written to file {}", file.bytesWritten, path);
+        m_logger.Info("WriteCsmFile() - {} Bytes written to file: '{}'.", file.bytesWritten, name);
         file.Close();
         return true;
     }

@@ -26,7 +26,7 @@ namespace C3D
         const u32 count = m_config.maxGeometryCount;
         for (u32 i = 0; i < count; i++)
         {
-            m_registeredGeometries[i].geometry.id = INVALID_ID;
+            m_registeredGeometries[i].geometry.id         = INVALID_ID;
             m_registeredGeometries[i].geometry.internalId = INVALID_ID;
             m_registeredGeometries[i].geometry.generation = INVALID_ID_U16;
         }
@@ -70,7 +70,7 @@ namespace C3D
                 {
                     DestroyGeometry(&ref->geometry);
                     ref->referenceCount = 0;
-                    ref->autoRelease = false;
+                    ref->autoRelease    = false;
                 }
             }
             else
@@ -121,9 +121,9 @@ namespace C3D
         config.indices.Resize(xSegmentCount * ySegmentCount * 6);
 
         // TODO: this generates extra vertices, but we can always deduplicate them later
-        const f32 segWidth = width / static_cast<f32>(xSegmentCount);
-        const f32 segHeight = height / static_cast<f32>(ySegmentCount);
-        const f32 halfWidth = width * 0.5f;
+        const f32 segWidth   = width / static_cast<f32>(xSegmentCount);
+        const f32 segHeight  = height / static_cast<f32>(ySegmentCount);
+        const f32 halfWidth  = width * 0.5f;
         const f32 halfHeight = height * 0.5f;
 
         for (u32 y = 0; y < ySegmentCount; y++)
@@ -137,43 +137,43 @@ namespace C3D
                 const f32 fySegmentCount = static_cast<f32>(ySegmentCount);
 
                 // Generate vertices
-                const f32 minX = (fx * segWidth) - halfWidth;
-                const f32 minY = (fy * segHeight) - halfHeight;
-                const f32 maxX = minX + segWidth;
-                const f32 maxY = minY + segHeight;
+                const f32 minX   = (fx * segWidth) - halfWidth;
+                const f32 minY   = (fy * segHeight) - halfHeight;
+                const f32 maxX   = minX + segWidth;
+                const f32 maxY   = minY + segHeight;
                 const f32 minUvx = (fx / fxSegmentCount) * tileX;
                 const f32 minUvy = (fy / fySegmentCount) * tileY;
                 const f32 maxUvx = ((fx + 1) / fxSegmentCount) * tileX;
                 const f32 maxUvy = ((fy + 1) / fySegmentCount) * tileY;
 
                 const u32 vOffset = (y * xSegmentCount + x) * 4;
-                Vertex3D* v0 = &config.vertices[vOffset + 0];
-                Vertex3D* v1 = &config.vertices[vOffset + 1];
-                Vertex3D* v2 = &config.vertices[vOffset + 2];
-                Vertex3D* v3 = &config.vertices[vOffset + 3];
+                Vertex3D* v0      = &config.vertices[vOffset + 0];
+                Vertex3D* v1      = &config.vertices[vOffset + 1];
+                Vertex3D* v2      = &config.vertices[vOffset + 2];
+                Vertex3D* v3      = &config.vertices[vOffset + 3];
 
                 v0->position.x = minX;
                 v0->position.y = minY;
-                v0->texture.x = minUvx;
-                v0->texture.y = minUvy;
+                v0->texture.x  = minUvx;
+                v0->texture.y  = minUvy;
 
                 v1->position.x = maxX;
                 v1->position.y = maxY;
-                v1->texture.x = maxUvx;
-                v1->texture.y = maxUvy;
+                v1->texture.x  = maxUvx;
+                v1->texture.y  = maxUvy;
 
                 v2->position.x = minX;
                 v2->position.y = maxY;
-                v2->texture.x = minUvx;
-                v2->texture.y = maxUvy;
+                v2->texture.x  = minUvx;
+                v2->texture.y  = maxUvy;
 
                 v3->position.x = maxX;
                 v3->position.y = minY;
-                v3->texture.x = maxUvx;
-                v3->texture.y = minUvy;
+                v3->texture.x  = maxUvx;
+                v3->texture.y  = minUvy;
 
                 // Generate indices
-                const u32 iOffset = (y * xSegmentCount + x) * 6;
+                const u32 iOffset           = (y * xSegmentCount + x) * 6;
                 config.indices[iOffset + 0] = vOffset + 0;
                 config.indices[iOffset + 1] = vOffset + 1;
                 config.indices[iOffset + 2] = vOffset + 2;
@@ -216,108 +216,108 @@ namespace C3D
         config.vertices.Resize(4 * 6);  // 4 Vertices per side with 6 sides
         config.indices.Resize(6 * 6);   // 6 indices per side with 6 sides
 
-        const f32 halfWidth = width * 0.5f;
+        const f32 halfWidth  = width * 0.5f;
         const f32 halfHeight = height * 0.5f;
-        const f32 halfDepth = depth * 0.5f;
+        const f32 halfDepth  = depth * 0.5f;
 
-        f32 minX = -halfWidth;
-        f32 minY = -halfHeight;
-        f32 minZ = -halfDepth;
-        f32 maxX = halfWidth;
-        f32 maxY = halfHeight;
-        f32 maxZ = halfDepth;
+        f32 minX   = -halfWidth;
+        f32 minY   = -halfHeight;
+        f32 minZ   = -halfDepth;
+        f32 maxX   = halfWidth;
+        f32 maxY   = halfHeight;
+        f32 maxZ   = halfDepth;
         f32 minUvX = 0.0f;
         f32 minUvY = 0.0f;
         f32 maxUvX = tileX;
         f32 maxUvY = tileY;
 
-        config.minExtents = {minX, minY, minZ};
-        config.maxExtents = {maxX, maxY, maxZ};
-        config.center = {0, 0, 0};
+        config.minExtents = { minX, minY, minZ };
+        config.maxExtents = { maxX, maxY, maxZ };
+        config.center     = { 0, 0, 0 };
 
         // Front face
-        config.vertices[(0 * 4) + 0].position = {minX, minY, maxZ};
-        config.vertices[(0 * 4) + 1].position = {maxX, maxY, maxZ};
-        config.vertices[(0 * 4) + 2].position = {minX, maxY, maxZ};
-        config.vertices[(0 * 4) + 3].position = {maxX, minY, maxZ};
-        config.vertices[(0 * 4) + 0].texture = {minUvX, minUvY};
-        config.vertices[(0 * 4) + 1].texture = {maxUvX, maxUvY};
-        config.vertices[(0 * 4) + 2].texture = {minUvX, maxUvY};
-        config.vertices[(0 * 4) + 3].texture = {maxUvX, minUvY};
-        config.vertices[(0 * 4) + 0].normal = {0.0f, 0.0f, 1.0f};
-        config.vertices[(0 * 4) + 1].normal = {0.0f, 0.0f, 1.0f};
-        config.vertices[(0 * 4) + 2].normal = {0.0f, 0.0f, 1.0f};
-        config.vertices[(0 * 4) + 3].normal = {0.0f, 0.0f, 1.0f};
+        config.vertices[(0 * 4) + 0].position = { minX, minY, maxZ };
+        config.vertices[(0 * 4) + 1].position = { maxX, maxY, maxZ };
+        config.vertices[(0 * 4) + 2].position = { minX, maxY, maxZ };
+        config.vertices[(0 * 4) + 3].position = { maxX, minY, maxZ };
+        config.vertices[(0 * 4) + 0].texture  = { minUvX, minUvY };
+        config.vertices[(0 * 4) + 1].texture  = { maxUvX, maxUvY };
+        config.vertices[(0 * 4) + 2].texture  = { minUvX, maxUvY };
+        config.vertices[(0 * 4) + 3].texture  = { maxUvX, minUvY };
+        config.vertices[(0 * 4) + 0].normal   = { 0.0f, 0.0f, 1.0f };
+        config.vertices[(0 * 4) + 1].normal   = { 0.0f, 0.0f, 1.0f };
+        config.vertices[(0 * 4) + 2].normal   = { 0.0f, 0.0f, 1.0f };
+        config.vertices[(0 * 4) + 3].normal   = { 0.0f, 0.0f, 1.0f };
 
         // Back face
-        config.vertices[(1 * 4) + 0].position = {maxX, minY, minZ};
-        config.vertices[(1 * 4) + 1].position = {minX, maxY, minZ};
-        config.vertices[(1 * 4) + 2].position = {maxX, maxY, minZ};
-        config.vertices[(1 * 4) + 3].position = {minX, minY, minZ};
-        config.vertices[(1 * 4) + 0].texture = {minUvX, minUvY};
-        config.vertices[(1 * 4) + 1].texture = {maxUvX, maxUvY};
-        config.vertices[(1 * 4) + 2].texture = {minUvX, maxUvY};
-        config.vertices[(1 * 4) + 3].texture = {maxUvX, minUvY};
-        config.vertices[(1 * 4) + 0].normal = {0.0f, 0.0f, -1.0f};
-        config.vertices[(1 * 4) + 1].normal = {0.0f, 0.0f, -1.0f};
-        config.vertices[(1 * 4) + 2].normal = {0.0f, 0.0f, -1.0f};
-        config.vertices[(1 * 4) + 3].normal = {0.0f, 0.0f, -1.0f};
+        config.vertices[(1 * 4) + 0].position = { maxX, minY, minZ };
+        config.vertices[(1 * 4) + 1].position = { minX, maxY, minZ };
+        config.vertices[(1 * 4) + 2].position = { maxX, maxY, minZ };
+        config.vertices[(1 * 4) + 3].position = { minX, minY, minZ };
+        config.vertices[(1 * 4) + 0].texture  = { minUvX, minUvY };
+        config.vertices[(1 * 4) + 1].texture  = { maxUvX, maxUvY };
+        config.vertices[(1 * 4) + 2].texture  = { minUvX, maxUvY };
+        config.vertices[(1 * 4) + 3].texture  = { maxUvX, minUvY };
+        config.vertices[(1 * 4) + 0].normal   = { 0.0f, 0.0f, -1.0f };
+        config.vertices[(1 * 4) + 1].normal   = { 0.0f, 0.0f, -1.0f };
+        config.vertices[(1 * 4) + 2].normal   = { 0.0f, 0.0f, -1.0f };
+        config.vertices[(1 * 4) + 3].normal   = { 0.0f, 0.0f, -1.0f };
 
         // Left face
-        config.vertices[(2 * 4) + 0].position = {minX, minY, minZ};
-        config.vertices[(2 * 4) + 1].position = {minX, maxY, maxZ};
-        config.vertices[(2 * 4) + 2].position = {minX, maxY, minZ};
-        config.vertices[(2 * 4) + 3].position = {minX, minY, maxZ};
-        config.vertices[(2 * 4) + 0].texture = {minUvX, minUvY};
-        config.vertices[(2 * 4) + 1].texture = {maxUvX, maxUvY};
-        config.vertices[(2 * 4) + 2].texture = {minUvX, maxUvY};
-        config.vertices[(2 * 4) + 3].texture = {maxUvX, minUvY};
-        config.vertices[(2 * 4) + 0].normal = {-1.0f, 0.0f, 0.0f};
-        config.vertices[(2 * 4) + 1].normal = {-1.0f, 0.0f, 0.0f};
-        config.vertices[(2 * 4) + 2].normal = {-1.0f, 0.0f, 0.0f};
-        config.vertices[(2 * 4) + 3].normal = {-1.0f, 0.0f, 0.0f};
+        config.vertices[(2 * 4) + 0].position = { minX, minY, minZ };
+        config.vertices[(2 * 4) + 1].position = { minX, maxY, maxZ };
+        config.vertices[(2 * 4) + 2].position = { minX, maxY, minZ };
+        config.vertices[(2 * 4) + 3].position = { minX, minY, maxZ };
+        config.vertices[(2 * 4) + 0].texture  = { minUvX, minUvY };
+        config.vertices[(2 * 4) + 1].texture  = { maxUvX, maxUvY };
+        config.vertices[(2 * 4) + 2].texture  = { minUvX, maxUvY };
+        config.vertices[(2 * 4) + 3].texture  = { maxUvX, minUvY };
+        config.vertices[(2 * 4) + 0].normal   = { -1.0f, 0.0f, 0.0f };
+        config.vertices[(2 * 4) + 1].normal   = { -1.0f, 0.0f, 0.0f };
+        config.vertices[(2 * 4) + 2].normal   = { -1.0f, 0.0f, 0.0f };
+        config.vertices[(2 * 4) + 3].normal   = { -1.0f, 0.0f, 0.0f };
 
         // Right face
-        config.vertices[(3 * 4) + 0].position = {maxX, minY, maxZ};
-        config.vertices[(3 * 4) + 1].position = {maxX, maxY, minZ};
-        config.vertices[(3 * 4) + 2].position = {maxX, maxY, maxZ};
-        config.vertices[(3 * 4) + 3].position = {maxX, minY, minZ};
-        config.vertices[(3 * 4) + 0].texture = {minUvX, minUvY};
-        config.vertices[(3 * 4) + 1].texture = {maxUvX, maxUvY};
-        config.vertices[(3 * 4) + 2].texture = {minUvX, maxUvY};
-        config.vertices[(3 * 4) + 3].texture = {maxUvX, minUvY};
-        config.vertices[(3 * 4) + 0].normal = {1.0f, 0.0f, 0.0f};
-        config.vertices[(3 * 4) + 1].normal = {1.0f, 0.0f, 0.0f};
-        config.vertices[(3 * 4) + 2].normal = {1.0f, 0.0f, 0.0f};
-        config.vertices[(3 * 4) + 3].normal = {1.0f, 0.0f, 0.0f};
+        config.vertices[(3 * 4) + 0].position = { maxX, minY, maxZ };
+        config.vertices[(3 * 4) + 1].position = { maxX, maxY, minZ };
+        config.vertices[(3 * 4) + 2].position = { maxX, maxY, maxZ };
+        config.vertices[(3 * 4) + 3].position = { maxX, minY, minZ };
+        config.vertices[(3 * 4) + 0].texture  = { minUvX, minUvY };
+        config.vertices[(3 * 4) + 1].texture  = { maxUvX, maxUvY };
+        config.vertices[(3 * 4) + 2].texture  = { minUvX, maxUvY };
+        config.vertices[(3 * 4) + 3].texture  = { maxUvX, minUvY };
+        config.vertices[(3 * 4) + 0].normal   = { 1.0f, 0.0f, 0.0f };
+        config.vertices[(3 * 4) + 1].normal   = { 1.0f, 0.0f, 0.0f };
+        config.vertices[(3 * 4) + 2].normal   = { 1.0f, 0.0f, 0.0f };
+        config.vertices[(3 * 4) + 3].normal   = { 1.0f, 0.0f, 0.0f };
 
         // Bottom face
-        config.vertices[(4 * 4) + 0].position = {maxX, minY, maxZ};
-        config.vertices[(4 * 4) + 1].position = {minX, minY, minZ};
-        config.vertices[(4 * 4) + 2].position = {maxX, minY, minZ};
-        config.vertices[(4 * 4) + 3].position = {minX, minY, maxZ};
-        config.vertices[(4 * 4) + 0].texture = {minUvX, minUvY};
-        config.vertices[(4 * 4) + 1].texture = {maxUvX, maxUvY};
-        config.vertices[(4 * 4) + 2].texture = {minUvX, maxUvY};
-        config.vertices[(4 * 4) + 3].texture = {maxUvX, minUvY};
-        config.vertices[(4 * 4) + 0].normal = {0.0f, -1.0f, 0.0f};
-        config.vertices[(4 * 4) + 1].normal = {0.0f, -1.0f, 0.0f};
-        config.vertices[(4 * 4) + 2].normal = {0.0f, -1.0f, 0.0f};
-        config.vertices[(4 * 4) + 3].normal = {0.0f, -1.0f, 0.0f};
+        config.vertices[(4 * 4) + 0].position = { maxX, minY, maxZ };
+        config.vertices[(4 * 4) + 1].position = { minX, minY, minZ };
+        config.vertices[(4 * 4) + 2].position = { maxX, minY, minZ };
+        config.vertices[(4 * 4) + 3].position = { minX, minY, maxZ };
+        config.vertices[(4 * 4) + 0].texture  = { minUvX, minUvY };
+        config.vertices[(4 * 4) + 1].texture  = { maxUvX, maxUvY };
+        config.vertices[(4 * 4) + 2].texture  = { minUvX, maxUvY };
+        config.vertices[(4 * 4) + 3].texture  = { maxUvX, minUvY };
+        config.vertices[(4 * 4) + 0].normal   = { 0.0f, -1.0f, 0.0f };
+        config.vertices[(4 * 4) + 1].normal   = { 0.0f, -1.0f, 0.0f };
+        config.vertices[(4 * 4) + 2].normal   = { 0.0f, -1.0f, 0.0f };
+        config.vertices[(4 * 4) + 3].normal   = { 0.0f, -1.0f, 0.0f };
 
         // Top face
-        config.vertices[(5 * 4) + 0].position = {minX, maxY, maxZ};
-        config.vertices[(5 * 4) + 1].position = {maxX, maxY, minZ};
-        config.vertices[(5 * 4) + 2].position = {minX, maxY, minZ};
-        config.vertices[(5 * 4) + 3].position = {maxX, maxY, maxZ};
-        config.vertices[(5 * 4) + 0].texture = {minUvX, minUvY};
-        config.vertices[(5 * 4) + 1].texture = {maxUvX, maxUvY};
-        config.vertices[(5 * 4) + 2].texture = {minUvX, maxUvY};
-        config.vertices[(5 * 4) + 3].texture = {maxUvX, minUvY};
-        config.vertices[(5 * 4) + 0].normal = {0.0f, 1.0f, 0.0f};
-        config.vertices[(5 * 4) + 1].normal = {0.0f, 1.0f, 0.0f};
-        config.vertices[(5 * 4) + 2].normal = {0.0f, 1.0f, 0.0f};
-        config.vertices[(5 * 4) + 3].normal = {0.0f, 1.0f, 0.0f};
+        config.vertices[(5 * 4) + 0].position = { minX, maxY, maxZ };
+        config.vertices[(5 * 4) + 1].position = { maxX, maxY, minZ };
+        config.vertices[(5 * 4) + 2].position = { minX, maxY, minZ };
+        config.vertices[(5 * 4) + 3].position = { maxX, maxY, maxZ };
+        config.vertices[(5 * 4) + 0].texture  = { minUvX, minUvY };
+        config.vertices[(5 * 4) + 1].texture  = { maxUvX, maxUvY };
+        config.vertices[(5 * 4) + 2].texture  = { minUvX, maxUvY };
+        config.vertices[(5 * 4) + 3].texture  = { maxUvX, minUvY };
+        config.vertices[(5 * 4) + 0].normal   = { 0.0f, 1.0f, 0.0f };
+        config.vertices[(5 * 4) + 1].normal   = { 0.0f, 1.0f, 0.0f };
+        config.vertices[(5 * 4) + 2].normal   = { 0.0f, 1.0f, 0.0f };
+        config.vertices[(5 * 4) + 3].normal   = { 0.0f, 1.0f, 0.0f };
 
         for (u32 i = 0; i < 6; i++)
         {
@@ -350,7 +350,7 @@ namespace C3D
             config.materialName = DEFAULT_MATERIAL_NAME;
         }
 
-        GeometryUtils::GenerateTangents(config.vertices.GetData(), config.indices.Size(), config.indices.GetData());
+        GeometryUtils::GenerateTangents(config.vertices, config.indices);
         return config;
     }
 
@@ -359,7 +359,7 @@ namespace C3D
         Renderer.DestroyGeometry(g);
         g->internalId = INVALID_ID;
         g->generation = INVALID_ID_U16;
-        g->id = INVALID_ID;
+        g->id         = INVALID_ID;
         g->name.Clear();
 
         // Release the material
@@ -373,33 +373,33 @@ namespace C3D
     bool GeometrySystem::CreateDefaultGeometries()
     {
         // Create default geometry
-        constexpr u32 vertexCount = 4;
+        constexpr u32 vertexCount      = 4;
         Vertex3D vertices[vertexCount] = {};
 
         constexpr f32 f = 10.0f;
 
         vertices[0].position.x = -0.5f * f;
         vertices[0].position.y = -0.5f * f;
-        vertices[0].texture.x = 0.0f;
-        vertices[0].texture.y = 0.0f;
+        vertices[0].texture.x  = 0.0f;
+        vertices[0].texture.y  = 0.0f;
 
         vertices[1].position.x = 0.5f * f;
         vertices[1].position.y = 0.5f * f;
-        vertices[1].texture.x = 1.0f;
-        vertices[1].texture.y = 1.0f;
+        vertices[1].texture.x  = 1.0f;
+        vertices[1].texture.y  = 1.0f;
 
         vertices[2].position.x = -0.5f * f;
         vertices[2].position.y = 0.5f * f;
-        vertices[2].texture.x = 0.0f;
-        vertices[2].texture.y = 1.0f;
+        vertices[2].texture.x  = 0.0f;
+        vertices[2].texture.y  = 1.0f;
 
         vertices[3].position.x = 0.5f * f;
         vertices[3].position.y = -0.5f * f;
-        vertices[3].texture.x = 1.0f;
-        vertices[3].texture.y = 0.0f;
+        vertices[3].texture.x  = 1.0f;
+        vertices[3].texture.y  = 0.0f;
 
-        constexpr u32 indexCount = 6;
-        const u32 indices[indexCount] = {0, 1, 2, 0, 3, 1};
+        constexpr u32 indexCount      = 6;
+        const u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
 
         m_defaultGeometry.internalId = INVALID_ID;
         if (!Renderer.CreateGeometry(&m_defaultGeometry, sizeof(Vertex3D), vertexCount, vertices, sizeof(u32),
@@ -417,26 +417,26 @@ namespace C3D
 
         vertices2d[0].position.x = -0.5f * f;
         vertices2d[0].position.y = -0.5f * f;
-        vertices2d[0].texture.x = 0.0f;
-        vertices2d[0].texture.y = 0.0f;
+        vertices2d[0].texture.x  = 0.0f;
+        vertices2d[0].texture.y  = 0.0f;
 
         vertices2d[1].position.x = 0.5f * f;
         vertices2d[1].position.y = 0.5f * f;
-        vertices2d[1].texture.x = 1.0f;
-        vertices2d[1].texture.y = 1.0f;
+        vertices2d[1].texture.x  = 1.0f;
+        vertices2d[1].texture.y  = 1.0f;
 
         vertices2d[2].position.x = -0.5f * f;
         vertices2d[2].position.y = 0.5f * f;
-        vertices2d[2].texture.x = 0.0f;
-        vertices2d[2].texture.y = 1.0f;
+        vertices2d[2].texture.x  = 0.0f;
+        vertices2d[2].texture.y  = 1.0f;
 
         vertices2d[3].position.x = 0.5f * f;
         vertices2d[3].position.y = -0.5f * f;
-        vertices2d[3].texture.x = 1.0f;
-        vertices2d[3].texture.y = 0.0f;
+        vertices2d[3].texture.x  = 1.0f;
+        vertices2d[3].texture.y  = 0.0f;
 
         // Indices (NOTE: counter-clockwise)
-        const u32 indices2d[indexCount] = {2, 1, 0, 3, 0, 1};
+        const u32 indices2d[indexCount] = { 2, 1, 0, 3, 0, 1 };
 
         m_default2DGeometry.internalId = INVALID_ID;
         if (!Renderer.CreateGeometry(&m_default2DGeometry, sizeof(Vertex2D), vertexCount, vertices2d, sizeof(u32),

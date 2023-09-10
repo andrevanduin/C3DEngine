@@ -63,7 +63,7 @@ namespace C3D
 
         f32 m_fov      = DegToRad(45.0f);
         f32 m_nearClip = 0.1f;
-        f32 m_farClip  = 1000.0f;
+        f32 m_farClip  = 4000.0f;
 
         RegisteredEventCallback m_onEventCallback;
 

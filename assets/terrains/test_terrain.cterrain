@@ -1,0 +1,8 @@
+# C3D Terrain config file
+
+version = 1
+heightmapFile = terrain_heightmap
+
+tileScaleX = 1.0
+tileScaleY = 64.0
+tileScaleZ = 1.0

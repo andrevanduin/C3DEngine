@@ -9,7 +9,9 @@ namespace C3D
 
     struct ImageResource final : Resource
     {
-        ImageResourceData data;
+        u8 channelCount;
+        u32 width, height;
+        u8* pixels;
     };
 
     template <>

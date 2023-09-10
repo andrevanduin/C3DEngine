@@ -39,7 +39,6 @@ namespace C3D
     {
     public:
         Mesh();
-        Mesh(const MeshConfig& cfg);
 
         bool Create(const SystemManager* pSystemsManager, const MeshConfig& cfg);
 

@@ -13,11 +13,21 @@ namespace C3D
     class Camera;
 }
 
+enum class ReloadState
+{
+    Done,
+    Unloading,
+    Unloaded,
+    Loading
+};
+
 struct GameState final : C3D::ApplicationState
 {
     C3D::Camera* camera = nullptr;
 
     C3D::Frustum cameraFrustum;
+
+    ReloadState reloadState = ReloadState::Done;
 
     // TEMP
     C3D::SimpleScene simpleScene;

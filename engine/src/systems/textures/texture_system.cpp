@@ -416,7 +416,7 @@ namespace C3D
                 return false;
             }
 
-            if (!res.data.pixels)
+            if (!res.pixels)
             {
                 m_logger.Error("LoadCubeTextures() - Failed to load image data for texture '{}'", name);
                 return false;
@@ -424,9 +424,9 @@ namespace C3D
 
             if (!pixels)
             {
-                texture->width        = res.data.width;
-                texture->height       = res.data.height;
-                texture->channelCount = res.data.channelCount;
+                texture->width        = res.width;
+                texture->height       = res.height;
+                texture->channelCount = res.channelCount;
                 texture->flags        = 0;
                 texture->generation   = 0;
                 texture->name         = name;
@@ -437,8 +437,8 @@ namespace C3D
             }
             else
             {
-                if (texture->width != res.data.width || texture->height != res.data.height ||
-                    texture->channelCount != res.data.channelCount)
+                if (texture->width != res.width || texture->height != res.height ||
+                    texture->channelCount != res.channelCount)
                 {
                     m_logger.Error(
                         "LoadCubeTextures() - Failed to load. All textures must be the same resolution and bit depth.");
@@ -449,7 +449,7 @@ namespace C3D
             }
 
             // Copy over the pixels to the correct location in the array
-            std::memcpy(pixels + (imageSize * i), res.data.pixels, imageSize);
+            std::memcpy(pixels + (imageSize * i), res.pixels, imageSize);
             // Cleanup our resource
             Resources.Unload(res);
         }
@@ -595,7 +595,7 @@ namespace C3D
             Resources.Load(loadingTexture.resourceName.Data(), loadingTexture.imageResource, resourceParams);
         if (result)
         {
-            const ImageResourceData& resourceData = loadingTexture.imageResource.data;
+            const ImageResource& resourceData = loadingTexture.imageResource;
 
             // Use our temporary texture to load into
             loadingTexture.tempTexture.width        = resourceData.width;
@@ -631,8 +631,8 @@ namespace C3D
     void TextureSystem::LoadJobSuccess(u32 loadingTextureIndex)
     {
         // TODO: This still handles the GPU upload. This can't be jobified before our renderer supports multiThreading.
-        auto& loadingTexture                  = m_loadingTextures[loadingTextureIndex];
-        const ImageResourceData& resourceData = loadingTexture.imageResource.data;
+        auto& loadingTexture              = m_loadingTextures[loadingTextureIndex];
+        const ImageResource& resourceData = loadingTexture.imageResource;
 
         // Acquire internal texture resources and upload to GPU.
         Renderer.CreateTexture(resourceData.pixels, &loadingTexture.tempTexture);

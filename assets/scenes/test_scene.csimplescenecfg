@@ -17,23 +17,22 @@ color = 0.4 0.4 0.2 1.0
 direction = -0.57735 -0.57735 -0.57735 0.0
 [/DirectionalLight]
 
-[Mesh]
-name = sponza
-resourceName = sponza
-transform = 15.0 0.0 1.0 0.0 0.0 0.0 1.0 0.05 0.05 0.05
-[/Mesh]
+# [Mesh]
+# name = sponza
+# resourceName = sponza
+# transform = 15.0 0.0 10.0 0.0 0.0 0.0 1.0 0.05 0.05 0.05
+# [/Mesh]
 
 [Mesh]
 name = falcon
 resourceName = falcon
-transform = 15.0 0.0 1.0 0.0 0.0 0.0 1.0 10.0 10.0 10.0
-parent = sponza
+transform = 220.0 1.0 25.0 0.0 0.0 0.0 1.0 2.0 2.0 2.0
 [/Mesh]
 
 [PointLight]
 name = point_light_0
 color = 1.0 0.0 0.0 1.0
-position = -5.5 2.0 -5.5 0.0
+position = 40.0 2.0 50.0 0.0
 constant = 1.0
 linear = 0.35
 quadratic = 0.44
@@ -42,7 +41,7 @@ quadratic = 0.44
 [PointLight]
 name = point_light_1
 color = 0.0 1.0 0.0 1.0
-position = 5.5 2.0 -5.5 0.0
+position = 50.0 2.0 60.0 0.0
 constant = 1.0
 linear = 0.35
 quadratic = 0.44
@@ -51,7 +50,7 @@ quadratic = 0.44
 [PointLight]
 name = point_light_2
 color = 0.0 0.0 1.0 1.0
-position = 4.5 2.0 -5.5 0.0
+position = 25.0 2.0 60.0 0.0
 constant = 1.0
 linear = 0.35
 quadratic = 0.44

@@ -20,6 +20,7 @@ namespace C3D
         BitmapFont,
         SystemFont,
         SimpleScene,
+        Terrain,
         Custom,
         MaxValue
     };

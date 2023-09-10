@@ -159,7 +159,7 @@ namespace C3D
         }
 
         // Create and bind our buffers
-        constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 1024 * 1024;
+        constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 4096 * 4096;
         if (!m_objectVertexBuffer.Create(RenderBufferType::Vertex, vertexBufferSize, true))
         {
             m_logger.Error("Init() - Error creating vertex buffer.");
@@ -167,7 +167,7 @@ namespace C3D
         }
         m_objectVertexBuffer.Bind(0);
 
-        constexpr u64 indexBufferSize = sizeof(u32) * 1024 * 1024;
+        constexpr u64 indexBufferSize = sizeof(u32) * 8192 * 8192;
         if (!m_objectIndexBuffer.Create(RenderBufferType::Index, indexBufferSize, true))
         {
             m_logger.Error("Init() - Error creating index buffer.");
@@ -1068,10 +1068,10 @@ namespace C3D
         }
 
         // TODO: For now, shaders will only ever have these 2 types of descriptor pools
-        vulkanShader->config.poolSizes[0] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                              1024 };  // HACK: max number of ubo descriptor sets
-        vulkanShader->config.poolSizes[1] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                              4096 };  // HACK: max number of image sampler descriptor sets
+        // HACK: max number of ubo descriptor sets
+        vulkanShader->config.poolSizes[0] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024 };
+        // HACK: max number of image sampler descriptor sets
+        vulkanShader->config.poolSizes[1] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4096 };
 
         // Global descriptor set config
         if (vulkanShader->globalUniformCount > 0 || vulkanShader->globalUniformSamplerCount > 0)

@@ -6,6 +6,7 @@
 #include "resources/mesh.h"
 #include "systems/lights/light_system.h"
 #include "systems/render_views/render_view_system.h"
+#include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
 
 namespace C3D
@@ -91,7 +92,7 @@ namespace C3D
             }
 
             auto config = MeshConfig(meshConfig);
-            Mesh mesh(config);
+            Mesh mesh;
             if (!mesh.Create(m_pSystemsManager, config))
             {
                 m_logger.Error("Initialize() - Failed to create Mesh: '{}'. Skipping", meshConfig.name);
@@ -110,12 +111,6 @@ namespace C3D
             }
 
             auto config = TerrainConfig(terrainConfig);
-            // TODO: Load terrain from resource instead of hardcoding it here
-            config.tileCountX = 100;
-            config.tileCountZ = 100;
-            config.tileScaleX = 1.0f;
-            config.tileScaleZ = 1.0f;
-
             Terrain terrain;
             if (!terrain.Create(m_pSystemsManager, config))
             {

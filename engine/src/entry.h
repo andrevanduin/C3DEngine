@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     Metrics.Init();
 
     // Initialize our global allocator that we will normally always use
-    C3D::GlobalMemorySystem::Init({MebiBytes(256)});
+    C3D::GlobalMemorySystem::Init({ MebiBytes(1024) });
 
     // Create our identifiers
     C3D::Identifier::Init();

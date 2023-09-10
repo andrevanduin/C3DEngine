@@ -7,22 +7,26 @@
 
 namespace C3D
 {
-    class C3D_API Random
+    class C3D_API RandomEngine
     {
     public:
-        explicit Random(Array<u32, 8> seedData = GenerateSeedData())
+        explicit RandomEngine(Array<u32, 8> seedData = GenerateSeedData())
         {
             std::seed_seq seedSeq(seedData.begin(), seedData.end());
             m_generator.seed(seedSeq);
         }
 
-        [[nodiscard]] int Generate(const int low, const int high)
+        template <typename T>
+        [[nodiscard]] std::enable_if_t<std::is_integral_v<T>, T> Generate(const T low, const T high)
         {
             std::uniform_int_distribution distribution(low, high);
             return distribution(m_generator);
         }
 
-        DynamicArray<int> Generate(int amount, const int low, const int high)
+        template <typename T>
+        [[nodiscard]] std::enable_if_t<std::is_integral_v<T>, DynamicArray<T>> GenerateMultiple(const int amount,
+                                                                                                const T low,
+                                                                                                const T high)
         {
             std::uniform_int_distribution distribution(low, high);
             DynamicArray<int> values(amount);
@@ -30,13 +34,17 @@ namespace C3D
             return values;
         }
 
-        [[nodiscard]] float Generate(const float low, const float high)
+        template <typename T>
+        [[nodiscard]] std::enable_if_t<std::is_floating_point_v<T>, T> Generate(const T low, const T high)
         {
             std::uniform_real_distribution distribution(low, high);
             return distribution(m_generator);
         }
 
-        DynamicArray<float> Generate(int amount, const float low, const float high)
+        template <typename T>
+        [[nodiscard]] std::enable_if_t<std::is_floating_point_v<T>, DynamicArray<T>> GenerateMultiple(const int amount,
+                                                                                                      const T low,
+                                                                                                      const T high)
         {
             std::uniform_real_distribution distribution(low, high);
             DynamicArray<float> values(amount);
@@ -55,4 +63,6 @@ namespace C3D
             return randomData;
         }
     };
+
+    static inline RandomEngine Random = RandomEngine();
 }  // namespace C3D

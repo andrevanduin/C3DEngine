@@ -81,7 +81,7 @@ namespace C3D
 
         // Default world properties
         m_worldShaderInfo.nearClip   = 0.1f;
-        m_worldShaderInfo.farClip    = 1000.0f;
+        m_worldShaderInfo.farClip    = 4000.0f;
         m_worldShaderInfo.fov        = DegToRad(45.0f);
         m_worldShaderInfo.projection = glm::perspective(m_worldShaderInfo.fov, 1280 / 720.0f,
                                                         m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);

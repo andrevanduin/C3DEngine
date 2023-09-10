@@ -61,6 +61,7 @@ namespace C3D
 		OpenGL,
 		BitmapFont,
 		SystemFont,
+		Terrain,
 		Test,
 		DebugConsole,
 		Command,

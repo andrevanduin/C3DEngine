@@ -18,7 +18,7 @@ namespace C3D
     {
         if (std::strlen(name) == 0)
         {
-            m_logger.Error("Load() - Name was empty or outResource was nullptr");
+            m_logger.Error("Load() - Failed because provided name is empty.");
             return false;
         }
 
@@ -235,10 +235,9 @@ namespace C3D
         // De-duplicate geometry
         for (auto& geometry : outGeometries)
         {
-            m_logger.Debug("Geometry de-duplication started on geometry object: '{}'", geometry.name);
+            m_logger.Info("Geometry de-duplication started on geometry object: '{}'", geometry.name);
             GeometryUtils::DeduplicateVertices(geometry);
-            GeometryUtils::GenerateTangents(geometry.vertices.GetData(), geometry.indices.Size(),
-                                            geometry.indices.GetData());
+            GeometryUtils::GenerateTangents(geometry.vertices, geometry.indices);
         }
 
         return WriteCsmFile(outCsmFileName, name, outGeometries);

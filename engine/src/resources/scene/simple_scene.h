@@ -9,7 +9,7 @@
 #include "renderer/views/render_view_world.h"
 #include "resources/geometry.h"
 #include "resources/mesh.h"
-#include "resources/terrain.h"
+#include "resources/terrain/terrain.h"
 #include "simple_scene_config.h"
 
 namespace C3D
