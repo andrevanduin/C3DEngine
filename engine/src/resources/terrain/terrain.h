@@ -34,11 +34,13 @@ namespace C3D
 
         void Destroy();
 
+        const String& GetName() const { return m_name; }
+
         mat4 GetModel() const { return m_transform.GetWorld(); }
 
         Geometry* GetGeometry() { return &m_geometry; }
 
-        const String& GetName() const { return m_name; }
+        const DynamicArray<Material*>& GetMaterials() { return m_materials; }
 
         void SetTransform(const Transform& t) { m_transform = t; }
 

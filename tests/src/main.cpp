@@ -15,6 +15,7 @@
 #include "core/identifier.h"
 #include "memory/stack_allocator_tests.h"
 
+
 int main(int argc, char** argv)
 {
 	// Run our tests with 32MiB

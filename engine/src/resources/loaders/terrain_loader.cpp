@@ -1,6 +1,7 @@
 
 #include "terrain_loader.h"
 
+#include "core/exceptions.h"
 #include "platform/filesystem.h"
 #include "resources/loaders/image_loader.h"
 #include "systems/resources/resource_system.h"
@@ -42,68 +43,78 @@ namespace C3D
         String heightmapFile;
         String line;
         int lineNumber = 1, version = 0;
-        while (file.ReadLine(line))
+
+        try
         {
-            // Trim the line
-            line.Trim();
-
-            // Skip Blank lines and comments
-            if (line.Empty() || line.First() == '#')
+            while (file.ReadLine(line))
             {
-                lineNumber++;
-                continue;
-            }
+                // Trim the line
+                line.Trim();
 
-            auto parts = line.Split('=');
-            if (parts.Size() != 2)
-            {
-                m_logger.Error("Load() - Failed to load file: '{}'. Incorrect number of '=' on line: '{}'", fullPath,
-                               lineNumber);
-                return false;
-            }
-
-            auto name  = parts[0];
-            auto value = parts[1];
-
-            if (version == 0)
-            {
-                if (name.IEquals("version"))
+                // Skip Blank lines and comments
+                if (line.Empty() || line.First() == '#')
                 {
-                    version = value.ToU32();
+                    lineNumber++;
+                    continue;
+                }
+
+                auto parts = line.Split('=');
+                if (parts.Size() != 2)
+                {
+                    throw std::exception("Incorrect number of '='");
+                }
+
+                auto name  = parts[0];
+                auto value = parts[1];
+
+                if (version == 0)
+                {
+                    if (name.IEquals("version"))
+                    {
+                        version = value.ToU32();
+                    }
+                    else
+                    {
+                        throw Exception("Terrain config should start with version = <parser version>");
+                    }
+                }
+                else if (name.IEquals("heightmapFile"))
+                {
+                    heightmapFile = value;
+                }
+                else if (name.IEquals("tileScaleX"))
+                {
+                    resource.tileScaleX = value.ToF32();
+                }
+                else if (name.IEquals("tileScaleZ"))
+                {
+                    resource.tileScaleZ = value.ToF32();
+                }
+                else if (name.IEquals("tileScaleY"))
+                {
+                    resource.tileScaleY = value.ToF32();
+                }
+                else if (name.IEquals("material"))
+                {
+                    if (resource.materials.Size() >= TERRAIN_MAX_MATERIAL_COUNT)
+                    {
+                        throw Exception("Maximum amount of materials exceeded must be <= {}.",
+                                        TERRAIN_MAX_MATERIAL_COUNT);
+                    }
+
+                    resource.materials.PushBack(value);
                 }
                 else
                 {
-                    m_logger.Error(
-                        "Load() - Failed to load file: '{}'. Terrain config should start with version = <parser "
-                        "version>",
-                        fullPath);
-                    return false;
+                    throw Exception("Unknown tag found: '{}'", name);
                 }
-            }
-            else if (name.IEquals("heightmapFile"))
-            {
-                heightmapFile = value;
-            }
-            else if (name.IEquals("tileScaleX"))
-            {
-                resource.tileScaleX = value.ToF32();
-            }
-            else if (name.IEquals("tileScaleZ"))
-            {
-                resource.tileScaleZ = value.ToF32();
-            }
-            else if (name.IEquals("tileScaleY"))
-            {
-                resource.tileScaleY = value.ToF32();
-            }
-            else
-            {
-                m_logger.Error("Load - Failed to load file: '{}'. Unknown tag found: '{}' on line: '{}'", fullPath,
-                               name, lineNumber);
-                return false;
-            }
 
-            lineNumber++;
+                lineNumber++;
+            }
+        }
+        catch (const std::exception& exc)
+        {
+            m_logger.Error("Load() - Failed to load file: '{}'. {} on line: '{}'", fullPath, exc.what(), lineNumber);
         }
 
         if (!file.Close())
@@ -156,9 +167,9 @@ namespace C3D
 
     void ResourceLoader<TerrainConfig>::Unload(TerrainConfig& resource) const
     {
-        resource.name.Clear();
-        resource.resourceName.Clear();
-        resource.materials.Clear();
-        resource.vertexConfigs.Clear();
+        resource.name.Destroy();
+        resource.resourceName.Destroy();
+        resource.materials.Destroy();
+        resource.vertexConfigs.Destroy();
     }
 }  // namespace C3D

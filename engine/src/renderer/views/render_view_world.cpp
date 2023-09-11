@@ -14,6 +14,16 @@
 #include "systems/resources/resource_system.h"
 #include "systems/shaders/shader_system.h"
 
+namespace
+{
+    struct MaterialInfo
+    {
+        vec4 diffuseColor;
+        float shininess;
+        vec3 padding;
+    };
+}  // namespace
+
 namespace C3D
 {
     RenderViewWorld::RenderViewWorld(const RenderViewConfig& config)
@@ -71,20 +81,44 @@ namespace C3D
         }
 
         // Acquire locations
+        u16 projection                               = INVALID_ID_U16;
+        u16 view                                     = INVALID_ID_U16;
+        u16 model                                    = INVALID_ID_U16;
+        u16 ambientColor                             = INVALID_ID_U16;
+        u16 viewPosition                             = INVALID_ID_U16;
+        u16 renderMode                               = INVALID_ID_U16;
+        u16 samplers[TERRAIN_MAX_MATERIAL_COUNT * 3] = { INVALID_ID_U16 };  // Diffuse, Specular and Normal
+        u16 diffuseColor                             = INVALID_ID_U16;
+        u16 materials[TERRAIN_MAX_MATERIAL_COUNT]    = { INVALID_ID_U16 };
+        u16 dirLight                                 = INVALID_ID_U16;
+        u16 pLights                                  = INVALID_ID_U16;
+        u16 numPLights                               = INVALID_ID_U16;
+        u16 numMaterials                             = INVALID_ID_U16;
+
         m_terrainShaderLocations.projection   = m_terrainShader->GetUniformIndex("projection");
         m_terrainShaderLocations.view         = m_terrainShader->GetUniformIndex("view");
+        m_terrainShaderLocations.model        = m_terrainShader->GetUniformIndex("model");
         m_terrainShaderLocations.ambientColor = m_terrainShader->GetUniformIndex("ambientColor");
-        m_terrainShaderLocations.diffuseColor = m_terrainShader->GetUniformIndex("diffuseColor");
         m_terrainShaderLocations.viewPosition = m_terrainShader->GetUniformIndex("viewPosition");
-        m_terrainShaderLocations.shininess    = m_terrainShader->GetUniformIndex("shininess");
-        // m_terrainShaderLocations.diffuseTexture  = m_terrainShader->GetUniformIndex("diffuseTexture");
-        // m_terrainShaderLocations.specularTexture = m_terrainShader->GetUniformIndex("specularTexture");
-        // m_terrainShaderLocations.normalTexture   = m_terrainShader->GetUniformIndex("normalTexture");
-        m_terrainShaderLocations.model      = m_terrainShader->GetUniformIndex("model");
-        m_terrainShaderLocations.renderMode = m_terrainShader->GetUniformIndex("mode");
-        m_terrainShaderLocations.dirLight   = m_terrainShader->GetUniformIndex("dirLight");
-        m_terrainShaderLocations.pLights    = m_terrainShader->GetUniformIndex("pLights");
-        m_terrainShaderLocations.numPLights = m_terrainShader->GetUniformIndex("numPLights");
+        m_terrainShaderLocations.renderMode   = m_terrainShader->GetUniformIndex("mode");
+
+        for (u32 i = 0; i < TERRAIN_MAX_MATERIAL_COUNT; i += 3)
+        {
+            auto num          = String(i);
+            auto diffuseName  = "diffuseTexture_" + num;
+            auto specularName = "specularTexture_" + num;
+            auto normalName   = "normalTexture_" + num;
+
+            m_terrainShaderLocations.samplers[i + 0] = m_terrainShader->GetUniformIndex(diffuseName.Data());
+            m_terrainShaderLocations.samplers[i + 1] = m_terrainShader->GetUniformIndex(specularName.Data());
+            m_terrainShaderLocations.samplers[i + 2] = m_terrainShader->GetUniformIndex(normalName.Data());
+        }
+
+        m_terrainShaderLocations.materials    = m_terrainShader->GetUniformIndex("materials");
+        m_terrainShaderLocations.dirLight     = m_terrainShader->GetUniformIndex("dirLight");
+        m_terrainShaderLocations.pLights      = m_terrainShader->GetUniformIndex("pLights");
+        m_terrainShaderLocations.numPLights   = m_terrainShader->GetUniformIndex("numPLights");
+        m_terrainShaderLocations.numMaterials = m_terrainShader->GetUniformIndex("numMaterials");
 
         const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
         m_projectionMatrix     = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
@@ -131,7 +165,7 @@ namespace C3D
         outPacket->ambientColor     = m_ambientColor;
 
         outPacket->geometries.SetAllocator(frameAllocator);
-        outPacket->terrainGeometries.SetAllocator(frameAllocator);
+        outPacket->terrainData.SetAllocator(frameAllocator);
 
         m_distances.SetAllocator(frameAllocator);
 
@@ -160,9 +194,9 @@ namespace C3D
             outPacket->geometries.PushBack(g);
         }
 
-        for (auto& terrain : worldData.terrainGeometries)
+        for (auto& terrain : worldData.terrainData)
         {
-            outPacket->terrainGeometries.PushBack(terrain);
+            outPacket->terrainData.PushBack(terrain);
         }
 
         m_distances.Clear();
@@ -180,7 +214,7 @@ namespace C3D
                 return false;
             }
 
-            for (auto& terrain : packet->terrainGeometries)
+            for (auto& terrain : packet->terrainData)
             {
                 if (!Shaders.UseById(m_terrainShader->id))
                 {
@@ -195,15 +229,21 @@ namespace C3D
                 Shaders.SetUniformByIndex(m_terrainShaderLocations.viewPosition, &packet->viewPosition);
                 Shaders.SetUniformByIndex(m_terrainShaderLocations.renderMode, &m_renderMode);
 
-                // TODO: Change hardcoded diffuse color
-                static vec4 white = vec4(1.0);
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.diffuseColor, &white);
-                // Shaders.SetSamplerByIndex(m_shaderLocations.diffuseTexture, &diffuseTexture);
-                // Shaders.SetSamplerByIndex(m_shaderLocations.specularTexture, &specularTexture);
-                // Shaders.SetSamplerByIndex(m_shaderLocations.normalTexture, &normalTexture);
-                // TODO: Change hardcoded shininess
-                static f32 shininess = 32.0f;
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.shininess, &shininess);
+                MaterialInfo materials[TERRAIN_MAX_MATERIAL_COUNT] = {};
+                for (u32 m = 0; m < terrain.numMaterials; ++m)
+                {
+                    auto mat = terrain.materials[m];
+
+                    materials[m].diffuseColor = mat->diffuseColor;
+                    materials[m].shininess    = mat->shininess;
+
+                    Shaders.SetUniformByIndex(m_terrainShaderLocations.samplers[m * 3 + 0], &mat->diffuseMap);
+                    Shaders.SetUniformByIndex(m_terrainShaderLocations.samplers[m * 3 + 1], &mat->specularMap);
+                    Shaders.SetUniformByIndex(m_terrainShaderLocations.samplers[m * 3 + 2], &mat->normalMap);
+                }
+
+                Shaders.SetUniformByIndex(m_terrainShaderLocations.materials, &materials);
+                Shaders.SetUniformByIndex(m_terrainShaderLocations.numMaterials, &terrain.numMaterials);
 
                 const auto dirLight    = Lights.GetDirectionalLight();
                 const auto pointLights = Lights.GetPointLights();
@@ -216,7 +256,7 @@ namespace C3D
                 Shaders.SetUniformByIndex(m_terrainShaderLocations.model, &terrain.model);
 
                 Shaders.ApplyGlobal();
-                Renderer.DrawTerrainGeometry(terrain);
+                // Renderer.DrawTerrainGeometry(terrain);
             }
 
             const auto materialShaderId = m_materialShader->id;

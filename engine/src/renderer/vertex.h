@@ -2,11 +2,10 @@
 #pragma once
 #include "math/c3d_math.h"
 #include "math/math_types.h"
+#include "resources/terrain/terrain_config.h"
 
 namespace C3D
 {
-    constexpr u8 TERRAIN_MAX_MATERIAL_COUNT = 8;
-
     struct Vertex3D
     {
         /** @brief The position of the vertex. */
@@ -50,11 +49,10 @@ namespace C3D
         vec2 texture;
         /** @brief The color of the vertex. */
         vec4 color;
-        /** @brief The tangent of the vertex. */
-        vec3 tangent;
-        // TODO: Materials!
+        /** @brief The tangent of the vertex. (w component used for padding) */
+        vec4 tangent;
         /** @brief A collection of material weights for this vertex. */
-        // f32 materialWeights[TERRAIN_MAX_MATERIAL_COUNT];
+        f32 materialWeights[TERRAIN_MAX_MATERIAL_COUNT];
     };
 }  // namespace C3D
 

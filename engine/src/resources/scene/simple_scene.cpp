@@ -260,7 +260,7 @@ namespace C3D
             {
                 // Clear our world geometries
                 m_worldData.worldGeometries.Clear();
-                m_worldData.terrainGeometries.Clear();
+                m_worldData.terrainData.Clear();
 
                 for (const auto& mesh : m_meshes)
                 {
@@ -319,12 +319,23 @@ namespace C3D
                 {
                     // TODO: Check terrain generation
                     // TODO: Frustum culling
-                    auto model    = terrain.GetModel();
-                    auto geometry = terrain.GetGeometry();
-                    // TODO: Add unique id to terrain for object picking
-                    auto uniqueId = 0;
+                    TerrainRenderData data;
 
-                    m_worldData.terrainGeometries.EmplaceBack(model, geometry, uniqueId);
+                    data.model    = terrain.GetModel();
+                    data.geometry = terrain.GetGeometry();
+                    // TODO: Add unique id to terrain for object picking
+                    data.uniqueId = 0;
+
+                    // Take a copy of the pointers to the materials used by this terrain
+                    const auto& materials = terrain.GetMaterials();
+                    data.numMaterials     = materials.Size();
+
+                    for (u32 i = 0; i < data.numMaterials; i++)
+                    {
+                        data.materials[i] = materials[i];
+                    }
+
+                    m_worldData.terrainData.PushBack(data);
 
                     // TODO: Seperate counter for terrain meshes/geometry
                     frameData.drawnMeshCount++;
@@ -643,8 +654,9 @@ namespace C3D
 
         m_pointLights.Destroy();
         m_meshes.Destroy();
-        m_worldData.terrainGeometries.Destroy();
+
         m_worldData.worldGeometries.Destroy();
+        m_worldData.terrainData.Destroy();
 
         m_directionalLight = "";
         m_skybox           = nullptr;

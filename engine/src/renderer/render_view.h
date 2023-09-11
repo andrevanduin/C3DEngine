@@ -122,7 +122,7 @@ namespace C3D
 
     struct GeometryRenderData
     {
-        explicit GeometryRenderData(Geometry* geometry) : model(), geometry(geometry), uniqueId(INVALID_ID) {}
+        explicit GeometryRenderData(Geometry* geometry) : geometry(geometry) {}
 
         GeometryRenderData(const mat4& model, Geometry* geometry, const u32 uniqueId = INVALID_ID)
             : model(model), geometry(geometry), uniqueId(uniqueId)
@@ -130,6 +130,15 @@ namespace C3D
 
         mat4 model;
         Geometry* geometry;
+        u32 uniqueId = INVALID_ID;
+    };
+
+    struct TerrainRenderData
+    {
+        mat4 model;
+        Geometry* geometry;
+        Material* materials[TERRAIN_MAX_MATERIAL_COUNT];
+        u32 numMaterials;
         u32 uniqueId;
     };
 
@@ -144,7 +153,7 @@ namespace C3D
         vec4 ambientColor;
 
         DynamicArray<GeometryRenderData, LinearAllocator> geometries;
-        DynamicArray<GeometryRenderData, LinearAllocator> terrainGeometries;
+        DynamicArray<TerrainRenderData, LinearAllocator> terrainData;
 
         // @brief The name of the custom shader to use, if not using it is nullptr.
         const char* customShaderName;

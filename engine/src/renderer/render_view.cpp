@@ -53,7 +53,7 @@ namespace C3D
     void RenderView::OnDestroyPacket(RenderViewPacket& packet)
     {
         packet.geometries.Clear();
-        packet.terrainGeometries.Clear();
+        packet.terrainData.Clear();
     }
 
     void RenderView::OnResize() {}

@@ -34,8 +34,8 @@ namespace C3D
 
         virtual bool BeginFrame(const FrameData& frameData) = 0;
 
-        virtual void DrawGeometry(const GeometryRenderData& data)        = 0;
-        virtual void DrawTerrainGeometry(const GeometryRenderData& data) = 0;
+        virtual void DrawGeometry(const GeometryRenderData& data)       = 0;
+        virtual void DrawTerrainGeometry(const TerrainRenderData& data) = 0;
 
         virtual bool EndFrame(const FrameData& frameData) = 0;
 

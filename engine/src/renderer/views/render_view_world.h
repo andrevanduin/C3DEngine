@@ -17,25 +17,25 @@ namespace C3D
     struct RenderViewWorldData
     {
         DynamicArray<GeometryRenderData> worldGeometries;
-        DynamicArray<GeometryRenderData> terrainGeometries;
+        DynamicArray<TerrainRenderData> terrainData;
     };
 
     struct TerrainShaderLocations
     {
-        u16 projection      = INVALID_ID_U16;
-        u16 view            = INVALID_ID_U16;
-        u16 ambientColor    = INVALID_ID_U16;
-        u16 viewPosition    = INVALID_ID_U16;
-        u16 shininess       = INVALID_ID_U16;
-        u16 diffuseColor    = INVALID_ID_U16;
-        u16 diffuseTexture  = INVALID_ID_U16;
-        u16 specularTexture = INVALID_ID_U16;
-        u16 normalTexture   = INVALID_ID_U16;
-        u16 model           = INVALID_ID_U16;
-        u16 renderMode      = INVALID_ID_U16;
-        u16 dirLight        = INVALID_ID_U16;
-        u16 pLights         = INVALID_ID_U16;
-        u16 numPLights      = INVALID_ID_U16;
+        u16 projection   = INVALID_ID_U16;
+        u16 view         = INVALID_ID_U16;
+        u16 model        = INVALID_ID_U16;
+        u16 ambientColor = INVALID_ID_U16;
+        u16 viewPosition = INVALID_ID_U16;
+        u16 renderMode   = INVALID_ID_U16;
+
+        u16 samplers[TERRAIN_MAX_MATERIAL_COUNT * 3] = { INVALID_ID_U16 };  // Diffuse, Specular and Normal
+
+        u16 materials    = INVALID_ID_U16;
+        u16 dirLight     = INVALID_ID_U16;
+        u16 pLights      = INVALID_ID_U16;
+        u16 numPLights   = INVALID_ID_U16;
+        u16 numMaterials = INVALID_ID_U16;
     };
 
     class RenderViewWorld final : public RenderView

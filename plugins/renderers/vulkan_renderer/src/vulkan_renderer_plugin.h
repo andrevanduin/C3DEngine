@@ -46,7 +46,7 @@ namespace C3D
         bool EndRenderPass(RenderPass* pass) override;
 
         void DrawGeometry(const GeometryRenderData& data) override;
-        void DrawTerrainGeometry(const GeometryRenderData& data) override;
+        void DrawTerrainGeometry(const TerrainRenderData& data) override;
 
         void CreateTexture(const u8* pixels, Texture* texture) override;
         void CreateWritableTexture(Texture* texture) override;

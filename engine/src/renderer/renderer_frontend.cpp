@@ -166,7 +166,7 @@ namespace C3D
 
     void RenderSystem::DrawGeometry(const GeometryRenderData& data) const { m_backendPlugin->DrawGeometry(data); }
 
-    void RenderSystem::DrawTerrainGeometry(const GeometryRenderData& data) const
+    void RenderSystem::DrawTerrainGeometry(const TerrainRenderData& data) const
     {
         m_backendPlugin->DrawTerrainGeometry(data);
     }

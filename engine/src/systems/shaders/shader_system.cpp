@@ -313,7 +313,7 @@ namespace C3D
             *map         = defaultMap;
             map->texture = Textures.GetDefault();
 
-            if (!Renderer.AcquireTextureMapResources(&defaultMap))
+            if (!Renderer.AcquireTextureMapResources(map))
             {
                 m_logger.Error("AddSampler() - Failed to acquire global texture map resources.");
                 return false;

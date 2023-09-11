@@ -7,6 +7,8 @@
 
 namespace C3D
 {
+    constexpr u8 TERRAIN_MAX_MATERIAL_COUNT = 4;
+
     struct TerrainVertexConfig
     {
         f32 height;

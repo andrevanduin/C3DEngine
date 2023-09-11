@@ -583,7 +583,7 @@ namespace C3D
         }
     }
 
-    void VulkanRendererPlugin::DrawTerrainGeometry(const GeometryRenderData& data)
+    void VulkanRendererPlugin::DrawTerrainGeometry(const TerrainRenderData& data)
     {
         // Simply ignore if there is no geometry to draw
         if (!data.geometry || data.geometry->internalId == INVALID_ID) return;

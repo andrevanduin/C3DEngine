@@ -63,7 +63,7 @@ namespace C3D
                             u64 indexCount, const void* indices) const;
         void DestroyGeometry(Geometry* geometry) const;
         void DrawGeometry(const GeometryRenderData& data) const;
-        void DrawTerrainGeometry(const GeometryRenderData& data) const;
+        void DrawTerrainGeometry(const TerrainRenderData& data) const;
 
         bool BeginRenderPass(RenderPass* pass, RenderTarget* target) const;
         bool EndRenderPass(RenderPass* pass) const;

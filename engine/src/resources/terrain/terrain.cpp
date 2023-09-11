@@ -84,7 +84,7 @@ namespace C3D
     void Terrain::LoadJobSuccess()
     {
         {
-            auto timer = ScopedTimer("Generating Vertices", m_pSystemsManager);
+            auto timer = ScopedTimer("Generating Terrain Vertices", m_pSystemsManager);
 
             if (m_config.tileCountX == 0)
             {
@@ -133,10 +133,8 @@ namespace C3D
                     vert.color    = vec4(1.0f);
                     vert.normal   = { 0, 1, 0 };
                     vert.texture  = { x, z };
-                    // TODO: Materials!
-                    // std::memset(vert.materialWeights, 0, sizeof(f32) * TERRAIN_MAX_MATERIAL_COUNT);
-                    // vert.materialWeights[0] = 1.0f;
-                    vert.tangent = vec3(0);
+                    // TODO: Figure out a way to auto-assign terrain material weights. (Perhaps with Height?)
+                    vert.materialWeights[0] = 1.0f;
 
                     m_vertices.PushBack(vert);
                 }
@@ -144,7 +142,7 @@ namespace C3D
         }
 
         {
-            auto timer = ScopedTimer("Generating Indices", m_pSystemsManager);
+            auto timer = ScopedTimer("Generating Terrain Indices", m_pSystemsManager);
 
             // Roughly allocate enough space for all the indices (slightly too much space)
             m_indices.Reserve(m_vertexCount * 6);
@@ -168,17 +166,17 @@ namespace C3D
         }
 
         {
-            auto timer = ScopedTimer("Generating Normals", m_pSystemsManager);
+            auto timer = ScopedTimer("Generating Terrain Normals", m_pSystemsManager);
             GeometryUtils::GenerateNormals(m_vertices, m_indices);
         }
 
         {
-            auto timer = ScopedTimer("Generating Tangents", m_pSystemsManager);
-            GeometryUtils::GenerateTangents(m_vertices, m_indices);
+            auto timer = ScopedTimer("Generating Terrain Tangents", m_pSystemsManager);
+            GeometryUtils::GenerateTerrainTangents(m_vertices, m_indices);
         }
 
         {
-            auto timer = ScopedTimer("Creating Geometry", m_pSystemsManager);
+            auto timer = ScopedTimer("Creating Terrain Geometry", m_pSystemsManager);
 
             if (!Renderer.CreateGeometry(&m_geometry, sizeof(TerrainVertex), m_vertices.Size(), m_vertices.GetData(),
                                          sizeof(u32), m_indices.Size(), m_indices.GetData()))
@@ -193,7 +191,24 @@ namespace C3D
         // TODO: This should be done in the renderer (CreateGeometry() method)
         m_geometry.generation++;
 
-        Resources.Unload(m_config);
+        {
+            auto timer = ScopedTimer("Acquiring Terrain Materials", m_pSystemsManager);
+
+            for (u32 i = 0; i < m_config.materials.Size(); ++i)
+            {
+                m_materials.PushBack(Materials.Acquire(m_config.materials[i].Data()));
+                if (!m_materials[i])
+                {
+                    m_materials[i] = Materials.GetDefault();
+                }
+            }
+        }
+
+        {
+            auto timer = ScopedTimer("Unloading Terrain Config", m_pSystemsManager);
+
+            Resources.Unload(m_config);
+        }
     }
 
     void Terrain::LoadJobFailure()
