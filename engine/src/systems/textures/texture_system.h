@@ -7,7 +7,7 @@
 #include "core/defines.h"
 #include "core/logger.h"
 #include "resources/loaders/image_loader.h"
-#include "resources/texture.h"
+#include "resources/textures/texture.h"
 #include "systems/system.h"
 
 namespace C3D
@@ -40,7 +40,7 @@ namespace C3D
         Texture* outTexture = nullptr;
         Texture tempTexture;
         u32 currentGeneration = INVALID_ID;
-        ImageResource imageResource;
+        Image imageResource;
     };
 
     class C3D_API TextureSystem final : public SystemWithConfig<TextureSystemConfig>
@@ -55,7 +55,7 @@ namespace C3D
         Texture* AcquireCube(const char* name, bool autoRelease);
         Texture* AcquireWritable(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency);
 
-        void Release(const char* name);
+        void Release(const String& name);
 
         void WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency,
                           bool isWritable, bool registerTexture, void* internalData, Texture* outTexture);

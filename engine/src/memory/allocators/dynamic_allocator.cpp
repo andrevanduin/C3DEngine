@@ -27,7 +27,7 @@ namespace C3D
 
         const u64 freeListMemoryRequirement = totalMemory - usableMemory;
 
-        m_totalSize = totalMemory;
+        m_totalSize  = totalMemory;
         m_memorySize = usableMemory;
 
         // The first part of our memory will be used by our freelist
@@ -53,7 +53,7 @@ namespace C3D
         m_freeList.Destroy();
 
         m_totalSize = 0;
-        m_memory = nullptr;
+        m_memory    = nullptr;
 
         // Destroy the metrics object associated with this
         Metrics.DestroyAllocator(m_id);
@@ -105,10 +105,10 @@ namespace C3D
             char* userDataPtr = basePtr + alignDelta;
             // Store the size right before the user's data
             const auto sizePtr = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
-            *sizePtr = static_cast<u32>(size);
+            *sizePtr           = static_cast<u32>(size);
             // Store the header immediately after the user block
             const auto header = reinterpret_cast<AllocHeader*>(userDataPtr + size);
-            header->start = basePtr;
+            header->start     = basePtr;
             header->alignment = alignment;
 
 #ifdef C3D_TRACE_ALLOCS
@@ -177,24 +177,28 @@ namespace C3D
 
     bool DynamicAllocator::GetSizeAlignment(void* block, u64* outSize, u16* outAlignment)
     {
+        std::lock_guard getSizeAlignmentGuard(m_mutex);
+
         // Get the size
-        const auto userDataPtr = static_cast<char*>(block);
-        const auto sizePtr = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
+        const auto userDataPtr  = static_cast<char*>(block);
+        const auto sizePtr      = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
         const auto userDataSize = *sizePtr;
 
         // Get the header
         const auto header = reinterpret_cast<AllocHeader*>(userDataPtr + userDataSize);
 
-        *outSize = userDataSize;
+        *outSize      = userDataSize;
         *outAlignment = header->alignment;
         return true;
     }
 
     bool DynamicAllocator::GetAlignment(void* block, u16* outAlignment)
     {
+        std::lock_guard getAlignmentGuard(m_mutex);
+
         // Get the size
-        const auto userDataPtr = static_cast<char*>(block);
-        const auto sizePtr = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
+        const auto userDataPtr  = static_cast<char*>(block);
+        const auto sizePtr      = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
         const auto userDataSize = *sizePtr;
 
         // Get the header
@@ -206,9 +210,11 @@ namespace C3D
 
     bool DynamicAllocator::GetAlignment(const void* block, u16* outAlignment)
     {
+        std::lock_guard getAlignmentGuard(m_mutex);
+
         // Get the size
-        const auto userDataPtr = static_cast<const char*>(block);
-        const auto sizePtr = reinterpret_cast<const u32*>(userDataPtr - sizeof(AllocSizeMarker));
+        const auto userDataPtr  = static_cast<const char*>(block);
+        const auto sizePtr      = reinterpret_cast<const u32*>(userDataPtr - sizeof(AllocSizeMarker));
         const auto userDataSize = *sizePtr;
 
         // Get the header

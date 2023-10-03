@@ -2,20 +2,21 @@
 #pragma once
 #include "math/c3d_math.h"
 #include "math/math_types.h"
+#include "resources/terrain/terrain_config.h"
 
 namespace C3D
 {
     struct Vertex3D
     {
-        /* @brief: The position of the vertex. */
+        /** @brief The position of the vertex. */
         vec3 position;
-        /* @brief: The normal of the vertex. */
+        /** @brief The normal of the vertex. */
         vec3 normal;
-        /* @brief: The texture coordinates (u, v). */
+        /** @brief The texture coordinates (u, v). */
         vec2 texture;
-        /* @brief: The color of the vertex. */
+        /** @brief The color of the vertex. */
         vec4 color;
-        /* @brief: The tangent of the vertex. */
+        /** @brief The tangent of the vertex. */
         vec3 tangent;
 
         bool operator==(const Vertex3D& other) const
@@ -36,6 +37,22 @@ namespace C3D
 
         vec2 position;
         vec2 texture;
+    };
+
+    struct TerrainVertex
+    {
+        /** @brief The position of the vertex. */
+        vec3 position;
+        /** @brief The normal of the vertex. */
+        vec3 normal;
+        /** @brief The texture coordinates (u, v). */
+        vec2 texture;
+        /** @brief The color of the vertex. */
+        vec4 color;
+        /** @brief The tangent of the vertex. (w component used for padding) */
+        vec4 tangent;
+        /** @brief A collection of material weights for this vertex. */
+        f32 materialWeights[TERRAIN_MAX_MATERIAL_COUNT] = { 0, 0, 0, 0 };
     };
 }  // namespace C3D
 

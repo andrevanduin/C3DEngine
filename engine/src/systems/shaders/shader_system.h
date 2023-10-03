@@ -1,11 +1,13 @@
 
 #pragma once
 #include "containers/hash_map.h"
-#include "resources/shader.h"
+#include "resources/shaders/shader.h"
 #include "systems/system.h"
 
 namespace C3D
 {
+    class RenderPass;
+
     struct ShaderSystemConfig
     {
         u16 maxShaderCount;
@@ -24,9 +26,9 @@ namespace C3D
 
         bool Create(RenderPass* pass, const ShaderConfig& config);
 
-        u32 GetId(const char* name) const;
+        u32 GetId(const String& name) const;
 
-        Shader* Get(const char* name);
+        Shader* Get(const String& name);
         Shader* GetById(u32 shaderId);
 
         bool Use(const char* name);

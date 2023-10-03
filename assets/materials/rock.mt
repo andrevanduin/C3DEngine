@@ -1,6 +1,6 @@
 #material file
 
-version = 0.1
+version = 1
 name = rock
 diffuseColor = 1.0 1.0 1.0 1.0
 shininess = 8.0

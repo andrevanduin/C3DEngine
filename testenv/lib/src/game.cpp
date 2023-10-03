@@ -63,7 +63,7 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 {
     // TEMP
     // Create test ui text objects
-    if (!m_state->testText.Create(m_pSystemsManager, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
+    if (!m_state->testText.Create("TEST_UI_TEXT", m_pSystemsManager, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
                                   "Some test text 123,\nyesyes!\n\tKaas!"))
     {
         m_logger.Fatal("OnRun() - Failed to load basic ui bitmap text.");
@@ -75,13 +75,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     {
         m_logger.Error("OnRun() - Failed to create simple scene");
         return false;
-    }
-
-    // World meshes
-    for (u32 i = 0; i < 10; i++)
-    {
-        m_state->meshes[i].generation   = INVALID_ID_U8;
-        m_state->uiMeshes[i].generation = INVALID_ID_U8;
     }
 
     // Load up our test ui geometry
@@ -132,7 +125,8 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     // TEMP END
 
     m_state->camera = Cam.GetDefault();
-    m_state->camera->SetPosition({ 10.5f, 5.0f, 9.5f });
+    m_state->camera->SetPosition({ 18.0f, 40.0f, 3.5f });
+    m_state->camera->SetEulerRotation({ C3D::DegToRad(-38.2f), C3D::DegToRad(-127.0f), C3D::DegToRad(0.0f) });
 
     // Set the allocator for the dynamic array that contains our world geometries to our frame allocator
     auto gameFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
@@ -208,11 +202,15 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             m_state->camera->AddPitch(-1.0 * deltaTime);
         }
 
-        static constexpr f64 temp_move_speed = 50.0;
+        f64 move_speed = 50.0;
+        if (Input.IsKeyDown(C3D::KeyLControl))
+        {
+            move_speed = 150.0;
+        }
 
         if (Input.IsKeyDown('w'))
         {
-            m_state->camera->MoveForward(temp_move_speed * deltaTime);
+            m_state->camera->MoveForward(move_speed * deltaTime);
         }
 
         // TEMP
@@ -226,33 +224,41 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
 
         if (Input.IsKeyDown('s'))
         {
-            m_state->camera->MoveBackward(temp_move_speed * deltaTime);
+            m_state->camera->MoveBackward(move_speed * deltaTime);
         }
 
         if (Input.IsKeyDown('q'))
         {
-            m_state->camera->MoveLeft(temp_move_speed * deltaTime);
+            m_state->camera->MoveLeft(move_speed * deltaTime);
         }
 
         if (Input.IsKeyDown('e'))
         {
-            m_state->camera->MoveRight(temp_move_speed * deltaTime);
+            m_state->camera->MoveRight(move_speed * deltaTime);
         }
 
         if (Input.IsKeyDown(C3D::KeySpace))
         {
-            m_state->camera->MoveUp(temp_move_speed * deltaTime);
+            m_state->camera->MoveUp(move_speed * deltaTime);
         }
 
         if (Input.IsKeyDown(C3D::KeyX))
         {
-            m_state->camera->MoveDown(temp_move_speed * deltaTime);
+            m_state->camera->MoveDown(move_speed * deltaTime);
         }
     }
 
     if (!m_state->simpleScene.Update(frameData))
     {
         m_logger.Error("Update() - Failed to update main scene");
+    }
+
+    if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized &&
+        m_state->reloadState == ReloadState::Unloading)
+    {
+        m_state->reloadState = ReloadState::Loading;
+        m_logger.Info("OnDebugEvent() - Loading Main Scene...");
+        LoadTestScene();
     }
 
     if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
@@ -454,6 +460,17 @@ void TestEnv::OnLibraryLoad()
         Event.Fire(C3D::EventCodeDebug2, this, {});
         return true;
     });
+
+    m_pConsole->RegisterCommand("reload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
+        m_state->reloadState = ReloadState::Unloading;
+
+        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
+        {
+            m_logger.Info("OnDebugEvent() - Unloading models...");
+            m_state->simpleScene.Unload();
+        }
+        return true;
+    });
 }
 
 void TestEnv::OnLibraryUnload()
@@ -466,6 +483,7 @@ void TestEnv::OnLibraryUnload()
 
     m_pConsole->UnregisterCommand("load_scene");
     m_pConsole->UnregisterCommand("unload_scene");
+    m_pConsole->UnregisterCommand("reload_scene");
 }
 
 bool TestEnv::ConfigureRenderViews() const
@@ -721,6 +739,7 @@ bool TestEnv::LoadTestScene()
         return false;
     }
 
+    m_state->reloadState = ReloadState::Done;
     return true;
 }
 

@@ -5,5 +5,5 @@
 
 namespace Array
 {
-	void RegisterTests(TestManager* manager);
+    void RegisterTests(TestManager* manager);
 }

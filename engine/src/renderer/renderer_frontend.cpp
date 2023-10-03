@@ -6,7 +6,7 @@
 #include "core/engine.h"
 #include "core/logger.h"
 #include "platform/platform.h"
-#include "resources/shader.h"
+#include "resources/shaders/shader.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/render_views/render_view_system.h"
 #include "systems/system_manager.h"
@@ -17,7 +17,7 @@ namespace C3D
 
     bool RenderSystem::Init(const RenderSystemConfig& config)
     {
-        m_config = config;
+        m_config        = config;
         m_backendPlugin = config.rendererPlugin;
         if (!m_backendPlugin)
         {
@@ -28,8 +28,8 @@ namespace C3D
         RendererPluginConfig rendererPluginConfig{};
         rendererPluginConfig.applicationName = m_config.applicationName;
         rendererPluginConfig.pSystemsManager = m_pSystemsManager;
-        rendererPluginConfig.flags = m_config.flags;
-        rendererPluginConfig.pWindow = m_config.pWindow;
+        rendererPluginConfig.flags           = m_config.flags;
+        rendererPluginConfig.pWindow         = m_config.pWindow;
 
         if (!m_backendPlugin->Init(rendererPluginConfig, &m_windowRenderTargetCount))
         {
@@ -54,13 +54,13 @@ namespace C3D
 
     void RenderSystem::OnResize(const u32 width, const u32 height)
     {
-        m_resizing = true;
-        m_frameBufferWidth = width;
+        m_resizing          = true;
+        m_frameBufferWidth  = width;
         m_frameBufferHeight = height;
         m_framesSinceResize = 0;
     }
 
-    bool RenderSystem::DrawFrame(RenderPacket* packet, const FrameData* frameData)
+    bool RenderSystem::DrawFrame(RenderPacket* packet, const FrameData& frameData)
     {
         m_backendPlugin->frameNumber++;
 
@@ -75,7 +75,7 @@ namespace C3D
                 m_backendPlugin->OnResize(m_frameBufferWidth, m_frameBufferHeight);
 
                 m_framesSinceResize = 0;
-                m_resizing = false;
+                m_resizing          = false;
             }
             else
             {
@@ -93,7 +93,8 @@ namespace C3D
             // Render each view
             for (auto& viewPacket : packet->views)
             {
-                if (!Views.OnRender(viewPacket.view, &viewPacket, m_backendPlugin->frameNumber, attachmentIndex))
+                if (!Views.OnRender(frameData, viewPacket.view, &viewPacket, m_backendPlugin->frameNumber,
+                                    attachmentIndex))
                 {
                     m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.", viewPacket.view->name);
                     return false;
@@ -159,14 +160,11 @@ namespace C3D
                                                indices);
     }
 
-    void RenderSystem::DestroyTexture(Texture* texture) const { return m_backendPlugin->DestroyTexture(texture); }
+    void RenderSystem::DestroyTexture(Texture* texture) const { m_backendPlugin->DestroyTexture(texture); }
 
-    void RenderSystem::DestroyGeometry(Geometry* geometry) const { return m_backendPlugin->DestroyGeometry(geometry); }
+    void RenderSystem::DestroyGeometry(Geometry* geometry) const { m_backendPlugin->DestroyGeometry(geometry); }
 
-    void RenderSystem::DrawGeometry(const GeometryRenderData& data) const
-    {
-        return m_backendPlugin->DrawGeometry(data);
-    }
+    void RenderSystem::DrawGeometry(const GeometryRenderData& data) const { m_backendPlugin->DrawGeometry(data); }
 
     bool RenderSystem::BeginRenderPass(RenderPass* pass, RenderTarget* target) const
     {
@@ -200,9 +198,10 @@ namespace C3D
         return m_backendPlugin->ShaderApplyInstance(shader, needsUpdate);
     }
 
-    bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) const
+    bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+                                                      u32* outInstanceId) const
     {
-        return m_backendPlugin->AcquireShaderInstanceResources(shader, maps, outInstanceId);
+        return m_backendPlugin->AcquireShaderInstanceResources(shader, textureMapCount, maps, outInstanceId);
     }
 
     bool RenderSystem::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId) const
@@ -210,12 +209,12 @@ namespace C3D
         return m_backendPlugin->ReleaseShaderInstanceResources(shader, instanceId);
     }
 
-    bool RenderSystem::AcquireTextureMapResources(TextureMap* map) const
+    bool RenderSystem::AcquireTextureMapResources(TextureMap& map) const
     {
         return m_backendPlugin->AcquireTextureMapResources(map);
     }
 
-    void RenderSystem::ReleaseTextureMapResources(TextureMap* map) const
+    void RenderSystem::ReleaseTextureMapResources(TextureMap& map) const
     {
         m_backendPlugin->ReleaseTextureMapResources(map);
     }
@@ -270,10 +269,10 @@ namespace C3D
 
     u8 RenderSystem::GetWindowAttachmentCount() const { return m_backendPlugin->GetWindowAttachmentCount(); }
 
-    RenderBuffer* RenderSystem::CreateRenderBuffer(const RenderBufferType type, const u64 totalSize,
+    RenderBuffer* RenderSystem::CreateRenderBuffer(const String& name, const RenderBufferType type, const u64 totalSize,
                                                    const bool useFreelist) const
     {
-        return m_backendPlugin->CreateRenderBuffer(type, totalSize, useFreelist);
+        return m_backendPlugin->CreateRenderBuffer(name, type, totalSize, useFreelist);
     }
 
     bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const

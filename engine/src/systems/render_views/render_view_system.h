@@ -29,7 +29,8 @@ namespace C3D
                          RenderViewPacket* outPacket) const;
         void DestroyPacket(RenderView* view, RenderViewPacket& packet) const;
 
-        bool OnRender(RenderView* view, const RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex) const;
+        bool OnRender(const FrameData& frameData, RenderView* view, const RenderViewPacket* packet, u64 frameNumber,
+                      u64 renderTargetIndex) const;
 
         void RegenerateRenderTargets(RenderView* view) const;
 

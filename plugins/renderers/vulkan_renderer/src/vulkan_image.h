@@ -2,7 +2,7 @@
 #pragma once
 #include <containers/string.h>
 #include <core/defines.h>
-#include <resources/texture.h>
+#include <resources/textures/texture_types.h>
 #include <vulkan/vulkan.h>
 
 #include "vulkan_command_buffer.h"

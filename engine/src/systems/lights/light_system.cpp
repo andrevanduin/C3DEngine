@@ -9,7 +9,7 @@ namespace C3D
         // NOTE: Perform some kind of config/init here?
         m_pointLights.Create(128);
         m_initialized = true;
-        m_logger.Info("Init() - Successfull");
+        m_logger.Info("Init() - Successful");
         return true;
     }
 
@@ -18,7 +18,7 @@ namespace C3D
         // NOTE: Perform some kind of cleanup here?
         m_pointLights.Destroy();
         m_initialized = false;
-        m_logger.Info("Shutdown() - Successfull");
+        m_logger.Info("Shutdown() - Successful");
     }
 
     bool LightSystem::AddDirectionalLight(const DirectionalLight& light)

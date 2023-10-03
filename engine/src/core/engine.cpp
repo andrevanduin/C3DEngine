@@ -240,7 +240,7 @@ namespace C3D
                     break;
                 }
 
-                if (!Renderer.DrawFrame(&packet, &m_frameData))
+                if (!Renderer.DrawFrame(&packet, m_frameData))
                 {
                     m_logger.Warn("DrawFrame() failed");
                 }

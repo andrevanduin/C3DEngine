@@ -3,7 +3,7 @@
 #include "core/defines.h"
 #include "geometry.h"
 #include "renderer/vertex.h"
-#include "texture.h"
+#include "resources/textures/texture_map.h"
 
 namespace C3D
 {

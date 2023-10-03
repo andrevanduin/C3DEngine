@@ -2,6 +2,7 @@
 #include "mesh.h"
 
 #include "core/identifier.h"
+#include "core/scoped_timer.h"
 #include "systems/geometry/geometry_system.h"
 #include "systems/jobs/job_system.h"
 #include "systems/resources/resource_system.h"
@@ -10,13 +11,11 @@ namespace C3D
 {
     Mesh::Mesh() : m_logger("MESH") {}
 
-    Mesh::Mesh(const MeshConfig& cfg) : m_logger("MESH"), config(cfg) {}
-
     bool Mesh::Create(const SystemManager* pSystemsManager, const MeshConfig& cfg)
     {
         m_pSystemsManager = pSystemsManager;
-        config = cfg;
-        generation = INVALID_ID_U8;
+        config            = cfg;
+        generation        = INVALID_ID_U8;
 
         return true;
     }
@@ -48,7 +47,7 @@ namespace C3D
         }
 
         generation = 0;
-        uniqueId = Identifier::GetNewId(this);
+        uniqueId   = Identifier::GetNewId(this);
         return true;
     }
 
@@ -69,7 +68,7 @@ namespace C3D
         {
             if (!Unload())
             {
-                m_logger.Error("Destory() - failed to unload");
+                m_logger.Error("Destroy() - failed to unload");
                 return false;
             }
         }
@@ -84,8 +83,8 @@ namespace C3D
 
         JobInfo info;
         info.entryPoint = [this]() { return Resources.Load(config.resourceName, m_resource); };
-        info.onSuccess = [this]() { LoadJobSuccess(); };
-        info.onFailure = [this]() { LoadJobFailure(); };
+        info.onSuccess  = [this]() { LoadJobSuccess(); };
+        info.onFailure  = [this]() { LoadJobFailure(); };
 
         Jobs.Submit(std::move(info));
         return true;
@@ -93,28 +92,25 @@ namespace C3D
 
     void Mesh::LoadJobSuccess()
     {
-        Clock clock(m_pSystemsManager->GetSystemPtr<Platform>(PlatformSystemType));
-        clock.Start();
-
-        // NOTE: This also handles the GPU upload. Can't be jobified until the renderer is multiThreaded.
-        // We can reserve enough space for our geometries instead of reallocating everytime the dynamic array grows
-        geometries.Reserve(m_resource.geometryConfigs.Size());
-        for (auto& c : m_resource.geometryConfigs)
         {
-            geometries.PushBack(Geometric.AcquireFromConfig(c, true));
+            auto timer = ScopedTimer("Acquiring Geometry from Config", m_pSystemsManager);
+
+            // NOTE: This also handles the GPU upload. Can't be jobified until the renderer is multiThreaded.
+            // We can reserve enough space for our geometries instead of reallocating everytime the dynamic array grows
+            geometries.Reserve(m_resource.geometryConfigs.Size());
+            for (auto& c : m_resource.geometryConfigs)
+            {
+                geometries.PushBack(Geometric.AcquireFromConfig(c, true));
+            }
+
+            generation++;
+            uniqueId = Identifier::GetNewId(this);
         }
-        generation++;
-        uniqueId = Identifier::GetNewId(this);
 
-        clock.Update();
-        m_logger.Info("LoadJobSuccess() - Successfully loaded: '{}' in {:.4f} ms", config.resourceName,
-                      clock.GetElapsedMs());
-        clock.Start();
-
-        Resources.Unload(m_resource);
-
-        clock.Update();
-        m_logger.Info("LoadJobSuccess() - Resources.Unload took: {:.4f} ms", clock.GetElapsedMs());
+        {
+            auto timer = ScopedTimer("Unloading Resource", m_pSystemsManager);
+            Resources.Unload(m_resource);
+        }
     }
 
     void Mesh::LoadJobFailure()

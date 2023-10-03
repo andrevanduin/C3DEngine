@@ -88,6 +88,8 @@ namespace C3D
         memoryAllocateInfo.memoryTypeIndex      = memoryType;
         VK_CHECK(vkAllocateMemory(context->device.logicalDevice, &memoryAllocateInfo, context->allocator, &m_memory));
 
+        VK_SET_DEBUG_OBJECT_NAME(context, VK_OBJECT_TYPE_DEVICE_MEMORY, m_memory, m_name);
+
         // TODO: Configurable memory offset.
         VK_CHECK(vkBindImageMemory(context->device.logicalDevice, handle, m_memory, 0));
 

@@ -32,8 +32,8 @@ namespace C3D
 
         void OnResize(u32 width, u32 height) override;
 
-        bool BeginFrame(const FrameData* frameData) override;
-        bool EndFrame(const FrameData* frameData) override;
+        bool BeginFrame(const FrameData& frameData) override;
+        bool EndFrame(const FrameData& frameData) override;
 
         void SetViewport(const vec4& rect) override;
         void ResetViewport() override;
@@ -74,11 +74,12 @@ namespace C3D
         bool ShaderApplyGlobals(Shader* shader) override;
         bool ShaderApplyInstance(Shader* shader, bool needsUpdate) override;
 
-        bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) override;
+        bool AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+                                            u32* outInstanceId) override;
         bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) override;
 
-        bool AcquireTextureMapResources(TextureMap* map) override;
-        void ReleaseTextureMapResources(TextureMap* map) override;
+        bool AcquireTextureMapResources(TextureMap& map) override;
+        void ReleaseTextureMapResources(TextureMap& map) override;
 
         bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
 
@@ -89,7 +90,8 @@ namespace C3D
         RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
         bool DestroyRenderPass(RenderPass* pass) override;
 
-        RenderBuffer* CreateRenderBuffer(RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
+        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize,
+                                         bool useFreelist) override;
         bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
         Texture* GetWindowAttachment(u8 index) override;

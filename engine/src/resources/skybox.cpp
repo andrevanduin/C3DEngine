@@ -20,14 +20,15 @@ namespace C3D
 
     bool Skybox::Initialize()
     {
-        cubeMap = TextureMap(TextureUse::CubeMap, TextureFilter::ModeLinear, TextureRepeat::ClampToEdge);
+        // NOTE: Use = cubemap but we removed this
+        cubeMap = TextureMap(TextureFilter::ModeLinear, TextureRepeat::ClampToEdge);
 
         // Generate a config for some cube geometry
         // TODO: Make these settings more configurable
         m_skyboxGeometryConfig =
             Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, m_config.cubeMapName, "");
         // Clear out the material name
-        m_skyboxGeometryConfig.materialName[0] = '\0';
+        m_skyboxGeometryConfig.materialName.Clear();
         // Invalidate our id so it's clear that this skybox still needs to be loaded
         instanceId = INVALID_ID;
 
@@ -40,7 +41,7 @@ namespace C3D
         cubeMap.texture = Textures.AcquireCube(m_config.cubeMapName.Data(), true);
 
         // Acquire resources for our cube map
-        if (!Renderer.AcquireTextureMapResources(&cubeMap))
+        if (!Renderer.AcquireTextureMapResources(cubeMap))
         {
             m_logger.Error("Load() - Unable to acquire resources for cube map texture.");
             return false;
@@ -56,7 +57,7 @@ namespace C3D
         TextureMap* maps[1] = { &cubeMap };
 
         // Acquire our shader instance resources
-        if (!Renderer.AcquireShaderInstanceResources(shader, maps, &instanceId))
+        if (!Renderer.AcquireShaderInstanceResources(shader, 1, maps, &instanceId))
         {
             m_logger.Error("Load() - Unable to acquire shader resources for skybox texture.");
             return false;
@@ -73,7 +74,7 @@ namespace C3D
         Renderer.ReleaseShaderInstanceResources(shader, instanceId);
         instanceId = INVALID_ID;
 
-        Renderer.ReleaseTextureMapResources(&cubeMap);
+        Renderer.ReleaseTextureMapResources(cubeMap);
         frameNumber = INVALID_ID_U64;
 
         Geometric.DisposeConfig(m_skyboxGeometryConfig);

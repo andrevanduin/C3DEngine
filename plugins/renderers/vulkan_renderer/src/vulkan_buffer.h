@@ -7,46 +7,46 @@
 
 namespace C3D
 {
-	class VulkanBuffer final : public RenderBuffer
-	{
-	public:
-		explicit VulkanBuffer(const VulkanContext* context);
+    class VulkanBuffer final : public RenderBuffer
+    {
+    public:
+        explicit VulkanBuffer(const VulkanContext* context, const String& name);
 
-		bool Create(RenderBufferType bufferType, u64 size, bool useFreelist) override;
-		void Destroy() override;
+        bool Create(RenderBufferType bufferType, u64 size, bool useFreelist) override;
+        void Destroy() override;
 
-		bool Bind(u64 offset) override;
+        bool Bind(u64 offset) override;
 
-		void* MapMemory(u64 offset, u64 size) override;
-		void UnMapMemory(u64 offset, u64 size) override;
+        void* MapMemory(u64 offset, u64 size) override;
+        void UnMapMemory(u64 offset, u64 size) override;
 
-		bool Flush(u64 offset, u64 size) override;
-		bool Resize(u64 newSize) override;
+        bool Flush(u64 offset, u64 size) override;
+        bool Resize(u64 newSize) override;
 
-		bool Read(u64 offset, u64 size, void** outMemory) override;
-		bool LoadRange(u64 offset, u64 size, const void* data) override;
-		bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size) override;
-		
-		bool Draw(u64 offset, u32 elementCount, bool bindOnly) override;
+        bool Read(u64 offset, u64 size, void** outMemory) override;
+        bool LoadRange(u64 offset, u64 size, const void* data) override;
+        bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size) override;
 
-		[[nodiscard]] bool IsDeviceLocal() const;
-		[[nodiscard]] bool IsHostVisible() const;
-		[[nodiscard]] bool IsHostCoherent() const;
+        bool Draw(u64 offset, u32 elementCount, bool bindOnly) override;
 
-		VkBuffer handle;
+        [[nodiscard]] bool IsDeviceLocal() const;
+        [[nodiscard]] bool IsHostVisible() const;
+        [[nodiscard]] bool IsHostCoherent() const;
 
-	protected:
-		bool CopyRangeInternal(u64 srcOffset, VkBuffer dst, u64 dstOffset, u64 size) const;
+        VkBuffer handle;
 
-		const VulkanContext* m_context;
-		VkBufferUsageFlagBits m_usage;
+    protected:
+        bool CopyRangeInternal(u64 srcOffset, VkBuffer dst, u64 dstOffset, u64 size) const;
 
-		VkDeviceMemory m_memory;
-		VkMemoryRequirements m_memoryRequirements;
+        const VulkanContext* m_context;
+        VkBufferUsageFlagBits m_usage;
 
-		i32 m_memoryIndex;
-		u32 m_memoryPropertyFlags;
+        VkDeviceMemory m_memory;
+        VkMemoryRequirements m_memoryRequirements;
 
-		bool m_isLocked;
-	};
-}
+        i32 m_memoryIndex         = 0;
+        u32 m_memoryPropertyFlags = 0;
+
+        bool m_isLocked = true;
+    };
+}  // namespace C3D

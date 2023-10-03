@@ -20,6 +20,7 @@ namespace C3D
         BitmapFont,
         SystemFont,
         SimpleScene,
+        Terrain,
         Custom,
         MaxValue
     };
@@ -40,7 +41,11 @@ namespace C3D
     struct Resource
     {
         u32 loaderId = INVALID_ID;
+        /** @brief The resource version. */
+        u8 version = 0;
+        /** @brief The name of the resource. */
         String name;
+        /** @brief The full path to the resource. */
         String fullPath;
     };
 }  // namespace C3D

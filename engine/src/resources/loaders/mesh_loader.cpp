@@ -1,9 +1,10 @@
 
 #include "mesh_loader.h"
 
+#include "core/exceptions.h"
 #include "core/string_utils.h"
 #include "math/geometry_utils.h"
-#include "platform/filesystem.h"
+#include "platform/file_system.h"
 #include "renderer/vertex.h"
 #include "systems/geometry/geometry_system.h"
 #include "systems/resources/resource_system.h"
@@ -18,7 +19,7 @@ namespace C3D
     {
         if (std::strlen(name) == 0)
         {
-            m_logger.Error("Load() - Name was empty or outResource was nullptr");
+            m_logger.Error("Load() - Failed because provided name is empty.");
             return false;
         }
 
@@ -28,8 +29,8 @@ namespace C3D
 
         // Try different extensions. First try our optimized binary format, otherwise we try obj.
         SupportedMeshFileType supportedFileTypes[MESH_LOADER_EXTENSION_COUNT] = {
-            {"csm", MeshFileType::Csm, true},
-            {"obj", MeshFileType::Obj, false},
+            { "csm", MeshFileType::Csm, true },
+            { "obj", MeshFileType::Obj, false },
         };
 
         for (const auto fileType : supportedFileTypes)
@@ -115,7 +116,7 @@ namespace C3D
         DynamicArray<MeshGroupData> groups(4);
 
         char materialFileName[512] = {};
-        char name[512] = {};
+        char name[512]             = {};
 
         u8 currentMaterialNameCount = 0;
         char materialNames[32][64];
@@ -173,7 +174,7 @@ namespace C3D
                     for (u64 i = 0; i < groups.Size(); i++)
                     {
                         GeometryConfig newData = {};
-                        newData.name = name;
+                        newData.name           = name;
 
                         if (i > 0)
                         {
@@ -204,7 +205,7 @@ namespace C3D
         for (u64 i = 0; i < groups.Size(); i++)
         {
             GeometryConfig newData = {};
-            newData.name = name;
+            newData.name           = name;
 
             if (i > 0)
             {
@@ -221,12 +222,10 @@ namespace C3D
         if (std::strlen(materialFileName) > 0)
         {
             // Load up the material file
-            CString<512> fullMtlPath;
-
-            FileSystem::DirectoryFromPath(fullMtlPath.Data(), outCsmFileName.Data());
+            String fullMtlPath = FileSystem::DirectoryFromPath(outCsmFileName.Data());
             fullMtlPath += materialFileName;
 
-            if (!ImportObjMaterialLibraryFile(fullMtlPath.Data()))
+            if (!ImportObjMaterialLibraryFile(fullMtlPath))
             {
                 m_logger.Error("ImportObjFile() - Error reading obj mtl file: {}", fullMtlPath);
             }
@@ -235,10 +234,9 @@ namespace C3D
         // De-duplicate geometry
         for (auto& geometry : outGeometries)
         {
-            m_logger.Debug("Geometry de-duplication started on geometry object: '{}'", geometry.name);
+            m_logger.Info("Geometry de-duplication started on geometry object: '{}'", geometry.name);
             GeometryUtils::DeduplicateVertices(geometry);
-            GeometryUtils::GenerateTangents(geometry.vertices.GetData(), geometry.indices.Size(),
-                                            geometry.indices.GetData());
+            GeometryUtils::GenerateTangents(geometry.vertices, geometry.indices);
         }
 
         return WriteCsmFile(outCsmFileName, name, outGeometries);
@@ -309,18 +307,18 @@ namespace C3D
                                                         DynamicArray<MeshFaceData>& faces,
                                                         GeometryConfig* outData) const
     {
-        auto indices = DynamicArray<u32>(32768);
+        auto indices  = DynamicArray<u32>(32768);
         auto vertices = DynamicArray<Vertex3D>(32768);
 
-        bool extentSet = false;
+        bool extentSet      = false;
         outData->minExtents = vec3(0);
         outData->maxExtents = vec3(0);
 
-        u64 faceCount = faces.Size();
-        u64 normalCount = normals.Size();
+        u64 faceCount          = faces.Size();
+        u64 normalCount        = normals.Size();
         u64 texCoordinateCount = texCoords.Size();
 
-        bool skipNormals = false;
+        bool skipNormals            = false;
         bool skipTextureCoordinates = false;
 
         if (normalCount == 0)
@@ -347,7 +345,7 @@ namespace C3D
 
                 Vertex3D vertex{};
 
-                vec3 pos = positions[indexData.positionIndex - 1];
+                vec3 pos        = positions[indexData.positionIndex - 1];
                 vertex.position = pos;
 
                 // Check extents - min
@@ -412,10 +410,10 @@ namespace C3D
         }
 
         outData->vertices = vertices;
-        outData->indices = indices;
+        outData->indices  = indices;
     }
 
-    bool ResourceLoader<MeshResource>::ImportObjMaterialLibraryFile(const char* mtlFilePath) const
+    bool ResourceLoader<MeshResource>::ImportObjMaterialLibraryFile(const String& mtlFilePath) const
     {
         m_logger.Debug("Importing .mtl file: '{}'", mtlFilePath);
 
@@ -427,7 +425,8 @@ namespace C3D
             return false;
         }
 
-        MaterialConfig currentConfig{};
+        MaterialConfig currentConfig;
+        currentConfig.version = 2;
 
         bool hitName = false;
 
@@ -452,8 +451,15 @@ namespace C3D
                 case 'N':
                     if (line[1] == 's')
                     {
-                        char t[3];
-                        sscanf(line.Data(), "%s %f", t, &currentConfig.shininess);
+                        auto parts = line.Split(' ');
+                        auto prop =
+                            MaterialConfigProp("shininess", ShaderUniformType::Uniform_Float32, parts[1].ToF32());
+                        if (std::get<f32>(prop.value) <= 0.0f)
+                        {
+                            // Set a minimal shininess value to reduce rendering artifacts
+                            prop.value = 8.0f;
+                        }
+                        currentConfig.props.EmplaceBack(prop);
                     }
                     break;
                 case 'm':
@@ -461,12 +467,11 @@ namespace C3D
                     break;
                 case 'b':
                 {
-                    char substr[10];
-                    char textureFileName[512];
-                    sscanf(line.Data(), "%s %s", substr, textureFileName);
-                    if (StringUtils::IEquals(substr, "bump", 4))
+                    auto parts = line.Split(' ');
+                    if (parts[0].IEquals("bump"))
                     {
-                        FileSystem::FileNameFromPath(currentConfig.normalMapName.Data(), textureFileName);
+                        currentConfig.maps.EmplaceBack(
+                            MaterialConfigMap("bump", FileSystem::FileNameFromPath(parts[1])));
                     }
                     break;
                 }
@@ -481,11 +486,10 @@ namespace C3D
         }
 
         currentConfig.shaderName = "Builtin.Shader.Material";
-        if (currentConfig.shininess == 0.0f) currentConfig.shininess = 8.0f;
 
-        if (!WriteMtFile(mtlFilePath, &currentConfig))
+        if (!WriteMtFile(mtlFilePath, currentConfig))
         {
-            m_logger.Error("Unable to write mt file: '{}'", mtlFilePath);
+            m_logger.Error("ImportObjMaterialLibraryFile() Unable to write .mt file: '{}'.", mtlFilePath);
             return false;
         }
 
@@ -500,11 +504,10 @@ namespace C3D
             case 'a':  // Ambient or diffuse color which we both treat the same
             case 'd':
             {
-                char t[3];
-                sscanf(line.Data(), "%s %f %f %f", t, &config.diffuseColor.r, &config.diffuseColor.g,
-                       &config.diffuseColor.b);
-                // NOTE: This is only used in the color shader. Transparency could be added as a material property later
-                config.diffuseColor.a = 1.0f;
+                auto parts = line.Split(' ');
+                config.props.EmplaceBack(
+                    MaterialConfigProp("diffuseColor", ShaderUniformType::Uniform_Float32_4,
+                                       vec4(parts[1].ToF32(), parts[2].ToF32(), parts[3].ToF32(), 1.0f)));
                 break;
             }
             case 's':  // Specular color
@@ -516,7 +519,7 @@ namespace C3D
                 break;
             }
             default:
-                m_logger.Warn("ObjMaterialParseColorLine() - Unknown second character found: '{}' on line: '{}'",
+                m_logger.Warn("ObjMaterialParseColorLine() - Unknown second character found: '{}' on line: '{}'.",
                               line[1], line);
                 break;
         }
@@ -524,29 +527,38 @@ namespace C3D
 
     void ResourceLoader<MeshResource>::ObjMaterialParseMapLine(const String& line, MaterialConfig& config) const
     {
-        char substr[10];
-        char textureFileName[512];
+        auto parts = line.Split(' ');
+        MaterialConfigMap map;
 
-        sscanf(line.Data(), "%s %s", substr, textureFileName);
-
-        if (StringUtils::IEquals(substr, "map_Kd", 6))
+        if (parts[1].IEquals("map_Kd"))
         {
             // Diffuse texture map
-            FileSystem::FileNameFromPath(config.diffuseMapName.Data(), textureFileName);
+            map.name = "diffuse";
         }
-        else if (StringUtils::IEquals(substr, "map_Ks", 6))
+        else if (parts[1].IEquals("map_Ks"))
         {
-            FileSystem::FileNameFromPath(config.specularMapName.Data(), textureFileName);
+            // Diffuse texture map
+            map.name = "specular";
         }
-        else if (StringUtils::IEquals(substr, "map_bump", 8))
+        else if (parts[1].IEquals("map_bump"))
         {
-            FileSystem::FileNameFromPath(config.normalMapName.Data(), textureFileName);
+            // Diffuse texture map
+            map.name = "normal";
         }
+        else
+        {
+            throw Exception("Invalid map: '{}' found", parts[0]);
+        }
+
+        map.textureName = FileSystem::FileNameFromPath(parts[1]);
+        config.maps.PushBack(map);
     }
 
     void ResourceLoader<MeshResource>::ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config,
-                                                                  bool& hitName, const char* mtlFilePath) const
+                                                                  bool& hitName, const String& mtlFilePath) const
     {
+        auto parts = line.Split(' ');
+
         char substr[10];
         char materialName[512];
 
@@ -558,78 +570,102 @@ namespace C3D
             // NOTE: Hardcoded default material shader name because all objects imported this way will be treated the
             // same
             config.shaderName = "Builtin.Shader.Material";
-            // NOTE: Shininess of 0 will cause problems so use a default if not provided
-            if (config.shininess == 0.0f) config.shininess = 8.0f;
 
             if (hitName)
             {
                 // Write out a mt file and move on.
-                if (!WriteMtFile(mtlFilePath, &config))
+                if (!WriteMtFile(mtlFilePath, config))
                 {
-                    m_logger.Error("Unable to write mt file: '{}'", mtlFilePath);
+                    m_logger.Error("Unable to write mt file: '{}'.", mtlFilePath);
                     return;
                 }
 
                 config = {};
             }
 
-            hitName = true;
+            hitName     = true;
             config.name = materialName;
         }
     }
 
-    bool ResourceLoader<MeshResource>::WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const
+    bool ResourceLoader<MeshResource>::WriteMtFile(const String& mtlFilePath, const MaterialConfig& config) const
     {
         // NOTE: The .obj file is in the models directory we have to move up 1 directory and go into the materials
         // directory
-        const auto formatStr = "%s../materials/%s.%s";
-
         File file;
-        char directory[320];
-        FileSystem::DirectoryFromPath(directory, mtlFilePath);
+        String directory = FileSystem::DirectoryFromPath(mtlFilePath);
 
-        auto fullPath = String::FromFormat(formatStr, directory, config->name, "mt");
+        auto fullPath = String::FromFormat("%s../materials/%s.%s", directory, config.name, "mt");
         if (!file.Open(fullPath, FileModeWrite))
         {
-            m_logger.Error("WriteMtFile() - Failed to open material file for writing: '{}'", fullPath);
+            m_logger.Error("WriteMtFile() - Failed to open material file for writing: '{}'.", fullPath);
             return false;
         }
 
-        m_logger.Debug("Writing .mt file: '{}'", fullPath);
+        m_logger.Info("WriteMtFile() - Started writing .mt file to: '{}'.", fullPath);
 
         CString<512> lineBuffer;
         file.WriteLine("#material file");
         file.WriteLine("");
-        file.WriteLine("version = 0.1");  // TODO: hardcoded version
 
-        lineBuffer.FromFormat("name = {}", config->name);
+        lineBuffer.FromFormat("version = {}", config.version);
         file.WriteLine(lineBuffer);
 
-        lineBuffer.FromFormat("diffuseColor = %.6f %.6f %.6f %.6f", config->diffuseColor.r, config->diffuseColor.g,
-                              config->diffuseColor.b, config->diffuseColor.a);
+        lineBuffer.FromFormat("type = {}", ToString(config.type));
         file.WriteLine(lineBuffer);
 
-        lineBuffer.FromFormat("shininess = %.6f", config->shininess);
+        lineBuffer.FromFormat("name = {}", config.name);
         file.WriteLine(lineBuffer);
 
-        if (!config->diffuseMapName.Empty())
+        if (!config.shaderName.Empty())
         {
-            lineBuffer.FromFormat("diffuseMapName = %s", config->diffuseMapName);
-            file.WriteLine(lineBuffer);
-        }
-        if (!config->specularMapName.Empty())
-        {
-            lineBuffer.FromFormat("specularMapName = %s", config->specularMapName);
-            file.WriteLine(lineBuffer);
-        }
-        if (!config->normalMapName.Empty())
-        {
-            lineBuffer.FromFormat("normalMapName = %s", config->normalMapName);
+            lineBuffer.FromFormat("shader = {}", config.shaderName);
             file.WriteLine(lineBuffer);
         }
 
-        lineBuffer.FromFormat("shader = %s", config->shaderName.Data());
-        file.WriteLine(lineBuffer);
+        for (const auto& map : config.maps)
+        {
+            file.WriteLine("[map]");
+
+            lineBuffer.FromFormat("name = {}", map.name);
+            file.WriteLine(lineBuffer);
+
+            lineBuffer.FromFormat("minifyFilter = {}", ToString(map.minifyFilter));
+            file.WriteLine(lineBuffer);
+
+            lineBuffer.FromFormat("magnifyFilter = {}", ToString(map.magnifyFilter));
+            file.WriteLine(lineBuffer);
+
+            lineBuffer.FromFormat("repeatU = {}", ToString(map.repeatU));
+            file.WriteLine(lineBuffer);
+
+            lineBuffer.FromFormat("repeatV = {}", ToString(map.repeatV));
+            file.WriteLine(lineBuffer);
+
+            lineBuffer.FromFormat("repeatW = {}", ToString(map.repeatW));
+            file.WriteLine(lineBuffer);
+
+            lineBuffer.FromFormat("textureName = {}", map.textureName);
+            file.WriteLine(lineBuffer);
+
+            file.WriteLine("[/map]");
+        }
+
+        for (const auto& prop : config.props)
+        {
+            file.WriteLine("[prop]");
+
+            lineBuffer.FromFormat("name = {}", prop.name);
+            file.WriteLine(lineBuffer);
+
+            lineBuffer.FromFormat("type = {}", ToString(prop.type));
+            file.WriteLine(lineBuffer);
+
+            lineBuffer.FromFormat("value = {}", ToString(prop.value));
+            file.WriteLine(lineBuffer);
+
+            file.WriteLine("[/prop]");
+        }
 
         file.Close();
         return true;

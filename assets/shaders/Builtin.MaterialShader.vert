@@ -17,7 +17,7 @@ layout(set = 0, binding = 0) uniform globalUniformObject
 } globalUbo;
 
 // Push constants are only guaranteed to be a total of 128 bytes.
-layout(push_constant) uniform pushConstants 
+layout(push_constant) uniform PushConstants 
 {
 	mat4 model; // 64 bytes
 } uPushConstants;

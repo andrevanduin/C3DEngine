@@ -2,10 +2,11 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/clock.h"
-#include "platform/filesystem.h"
+#include "platform/file_system.h"
 #include "renderer/vertex.h"
 #include "resource_loader.h"
 #include "resources/geometry.h"
+#include "resources/materials/material_types.h"
 #include "systems/system_manager.h"
 
 namespace C3D
@@ -73,11 +74,11 @@ namespace C3D
         void ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords,
                               DynamicArray<MeshFaceData>& faces, GeometryConfig* outData) const;
 
-        bool ImportObjMaterialLibraryFile(const char* mtlFilePath) const;
+        bool ImportObjMaterialLibraryFile(const String& mtlFilePath) const;
         void ObjMaterialParseColorLine(const String& line, MaterialConfig& config) const;
         void ObjMaterialParseMapLine(const String& line, MaterialConfig& config) const;
         void ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName,
-                                        const char* mtlFilePath) const;
+                                        const String& mtlFilePath) const;
 
         template <typename VertexType, typename IndexType>
         bool LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const;
@@ -86,7 +87,7 @@ namespace C3D
         bool WriteCsmFile(const String& path, const char* name,
                           DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const;
 
-        bool WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const;
+        bool WriteMtFile(const String& mtlFilePath, const MaterialConfig& config) const;
     };
 
     template <typename VertexType, typename IndexType>
@@ -120,7 +121,7 @@ namespace C3D
             IGeometryConfig<VertexType, IndexType> g = {};
 
             // Vertices (size / count / array)
-            u64 vertexSize = 0;
+            u64 vertexSize  = 0;
             u64 vertexCount = 0;
 
             file.Read(&vertexSize);
@@ -130,7 +131,7 @@ namespace C3D
             file.Read(g.vertices.GetData(), vertexCount);
 
             // Indices (size / count / array)
-            u64 indexSize = 0;
+            u64 indexSize  = 0;
             u64 indexCount = 0;
 
             file.Read(&indexSize);
@@ -168,15 +169,17 @@ namespace C3D
     {
         if (File::Exists(path))
         {
-            m_logger.Info("WriteCsmFile() - File: {} already exists and will be overwritten", path);
+            m_logger.Info("WriteCsmFile() - File: '{}' already exists and will be overwritten.", path);
         }
 
         File file;
         if (!file.Open(path, FileModeWrite | FileModeBinary))
         {
-            m_logger.Error("WriteCsmFile() - Failed to open path {}", path);
+            m_logger.Error("WriteCsmFile() - Failed to open path '{}'.", path);
             return false;
         }
+
+        m_logger.Info("WriteCsmFile() - Started writing CSM file to: '{}'.", path);
 
         // Version
         constexpr u16 version = 0x0001u;
@@ -196,7 +199,7 @@ namespace C3D
         {
             // Vertices (size / count / array)
             constexpr u64 vertexSize = IGeometryConfig<VertexType, IndexType>::GetVertexSize();
-            const u64 vertexCount = geometry.vertices.Size();
+            const u64 vertexCount    = geometry.vertices.Size();
 
             file.Write(&vertexSize);
             file.Write(&vertexCount);
@@ -204,7 +207,7 @@ namespace C3D
 
             // Indices (size / count / array)
             constexpr u64 indexSize = IGeometryConfig<VertexType, IndexType>::GetIndexSize();
-            const u64 indexCount = geometry.indices.Size();
+            const u64 indexCount    = geometry.indices.Size();
 
             file.Write(&indexSize);
             file.Write(&indexCount);
@@ -224,7 +227,7 @@ namespace C3D
             file.Write(&geometry.maxExtents);
         }
 
-        m_logger.Info("WriteCsmFile() - {} Bytes written to file {}", file.bytesWritten, path);
+        m_logger.Info("WriteCsmFile() - {} Bytes written to file: '{}'.", file.bytesWritten, name);
         file.Close();
         return true;
     }

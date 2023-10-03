@@ -1,10 +1,10 @@
 
 #pragma once
-#include "../core/defines.h"
+#include "core/defines.h"
 #include "render_buffer.h"
 #include "renderer_plugin.h"
 #include "renderer_types.h"
-#include "resources/shader.h"
+#include "systems/system.h"
 
 namespace C3D
 {
@@ -38,7 +38,7 @@ namespace C3D
 
         void OnResize(u32 width, u32 height);
 
-        bool DrawFrame(RenderPacket* packet, const FrameData* frameData);
+        bool DrawFrame(RenderPacket* packet, const FrameData& frameData);
 
         void SetViewport(const vec4& rect) const;
         void ResetViewport() const;
@@ -80,11 +80,12 @@ namespace C3D
         bool ShaderApplyGlobals(Shader* shader) const;
         bool ShaderApplyInstance(Shader* shader, bool needsUpdate) const;
 
-        bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) const;
+        bool AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+                                            u32* outInstanceId) const;
         bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) const;
 
-        bool AcquireTextureMapResources(TextureMap* map) const;
-        void ReleaseTextureMapResources(TextureMap* map) const;
+        bool AcquireTextureMapResources(TextureMap& map) const;
+        void ReleaseTextureMapResources(TextureMap& map) const;
 
         bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const;
 
@@ -101,7 +102,8 @@ namespace C3D
         [[nodiscard]] u8 GetWindowAttachmentIndex() const;
         [[nodiscard]] u8 GetWindowAttachmentCount() const;
 
-        [[nodiscard]] RenderBuffer* CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist) const;
+        [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
+                                                       bool useFreelist) const;
         bool DestroyRenderBuffer(RenderBuffer* buffer) const;
 
         [[nodiscard]] bool IsMultiThreaded() const;
@@ -113,7 +115,7 @@ namespace C3D
         u8 m_windowRenderTargetCount = 0;
         u32 m_frameBufferWidth = 1280, m_frameBufferHeight = 720;
 
-        bool m_resizing = false;
+        bool m_resizing        = false;
         u8 m_framesSinceResize = 0;
 
         RendererPlugin* m_backendPlugin = nullptr;

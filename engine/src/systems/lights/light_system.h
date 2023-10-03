@@ -15,8 +15,8 @@ namespace C3D
     /** @brief Shader data required for a directional light */
     struct DirectionalLightData
     {
-        vec4 color;
-        vec4 direction;  // Ignore w (only for 16 byte alignment)
+        vec4 color     = vec4(1.0);
+        vec4 direction = vec4(0);  // Ignore w (only for 16 byte alignment)
     };
 
     /** @brief Structure for a directional light (typically used to emulate a sun) */
@@ -29,8 +29,8 @@ namespace C3D
 
         DirectionalLight(const SimpleSceneDirectionalLightConfig& config)
         {
-            name = config.name;
-            data.color = config.color;
+            name           = config.name;
+            data.color     = config.color;
             data.direction = config.direction;
         }
     };
@@ -57,10 +57,10 @@ namespace C3D
 
         PointLight(const SimpleScenePointLightConfig& config) : name(config.name)
         {
-            data.color = config.color;
-            data.position = config.position;
+            data.color     = config.color;
+            data.position  = config.position;
             data.fConstant = config.constant;
-            data.linear = config.linear;
+            data.linear    = config.linear;
             data.quadratic = config.quadratic;
         }
     };

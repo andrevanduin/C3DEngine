@@ -15,7 +15,7 @@ namespace C3D
         u16 alignment;
     };
 
-    constexpr auto MAX_SINGLE_ALLOC_SIZE = GibiBytes(4);
+    constexpr auto MAX_SINGLE_ALLOC_SIZE        = GibiBytes(4);
     constexpr auto SMALLEST_POSSIBLE_ALLOCATION = sizeof(AllocHeader) + sizeof(AllocSizeMarker) + 1 + 1;
 
     class C3D_API DynamicAllocator final : public BaseAllocator<DynamicAllocator>
@@ -31,16 +31,16 @@ namespace C3D
 
         void Free(MemoryType type, void* block) override;
 
-        /* @brief Obtains the size and alignment of a given block of memory.
+        /** @brief Obtains the size and alignment of a given block of memory.
          * Will fail if the provided block of memory is invalid.
          */
-        static bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment);
+        bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment);
 
-        /* @brief Obtains the alignment of a given block of memory.
+        /** @brief Obtains the alignment of a given block of memory.
          * Will fail if the provided block of memory is invalid.
          */
-        static bool GetAlignment(void* block, u16* outAlignment);
-        static bool GetAlignment(const void* block, u16* outAlignment);
+        bool GetAlignment(void* block, u16* outAlignment);
+        bool GetAlignment(const void* block, u16* outAlignment);
 
         [[nodiscard]] u64 FreeSpace() const;
         [[nodiscard]] u64 GetTotalUsableSize() const;

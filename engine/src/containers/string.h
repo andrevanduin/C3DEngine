@@ -74,7 +74,6 @@ namespace C3D
                     // The new capacity is larger than the old so we need to allocate more space
                     const auto newCapacity =
                         static_cast<u64>(std::ceil(static_cast<f64>(requiredSize) * STRING_RESIZE_FACTOR));
-                    // Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
 
                     // Allocate enough space for the new data
                     const auto newData =
@@ -390,7 +389,7 @@ namespace C3D
 
         ~BasicString() { Free(); }
 
-        /* @brief Reserve enough space in the string to hold the provided capacity. */
+        /** @brief Reserve enough space in the string to hold the provided capacity. */
         void Reserve(const u64 capacity)
         {
             if (m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP)
@@ -430,14 +429,30 @@ namespace C3D
             }
         }
 
-        /* @brief Clear out the string so it's empty. Does not change the capacity. */
+        /** @brief Use this method if you want to read content from a file into this string.
+         * This method allocates enough space for capacity and sets the internal size to capacity - 1
+         * It also makes sure that the final character is a null-terminator
+         *
+         * @param capacity The capacity required for the content (including null-terminator)
+         */
+        void PrepareForReadFromFile(u64 capacity)
+        {
+            // Reserve enough space for the incoming text
+            Reserve(capacity);
+            // Set the size so we can properly reaqd in the content from a file
+            m_size = capacity - 1;
+            // Ensure our string is still null-terminated
+            m_data[m_size] = '\0';
+        }
+
+        /** @brief Clear out the string so it's empty. Does not change the capacity. */
         void Clear()
         {
             m_size    = 0;
             m_data[0] = '\0';
         }
 
-        /* @brief Completely destroy the string and it's contents.
+        /** @brief Completely destroy the string and it's contents.
          * This sets the size to 0 and frees it's internal memory (if any is allocated).
          */
         void Destroy()
@@ -453,7 +468,7 @@ namespace C3D
             m_sso.data[MEMORY_TYPE] = SSO_USE_STACK;
         }
 
-        /* @brief Builds this string from the format and the provided arguments.
+        /** @brief Builds this string from the format and the provided arguments.
          * Internally uses fmt::format to build out the string.
          * The formatted output will appended to the back of the string.
          */
@@ -524,7 +539,7 @@ namespace C3D
             m_size = requiredSize;
         }
 
-        /* @brief Append the provided const char to the end of this string. */
+        /** @brief Append the provided const char to the end of this string. */
         void Append(const char c)
         {
             // Calculate the totalSize that we will require for our appended string
@@ -539,7 +554,7 @@ namespace C3D
             m_size = requiredSize;
         }
 
-        /* @brief Added to support using default std::back_inserter(). */
+        /** @brief Added to support using default std::back_inserter(). */
         void push_back(const char c) { Append(c); }
 
         /* @brief Removes the last count characters from the string.
@@ -557,7 +572,7 @@ namespace C3D
             m_size          = newSize;
         }
 
-        /* @brief Splits the string at the given delimiter. */
+        /** @brief Splits the string at the given delimiter. */
         [[nodiscard]] DynamicArray<BasicString> Split(const char delimiter, const bool trimEntries = true,
                                                       const bool skipEmpty = true) const
         {
@@ -589,7 +604,7 @@ namespace C3D
             return elements;
         }
 
-        /* @brief Removes all starting whitespace characters from the string. */
+        /** @brief Removes all starting whitespace characters from the string. */
         void TrimLeft()
         {
             u64 newStart = 0;
@@ -608,7 +623,7 @@ namespace C3D
             m_data[m_size] = '\0';
         }
 
-        /* @brief Removes all the trailing whitespace characters from the string. */
+        /** @brief Removes all the trailing whitespace characters from the string. */
         void TrimRight()
         {
             u64 newSize = m_size;
@@ -625,14 +640,14 @@ namespace C3D
             m_data[m_size] = '\0';
         }
 
-        /* @brief Remove all the starting and trailing whitespace characters from the string. */
+        /** @brief Remove all the starting and trailing whitespace characters from the string. */
         void Trim()
         {
             TrimLeft();
             TrimRight();
         }
 
-        /* @brief Checks if string starts with provided character sequence. */
+        /** @brief Checks if string starts with provided character sequence. */
         [[nodiscard]] bool StartsWith(const BasicString& sequence) const
         {
             // If our string is shorter than the sequence our string can not start with the sequence.
@@ -641,7 +656,7 @@ namespace C3D
             return std::equal(begin(), begin() + sequence.Size(), sequence.begin(), sequence.end());
         }
 
-        /* @brief Checks if string starts with provided character. */
+        /** @brief Checks if string starts with provided character. */
         [[nodiscard]] bool StartsWith(const char c) const
         {
             // If we have an empty string it can not start with a char.
@@ -650,7 +665,7 @@ namespace C3D
             return m_data[0] == c;
         }
 
-        /* @brief Checks if string ends in the provided character sequence. */
+        /** @brief Checks if string ends in the provided character sequence. */
         [[nodiscard]] bool EndsWith(const BasicString& sequence) const
         {
             // If our string is shorter than the sequence our string can not start with the sequence.
@@ -659,13 +674,52 @@ namespace C3D
             return std::equal(end() - sequence.Size(), end(), sequence.begin(), sequence.end());
         }
 
-        /* @brief Checks if string ends with the provided character. */
+        /** @brief Checks if string ends with the provided character. */
         [[nodiscard]] bool EndsWith(const char c) const
         {
             // If we have an empty string it can not end with a char.
             if (m_size == 0) return false;
 
             return m_data[m_size - 1] == c;
+        }
+
+        /** @brief Find the last occurence of the provided char.
+         *
+         * @param c Char that you want to look for
+         *
+         * @return const_iterator to where the last instance of the char can be found.
+         * If no occurence exists end() is returned
+         */
+        [[nodiscard]] const_iterator FindLastOf(const char c) const
+        {
+            for (u32 i = 0; i >= 0; i--)
+            {
+                if (m_data[i] == c)
+                {
+                    return const_iterator(m_data + i);
+                }
+            }
+            return end();
+        }
+
+        /** @brief Find the last occurence in the string where the predicate holds.
+         *
+         * @param p The predicate you want to check
+         *
+         * @return const_iterator to where the last instance in the string is where the predicate holds.
+         * If the predicate does not hold for any character in the string end() is returned
+         */
+        template <typename Predicate>
+        [[nodiscard]] const_iterator FindLastWhere(Predicate p) const
+        {
+            for (u32 i = 0; i >= 0; i--)
+            {
+                if (p(m_data[i]))
+                {
+                    return const_iterator(m_data + i);
+                }
+            }
+            return end();
         }
 
         [[nodiscard]] bool Contains(const char c) const { return std::find(begin(), end(), c) != end(); }
@@ -768,7 +822,7 @@ namespace C3D
             return -1;
         }
 
-        /* @brief Gets a substring starting at the provided start iterator until the provided end iterator. */
+        /** @brief Gets a substring starting at the provided start iterator until the provided end iterator. */
         [[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt, const_iterator endIt) const
         {
             // Calculate the size of our new substring
@@ -783,7 +837,7 @@ namespace C3D
             return sub;
         }
 
-        /* @brief Gets a substring starting at the provided start iterator until the end of the string. */
+        /** @brief Gets a substring starting at the provided start iterator until the end of the string. */
         [[nodiscard]] BasicString<Allocator> SubStr(const_iterator startIt) const { return SubStr(startIt, cend()); }
 
         /**
@@ -810,55 +864,77 @@ namespace C3D
             return sub;
         }
 
-        /* @brief Converts string to a f32. */
+        /** @brief Converts string to a f32. */
         [[nodiscard]] f32 ToF32() const { return std::strtof(m_data, nullptr); }
 
-        /* @brief Converts string to an i32 in the provided base. */
+        /** @brief Converts string to an i32 in the provided base. */
         [[nodiscard]] i32 ToI32(const i32 base = 10) const { return std::strtol(m_data, nullptr, base); }
 
-        /* @brief Converts string to an u32 in the provided base. */
+        /** @brief Converts string to an u32 in the provided base. */
         [[nodiscard]] u32 ToU32(const i32 base = 10) const { return std::strtoul(m_data, nullptr, base); }
 
-        /* @brief Converts string to an i16 in the provided base. */
+        /** @brief Converts string to an i16 in the provided base. */
         [[nodiscard]] i16 ToI16(const i32 base = 10) const
         {
             return static_cast<i16>(std::strtol(m_data, nullptr, base));
         }
 
-        /* @brief Converts string to an u16 in the provided base. */
+        /** @brief Converts string to an u16 in the provided base. */
         [[nodiscard]] u16 ToU16(const i32 base = 10) const
         {
             return static_cast<u16>(std::strtoul(m_data, nullptr, base));
         }
 
-        /* @brief Converts string to an i8 in the provided base. */
+        /** @brief Converts string to an i8 in the provided base. */
         [[nodiscard]] i8 ToI8(const i32 base = 10) const { return static_cast<i8>(std::strtol(m_data, nullptr, base)); }
 
-        /* @brief Converts string to an u8 in the provided base. */
+        /** @brief Converts string to an u8 in the provided base. */
         [[nodiscard]] u8 ToU8(const i32 base = 10) const
         {
             return static_cast<u8>(std::strtoul(m_data, nullptr, base));
         }
 
-        /* @brief Converts string to a boolean value. */
+        /** @brief Converts string to a boolean value. */
         [[nodiscard]] bool ToBool() const
         {
             if (IEquals("1") || IEquals("true")) return true;
             return false;
         }
 
-        /* @brief Converts string to a vec4. */
+        /** @brief Converts string to a vec3. */
+        [[nodiscard]] vec2 ToVec2() const
+        {
+            vec2 vec{};
+            if (sscanf_s(m_data, "%f %f", &vec.x, &vec.y) == -1)
+            {
+                throw std::invalid_argument("The string does not contain a valid vec2 representation.");
+            }
+            return vec;
+        }
+
+        /** @brief Converts string to a vec3. */
+        [[nodiscard]] vec3 ToVec3() const
+        {
+            vec3 vec{};
+            if (sscanf_s(m_data, "%f %f %f", &vec.x, &vec.y, &vec.z) == -1)
+            {
+                throw std::invalid_argument("The string does not contain a valid vec3 representation.");
+            }
+            return vec;
+        }
+
+        /** @brief Converts string to a vec4. */
         [[nodiscard]] vec4 ToVec4() const
         {
             vec4 vec{};
             if (sscanf_s(m_data, "%f %f %f %f", &vec.x, &vec.y, &vec.z, &vec.w) == -1)
             {
-                throw std::invalid_argument("The string does not contain a valid vec4 representation");
+                throw std::invalid_argument("The string does not contain a valid vec4 representation.");
             }
             return vec;
         }
 
-        /* @brief Gets the number of characters currently in the string (excluding the null-terminator). */
+        /** @brief Gets the number of characters currently in the string (excluding the null-terminator). */
         [[nodiscard]] u64 Size() const { return m_size; }
 
         /* @brief Get the size of the string while keeping UTF8 multi-byte characters into account.
@@ -888,50 +964,50 @@ namespace C3D
             return size;
         }
 
-        /* @brief Gets the number of characters currently in the string (excluding the null-terminator). */
+        /** @brief Gets the number of characters currently in the string (excluding the null-terminator). */
         [[nodiscard]] u64 Length() const { return m_size; }
 
-        /* @brief Checks if the string is currently empty. */
+        /** @brief Checks if the string is currently empty. */
         [[nodiscard]] bool Empty() const { return m_size == 0; }
 
-        /* @brief Returns a pointer to the internal character array. */
+        /** @brief Returns a pointer to the internal character array. */
         [[nodiscard]] const char* Data() const { return m_data; }
 
-        /* @brief Returns a pointer to the internal character array. */
+        /** @brief Returns a pointer to the internal character array. */
         [[nodiscard]] char* Data() { return m_data; }
 
-        /* @brief Returns an iterator pointing to the start of the character array. */
+        /** @brief Returns an iterator pointing to the start of the character array. */
         [[nodiscard]] iterator begin() noexcept { return iterator(m_data); }
 
-        /* @brief Returns a const_iterator pointing to the start of the character array. */
+        /** @brief Returns a const_iterator pointing to the start of the character array. */
         [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(m_data); }
 
-        /* @brief Returns a const_iterator pointing to the start of the character array. */
+        /** @brief Returns a const_iterator pointing to the start of the character array. */
         [[nodiscard]] const_iterator cbegin() const noexcept { return const_iterator(m_data); }
 
-        /* @brief Returns an iterator pointing to the element right after the last character in the character array. */
+        /** @brief Returns an iterator pointing to the element right after the last character in the character array. */
         [[nodiscard]] iterator end() noexcept { return iterator(m_data + m_size); }
 
-        /* @brief Returns a const_iterator pointing to the element right after the last character in the character
+        /** @brief Returns a const_iterator pointing to the element right after the last character in the character
          * array. */
         [[nodiscard]] const_iterator end() const noexcept { return const_iterator(m_data + m_size); }
 
-        /* @brief Returns a const_iterator pointing to the element right after the last character in the character
+        /** @brief Returns a const_iterator pointing to the element right after the last character in the character
          * array. */
         [[nodiscard]] const_iterator cend() const noexcept { return const_iterator(m_data + m_size); }
 
-        /* @brief Returns the first char in the string by reference. */
+        /** @brief Returns the first char in the string by reference. */
         [[nodiscard]] char& First() const { return m_data[0]; }
 
-        /* @brief Returns the last char in the string by reference. */
+        /** @brief Returns the last char in the string by reference. */
         [[nodiscard]] char& Last() const { return m_data[m_size - 1]; }
 
         explicit operator const char*() const { return m_data; }
 
-        /* @brief Returns the char at the provided index by reference. */
+        /** @brief Returns the char at the provided index by reference. */
         char& operator[](const u64 index) const { return m_data[index]; }
 
-        /* @brief Returns the char at the provided index by reference.
+        /** @brief Returns the char at the provided index by reference.
          * Performs bounds checking internally.
          */
         [[nodiscard]] char& At(const u64 index) const
@@ -940,31 +1016,31 @@ namespace C3D
             return m_data[index];
         }
 
-        /* @brief Checks if the string is empty. Will return true if the string is empty and false otherwise. */
+        /** @brief Checks if the string is empty. Will return true if the string is empty and false otherwise. */
         bool operator!() const { return m_size == 0; }
 
-        /* @brief Checks if the string is empty. Will return false if the string is empty and true otherwise. */
+        /** @brief Checks if the string is empty. Will return false if the string is empty and true otherwise. */
         explicit operator bool() const { return m_size != 0; }
 
-        /* @brief Operator overload for comparing with a const char pointer. */
+        /** @brief Operator overload for comparing with a const char pointer. */
         bool operator==(const char* other) const { return std::strcmp(m_data, other) == 0; }
 
-        /* @brief Operator overload for comparing with another string. */
+        /** @brief Operator overload for comparing with another string. */
         bool operator==(const BasicString& other) const
         {
             return std::equal(begin(), end(), other.begin(), other.end());
         }
 
-        /* @brief Operator overload for inequality with a const char pointer. */
+        /** @brief Operator overload for inequality with a const char pointer. */
         bool operator!=(const char* other) const { return std::strcmp(m_data, other) != 0; }
 
-        /* @brief Operator overload for inequality with another string. */
+        /** @brief Operator overload for inequality with another string. */
         bool operator!=(const BasicString& other) const
         {
             return !std::equal(begin(), end(), other.begin(), other.end());
         }
 
-        /* @brief Operator overload for appending another string to this string. */
+        /** @brief Operator overload for appending another string to this string. */
         BasicString& operator+=(const BasicString& other)
         {
             Append(other);
@@ -978,10 +1054,17 @@ namespace C3D
             return *this;
         }
 
-        /* @brief Operator overload for appending const char* to this string. */
+        /** @brief Operator overload for appending const char* to this string. */
         BasicString& operator+=(const char* other)
         {
             Append(other);
+            return *this;
+        }
+
+        /** @brief Operator overload for appending a u64 to this string. */
+        BasicString& operator+=(u64 number)
+        {
+            Append(BasicString(number));
             return *this;
         }
 

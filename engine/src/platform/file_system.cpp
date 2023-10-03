@@ -1,5 +1,5 @@
 
-#include "filesystem.h"
+#include "file_system.h"
 
 #include <filesystem>
 #include <fstream>
@@ -17,7 +17,7 @@ namespace C3D
 
     bool File::Exists(const String& path)
     {
-        const fs::path f{path.Data()};
+        const fs::path f{ path.Data() };
         return exists(f);
     }
 
@@ -33,7 +33,7 @@ namespace C3D
 
         m_file.open(path.Data(), openMode);
 
-        isValid = m_file.is_open();
+        isValid     = m_file.is_open();
         currentPath = path;
 
         return isValid;
@@ -41,10 +41,10 @@ namespace C3D
 
     bool File::Close()
     {
-        m_size = 0;
+        m_size       = 0;
         bytesWritten = 0;
-        bytesRead = 0;
-        currentPath = "";
+        bytesRead    = 0;
+        currentPath  = "";
 
         if (m_file.is_open())
         {
@@ -88,6 +88,23 @@ namespace C3D
 
         *outBytesRead = m_file.readsome(static_cast<char*>(outData), static_cast<std::streamsize>(dataSize));
         if (*outBytesRead != dataSize) return false;
+
+        return true;
+    }
+
+    bool File::Read(String& str)
+    {
+        u64 size;
+        if (!Read(&size)) return false;
+
+        // No need to keep reading if this is 0
+        if (size == 0) return true;
+
+        // Resize with enough space for our data (plus null-terminator)
+        str.PrepareForReadFromFile(size + 1);
+
+        // Get the string data
+        if (!Read(str.Data(), size + 1)) return false;
 
         return true;
     }
@@ -145,6 +162,23 @@ namespace C3D
         return true;
     }
 
+    bool File::Write(const String& str)
+    {
+        if (!isValid) return false;
+
+        // Write out the size
+        const auto size = str.Size();
+        if (!Write(&size)) return false;
+
+        if (size != 0)
+        {
+            // Write all chars up-to size and add 1 to account for the null-terminating character
+            if (!Write(str.Data(), size + 1)) return false;
+        }
+
+        return true;
+    }
+
     bool File::Size(u64* outSize)
     {
         if (!isValid) return false;
@@ -158,58 +192,26 @@ namespace C3D
         return true;
     }
 
-    void FileSystem::DirectoryFromPath(char* dest, const char* path)
+    String FileSystem::DirectoryFromPath(const String& path)
     {
-        const i64 length = static_cast<i64>(strlen(path));
-        for (i64 i = length; i >= 0; i--)
-        {
-            char c = path[i];
-            if (c == '/' || c == '\\')
-            {
-                strncpy(dest, path, i + 1);
-                dest[i + 1] = 0;
-                return;
-            }
-        }
+        String dir;
+        auto lastSlash = path.FindLastWhere([](const char c) { return c == '/' || c == '\\'; });
+        dir            = path.SubStr(path.begin(), lastSlash);
+        return dir;
     }
 
-    void FileSystem::FileNameFromPath(char* dest, const char* path, const bool includeExtension)
+    String FileSystem::FileNameFromPath(const String& path, const bool includeExtension)
     {
-        const i64 length = static_cast<i64>(strlen(path));
-        if (includeExtension)
-        {
-            for (i64 i = length; i >= 0; i--)
-            {
-                const char c = path[i];
-                if (c == '/' || c == '\\')
-                {
-                    std::strcpy(dest, path + i + 1);
-                    return;
-                }
-            }
-        }
-        else
-        {
-            u64 start = 0;
-            u64 end = 0;
-            for (i64 i = length; i >= 0; i--)
-            {
-                char c = path[i];
-                if (end == 0 && c == '.')
-                {
-                    end = i;
-                }
-                if (start == 0 && (c == '/' || c == '\\'))
-                {
-                    start = i + 1;
-                    break;
-                }
-            }
+        String result;
 
-            const auto count = end - start;
-            // Copy count chars from our calculated start
-            std::memcpy(dest, path + start, count);
-            dest[count] = '\0';
+        auto lastSlash = path.FindLastWhere([](const char c) { return c == '/' || c == '\\'; });
+        result         = path.SubStr(lastSlash);
+
+        if (!includeExtension)
+        {
+            auto dot = result.FindLastOf('.');
+            return result.SubStr(result.begin(), dot);
         }
+        return result;
     }
 }  // namespace C3D

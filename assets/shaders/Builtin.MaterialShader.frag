@@ -23,13 +23,21 @@ struct PointLight
 
 const int MAX_POINT_LIGHTS = 10;
 
-layout(set = 1, binding = 0) uniform localUniformObject
+struct PhongProperties 
 {
 	vec4 diffuseColor;
-	DirectionalLight dirLight;
-	PointLight pLights[MAX_POINT_LIGHTS];
-	uint numPLights;
+	vec3 padding;
 	float shininess;
+};
+
+layout(set = 1, binding = 0) uniform instanceUniformObject
+{
+	// TODO: Make global
+	DirectionalLight dirLight;
+	// TODO: Move after props
+	PointLight pLights[MAX_POINT_LIGHTS];
+	PhongProperties properties;
+	uint numPLights;
 } objectUbo;
 
 // Samplers, diffuse, spec
@@ -94,11 +102,11 @@ vec4 CalculateDirectionalLight(DirectionalLight light, vec3 normal, vec3 viewDir
 	float diffuseFactor = max(dot(normal, -light.direction.xyz), 0.0);
 
 	vec3 halfDirection = normalize(viewDirection - light.direction.xyz);
-	float specularFactor = pow(max(dot(halfDirection, normal), 0.0), objectUbo.shininess);
+	float specularFactor = pow(max(dot(halfDirection, normal), 0.0), objectUbo.properties.shininess);
 
 	vec4 diffSamp = texture(samplers[SAMP_DIFFUSE], inDto.texCoord);
 
-	vec4 ambient = vec4(vec3(inDto.ambientColor * objectUbo.diffuseColor), diffSamp.a);
+	vec4 ambient = vec4(vec3(inDto.ambientColor * objectUbo.properties.diffuseColor), diffSamp.a);
 	vec4 diffuse = vec4(vec3(light.color * diffuseFactor), diffSamp.a);
 	vec4 specular = vec4(vec3(light.color * specularFactor), diffSamp.a);
 
@@ -118,7 +126,7 @@ vec4 CalculatePointLight(PointLight light, vec3 normal, vec3 fragPosition, vec3 
 	float diff = max(dot(normal, lightDirection), 0.0);
 
 	vec3 reflectDirection = reflect(-lightDirection, normal);
-	float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), objectUbo.shininess);
+	float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), objectUbo.properties.shininess);
 
 	// Calculate attenuation, or light falloff over distance
 	float distance = length(light.position.xyz - fragPosition);
@@ -128,7 +136,7 @@ vec4 CalculatePointLight(PointLight light, vec3 normal, vec3 fragPosition, vec3 
 	vec4 diffuse = light.color * diff;
 	vec4 specular = light.color * spec;
 
-	if (inMode == 0) 
+	if (inMode == 0)
 	{
 		vec4 diffSamp = texture(samplers[SAMP_DIFFUSE], inDto.texCoord);
 		diffuse *= diffSamp;

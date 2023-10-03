@@ -29,13 +29,11 @@ uniform = samp, instance, diffuseTexture
 uniform = samp, instance, specularTexture
 uniform = samp, instance, normalTexture
 
-uniform = vec4, instance, diffuseColor
-
 # Structs
 uniform = struct32, instance, dirLight
 uniform = struct480, instance, pLights
+uniform = struct32, instance, properties
 uniform = u32, instance, numPLights
-uniform = f32, instance, shininess
 
 # Local
 uniform = mat4, local, model

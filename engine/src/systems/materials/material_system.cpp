@@ -8,7 +8,7 @@
 #include "renderer/renderer_frontend.h"
 #include "renderer/renderer_types.h"
 #include "resources/loaders/material_loader.h"
-#include "resources/shader.h"
+#include "resources/shaders/shader.h"
 #include "systems/lights/light_system.h"
 #include "systems/resources/resource_system.h"
 #include "systems/shaders/shader_system.h"
@@ -39,18 +39,30 @@ namespace C3D
 
         if (!CreateDefaultMaterial())
         {
-            m_logger.Error("Failed to create default material");
+            m_logger.Error("Init() - Failed to create Default Material.");
+            return false;
+        }
+
+        if (!CreateDefaultUIMaterial())
+        {
+            m_logger.Error("Init() - Failed to create Default UI Material.");
+            return false;
+        }
+
+        if (!CreateDefaultTerrainMaterial())
+        {
+            m_logger.Error("Init() - Failed to create Default Terrain Material.");
             return false;
         }
 
         // Get the uniform indices and save them off for quick lookups
+        // Start with the Material shader
         Shader* shader                      = Shaders.Get("Shader.Builtin.Material");
         m_materialShaderId                  = shader->id;
         m_materialLocations.projection      = Shaders.GetUniformIndex(shader, "projection");
         m_materialLocations.view            = Shaders.GetUniformIndex(shader, "view");
         m_materialLocations.ambientColor    = Shaders.GetUniformIndex(shader, "ambientColor");
-        m_materialLocations.diffuseColor    = Shaders.GetUniformIndex(shader, "diffuseColor");
-        m_materialLocations.shininess       = Shaders.GetUniformIndex(shader, "shininess");
+        m_materialLocations.properties      = Shaders.GetUniformIndex(shader, "properties");
         m_materialLocations.viewPosition    = Shaders.GetUniformIndex(shader, "viewPosition");
         m_materialLocations.diffuseTexture  = Shaders.GetUniformIndex(shader, "diffuseTexture");
         m_materialLocations.specularTexture = Shaders.GetUniformIndex(shader, "specularTexture");
@@ -61,13 +73,41 @@ namespace C3D
         m_materialLocations.pLights         = Shaders.GetUniformIndex(shader, "pLights");
         m_materialLocations.numPLights      = Shaders.GetUniformIndex(shader, "numPLights");
 
+        // Then comes the UI Shader
         shader                       = Shaders.Get("Shader.Builtin.UI");
         m_uiShaderId                 = shader->id;
         m_uiLocations.projection     = Shaders.GetUniformIndex(shader, "projection");
         m_uiLocations.view           = Shaders.GetUniformIndex(shader, "view");
-        m_uiLocations.diffuseColor   = Shaders.GetUniformIndex(shader, "diffuseColor");
+        m_uiLocations.properties     = Shaders.GetUniformIndex(shader, "properties");
         m_uiLocations.diffuseTexture = Shaders.GetUniformIndex(shader, "diffuseTexture");
         m_uiLocations.model          = Shaders.GetUniformIndex(shader, "model");
+
+        // Finally the Terrain Shader
+        shader                          = Shaders.Get("Shader.Builtin.Terrain");
+        m_terrainShaderId               = shader->id;
+        m_terrainLocations.projection   = Shaders.GetUniformIndex(shader, "projection");
+        m_terrainLocations.view         = Shaders.GetUniformIndex(shader, "view");
+        m_terrainLocations.ambientColor = Shaders.GetUniformIndex(shader, "ambientColor");
+        m_terrainLocations.viewPosition = Shaders.GetUniformIndex(shader, "viewPosition");
+        m_terrainLocations.model        = Shaders.GetUniformIndex(shader, "model");
+        m_terrainLocations.renderMode   = Shaders.GetUniformIndex(shader, "mode");
+        m_terrainLocations.dirLight     = Shaders.GetUniformIndex(shader, "dirLight");
+        m_terrainLocations.pLights      = Shaders.GetUniformIndex(shader, "pLights");
+        m_terrainLocations.numPLights   = Shaders.GetUniformIndex(shader, "numPLights");
+
+        m_terrainLocations.properties = Shaders.GetUniformIndex(shader, "properties");
+
+        for (u32 i = 0; i < TERRAIN_MAX_MATERIAL_COUNT; i++)
+        {
+            auto num          = String(i);
+            auto diffuseName  = "diffuseTexture_" + num;
+            auto specularName = "specularTexture_" + num;
+            auto normalName   = "normalTexture_" + num;
+
+            m_terrainLocations.samplers[i * 3 + 0] = Shaders.GetUniformIndex(shader, diffuseName.Data());
+            m_terrainLocations.samplers[i * 3 + 1] = Shaders.GetUniformIndex(shader, specularName.Data());
+            m_terrainLocations.samplers[i * 3 + 2] = Shaders.GetUniformIndex(shader, normalName.Data());
+        }
 
         m_initialized = true;
         return true;
@@ -75,23 +115,25 @@ namespace C3D
 
     void MaterialSystem::Shutdown()
     {
-        m_logger.Info("Destroying all loaded materials");
+        m_logger.Info("Shutdown() - Destroying all loaded materials.");
         for (auto& ref : m_registeredMaterials)
         {
             if (ref.material.id != INVALID_ID)
             {
-                DestroyMaterial(&ref.material);
+                DestroyMaterial(ref.material);
             }
         }
 
-        m_logger.Info("Destroying default material");
-        DestroyMaterial(&m_defaultMaterial);
+        m_logger.Info("Shutdown() - Destroying default materials.");
+        DestroyMaterial(m_defaultMaterial);
+        DestroyMaterial(m_defaultUIMaterial);
+        DestroyMaterial(m_defaultTerrainMaterial);
 
-        // Cleanup our registered material hashmap
+        // Cleanup our registered Material hashmap
         m_registeredMaterials.Destroy();
     }
 
-    Material* MaterialSystem::Acquire(const char* name)
+    Material* MaterialSystem::Acquire(const String& name)
     {
         if (m_registeredMaterials.Has(name))
         {
@@ -99,79 +141,244 @@ namespace C3D
             MaterialReference& ref = m_registeredMaterials.Get(name);
             ref.referenceCount++;
 
-            m_logger.Trace("Material {} already exists. The refCount is now {}", name, ref.referenceCount);
+            m_logger.Trace("Acquire() - Material '{}' already exists. The refCount is now {}.", name,
+                           ref.referenceCount);
 
             return &ref.material;
         }
 
-        MaterialResource materialResource{};
-        if (!Resources.Load(name, materialResource))
+        MaterialConfig materialConfig;
+        if (!Resources.Load(name, materialConfig))
         {
-            m_logger.Error("Failed to load material resource. Returning nullptr");
+            m_logger.Error("Acquire() - Failed to load material resource: '{}'. Returning nullptr.", name);
             return nullptr;
         }
 
-        Material* m = AcquireFromConfig(materialResource.config);
-        Resources.Unload(materialResource);
+        Material* m = AcquireFromConfig(materialConfig);
+        Resources.Unload(materialConfig);
 
         if (!m)
         {
-            m_logger.Error("Failed to load material resource. Returning nullptr");
+            m_logger.Error("Acquire() - Failed to load material resource: '{}'. Returning nullptr.", name);
         }
         return m;
     }
 
+    Material& MaterialSystem::AcquireReference(const String& name, bool autoRelease, bool& needsCreation)
+    {
+        if (m_registeredMaterials.Has(name))
+        {
+            // The material already exists
+            MaterialReference& ref = m_registeredMaterials.Get(name);
+            ref.referenceCount++;
+
+            m_logger.Trace("AcquireReference() - Material '{}' already exists. The refCount is now {}.", name,
+                           ref.referenceCount);
+
+            needsCreation = false;
+            return ref.material;
+        }
+
+        // The material does not exist yet
+        // Add a new reference into the registered materials hashmap
+        m_registeredMaterials.Set(name, MaterialReference(autoRelease));
+
+        // Get a reference to it so we can start using it
+        auto& ref = m_registeredMaterials.Get(name);
+        // Set the material id to the index into the registered material hashmap
+        ref.material.id = m_registeredMaterials.GetIndex(name);
+        // Mark that this material still needs to be created
+        needsCreation = true;
+        // Return a pointer to the material
+        return ref.material;
+    }
+
+    Material* MaterialSystem::AcquireTerrain(const String& name, const DynamicArray<String>& materialNames,
+                                             bool autoRelease)
+    {
+        // Return the Default Terrain Material
+        if (name.IEquals(DEFAULT_TERRAIN_MATERIAL_NAME))
+        {
+            return &m_defaultTerrainMaterial;
+        }
+
+        bool needsCreation = false;
+
+        Material& mat = AcquireReference(name, autoRelease, needsCreation);
+        if (needsCreation)
+        {
+            const auto materialCount = materialNames.Size();
+
+            // Acquire all the internal materials by name
+            DynamicArray<Material*> materials(materialCount);
+            for (const auto& name : materialNames)
+            {
+                materials.PushBack(Acquire(name));
+            }
+
+            // Create a new Terrain Material that will hold all these internal materials
+            mat.name = name;
+
+            Shader* shader = Shaders.Get("Shader.Builtin.Terrain");
+            mat.shaderId   = shader->id;
+            mat.type       = MaterialType::Terrain;
+
+            // Allocate space for the properties
+            mat.propertiesSize = sizeof(MaterialTerrainProperties);
+            mat.properties     = Memory.Allocate<MaterialTerrainProperties>(MemoryType::MaterialInstance);
+
+            auto props          = static_cast<MaterialTerrainProperties*>(mat.properties);
+            props->numMaterials = materialCount;
+            props->padding      = vec3(0);
+            props->padding2     = vec4(0);
+
+            // 3 Maps per material. Allocate enough space for all materials
+            constexpr auto maxMapCount = TERRAIN_MAX_MATERIAL_COUNT * 3;
+            mat.maps.Resize(maxMapCount);
+
+            // Map names and default fallback textures
+            const char* mapNames[3]     = { "diffuse", "specular", "normal" };
+            Texture* defaultTextures[3] = { Textures.GetDefaultDiffuse(), Textures.GetDefaultSpecular(),
+                                            Textures.GetDefaultNormal() };
+
+            // Use the Default Material for unassigned slots
+            Material* defaultMaterial = GetDefault();
+
+            // Phong properties and maps for each material
+            for (u32 materialIndex = 0; materialIndex < TERRAIN_MAX_MATERIAL_COUNT; materialIndex++)
+            {
+                // Properties
+                auto& matProps = props->materials[materialIndex];
+                // Use default material unless within the materialCount
+                Material* refMat = defaultMaterial;
+                if (materialIndex < materialCount)
+                {
+                    refMat = materials[materialIndex];
+                }
+
+                auto p                = static_cast<MaterialPhongProperties*>(refMat->properties);
+                matProps.diffuseColor = p->diffuseColor;
+                matProps.shininess    = p->shininess;
+                matProps.padding      = vec3(0);
+
+                // For Phong we have 3 maps (Diffuse, Specular and Normal)
+                for (u32 mapIndex = 0; mapIndex < 3; mapIndex++)
+                {
+                    MaterialConfigMap mapConfig;
+                    mapConfig.name          = mapNames[mapIndex];
+                    mapConfig.repeatU       = refMat->maps[mapIndex].repeatU;
+                    mapConfig.repeatV       = refMat->maps[mapIndex].repeatV;
+                    mapConfig.repeatW       = refMat->maps[mapIndex].repeatW;
+                    mapConfig.minifyFilter  = refMat->maps[mapIndex].minifyFilter;
+                    mapConfig.magnifyFilter = refMat->maps[mapIndex].magnifyFilter;
+                    mapConfig.textureName   = refMat->maps[mapIndex].texture->name;
+                    if (!AssignMap(mat.maps[(materialIndex * 3) + mapIndex], mapConfig, defaultTextures[mapIndex]))
+                    {
+                        m_logger.Error(
+                            "AcquireTerrain() - Failed to assign: '{}' texture map for terrain material index: {}.",
+                            mapNames[mapIndex], materialIndex);
+                        return nullptr;
+                    }
+                }
+            }
+
+            // Release the reference materials
+            for (const auto& name : materialNames)
+            {
+                Release(name);
+            }
+
+            materials.Clear();
+
+            // Acquire instance resource for all our maps
+            TextureMap** maps = Memory.Allocate<TextureMap*>(MemoryType::Array, maxMapCount);
+            // Assign our material's maps
+            for (u32 i = 0; i < maxMapCount; i++)
+            {
+                maps[i] = &mat.maps[i];
+            }
+
+            bool result = Renderer.AcquireShaderInstanceResources(shader, maxMapCount, maps, &mat.internalId);
+            if (!result)
+            {
+                m_logger.Error("AcquireTerrain() - Failed to acquire renderer resources for material: '{}'.", mat.name);
+            }
+
+            if (maps)
+            {
+                Memory.Free(MemoryType::Array, maps);
+            }
+
+            if (mat.generation == INVALID_ID)
+            {
+                mat.generation = 0;
+            }
+            else
+            {
+                mat.generation++;
+            }
+        }
+
+        return &mat;
+    }
+
     Material* MaterialSystem::AcquireFromConfig(const MaterialConfig& config)
     {
+        // Return Default Material
         if (config.name.IEquals(DEFAULT_MATERIAL_NAME))
         {
             return &m_defaultMaterial;
         }
 
-        if (m_registeredMaterials.Has(config.name))
+        // Return Default UI Material
+        if (config.name.IEquals(DEFAULT_UI_MATERIAL_NAME))
         {
-            // The material already exists
-            MaterialReference& ref = m_registeredMaterials.Get(config.name);
-            ref.referenceCount++;
-
-            m_logger.Trace("Material {} already exists. The refCount is now {}", config.name, ref.referenceCount);
-
-            return &ref.material;
+            return &m_defaultUIMaterial;
         }
 
-        // The material does not exist yet
-        // Add a new reference into the registered materials hashmap
-        m_registeredMaterials.Set(config.name, MaterialReference(config.autoRelease));
-        // Get a reference to it so we can start using it
-        auto& ref = m_registeredMaterials.Get(config.name);
-        // Get a pointer to the material inside of our reference
-        Material* mat = &ref.material;
-
-        // Create a new Material
-        if (!LoadMaterial(config, mat))
+        // Return Default Terrain Material
+        if (config.name.IEquals(DEFAULT_TERRAIN_MATERIAL_NAME))
         {
-            m_logger.Error("Failed to load material {}", config.name);
-            return nullptr;
+            return &m_defaultTerrainMaterial;
         }
 
-        mat->generation = 0;
-        m_logger.Trace("Material {} did not exist yet. Created and the refCount is now {}", config.name,
-                       ref.referenceCount);
+        bool needsCreation = false;
 
-        return &ref.material;
+        Material& mat = AcquireReference(config.name, config.autoRelease, needsCreation);
+        if (needsCreation)
+        {
+            if (!LoadMaterial(config, mat))
+            {
+                m_logger.Error("AcquireFromConfig() - Failed to Load Material: '{}'.", config.name);
+                return nullptr;
+            }
+
+            if (mat.generation == INVALID_ID)
+            {
+                mat.generation = 0;
+            }
+            else
+            {
+                mat.generation++;
+            }
+        }
+
+        return &mat;
     }
 
-    void MaterialSystem::Release(const char* name)
+    void MaterialSystem::Release(const String& name)
     {
-        if (StringUtils::IEquals(name, DEFAULT_MATERIAL_NAME))
+        if (name.IEquals(DEFAULT_MATERIAL_NAME) || name.IEquals(DEFAULT_UI_MATERIAL_NAME) ||
+            name.IEquals(DEFAULT_TERRAIN_MATERIAL_NAME))
         {
-            m_logger.Warn("Tried to release {}. This happens automatically on shutdown", DEFAULT_MATERIAL_NAME);
+            m_logger.Warn("Release() - Tried to release Default Material. This happens automatically on shutdown.",
+                          DEFAULT_MATERIAL_NAME);
             return;
         }
 
         if (!m_registeredMaterials.Has(name))
         {
-            m_logger.Warn("Tried to release a material that does not exist: {}", name);
+            m_logger.Warn("Release() - Tried to release a material that does not exist: '{}'.", name);
             return;
         }
 
@@ -187,17 +394,19 @@ namespace C3D
             auto nameCopy = ref.material.name;
 
             // Destroy the material
-            DestroyMaterial(&ref.material);
+            DestroyMaterial(ref.material);
 
             // Remove the material reference
             m_registeredMaterials.Delete(nameCopy);
 
-            m_logger.Info("Released material {}. The texture was unloaded because refCount = 0 and autoRelease = true",
-                          nameCopy);
+            m_logger.Info(
+                "Release() - The Material: '{}' was released. The texture was unloaded because refCount = 0 and "
+                "autoRelease = true.",
+                nameCopy);
         }
         else
         {
-            m_logger.Info("Released material {}. The material now has a refCount = {} (autoRelease = {})", name,
+            m_logger.Info("Release() - The Material: '{}' now has a refCount = {} (autoRelease = {}).", name,
                           ref.referenceCount, ref.autoRelease);
         }
     }
@@ -206,10 +415,30 @@ namespace C3D
     {
         if (!m_initialized)
         {
-            m_logger.Fatal("Tried to get the default material before system is initialized");
+            m_logger.Fatal("GetDefault() Tried to get the default Material before system is initialized.");
             return nullptr;
         }
         return &m_defaultMaterial;
+    }
+
+    Material* MaterialSystem::GetDefaultUI()
+    {
+        if (!m_initialized)
+        {
+            m_logger.Fatal("GetDefaultUI() Tried to get the default Material before system is initialized.");
+            return nullptr;
+        }
+        return &m_defaultUIMaterial;
+    }
+
+    Material* MaterialSystem::GetDefaultTerrain()
+    {
+        if (!m_initialized)
+        {
+            m_logger.Fatal("GetDefaultTerrain() Tried to get the default Material before system is initialized.");
+            return nullptr;
+        }
+        return &m_defaultTerrainMaterial;
     }
 
 #define MATERIAL_APPLY_OR_FAIL(expr)                 \
@@ -225,7 +454,7 @@ namespace C3D
         Shader* s = Shaders.GetById(shaderId);
         if (!s)
         {
-            m_logger.Error("No Shader found with id '{}'.", shaderId);
+            m_logger.Error("ApplyGlobal() - No Shader found with id '{}'.", shaderId);
             return false;
         }
         if (s->frameNumber == frameNumber)
@@ -234,7 +463,7 @@ namespace C3D
             return true;
         }
 
-        if (shaderId == m_materialShaderId)
+        if (shaderId == m_materialShaderId || shaderId == m_terrainShaderId)
         {
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.projection, projection));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.view, view));
@@ -260,6 +489,19 @@ namespace C3D
         return true;
     }
 
+    bool MaterialSystem::ApplyLights(Material* material, u16 dirLightLoc, u16 pLightsLoc, u16 numPLightsLoc) const
+    {
+        const auto dirLight    = Lights.GetDirectionalLight();
+        const auto pointLights = Lights.GetPointLights();
+        const auto numPLights  = pointLights.Size();
+
+        MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(dirLightLoc, &dirLight->data));
+        MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(pLightsLoc, pointLights.GetData()));
+        MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(numPLightsLoc, &numPLights));
+
+        return true;
+    }
+
     bool MaterialSystem::ApplyInstance(Material* material, const bool needsUpdate) const
     {
         MATERIAL_APPLY_OR_FAIL(Shaders.BindInstance(material->internalId))
@@ -267,28 +509,41 @@ namespace C3D
         {
             if (material->shaderId == m_materialShaderId)
             {
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.properties, material->properties));
                 MATERIAL_APPLY_OR_FAIL(
-                    Shaders.SetUniformByIndex(m_materialLocations.diffuseColor, &material->diffuseColor));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.shininess, &material->shininess));
+                    Shaders.SetUniformByIndex(m_materialLocations.diffuseTexture, &material->maps[0]));
                 MATERIAL_APPLY_OR_FAIL(
-                    Shaders.SetUniformByIndex(m_materialLocations.diffuseTexture, &material->diffuseMap));
+                    Shaders.SetUniformByIndex(m_materialLocations.specularTexture, &material->maps[1]));
                 MATERIAL_APPLY_OR_FAIL(
-                    Shaders.SetUniformByIndex(m_materialLocations.specularTexture, &material->specularMap));
-                MATERIAL_APPLY_OR_FAIL(
-                    Shaders.SetUniformByIndex(m_materialLocations.normalTexture, &material->normalMap));
+                    Shaders.SetUniformByIndex(m_materialLocations.normalTexture, &material->maps[2]));
 
-                const auto dirLight    = Lights.GetDirectionalLight();
-                const auto pointLights = Lights.GetPointLights();
-                const auto numPLights  = pointLights.Size();
-
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.dirLight, &dirLight->data));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.pLights, pointLights.GetData()));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.numPLights, &numPLights));
+                if (!ApplyLights(material, m_materialLocations.dirLight, m_materialLocations.pLights,
+                                 m_materialLocations.numPLights))
+                {
+                    return false;
+                }
             }
             else if (material->shaderId == m_uiShaderId)
             {
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseColor, &material->diffuseColor));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseTexture, &material->diffuseMap));
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.properties, material->properties));
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseTexture, &material->maps[0]));
+            }
+            else if (material->shaderId == m_terrainShaderId)
+            {
+                // Apply Maps
+                for (u32 i = 0; i < material->maps.Size(); i++)
+                {
+                    MATERIAL_APPLY_OR_FAIL(
+                        Shaders.SetUniformByIndex(m_terrainLocations.samplers[i], &material->maps[i]));
+                }
+                // Apply Properties
+                Shaders.SetUniformByIndex(m_terrainLocations.properties, material->properties);
+
+                if (!ApplyLights(material, m_terrainLocations.dirLight, m_terrainLocations.pLights,
+                                 m_terrainLocations.numPLights))
+                {
+                    return false;
+                }
             }
             else
             {
@@ -312,6 +567,10 @@ namespace C3D
         {
             return Shaders.SetUniformByIndex(m_uiLocations.model, model);
         }
+        if (material->shaderId == m_terrainShaderId)
+        {
+            return Shaders.SetUniformByIndex(m_terrainLocations.model, model);
+        }
 
         m_logger.Error("ApplyLocal() - Unrecognized shader id: '{}' on material: '{}'.", material->shaderId,
                        material->name);
@@ -320,29 +579,26 @@ namespace C3D
 
     bool MaterialSystem::CreateDefaultMaterial()
     {
-        std::memset(&m_defaultMaterial, 0, sizeof(Material));
+        m_defaultMaterial.name           = DEFAULT_MATERIAL_NAME;
+        m_defaultMaterial.type           = MaterialType::Phong;
+        m_defaultMaterial.propertiesSize = sizeof(MaterialPhongProperties);
+        m_defaultMaterial.properties     = Memory.Allocate<MaterialPhongProperties>(MemoryType::MaterialInstance);
 
-        m_defaultMaterial.id           = INVALID_ID;
-        m_defaultMaterial.generation   = INVALID_ID;
-        m_defaultMaterial.name         = DEFAULT_MATERIAL_NAME;
-        m_defaultMaterial.diffuseColor = vec4(1);
+        auto props          = static_cast<MaterialPhongProperties*>(m_defaultMaterial.properties);
+        props->diffuseColor = vec4(1);
+        props->shininess    = 8.0f;
 
-        m_defaultMaterial.diffuseMap.use     = TextureUse::Diffuse;
-        m_defaultMaterial.diffuseMap.texture = Textures.GetDefaultDiffuse();
+        m_defaultMaterial.maps.Resize(3);
+        m_defaultMaterial.maps[0].texture = Textures.GetDefaultDiffuse();
+        m_defaultMaterial.maps[1].texture = Textures.GetDefaultSpecular();
+        m_defaultMaterial.maps[2].texture = Textures.GetDefaultNormal();
 
-        m_defaultMaterial.specularMap.use     = TextureUse::Specular;
-        m_defaultMaterial.specularMap.texture = Textures.GetDefaultSpecular();
-
-        m_defaultMaterial.normalMap.use     = TextureUse::Normal;
-        m_defaultMaterial.normalMap.texture = Textures.GetDefaultNormal();
-
-        TextureMap* maps[3] = { &m_defaultMaterial.diffuseMap, &m_defaultMaterial.specularMap,
-                                &m_defaultMaterial.normalMap };
+        TextureMap* maps[3] = { &m_defaultMaterial.maps[0], &m_defaultMaterial.maps[1], &m_defaultMaterial.maps[2] };
 
         Shader* shader = Shaders.Get("Shader.Builtin.Material");
-        if (!Renderer.AcquireShaderInstanceResources(shader, maps, &m_defaultMaterial.internalId))
+        if (!Renderer.AcquireShaderInstanceResources(shader, 3, maps, &m_defaultMaterial.internalId))
         {
-            m_logger.Error("Failed to acquire renderer resources for the default material");
+            m_logger.Error("CreateDefaultMaterial() - Failed to acquire renderer resources for the Default Material.");
             return false;
         }
 
@@ -351,157 +607,340 @@ namespace C3D
         return true;
     }
 
-    bool MaterialSystem::LoadMaterial(const MaterialConfig& config, Material* mat) const
+    bool MaterialSystem::CreateDefaultUIMaterial()
     {
-        std::memset(mat, 0, sizeof(Material));
+        m_defaultUIMaterial.name           = DEFAULT_UI_MATERIAL_NAME;
+        m_defaultUIMaterial.type           = MaterialType::UI;
+        m_defaultUIMaterial.propertiesSize = sizeof(MaterialUIProperties);
+        m_defaultUIMaterial.properties     = Memory.Allocate<MaterialUIProperties>(MemoryType::MaterialInstance);
 
-        // Name
-        mat->name = config.name;
-        // Id of the shader associated with this material
-        mat->shaderId = Shaders.GetId(config.shaderName.Data());
-        // Diffuse color
-        mat->diffuseColor = config.diffuseColor;
-        // Shininess
-        mat->shininess = config.shininess;
+        auto props          = static_cast<MaterialUIProperties*>(m_defaultUIMaterial.properties);
+        props->diffuseColor = vec4(1);
 
-        // Diffuse map
-        // TODO: make this configurable
-        mat->diffuseMap = TextureMap(TextureUse::Diffuse, TextureFilter::ModeLinear, TextureRepeat::Repeat);
+        m_defaultUIMaterial.maps.Resize(1);
+        m_defaultUIMaterial.maps[0].texture = Textures.GetDefaultDiffuse();
 
-        if (!config.diffuseMapName.Empty())
+        TextureMap* maps[1] = { &m_defaultUIMaterial.maps[0] };
+
+        Shader* shader = Shaders.Get("Shader.Builtin.UI");
+        if (!Renderer.AcquireShaderInstanceResources(shader, 1, maps, &m_defaultUIMaterial.internalId))
         {
-            mat->diffuseMap.texture = Textures.Acquire(config.diffuseMapName.Data(), true);
-            if (!mat->diffuseMap.texture)
+            m_logger.Error(
+                "CreateDefaultUIMaterial() - Failed to acquire renderer resources for the Default UI Material.");
+            return false;
+        }
+
+        // Assign the shader id to the default material
+        m_defaultUIMaterial.shaderId = shader->id;
+        return true;
+    }
+
+    bool MaterialSystem::CreateDefaultTerrainMaterial()
+    {
+        m_defaultTerrainMaterial.name           = DEFAULT_TERRAIN_MATERIAL_NAME;
+        m_defaultTerrainMaterial.type           = MaterialType::Terrain;
+        m_defaultTerrainMaterial.propertiesSize = sizeof(MaterialTerrainProperties);
+        m_defaultTerrainMaterial.properties = Memory.Allocate<MaterialTerrainProperties>(MemoryType::MaterialInstance);
+
+        auto props                       = static_cast<MaterialTerrainProperties*>(m_defaultTerrainMaterial.properties);
+        props->numMaterials              = 1;
+        props->materials[0].diffuseColor = vec4(1);
+        props->materials[1].shininess    = 8.0f;
+
+        m_defaultTerrainMaterial.maps.Resize(12);
+
+        m_defaultTerrainMaterial.maps[0].texture = Textures.GetDefaultDiffuse();
+        m_defaultTerrainMaterial.maps[1].texture = Textures.GetDefaultSpecular();
+        m_defaultTerrainMaterial.maps[2].texture = Textures.GetDefaultNormal();
+
+        TextureMap* maps[3] = { &m_defaultTerrainMaterial.maps[0], &m_defaultTerrainMaterial.maps[1],
+                                &m_defaultTerrainMaterial.maps[2] };
+
+        Shader* shader = Shaders.Get("Shader.Builtin.Terrain");
+        if (!Renderer.AcquireShaderInstanceResources(shader, 3, maps, &m_defaultTerrainMaterial.internalId))
+        {
+            m_logger.Error(
+                "CreateDefaultTerrainMaterial() - Failed to acquire renderer resources for the Default Terrain "
+                "Material.");
+            return false;
+        }
+
+        m_defaultTerrainMaterial.shaderId = shader->id;
+        return true;
+    }
+
+    bool MaterialSystem::AssignMap(TextureMap& map, const MaterialConfigMap& config, Texture* defaultTexture) const
+    {
+        map = TextureMap(config);
+        if (!config.textureName.Empty())
+        {
+            map.texture = Textures.Acquire(config.textureName.Data(), true);
+            if (!map.texture)
             {
-                m_logger.Warn("Unable to load diffuse texture '{}' for material '{}', using the default",
-                              config.diffuseMapName, mat->name);
-                mat->diffuseMap.texture = Textures.GetDefaultDiffuse();
+                m_logger.Warn(
+                    "AssignMap() - Unable to load texture: '{}' for material: '{}', using the default instead.",
+                    config.textureName, config.name);
+                map.texture = defaultTexture;
             }
         }
         else
         {
-            mat->diffuseMap.texture = Textures.GetDefaultDiffuse();
+            map.texture = defaultTexture;
         }
 
-        if (!Renderer.AcquireTextureMapResources(&mat->diffuseMap))
+        if (!Renderer.AcquireTextureMapResources(map))
         {
-            m_logger.Error("LoadMaterial() - Unable to acquire resources for diffuse texture map");
-            return false;
-        }
-
-        // Specular  map
-        // TODO: make this configurable
-        mat->specularMap = TextureMap(TextureUse::Specular, TextureFilter::ModeLinear, TextureRepeat::Repeat);
-
-        if (!config.specularMapName.Empty())
-        {
-            mat->specularMap.texture = Textures.Acquire(config.specularMapName.Data(), true);
-
-            if (!mat->specularMap.texture)
-            {
-                m_logger.Warn("Unable to load specular texture '{}' for material '{}', using the default",
-                              config.specularMapName, mat->name);
-                mat->specularMap.texture = Textures.GetDefaultSpecular();
-            }
-        }
-        else
-        {
-            mat->specularMap.texture = Textures.GetDefaultSpecular();
-        }
-
-        if (!Renderer.AcquireTextureMapResources(&mat->specularMap))
-        {
-            m_logger.Error("LoadMaterial() - Unable to acquire resources for diffuse texture map");
-            return false;
-        }
-
-        // Normal  map
-        // TODO: make this configurable
-        mat->normalMap = TextureMap(TextureUse::Normal, TextureFilter::ModeLinear, TextureRepeat::Repeat);
-
-        if (!config.normalMapName.Empty())
-        {
-            mat->normalMap.texture = Textures.Acquire(config.normalMapName.Data(), true);
-
-            if (!mat->normalMap.texture)
-            {
-                m_logger.Warn("Unable to load normal texture '{}' for material '{}', using the default",
-                              config.normalMapName, mat->name);
-                mat->normalMap.texture = Textures.GetDefaultNormal();
-            }
-        }
-        else
-        {
-            mat->normalMap.texture = Textures.GetDefaultNormal();
-        }
-
-        if (!Renderer.AcquireTextureMapResources(&mat->normalMap))
-        {
-            m_logger.Error("LoadMaterial() - Unable to acquire resources for diffuse texture map");
-            return false;
-        }
-
-        // TODO: Other maps that we might want?
-
-        Shader* shader = Shaders.Get(config.shaderName.Data());
-        if (!shader)
-        {
-            m_logger.Error("LoadMaterial() - Failed to load material since it's shader was not found: '{}'",
-                           config.shaderName);
-            return false;
-        }
-
-        // Gather a list of pointers to our texture maps
-        TextureMap* maps[3] = { &mat->diffuseMap, &mat->specularMap, &mat->normalMap };
-        if (!Renderer.AcquireShaderInstanceResources(shader, maps, &mat->internalId))
-        {
-            m_logger.Error("Failed to acquire renderer resources for material: {}", mat->name);
+            m_logger.Error("AssignMap() - Failed to acquire resource for texture map for material: '{}'", config.name);
             return false;
         }
 
         return true;
     }
 
-    void MaterialSystem::DestroyMaterial(Material* mat) const
+    bool MaterialSystem::LoadMaterial(const MaterialConfig& config, Material& mat) const
     {
-        m_logger.Trace("Destroying material '{}'", mat->name);
+        // Name
+        mat.name = config.name;
+        // Id of the shader associated with this material
+        mat.shaderId = Shaders.GetId(config.shaderName);
+        // Copy over the type of the material
+        mat.type = config.type;
 
-        // If the diffuseMap has a texture we release it
-        if (mat->diffuseMap.texture)
+        u32 mapCount = 0;
+
+        if (config.type == MaterialType::Phong)
         {
-            Textures.Release(mat->diffuseMap.texture->name.Data());
+            mat.propertiesSize = sizeof(MaterialPhongProperties);
+            mat.properties     = Memory.Allocate<MaterialPhongProperties>(MemoryType::MaterialInstance);
+            // Defaults
+            auto props          = static_cast<MaterialPhongProperties*>(mat.properties);
+            props->diffuseColor = vec4(1);
+            props->shininess    = 32.0f;
+            props->padding      = vec3(0);
+
+            for (const auto& prop : config.props)
+            {
+                if (prop.name.IEquals("diffuseColor"))
+                {
+                    props->diffuseColor = std::get<vec4>(prop.value);
+                }
+                else if (prop.name.IEquals("shininess"))
+                {
+                    props->shininess = std::get<f32>(prop.value);
+                }
+            }
+
+            // For Phong materials we expect 3 maps (diffuse, specular and normal)
+            mat.maps.Resize(3);
+            mapCount = 3;
+
+            bool diffuseAssigned  = false;
+            bool specularAssigned = false;
+            bool normalAssigned   = false;
+
+            for (const auto& map : config.maps)
+            {
+                if (map.name.IEquals("diffuse"))
+                {
+                    if (!AssignMap(mat.maps[0], map, Textures.GetDefaultDiffuse()))
+                    {
+                        return false;
+                    }
+                    diffuseAssigned = true;
+                }
+                else if (map.name.IEquals("specular"))
+                {
+                    if (!AssignMap(mat.maps[1], map, Textures.GetDefaultSpecular()))
+                    {
+                        return false;
+                    }
+                    specularAssigned = true;
+                }
+                else if (map.name.IEquals("normal"))
+                {
+                    if (!AssignMap(mat.maps[2], map, Textures.GetDefaultNormal()))
+                    {
+                        return false;
+                    }
+                    normalAssigned = true;
+                }
+            }
+
+            if (!diffuseAssigned)
+            {
+                MaterialConfigMap map("diffuse", "");
+                if (!AssignMap(mat.maps[0], map, Textures.GetDefaultDiffuse()))
+                {
+                    return false;
+                }
+            }
+
+            if (!specularAssigned)
+            {
+                MaterialConfigMap map("specular", "");
+                if (!AssignMap(mat.maps[1], map, Textures.GetDefaultSpecular()))
+                {
+                    return false;
+                }
+            }
+
+            if (!normalAssigned)
+            {
+                MaterialConfigMap map("normal", "");
+                if (!AssignMap(mat.maps[2], map, Textures.GetDefaultNormal()))
+                {
+                    return false;
+                }
+            }
+        }
+        else if (config.type == MaterialType::UI)
+        {
+            // NOTE: UI's only have one map and one property so we only use those
+            // TODO: If this changes we need to make sure we handle it here properly
+            mat.maps.Resize(1);
+            mapCount = 1;
+
+            mat.propertiesSize = sizeof(MaterialUIProperties);
+            mat.properties     = Memory.Allocate<MaterialUIProperties>(MemoryType::MaterialInstance);
+            // Defaults
+            auto props          = static_cast<MaterialUIProperties*>(mat.properties);
+            props->diffuseColor = std::get<vec4>(config.props[0].value);
+            if (!AssignMap(mat.maps[0], config.maps[0], Textures.GetDefaultDiffuse()))
+            {
+                return false;
+            }
+        }
+        else if (config.type == MaterialType::Custom)
+        {
+            // Calculate the needed space for the property struct
+            mat.propertiesSize = 0;
+            for (const auto& prop : config.props)
+            {
+                mat.propertiesSize += prop.size;
+            }
+            // Allocate enough space to hold all the structure for all the properties
+            mat.properties = Memory.AllocateBlock(MemoryType::MaterialInstance, mat.propertiesSize);
+
+            u32 offset = 0;
+            for (const auto& prop : config.props)
+            {
+                if (prop.size > 0)
+                {
+                    std::visit(
+                        [&](auto& v) {
+                            std::memcpy(static_cast<char*>(mat.properties) + offset, &v, prop.size);
+                            offset += prop.size;
+                        },
+                        prop.value);
+                }
+            }
+
+            mat.maps.Resize(config.maps.Size());
+            mapCount = config.maps.Size();
+
+            for (u32 i = 0; i < config.maps.Size(); i++)
+            {
+                // No known mapping so we just copy over the maps in the order they are provided in the config
+                // We know nothing about the maps so we assume just a default texture when we find an invalid one
+                if (!AssignMap(mat.maps[i], config.maps[i], Textures.GetDefault()))
+                {
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            m_logger.Error("LoadMaterial() - Unsupported MaterialType: '{}'.", ToString(config.type));
+            return false;
         }
 
-        // If the specularMap has a texture we release it
-        if (mat->specularMap.texture)
+        Shader* shader = nullptr;
+        switch (config.type)
         {
-            Textures.Release(mat->specularMap.texture->name.Data());
+            case MaterialType::Phong:
+                shader = Shaders.Get(config.shaderName.Empty() ? "Shader.Builtin.Material" : config.shaderName);
+                break;
+            case MaterialType::UI:
+                shader = Shaders.Get(config.shaderName.Empty() ? "Shader.Builtin.UI" : config.shaderName);
+                break;
+            case MaterialType::Custom:
+                if (config.shaderName.Empty())
+                {
+                    m_logger.Fatal(
+                        "LoadMaterial() - Custom Material: '{}' does not have a Shader name which is required.",
+                        config.name);
+                    return false;
+                }
+                shader = Shaders.Get(config.shaderName);
+                break;
+            default:
+                m_logger.Error("LoadMaterial() - Unsupported Material type: '{}'", ToString(config.type));
+                return false;
         }
 
-        // If the normalMap has a texture we release it
-        if (mat->normalMap.texture)
+        if (!shader)
         {
-            Textures.Release(mat->normalMap.texture->name.Data());
+            m_logger.Error("LoadMaterial() - Failed to load Material because its shader was not found.");
+            return false;
         }
 
-        // Release texture map resources
-        Renderer.ReleaseTextureMapResources(&mat->diffuseMap);
-        Renderer.ReleaseTextureMapResources(&mat->specularMap);
-        Renderer.ReleaseTextureMapResources(&mat->normalMap);
+        // Gather a list of pointers to our texture maps
+        TextureMap** maps = Memory.Allocate<TextureMap*>(MemoryType::Array, mapCount);
+        for (u32 i = 0; i < mapCount; i++)
+        {
+            maps[i] = &mat.maps[i];
+        }
+
+        bool result = Renderer.AcquireShaderInstanceResources(shader, mapCount, maps, &mat.internalId);
+        if (!result)
+        {
+            m_logger.Error("LoadMaterial() - Failed to acquire renderer resources for Material: '{}'.", mat.name);
+        }
+
+        if (maps)
+        {
+            Memory.Free(MemoryType::Array, maps);
+        }
+
+        return result;
+    }
+
+    void MaterialSystem::DestroyMaterial(Material& mat) const
+    {
+        m_logger.Info("DestroyMaterial() - Destroying '{}'.", mat.name);
+
+        // Release all associated maps
+        for (auto& map : mat.maps)
+        {
+            if (map.texture)
+            {
+                // Release the associated texture reference
+                Textures.Release(map.texture->name);
+            }
+
+            // Release texture map resources
+            Renderer.ReleaseTextureMapResources(map);
+        }
 
         // Release renderer resources
-        if (mat->shaderId != INVALID_ID && mat->internalId != INVALID_ID)
+        if (mat.shaderId != INVALID_ID && mat.internalId != INVALID_ID)
         {
-            Shader* shader = Shaders.GetById(mat->shaderId);
-            Renderer.ReleaseShaderInstanceResources(shader, mat->internalId);
-            mat->shaderId = INVALID_ID;
+            Shader* shader = Shaders.GetById(mat.shaderId);
+            Renderer.ReleaseShaderInstanceResources(shader, mat.internalId);
+            mat.shaderId = INVALID_ID;
+        }
+
+        // Release all associated properties
+        if (mat.properties && mat.propertiesSize > 0)
+        {
+            Memory.Free(MemoryType::MaterialInstance, mat.properties);
         }
 
         // Zero out memory and invalidate ids
-        std::memset(mat, 0, sizeof(Material));
-        mat->id                = INVALID_ID;
-        mat->generation        = INVALID_ID;
-        mat->internalId        = INVALID_ID;
-        mat->renderFrameNumber = INVALID_ID;
+        mat.id                = INVALID_ID;
+        mat.generation        = INVALID_ID;
+        mat.internalId        = INVALID_ID;
+        mat.renderFrameNumber = INVALID_ID;
+        mat.name.Clear();
     }
 }  // namespace C3D

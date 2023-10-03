@@ -362,10 +362,9 @@ namespace C3D
         vkCmdBeginRenderPass(commandBuffer->handle, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
         commandBuffer->state = VulkanCommandBufferState::InRenderPass;
 
-        static Random random;
-        f32 r      = random.Generate(0.0f, 1.0f);
-        f32 g      = random.Generate(0.0f, 1.0f);
-        f32 b      = random.Generate(0.0f, 1.0f);
+        f32 r      = Random.Generate(0.0f, 1.0f);
+        f32 g      = Random.Generate(0.0f, 1.0f);
+        f32 b      = Random.Generate(0.0f, 1.0f);
         vec4 color = { r, g, b, 1.0f };
         VK_BEGIN_CMD_DEBUG_LABEL(m_context, commandBuffer->handle, m_name, color);
     }

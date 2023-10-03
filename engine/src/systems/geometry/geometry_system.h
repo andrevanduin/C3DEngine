@@ -78,7 +78,7 @@ namespace C3D
         Geometry m_defaultGeometry;
         Geometry m_default2DGeometry;
 
-        GeometryReference* m_registeredGeometries;
+        GeometryReference* m_registeredGeometries = nullptr;
     };
 
     template <typename VertexType, typename IndexType>
@@ -91,10 +91,10 @@ namespace C3D
             if (m_registeredGeometries[i].geometry.id == INVALID_ID)
             {
                 // We found an empty slot
-                m_registeredGeometries[i].autoRelease = autoRelease;
+                m_registeredGeometries[i].autoRelease    = autoRelease;
                 m_registeredGeometries[i].referenceCount = 1;
 
-                g = &m_registeredGeometries[i].geometry;
+                g     = &m_registeredGeometries[i].geometry;
                 g->id = i;
                 break;
             }
@@ -124,18 +124,19 @@ namespace C3D
                                      sizeof(IndexType), config.indices.Size(), config.indices.GetData()))
         {
             m_registeredGeometries[g->id].referenceCount = 0;
-            m_registeredGeometries[g->id].autoRelease = false;
-            g->id = INVALID_ID;
-            g->generation = INVALID_ID_U16;
-            g->internalId = INVALID_ID;
+            m_registeredGeometries[g->id].autoRelease    = false;
+            g->id                                        = INVALID_ID;
+            g->internalId                                = INVALID_ID;
+            g->generation                                = INVALID_ID_U16;
 
             return false;
         }
 
         // Copy over the center and extents
-        g->center = config.center;
+        g->center      = config.center;
         g->extents.min = config.minExtents;
         g->extents.max = config.maxExtents;
+        g->name        = config.name;
 
         // Acquire the material
         if (!config.materialName.Empty())
