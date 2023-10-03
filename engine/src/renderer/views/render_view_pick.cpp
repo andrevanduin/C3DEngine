@@ -26,20 +26,20 @@ namespace C3D
 
         // UI Shader
         constexpr auto uiShaderName = "Shader.Builtin.UIPick";
-        ShaderResource res;
-        if (!Resources.Load(uiShaderName, res))
+        ShaderConfig shaderConfig;
+        if (!Resources.Load(uiShaderName, shaderConfig))
         {
             m_logger.Error("Failed to load builtin UI Pick shader.");
             return false;
         }
 
-        if (!Shaders.Create(m_uiShaderInfo.pass, res.config))
+        if (!Shaders.Create(m_uiShaderInfo.pass, shaderConfig))
         {
             m_logger.Error("Failed to create builtin UI Pick Shader.");
             return false;
         }
 
-        Resources.Unload(res);
+        Resources.Unload(shaderConfig);
         m_uiShaderInfo.shader = Shaders.Get(uiShaderName);
 
         // Get the uniform locations
@@ -58,19 +58,19 @@ namespace C3D
 
         // World Shader
         constexpr auto worldShaderName = "Shader.Builtin.WorldPick";
-        if (!Resources.Load(worldShaderName, res))
+        if (!Resources.Load(worldShaderName, shaderConfig))
         {
             m_logger.Error("Failed to load builtin World Pick shader.");
             return false;
         }
 
-        if (!Shaders.Create(m_worldShaderInfo.pass, res.config))
+        if (!Shaders.Create(m_worldShaderInfo.pass, shaderConfig))
         {
             m_logger.Error("Failed to create builtin World Pick Shader.");
             return false;
         }
 
-        Resources.Unload(res);
+        Resources.Unload(shaderConfig);
         m_worldShaderInfo.shader = Shaders.Get(worldShaderName);
 
         // Get the uniform locations
@@ -481,12 +481,12 @@ namespace C3D
     void RenderViewPick::AcquireShaderInstances()
     {
         u32 instance;
-        if (!Renderer.AcquireShaderInstanceResources(m_uiShaderInfo.shader, nullptr, &instance))
+        if (!Renderer.AcquireShaderInstanceResources(m_uiShaderInfo.shader, 0, nullptr, &instance))
         {
             m_logger.Fatal("AcquireShaderInstances() - Failed to acquire UI shader resources from Renderer.");
         }
 
-        if (!Renderer.AcquireShaderInstanceResources(m_worldShaderInfo.shader, nullptr, &instance))
+        if (!Renderer.AcquireShaderInstanceResources(m_worldShaderInfo.shader, 0, nullptr, &instance))
         {
             m_logger.Fatal("AcquireShaderInstances() - Failed to acquire World shader resources from Renderer.");
         }

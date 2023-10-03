@@ -4,7 +4,7 @@
 #include "core/engine.h"
 #include "core/logger.h"
 
-#include "platform/filesystem.h"
+#include "platform/file_system.h"
 #include "systems/system_manager.h"
 
 #include "systems/resources/resource_system.h"

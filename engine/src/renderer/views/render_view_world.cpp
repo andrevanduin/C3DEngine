@@ -7,6 +7,7 @@
 #include "renderer/renderer_types.h"
 #include "resources/loaders/shader_loader.h"
 #include "resources/mesh.h"
+#include "resources/textures/texture.h"
 #include "systems/cameras/camera_system.h"
 #include "systems/events/event_system.h"
 #include "systems/lights/light_system.h"
@@ -36,34 +37,34 @@ namespace C3D
         const auto materialShaderName = "Shader.Builtin.Material";
         const auto terrainShaderName  = "Shader.Builtin.Terrain";
 
-        ShaderResource res;
-        if (!Resources.Load(materialShaderName, res))
+        ShaderConfig shaderConfig;
+        if (!Resources.Load(materialShaderName, shaderConfig))
         {
             m_logger.Error("OnCreate() - Failed to load ShaderResource for Material Shader");
             return false;
         }
         // NOTE: Since this view only has 1 pass we assume index 0
-        if (!Shaders.Create(passes[0], res.config))
+        if (!Shaders.Create(passes[0], shaderConfig))
         {
             m_logger.Error("OnCreate() - Failed to create {}", materialShaderName);
             return false;
         }
 
-        Resources.Unload(res);
+        Resources.Unload(shaderConfig);
 
-        if (!Resources.Load(terrainShaderName, res))
+        if (!Resources.Load(terrainShaderName, shaderConfig))
         {
             m_logger.Error("OnCreate() - Failed to load ShaderResource for Terrain Shader");
             return false;
         }
         // NOTE: Since this view only has 1 pass we assume index 0
-        if (!Shaders.Create(passes[0], res.config))
+        if (!Shaders.Create(passes[0], shaderConfig))
         {
             m_logger.Error("OnCreate() - Failed to create {}", terrainShaderName);
             return false;
         }
 
-        Resources.Unload(res);
+        Resources.Unload(shaderConfig);
 
         m_materialShader = Shaders.Get(m_customShaderName ? m_customShaderName.Data() : materialShaderName);
         m_terrainShader  = Shaders.Get(terrainShaderName);
@@ -79,46 +80,6 @@ namespace C3D
             m_logger.Error("Load() - Failed to get Terrain Shader");
             return false;
         }
-
-        // Acquire locations
-        u16 projection                               = INVALID_ID_U16;
-        u16 view                                     = INVALID_ID_U16;
-        u16 model                                    = INVALID_ID_U16;
-        u16 ambientColor                             = INVALID_ID_U16;
-        u16 viewPosition                             = INVALID_ID_U16;
-        u16 renderMode                               = INVALID_ID_U16;
-        u16 samplers[TERRAIN_MAX_MATERIAL_COUNT * 3] = { INVALID_ID_U16 };  // Diffuse, Specular and Normal
-        u16 diffuseColor                             = INVALID_ID_U16;
-        u16 materials[TERRAIN_MAX_MATERIAL_COUNT]    = { INVALID_ID_U16 };
-        u16 dirLight                                 = INVALID_ID_U16;
-        u16 pLights                                  = INVALID_ID_U16;
-        u16 numPLights                               = INVALID_ID_U16;
-        u16 numMaterials                             = INVALID_ID_U16;
-
-        m_terrainShaderLocations.projection   = m_terrainShader->GetUniformIndex("projection");
-        m_terrainShaderLocations.view         = m_terrainShader->GetUniformIndex("view");
-        m_terrainShaderLocations.model        = m_terrainShader->GetUniformIndex("model");
-        m_terrainShaderLocations.ambientColor = m_terrainShader->GetUniformIndex("ambientColor");
-        m_terrainShaderLocations.viewPosition = m_terrainShader->GetUniformIndex("viewPosition");
-        m_terrainShaderLocations.renderMode   = m_terrainShader->GetUniformIndex("mode");
-
-        for (u32 i = 0; i < TERRAIN_MAX_MATERIAL_COUNT; i += 3)
-        {
-            auto num          = String(i);
-            auto diffuseName  = "diffuseTexture_" + num;
-            auto specularName = "specularTexture_" + num;
-            auto normalName   = "normalTexture_" + num;
-
-            m_terrainShaderLocations.samplers[i + 0] = m_terrainShader->GetUniformIndex(diffuseName.Data());
-            m_terrainShaderLocations.samplers[i + 1] = m_terrainShader->GetUniformIndex(specularName.Data());
-            m_terrainShaderLocations.samplers[i + 2] = m_terrainShader->GetUniformIndex(normalName.Data());
-        }
-
-        m_terrainShaderLocations.materials    = m_terrainShader->GetUniformIndex("materials");
-        m_terrainShaderLocations.dirLight     = m_terrainShader->GetUniformIndex("dirLight");
-        m_terrainShaderLocations.pLights      = m_terrainShader->GetUniformIndex("pLights");
-        m_terrainShaderLocations.numPLights   = m_terrainShader->GetUniformIndex("numPLights");
-        m_terrainShaderLocations.numMaterials = m_terrainShader->GetUniformIndex("numMaterials");
 
         const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
         m_projectionMatrix     = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
@@ -165,13 +126,21 @@ namespace C3D
         outPacket->ambientColor     = m_ambientColor;
 
         outPacket->geometries.SetAllocator(frameAllocator);
-        outPacket->terrainData.SetAllocator(frameAllocator);
+        outPacket->terrainGeometries.SetAllocator(frameAllocator);
 
         m_distances.SetAllocator(frameAllocator);
 
         for (const auto& gData : worldData.worldGeometries)
         {
-            if ((gData.geometry->material->diffuseMap.texture->flags & TextureFlag::HasTransparency) == 0)
+            auto hasTransparency = false;
+            if (gData.geometry->material->type == MaterialType::Phong)
+            {
+                // NOTE: Since this is a Phong material we know that the first map will be the diffuse
+                hasTransparency =
+                    (gData.geometry->material->maps[0].texture->flags & TextureFlag::HasTransparency) == 0;
+            }
+
+            if (hasTransparency)
             {
                 // Material has no transparency
                 outPacket->geometries.PushBack(gData);
@@ -194,9 +163,9 @@ namespace C3D
             outPacket->geometries.PushBack(g);
         }
 
-        for (auto& terrain : worldData.terrainData)
+        for (auto& terrain : worldData.terrainGeometries)
         {
-            outPacket->terrainData.PushBack(terrain);
+            outPacket->terrainGeometries.PushBack(terrain);
         }
 
         m_distances.Clear();
@@ -210,88 +179,86 @@ namespace C3D
         {
             if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
             {
-                m_logger.Error("OnRender() - BeginRenderPass failed for pass width id '{}'", pass->id);
+                m_logger.Error("OnRender() - BeginRenderPass failed for pass width id '{}'.", pass->id);
                 return false;
             }
 
-            for (auto& terrain : packet->terrainData)
+            // Terrain geometries
+            if (!packet->terrainGeometries.Empty())
             {
                 if (!Shaders.UseById(m_terrainShader->id))
                 {
-                    m_logger.Error("Render() - Failed to use shader with id: '{}'", m_terrainShader->id);
+                    m_logger.Error("OnRender() - Failed to use shader with id: '{}'.", m_terrainShader->id);
                     return false;
                 }
 
-                // Apply uniforms, all are global for terrains
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.projection, &packet->projectionMatrix);
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.view, &packet->viewMatrix);
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.ambientColor, &packet->ambientColor);
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.viewPosition, &packet->viewPosition);
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.renderMode, &m_renderMode);
-
-                MaterialInfo materials[TERRAIN_MAX_MATERIAL_COUNT] = {};
-                for (u32 m = 0; m < terrain.numMaterials; ++m)
+                if (!Materials.ApplyGlobal(m_terrainShader->id, frameNumber, &packet->projectionMatrix,
+                                           &packet->viewMatrix, &packet->ambientColor, &packet->viewPosition,
+                                           m_renderMode))
                 {
-                    auto mat = terrain.materials[m];
-
-                    materials[m].diffuseColor = mat->diffuseColor;
-                    materials[m].shininess    = mat->shininess;
-
-                    Shaders.SetUniformByIndex(m_terrainShaderLocations.samplers[m * 3 + 0], &mat->diffuseMap);
-                    Shaders.SetUniformByIndex(m_terrainShaderLocations.samplers[m * 3 + 1], &mat->specularMap);
-                    Shaders.SetUniformByIndex(m_terrainShaderLocations.samplers[m * 3 + 2], &mat->normalMap);
+                    m_logger.Error("OnRender() - Failed to apply globals for shader: '{}'.", m_terrainShader->name);
+                    return false;
                 }
 
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.materials, &materials);
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.numMaterials, &terrain.numMaterials);
-
-                const auto dirLight    = Lights.GetDirectionalLight();
-                const auto pointLights = Lights.GetPointLights();
-                const auto numPLights  = pointLights.Size();
-
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.dirLight, &dirLight->data);
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.pLights, pointLights.GetData());
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.numPLights, &numPLights);
-
-                Shaders.SetUniformByIndex(m_terrainShaderLocations.model, &terrain.model);
-
-                Shaders.ApplyGlobal();
-                // Renderer.DrawTerrainGeometry(terrain);
-            }
-
-            const auto materialShaderId = m_materialShader->id;
-
-            if (!Shaders.UseById(materialShaderId))
-            {
-                m_logger.Error("OnRender() - Failed to use shader with id {}", materialShaderId);
-                return false;
-            }
-
-            // TODO: Generic way to request data such as ambient color (which should come from a scene)
-            if (!Materials.ApplyGlobal(materialShaderId, frameNumber, &packet->projectionMatrix, &packet->viewMatrix,
-                                       &packet->ambientColor, &packet->viewPosition, m_renderMode))
-            {
-                m_logger.Error("OnRender() - Failed to apply globals for shader with id {}", materialShaderId);
-                return false;
-            }
-
-            for (auto& geometry : packet->geometries)
-            {
-                Material* m = geometry.geometry->material ? geometry.geometry->material : Materials.GetDefault();
-
-                const bool needsUpdate = m->renderFrameNumber != frameNumber;
-                if (!Materials.ApplyInstance(m, needsUpdate))
+                for (auto& terrain : packet->terrainGeometries)
                 {
-                    m_logger.Warn("Failed to apply material '{}'. Skipping draw.", m->name);
-                    continue;
+                    if (terrain.geometry->id == INVALID_ID) continue;
+
+                    Material* mat =
+                        terrain.geometry->material ? terrain.geometry->material : Materials.GetDefaultTerrain();
+
+                    // Check if this material has already been updated this frame to avoid unnecessary updates.
+                    // This means we always bind the shader but we skip updating the internal shader bindings if it has
+                    // already happened this frame for this material (for example because the previous terrain geometry
+                    // uses the same material)
+                    bool needsUpdate = mat->renderFrameNumber != frameNumber;
+                    if (!Materials.ApplyInstance(mat, needsUpdate))
+                    {
+                        m_logger.Warn("OnRender() - Failed to apply instance for shader: '{}'.", m_terrainShader->name);
+                        continue;
+                    }
+                    // Sync the frame number with the current
+                    mat->renderFrameNumber = frameNumber;
+
+                    Materials.ApplyLocal(mat, &terrain.model);
+                    Renderer.DrawGeometry(terrain);
+                }
+            }
+
+            // Static geometries
+            if (!packet->geometries.Empty())
+            {
+                if (!Shaders.UseById(m_materialShader->id))
+                {
+                    m_logger.Error("OnRender() - Failed to use shader with id {}.", m_materialShader->id);
+                    return false;
                 }
 
-                // Sync the frame number with the current
-                m->renderFrameNumber = static_cast<u32>(frameNumber);
+                // TODO: Generic way to request data such as ambient color (which should come from a scene)
+                if (!Materials.ApplyGlobal(m_materialShader->id, frameNumber, &packet->projectionMatrix,
+                                           &packet->viewMatrix, &packet->ambientColor, &packet->viewPosition,
+                                           m_renderMode))
+                {
+                    m_logger.Error("OnRender() - Failed to apply globals for shader: '{}'", m_materialShader->name);
+                    return false;
+                }
 
-                Materials.ApplyLocal(m, &geometry.model);
+                for (auto& geometry : packet->geometries)
+                {
+                    Material* mat = geometry.geometry->material ? geometry.geometry->material : Materials.GetDefault();
 
-                Renderer.DrawGeometry(geometry);
+                    const bool needsUpdate = mat->renderFrameNumber != frameNumber;
+                    if (!Materials.ApplyInstance(mat, needsUpdate))
+                    {
+                        m_logger.Warn("Failed to apply material '{}'. Skipping draw.", mat->name);
+                        continue;
+                    }
+                    // Sync the frame number with the current
+                    mat->renderFrameNumber = static_cast<u32>(frameNumber);
+
+                    Materials.ApplyLocal(mat, &geometry.model);
+                    Renderer.DrawGeometry(geometry);
+                }
             }
 
             if (!Renderer.EndRenderPass(pass))

@@ -1,11 +1,12 @@
 
 #pragma once
-#include "material.h"
 #include "renderer/vertex.h"
 
 namespace C3D
 {
     constexpr auto GEOMETRY_NAME_MAX_LENGTH = 256;
+
+    struct Material;
 
     template <typename VertexType, typename IndexType>
     struct IGeometryConfig

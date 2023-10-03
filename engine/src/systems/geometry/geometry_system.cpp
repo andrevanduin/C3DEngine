@@ -11,10 +11,7 @@
 namespace C3D
 {
     GeometrySystem::GeometrySystem(const SystemManager* pSystemsManager)
-        : SystemWithConfig(pSystemsManager, "GEOMETRY_SYSTEM"),
-          m_defaultGeometry(),
-          m_default2DGeometry(),
-          m_registeredGeometries(nullptr)
+        : SystemWithConfig(pSystemsManager, "GEOMETRY_SYSTEM")
     {}
 
     bool GeometrySystem::Init(const GeometrySystemConfig& config)
@@ -446,7 +443,7 @@ namespace C3D
             return false;
         }
 
-        m_default2DGeometry.material = Materials.GetDefault();
+        m_default2DGeometry.material = Materials.GetDefaultUI();
 
         return true;
     }

@@ -2,11 +2,11 @@
 #pragma once
 #include "core/events/event_context.h"
 #include "renderer/render_view.h"
-#include "resources/shader.h"
 
 namespace C3D
 {
     class Camera;
+    class Shader;
 
     struct GeometryDistance
     {
@@ -17,25 +17,7 @@ namespace C3D
     struct RenderViewWorldData
     {
         DynamicArray<GeometryRenderData> worldGeometries;
-        DynamicArray<TerrainRenderData> terrainData;
-    };
-
-    struct TerrainShaderLocations
-    {
-        u16 projection   = INVALID_ID_U16;
-        u16 view         = INVALID_ID_U16;
-        u16 model        = INVALID_ID_U16;
-        u16 ambientColor = INVALID_ID_U16;
-        u16 viewPosition = INVALID_ID_U16;
-        u16 renderMode   = INVALID_ID_U16;
-
-        u16 samplers[TERRAIN_MAX_MATERIAL_COUNT * 3] = { INVALID_ID_U16 };  // Diffuse, Specular and Normal
-
-        u16 materials    = INVALID_ID_U16;
-        u16 dirLight     = INVALID_ID_U16;
-        u16 pLights      = INVALID_ID_U16;
-        u16 numPLights   = INVALID_ID_U16;
-        u16 numMaterials = INVALID_ID_U16;
+        DynamicArray<GeometryRenderData> terrainGeometries;
     };
 
     class RenderViewWorld final : public RenderView
@@ -69,8 +51,6 @@ namespace C3D
 
         mat4 m_projectionMatrix;
         Camera* m_camera = nullptr;
-
-        TerrainShaderLocations m_terrainShaderLocations;
 
         vec4 m_ambientColor;
         u32 m_renderMode = 0;

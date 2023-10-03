@@ -5,16 +5,16 @@
 
 namespace C3D
 {
-    constexpr auto PI = 3.14159265358979323846f;
-    constexpr auto PI_2 = 2.0f * PI;
-    constexpr auto PI_4 = 4.0f * PI;
-    constexpr auto HALF_PI = 0.5f * PI;
-    constexpr auto QUARTER_PI = 0.25f * PI;
-    constexpr auto ONE_OVER_PI = 1.0f / PI;
-    constexpr auto ONE_OVER_TWO_PI = 1.0f / PI_2;
-    constexpr auto SQRT_TWO = 1.41421356237309504880f;
-    constexpr auto SQRT_THREE = 1.73205080756887729352f;
-    constexpr auto SQRT_ONE_OVER_TWO = 0.70710678118654752440f;
+    constexpr auto PI                  = 3.14159265358979323846f;
+    constexpr auto PI_2                = 2.0f * PI;
+    constexpr auto PI_4                = 4.0f * PI;
+    constexpr auto HALF_PI             = 0.5f * PI;
+    constexpr auto QUARTER_PI          = 0.25f * PI;
+    constexpr auto ONE_OVER_PI         = 1.0f / PI;
+    constexpr auto ONE_OVER_TWO_PI     = 1.0f / PI_2;
+    constexpr auto SQRT_TWO            = 1.41421356237309504880f;
+    constexpr auto SQRT_THREE          = 1.73205080756887729352f;
+    constexpr auto SQRT_ONE_OVER_TWO   = 0.70710678118654752440f;
     constexpr auto SQRT_ONE_OVER_THREE = 0.57735026918962576450f;
 
     constexpr auto DEG_2_RAD_MULTIPLIER = PI / 180.0f;
@@ -27,7 +27,7 @@ namespace C3D
     constexpr auto INF = 1e30f;
 
     // Smallest positive number where 1.0 + FLOAT_EPSILON != 0
-    constexpr auto FLOAT_EPSILON = 1.192092896e-07f;
+    constexpr auto FLOAT_EPSILON     = 1.192092896e-07f;
     constexpr auto FLOAT_EPSILON_F64 = 1.192092896e-07;
 
     C3D_INLINE bool IsPowerOf2(const u64 value) { return (value != 0) && ((value & (value - 1)) == 1); }
@@ -142,5 +142,20 @@ namespace C3D
                                         const f32 newMax)
     {
         return (value - oldMin) * (newMax - newMin) / (oldMax - oldMin) + newMin;
+    }
+
+    /**
+     * @brief Perform Hermite interpolation between two values.
+     * See https://en.wikipedia.org/wiki/Hermite_interpolation for more information.
+     *
+     * @param edge0 The lower edge of the Hermite function.
+     * @param edge1 The upper edgeo f the Hermite function.
+     * @param x The value to interpolate.
+     * @return The interpolated value.
+     */
+    C3D_API C3D_INLINE f32 SmoothStep(f32 edge0, f32 edge1, f32 x)
+    {
+        const f32 t = C3D_CLAMP((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+        return t * t * (3.0 - 2.0 * t);
     }
 }  // namespace C3D

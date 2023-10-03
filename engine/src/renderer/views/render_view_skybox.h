@@ -3,10 +3,11 @@
 #include "core/events/event_context.h"
 #include "renderer/camera.h"
 #include "renderer/render_view.h"
-#include "resources/shader.h"
 
 namespace C3D
 {
+    class Shader;
+
     class RenderViewSkybox final : public RenderView
     {
     public:
@@ -22,18 +23,18 @@ namespace C3D
                       u64 renderTargetIndex) override;
 
     private:
-        Shader* m_shader;
+        Shader* m_shader = nullptr;
 
-        f32 m_fov;
-        f32 m_nearClip;
-        f32 m_farClip;
+        f32 m_fov      = DegToRad(45.0f);
+        f32 m_nearClip = 0.1f;
+        f32 m_farClip  = 1000.0f;
 
         mat4 m_projectionMatrix;
 
-        Camera* m_camera;
+        Camera* m_camera = nullptr;
 
-        u16 m_projectionLocation;
-        u16 m_viewLocation;
-        u16 m_cubeMapLocation;
+        u16 m_projectionLocation = INVALID_ID_U16;
+        u16 m_viewLocation       = INVALID_ID_U16;
+        u16 m_cubeMapLocation    = INVALID_ID_U16;
     };
 }  // namespace C3D

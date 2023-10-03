@@ -52,7 +52,7 @@ namespace C3D
         /** @brief The tangent of the vertex. (w component used for padding) */
         vec4 tangent;
         /** @brief A collection of material weights for this vertex. */
-        f32 materialWeights[TERRAIN_MAX_MATERIAL_COUNT];
+        f32 materialWeights[TERRAIN_MAX_MATERIAL_COUNT] = { 0, 0, 0, 0 };
     };
 }  // namespace C3D
 

@@ -2,8 +2,7 @@
 #include "simple_scene_loader.h"
 
 #include "core/engine.h"
-#include "platform/filesystem.h"
-#include "resources/shader.h"
+#include "platform/file_system.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
 
@@ -337,8 +336,8 @@ namespace C3D
         return transform;
     }
 
-    ParserTagType ResourceLoader<SimpleSceneConfig>::ParseTag(const String& line, const String& fileName,
-                                                              const u32 lineNumber, SimpleSceneConfig& cfg) const
+    ResourceLoader<SimpleSceneConfig>::ParserTagType ResourceLoader<SimpleSceneConfig>::ParseTag(
+        const String& line, const String& fileName, const u32 lineNumber, SimpleSceneConfig& cfg) const
     {
         static bool closeTag = true;
         String name;

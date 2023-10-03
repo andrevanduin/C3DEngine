@@ -1,10 +1,10 @@
 
 #pragma once
-#include "../core/defines.h"
+#include "core/defines.h"
 #include "render_buffer.h"
 #include "renderer_plugin.h"
 #include "renderer_types.h"
-#include "resources/shader.h"
+#include "systems/system.h"
 
 namespace C3D
 {
@@ -63,7 +63,6 @@ namespace C3D
                             u64 indexCount, const void* indices) const;
         void DestroyGeometry(Geometry* geometry) const;
         void DrawGeometry(const GeometryRenderData& data) const;
-        void DrawTerrainGeometry(const TerrainRenderData& data) const;
 
         bool BeginRenderPass(RenderPass* pass, RenderTarget* target) const;
         bool EndRenderPass(RenderPass* pass) const;
@@ -81,11 +80,12 @@ namespace C3D
         bool ShaderApplyGlobals(Shader* shader) const;
         bool ShaderApplyInstance(Shader* shader, bool needsUpdate) const;
 
-        bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) const;
+        bool AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+                                            u32* outInstanceId) const;
         bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) const;
 
-        bool AcquireTextureMapResources(TextureMap* map) const;
-        void ReleaseTextureMapResources(TextureMap* map) const;
+        bool AcquireTextureMapResources(TextureMap& map) const;
+        void ReleaseTextureMapResources(TextureMap& map) const;
 
         bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const;
 
@@ -102,7 +102,8 @@ namespace C3D
         [[nodiscard]] u8 GetWindowAttachmentIndex() const;
         [[nodiscard]] u8 GetWindowAttachmentCount() const;
 
-        [[nodiscard]] RenderBuffer* CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist) const;
+        [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
+                                                       bool useFreelist) const;
         bool DestroyRenderBuffer(RenderBuffer* buffer) const;
 
         [[nodiscard]] bool IsMultiThreaded() const;

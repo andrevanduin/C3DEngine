@@ -2,7 +2,7 @@
 #include "terrain_loader.h"
 
 #include "core/exceptions.h"
-#include "platform/filesystem.h"
+#include "platform/file_system.h"
 #include "resources/loaders/image_loader.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
@@ -126,8 +126,8 @@ namespace C3D
         // Load the heightmap file if one has been configured
         if (!heightmapFile.Empty())
         {
-            ImageResource heightmap;
-            ImageResourceParams params = { false };
+            Image heightmap;
+            ImageLoadParams params = { false };
             if (!Resources.Load(heightmapFile, heightmap, params))
             {
                 m_logger.Error("Load() - Failed to load HeightmapFile: '{}' for Terrain: '{}'. Setting defaults.",
@@ -165,7 +165,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<TerrainConfig>::Unload(TerrainConfig& resource) const
+    void ResourceLoader<TerrainConfig>::Unload(TerrainConfig& resource)
     {
         resource.name.Destroy();
         resource.resourceName.Destroy();

@@ -105,10 +105,12 @@ namespace C3D
         shader.id = static_cast<u32>(m_shaders.GetIndex(config.name));
         // Store the shader in our hashtable
         m_shaders.Set(config.name, shader);
+
+        m_logger.Info("Create() - Successfully created shader: '{}'.", config.name);
         return true;
     }
 
-    u32 ShaderSystem::GetId(const char* name) const
+    u32 ShaderSystem::GetId(const String& name) const
     {
         if (!m_shaders.Has(name))
         {
@@ -118,7 +120,7 @@ namespace C3D
         return static_cast<u32>(m_shaders.GetIndex(name));
     }
 
-    Shader* ShaderSystem::Get(const char* name)
+    Shader* ShaderSystem::Get(const String& name)
     {
         if (const u32 shaderId = GetId(name); shaderId != INVALID_ID)
         {
@@ -139,21 +141,21 @@ namespace C3D
     bool ShaderSystem::UseById(const u32 shaderId)
     {
         // Only perform the use command if the shader id is different from the current
-        if (m_currentShaderId != shaderId)
+        // if (m_currentShaderId != shaderId)
+        //{
+        Shader* shader    = GetById(shaderId);
+        m_currentShaderId = shaderId;
+        if (!Renderer.UseShader(shader))
         {
-            Shader* shader    = GetById(shaderId);
-            m_currentShaderId = shaderId;
-            if (!Renderer.UseShader(shader))
-            {
-                m_logger.Error("UseById() - Failed to use shader '{}'", shader->name);
-                return false;
-            }
-            if (!Renderer.ShaderBindGlobals(shader))
-            {
-                m_logger.Error("UseById() - Failed to bind globals for shader '{}'", shader->name);
-                return false;
-            }
+            m_logger.Error("UseById() - Failed to use shader '{}'.", shader->name);
+            return false;
         }
+        if (!Renderer.ShaderBindGlobals(shader))
+        {
+            m_logger.Error("UseById() - Failed to bind globals for shader '{}'.", shader->name);
+            return false;
+        }
+        //}
         return true;
     }
 
@@ -161,13 +163,13 @@ namespace C3D
     {
         if (!shader || shader->id == INVALID_ID)
         {
-            m_logger.Error("GetUniformIndex() - Called with invalid shader");
+            m_logger.Error("GetUniformIndex() - Called with invalid shader.");
             return INVALID_ID_U16;
         }
 
         if (!shader->uniforms.Has(name))
         {
-            m_logger.Error("GetUniformIndex() - Shader '{}' does not a have a registered uniform named '{}'",
+            m_logger.Error("GetUniformIndex() - Shader '{}' does not a have a registered uniform named '{}'.",
                            shader->name, name);
             return INVALID_ID_U16;
         }
@@ -304,8 +306,7 @@ namespace C3D
             location = globalTextureCount;
 
             // NOTE: Creating a default texture map to be used here. Can always be updated later.
-            TextureMap defaultMap(TextureUse::Unknown, TextureFilter::ModeLinear, TextureFilter::ModeLinear,
-                                  TextureRepeat::Repeat);
+            TextureMap defaultMap;
 
             // Allocate a pointer assign the texture and push into global texture maps.
             // NOTE: This allocation is only done for global texture maps.
@@ -313,7 +314,7 @@ namespace C3D
             *map         = defaultMap;
             map->texture = Textures.GetDefault();
 
-            if (!Renderer.AcquireTextureMapResources(map))
+            if (!Renderer.AcquireTextureMapResources(*map))
             {
                 m_logger.Error("AddSampler() - Failed to acquire global texture map resources.");
                 return false;

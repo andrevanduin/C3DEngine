@@ -46,7 +46,6 @@ namespace C3D
         bool EndRenderPass(RenderPass* pass) override;
 
         void DrawGeometry(const GeometryRenderData& data) override;
-        void DrawTerrainGeometry(const TerrainRenderData& data) override;
 
         void CreateTexture(const u8* pixels, Texture* texture) override;
         void CreateWritableTexture(Texture* texture) override;
@@ -75,11 +74,12 @@ namespace C3D
         bool ShaderApplyGlobals(Shader* shader) override;
         bool ShaderApplyInstance(Shader* shader, bool needsUpdate) override;
 
-        bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) override;
+        bool AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+                                            u32* outInstanceId) override;
         bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) override;
 
-        bool AcquireTextureMapResources(TextureMap* map) override;
-        void ReleaseTextureMapResources(TextureMap* map) override;
+        bool AcquireTextureMapResources(TextureMap& map) override;
+        void ReleaseTextureMapResources(TextureMap& map) override;
 
         bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
 
@@ -90,7 +90,8 @@ namespace C3D
         RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
         bool DestroyRenderPass(RenderPass* pass) override;
 
-        RenderBuffer* CreateRenderBuffer(RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
+        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize,
+                                         bool useFreelist) override;
         bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
         Texture* GetWindowAttachment(u8 index) override;

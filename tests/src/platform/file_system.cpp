@@ -1,0 +1,52 @@
+
+#include "file_system.h"
+
+#include <containers/string.h>
+#include <platform/file_system.h>
+
+#include "../expect.h"
+
+u8 FileSystemDirectoryFromPath()
+{
+    C3D::String path = "/assets/directory/test/text_file.txt";
+
+    C3D::String expectedDirectory = "/assets/directory/test/";
+    C3D::String actualDirectory   = C3D::FileSystem::DirectoryFromPath(path);
+
+    ExpectShouldBe(expectedDirectory, actualDirectory);
+
+    return true;
+}
+
+u8 FileNameFromPathWithExtension()
+{
+    C3D::String path = "/assets/directory/test/text_file.txt";
+
+    C3D::String expectedFileName = "text_file.txt";
+    C3D::String actualFileName   = C3D::FileSystem::FileNameFromPath(path, true);
+
+    ExpectShouldBe(expectedFileName, actualFileName);
+
+    return true;
+}
+
+u8 FileNameFromPathWithoutExtension()
+{
+    C3D::String path = "/assets/directory/test/text_file.txt";
+
+    C3D::String expectedFileName = "text_file";
+    C3D::String actualFileName   = C3D::FileSystem::FileNameFromPath(path);
+
+    ExpectShouldBe(expectedFileName, actualFileName);
+
+    return true;
+}
+
+void FileSystem::RegisterTests(TestManager* manager)
+{
+    manager->StartType("FileSystem");
+    manager->Register(FileSystemDirectoryFromPath, "DirectoryFromPath should correctly return the full directory.");
+    manager->Register(FileNameFromPathWithExtension, "FileNameFromPath should correctly return the file name.");
+    manager->Register(FileNameFromPathWithoutExtension,
+                      "FileNameFromPath should remove extension when option is provided.");
+}

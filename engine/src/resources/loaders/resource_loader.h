@@ -35,14 +35,19 @@ namespace C3D
     };
 
     template <typename T>
-    class ResourceLoader final : public IResourceLoader
+    class ResourceLoader : public IResourceLoader
     {
     public:
         explicit ResourceLoader(const SystemManager* pSystemsManager)
             : IResourceLoader(pSystemsManager, "NONE", MemoryType::Unknown, ResourceType::None, nullptr, nullptr)
         {}
 
+        ResourceLoader(const SystemManager* pSystemsManager, const char* name, MemoryType memoryType, ResourceType type,
+                       const char* customType, const char* path)
+            : IResourceLoader(pSystemsManager, name, memoryType, type, customType, path)
+        {}
+
         bool Load(const char* name, T& resource) const;
-        void Unload(T& resource) const;
+        static void Unload(T& resource);
     };
 }  // namespace C3D

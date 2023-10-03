@@ -2,7 +2,6 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
-#include "render_view.h"
 
 struct SDL_Window;
 
@@ -21,14 +20,9 @@ namespace C3D
 
     enum RendererViewMode : i32
     {
-        Default = 0,
+        Default  = 0,
         Lighting = 1,
-        Normals = 2,
-    };
-
-    struct RenderPacket
-    {
-        DynamicArray<RenderViewPacket, LinearAllocator> views;
+        Normals  = 2,
     };
 
     enum RendererConfigFlagBits : u8

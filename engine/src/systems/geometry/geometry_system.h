@@ -78,7 +78,7 @@ namespace C3D
         Geometry m_defaultGeometry;
         Geometry m_default2DGeometry;
 
-        GeometryReference* m_registeredGeometries;
+        GeometryReference* m_registeredGeometries = nullptr;
     };
 
     template <typename VertexType, typename IndexType>

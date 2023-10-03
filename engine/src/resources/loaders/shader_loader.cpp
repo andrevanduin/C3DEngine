@@ -2,19 +2,18 @@
 #include "shader_loader.h"
 
 #include "core/engine.h"
-#include "platform/filesystem.h"
-#include "resources/shader.h"
+#include "platform/file_system.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
 
 namespace C3D
 {
-    ResourceLoader<ShaderResource>::ResourceLoader(const SystemManager* pSystemsManager)
+    ResourceLoader<ShaderConfig>::ResourceLoader(const SystemManager* pSystemsManager)
         : IResourceLoader(pSystemsManager, "SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr,
                           "shaders")
     {}
 
-    bool ResourceLoader<ShaderResource>::Load(const char* name, ShaderResource& resource) const
+    bool ResourceLoader<ShaderConfig>::Load(const char* name, ShaderConfig& resource) const
     {
         if (std::strlen(name) == 0)
         {
@@ -32,10 +31,10 @@ namespace C3D
         }
 
         resource.fullPath = fullPath;
-        resource.config.cullMode = FaceCullMode::Back;
+        resource.cullMode = FaceCullMode::Back;
 
-        resource.config.attributes.Reserve(4);
-        resource.config.uniforms.Reserve(8);
+        resource.attributes.Reserve(4);
+        resource.uniforms.Reserve(8);
 
         String line;
         u32 lineNumber = 1;
@@ -84,7 +83,7 @@ namespace C3D
             }
             else if (varName.IEquals("name"))
             {
-                resource.config.name = value;
+                resource.name = value;
             }
             else if (varName.IEquals("renderPass"))
             {
@@ -93,35 +92,35 @@ namespace C3D
             }
             else if (varName.IEquals("depthTest"))
             {
-                resource.config.depthTest = value.ToBool();
+                resource.depthTest = value.ToBool();
             }
             else if (varName.IEquals("depthWrite"))
             {
-                resource.config.depthWrite = value.ToBool();
+                resource.depthWrite = value.ToBool();
             }
             else if (varName.IEquals("stages"))
             {
-                ParseStages(resource.config, value);
+                ParseStages(resource, value);
             }
             else if (varName.IEquals("stageFiles"))
             {
-                ParseStageFiles(resource.config, value);
+                ParseStageFiles(resource, value);
             }
             else if (varName.IEquals("cullMode"))
             {
-                ParseCullMode(resource.config, value);
+                ParseCullMode(resource, value);
             }
             else if (varName.IEquals("attribute"))
             {
-                ParseAttribute(resource.config, value);
+                ParseAttribute(resource, value);
             }
             else if (varName.IEquals("uniform"))
             {
-                ParseUniform(resource.config, value);
+                ParseUniform(resource, value);
             }
             else if (varName.IEquals("topology"))
             {
-                ParseTopology(resource.config, value);
+                ParseTopology(resource, value);
             }
 
             lineNumber++;
@@ -131,26 +130,24 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<ShaderResource>::Unload(ShaderResource& resource) const
+    void ResourceLoader<ShaderConfig>::Unload(ShaderConfig& resource) const
     {
-        auto& data = resource.config;
-
-        data.stageFileNames.Destroy();
-        data.stageNames.Destroy();
-        data.stages.Destroy();
+        resource.stageFileNames.Destroy();
+        resource.stageNames.Destroy();
+        resource.stages.Destroy();
 
         // Cleanup attributes
-        data.attributes.Destroy();
+        resource.attributes.Destroy();
 
         // Cleanup uniforms
-        data.uniforms.Destroy();
-        data.name.Destroy();
+        resource.uniforms.Destroy();
+        resource.name.Destroy();
 
         resource.name.Destroy();
         resource.fullPath.Destroy();
     }
 
-    void ResourceLoader<ShaderResource>::ParseStages(ShaderConfig& data, const String& value) const
+    void ResourceLoader<ShaderConfig>::ParseStages(ShaderConfig& data, const String& value) const
     {
         data.stageNames = value.Split(',');
         if (!data.stageFileNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
@@ -185,7 +182,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<ShaderResource>::ParseStageFiles(ShaderConfig& data, const String& value) const
+    void ResourceLoader<ShaderConfig>::ParseStageFiles(ShaderConfig& data, const String& value) const
     {
         data.stageFileNames = value.Split(',');
         if (!data.stageNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
@@ -196,7 +193,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<ShaderResource>::ParseAttribute(ShaderConfig& data, const String& value) const
+    void ResourceLoader<ShaderConfig>::ParseAttribute(ShaderConfig& data, const String& value) const
     {
         const auto fields = value.Split(',');
         if (fields.Size() != 2)
@@ -271,7 +268,7 @@ namespace C3D
         data.attributes.PushBack(attribute);
     }
 
-    bool ResourceLoader<ShaderResource>::ParseUniform(ShaderConfig& data, const String& value) const
+    bool ResourceLoader<ShaderConfig>::ParseUniform(ShaderConfig& data, const String& value) const
     {
         const auto fields = value.Split(',');
         if (fields.Size() != 3)
@@ -350,8 +347,8 @@ namespace C3D
                 return false;
             }
             String structSize = fields[0].SubStr(6, 0);
-            uniform.type = Uniform_Custom;
-            uniform.size = structSize.ToU16();
+            uniform.type      = Uniform_Custom;
+            uniform.size      = structSize.ToU16();
         }
         else
         {
@@ -377,8 +374,8 @@ namespace C3D
         }
         else
         {
-            m_logger.Error("ParseUniform(). Invalid file layout. Uniform scope must be global, instance or local.");
-            m_logger.Warn("Defaulting to global.");
+            m_logger.Error("ParseUniform() - Invalid file layout. Uniform scope must be global, instance or local.");
+            m_logger.Warn("ParseUniform() - Defaulting to global.");
             uniform.scope = ShaderScope::Global;
         }
 
@@ -389,7 +386,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<ShaderResource>::ParseTopology(ShaderConfig& data, const String& value)
+    void ResourceLoader<ShaderConfig>::ParseTopology(ShaderConfig& data, const String& value)
     {
         if (value.IEquals("points"))
         {
@@ -405,7 +402,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<ShaderResource>::ParseCullMode(ShaderConfig& data, const String& value)
+    void ResourceLoader<ShaderConfig>::ParseCullMode(ShaderConfig& data, const String& value)
     {
         if (value.IEquals("front"))
         {

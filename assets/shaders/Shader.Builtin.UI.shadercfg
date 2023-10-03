@@ -15,6 +15,6 @@ attribute = vec2, inTexCoord
 uniform = mat4, global, projection
 uniform = mat4, global, view
 
-uniform = vec4, instance, diffuseColor
+uniform = struct16, instance, properties
 uniform = samp, instance, diffuseTexture
 uniform = mat4, local, model

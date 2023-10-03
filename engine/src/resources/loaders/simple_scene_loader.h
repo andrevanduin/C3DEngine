@@ -5,21 +5,21 @@
 
 namespace C3D
 {
-    enum class ParserTagType
-    {
-        Invalid,
-        Closing,
-        Scene,
-        Mesh,
-        Skybox,
-        DirectionalLight,
-        PointLight,
-        Terrain
-    };
-
     template <>
     class C3D_API ResourceLoader<SimpleSceneConfig> final : public IResourceLoader
     {
+        enum class ParserTagType
+        {
+            Invalid,
+            Closing,
+            Scene,
+            Mesh,
+            Skybox,
+            DirectionalLight,
+            PointLight,
+            Terrain
+        };
+
     public:
         explicit ResourceLoader(const SystemManager* pSystemsManager);
 
@@ -33,8 +33,7 @@ namespace C3D
 
         void ParseScene(const String& name, const String& value, SimpleSceneConfig& cfg) const;
         void ParseSkybox(const String& name, const String& value, SimpleSceneConfig& cfg) const;
-        void ParseDirectionalLight(const String& name, const String& value,
-                                                      SimpleSceneConfig& cfg) const;
+        void ParseDirectionalLight(const String& name, const String& value, SimpleSceneConfig& cfg) const;
         void ParsePointLight(const String& name, const String& value, SimpleSceneConfig& cfg) const;
         void ParseMesh(const String& name, const String& value, SimpleSceneConfig& cfg) const;
         void ParseTerrain(const String& name, const String& value, SimpleSceneConfig& cfg) const;

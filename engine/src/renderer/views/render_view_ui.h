@@ -1,10 +1,11 @@
 
 #pragma once
 #include "renderer/render_view.h"
-#include "resources/shader.h"
 
 namespace C3D
 {
+    class Shader;
+
     class RenderViewUi final : public RenderView
     {
     public:
@@ -20,15 +21,15 @@ namespace C3D
                       u64 renderTargetIndex) override;
 
     private:
-        f32 m_nearClip;
-        f32 m_farClip;
+        f32 m_nearClip = -100.0f;
+        f32 m_farClip  = 100.0f;
 
-        mat4 m_projectionMatrix;
-        mat4 m_viewMatrix;
+        mat4 m_projectionMatrix = mat4(1);
+        mat4 m_viewMatrix       = mat4(1);
 
-        Shader* m_shader;
-        u16 m_diffuseMapLocation;
-        u16 m_diffuseColorLocation;
-        u16 m_modelLocation;
+        Shader* m_shader         = nullptr;
+        u16 m_diffuseMapLocation = INVALID_ID_U16;
+        u16 m_propertiesLocation = INVALID_ID_U16;
+        u16 m_modelLocation      = INVALID_ID_U16;
     };
 }  // namespace C3D

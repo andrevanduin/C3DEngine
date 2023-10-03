@@ -7,12 +7,12 @@
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
 #include "resources/geometry.h"
-#include "resources/material.h"
 #include "terrain_config.h"
 
 namespace C3D
 {
     class SystemManager;
+    struct Material;
 
     class Terrain
     {
@@ -29,9 +29,6 @@ namespace C3D
 
         bool Update();
 
-        bool Render(FrameData& frameData, const mat4& projection, const mat4& view, const mat4& model,
-                    const vec4& ambientColor, const vec3& viewPosition, u32 renderMode);
-
         void Destroy();
 
         const String& GetName() const { return m_name; }
@@ -39,8 +36,6 @@ namespace C3D
         mat4 GetModel() const { return m_transform.GetWorld(); }
 
         Geometry* GetGeometry() { return &m_geometry; }
-
-        const DynamicArray<Material*>& GetMaterials() { return m_materials; }
 
         void SetTransform(const Transform& t) { m_transform = t; }
 
@@ -54,7 +49,6 @@ namespace C3D
         String m_name;
         u32 m_tileCountX = 0, m_tileCountZ = 0;
         u32 m_totalTileCount = 0, m_vertexCount = 0;
-        u32 m_scaleY = 0;
 
         /** @brief The scale of each individual tile on the x and z axis. */
         f32 m_tileScaleX = 1.0f, m_tileScaleY = 1.0f, m_tileScaleZ = 1.0f;
@@ -63,11 +57,10 @@ namespace C3D
         Extents3D m_extents;
         vec3 m_origin;
 
-        Geometry m_geometry;
-
         DynamicArray<TerrainVertex> m_vertices;
         DynamicArray<u32> m_indices;
-        DynamicArray<Material*> m_materials;
+
+        Geometry m_geometry;
 
         TerrainConfig m_config;
         LoggerInstance<16> m_logger;

@@ -1,7 +1,7 @@
 
 #pragma once
+#include <renderer/render_target.h>
 #include <renderer/renderer_types.h>
-#include <resources/texture.h>
 
 #include "vulkan_image.h"
 
@@ -9,6 +9,7 @@ namespace C3D
 {
     class SystemManager;
     struct VulkanContext;
+    struct Texture;
 
     class VulkanSwapChain
     {
@@ -35,9 +36,9 @@ namespace C3D
 
         Texture* renderTextures = nullptr;
 
-        /* @brief An array of depth texture. */
+        /** @brief An array of depth texture. */
         Texture* depthTextures = nullptr;
-        /* @brief Render targets used for on-screen rendering, one per frame. */
+        /** @brief Render targets used for on-screen rendering, one per frame. */
         RenderTarget renderTargets[3] = {};
 
     private:

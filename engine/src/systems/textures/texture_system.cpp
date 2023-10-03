@@ -56,12 +56,31 @@ namespace C3D
 
     Texture* TextureSystem::Acquire(const char* name, const bool autoRelease)
     {
-        // If the default texture is requested we return it. But we warn about it since it should be
-        // retrieved with GetDefault()
         if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
         {
-            m_logger.Warn("Acquire() - Called for {} texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
+            m_logger.Warn("Acquire() - Called for '{}' texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
             return &m_defaultTexture;
+        }
+
+        if (StringUtils::IEquals(name, DEFAULT_DIFFUSE_TEXTURE_NAME))
+        {
+            m_logger.Warn("Acquire() - Called for '{}' texture. Use GetDefault() for this.",
+                          DEFAULT_DIFFUSE_TEXTURE_NAME);
+            return &m_defaultDiffuseTexture;
+        }
+
+        if (StringUtils::IEquals(name, DEFAULT_SPECULAR_TEXTURE_NAME))
+        {
+            m_logger.Warn("Acquire() - Called for '{}' texture. Use GetDefault() for this.",
+                          DEFAULT_SPECULAR_TEXTURE_NAME);
+            return &m_defaultSpecularTexture;
+        }
+
+        if (StringUtils::IEquals(name, DEFAULT_NORMAL_TEXTURE_NAME))
+        {
+            m_logger.Warn("Acquire() - Called for '{}' texture. Use GetDefault() for this.",
+                          DEFAULT_NORMAL_TEXTURE_NAME);
+            return &m_defaultNormalTexture;
         }
 
         Texture* texture = ProcessTextureReference(name, TextureType::Type2D, 1, autoRelease, false);
@@ -112,15 +131,16 @@ namespace C3D
         return t;
     }
 
-    void TextureSystem::Release(const char* name)
+    void TextureSystem::Release(const String& name)
     {
-        if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
+        if (name == DEFAULT_TEXTURE_NAME)
         {
-            m_logger.Warn("Tried to release {}. This happens on shutdown automatically", DEFAULT_TEXTURE_NAME);
+            m_logger.Warn("Release() - Tried to release '{}'. This happens on shutdown automatically.",
+                          DEFAULT_TEXTURE_NAME);
             return;
         }
 
-        ProcessTextureReference(name, TextureType::Type2D, -1, false, false);
+        ProcessTextureReference(name.Data(), TextureType::Type2D, -1, false, false);
     }
 
     void TextureSystem::WrapInternal(const char* name, const u32 width, const u32 height, const u8 channelCount,
@@ -386,12 +406,12 @@ namespace C3D
         info.onFailure  = [this, loadingTextureIndex]() {
             const auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
 
-            m_logger.Error("LoadJobFailure() - Failed to load texture '{}'", loadingTexture.resourceName);
+            m_logger.Error("LoadJobFailure() - Failed to load texture '{}'.", loadingTexture.resourceName);
             CleanupLoadingTexture(loadingTextureIndex);
         };
 
         Jobs.Submit(std::move(info));
-        m_logger.Trace("LoadTexture() - Loading job submitted for: '{}'", name);
+        m_logger.Trace("LoadTexture() - Loading job submitted for: '{}'.", name);
 
         return true;
     }
@@ -400,7 +420,7 @@ namespace C3D
                                          const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames,
                                          Texture* texture) const
     {
-        constexpr ImageResourceParams params{ false };
+        constexpr ImageLoadParams params{ false };
 
         u8* pixels    = nullptr;
         u64 imageSize = 0;
@@ -409,7 +429,7 @@ namespace C3D
         {
             const auto textureName = textureNames[i];
 
-            ImageResource res{};
+            Image res{};
             if (!Resources.Load(textureName.Data(), res, params))
             {
                 m_logger.Error("LoadCubeTextures() - Failed to load image resource for texture '{}'", textureName);
@@ -494,7 +514,7 @@ namespace C3D
         // Get our reference to the texture
         auto& ref = m_registeredTextures.Get(name);
 
-        // Increment / Decrement our reference count
+        // Increment/Decrement our reference count
         ref.referenceCount += referenceDiff;
 
         CString<TEXTURE_NAME_MAX_LENGTH> nameCopy = name;
@@ -575,6 +595,8 @@ namespace C3D
                         "ProcessTextureReference() - Texture '{}' did not exist yet. Created and refCount is now {}.",
                         name, ref.referenceCount);
                 }
+
+                ref.texture.name = name;
             }
             else
             {
@@ -588,14 +610,14 @@ namespace C3D
 
     bool TextureSystem::LoadJobEntryPoint(u32 loadingTextureIndex)
     {
-        constexpr ImageResourceParams resourceParams{ true };
+        constexpr ImageLoadParams resourceParams{ true };
 
         auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
         const auto result =
             Resources.Load(loadingTexture.resourceName.Data(), loadingTexture.imageResource, resourceParams);
         if (result)
         {
-            const ImageResource& resourceData = loadingTexture.imageResource;
+            const auto& resourceData = loadingTexture.imageResource;
 
             // Use our temporary texture to load into
             loadingTexture.tempTexture.width        = resourceData.width;
@@ -631,8 +653,8 @@ namespace C3D
     void TextureSystem::LoadJobSuccess(u32 loadingTextureIndex)
     {
         // TODO: This still handles the GPU upload. This can't be jobified before our renderer supports multiThreading.
-        auto& loadingTexture              = m_loadingTextures[loadingTextureIndex];
-        const ImageResource& resourceData = loadingTexture.imageResource;
+        auto& loadingTexture     = m_loadingTextures[loadingTextureIndex];
+        const auto& resourceData = loadingTexture.imageResource;
 
         // Acquire internal texture resources and upload to GPU.
         Renderer.CreateTexture(resourceData.pixels, &loadingTexture.tempTexture);

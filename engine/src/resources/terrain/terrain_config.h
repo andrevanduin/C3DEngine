@@ -16,9 +16,18 @@ namespace C3D
 
     struct TerrainConfig final : Resource
     {
-        TerrainConfig() {}
+        TerrainConfig() = default;
 
-        TerrainConfig(const SimpleSceneTerrainConfig& cfg) : name(cfg.name), resourceName(cfg.resourceName) {}
+        TerrainConfig(const SimpleSceneTerrainConfig& cfg) : name(cfg.name), resourceName(cfg.resourceName)
+        {}
+
+        void Destroy()
+        {
+            name.Destroy();
+            resourceName.Destroy();
+            vertexConfigs.Destroy();
+            materials.Destroy();
+        }
 
         String name;
         String resourceName;

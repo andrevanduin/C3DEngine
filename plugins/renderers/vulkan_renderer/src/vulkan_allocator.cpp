@@ -42,7 +42,7 @@ namespace C3D
 
         u64 size;
         u16 alignment;
-        if (DynamicAllocator::GetSizeAlignment(memory, &size, &alignment))
+        if (Memory.GetSizeAlignment(memory, &size, &alignment))
         {
             Memory.Free(MemoryType::Vulkan, memory);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
@@ -73,7 +73,7 @@ namespace C3D
 
         u64 allocSize;
         u16 allocAlignment;
-        if (!DynamicAllocator::GetSizeAlignment(original, &allocSize, &allocAlignment))
+        if (!Memory.GetSizeAlignment(original, &allocSize, &allocAlignment))
         {
             Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.",
                           fmt::ptr(original));
@@ -148,12 +148,12 @@ namespace C3D
     {
         if (callbacks)
         {
-            callbacks->pfnAllocation = VulkanAllocatorAllocate;
-            callbacks->pfnReallocation = VulkanAllocatorReallocate;
-            callbacks->pfnFree = VulkanAllocatorFree;
+            callbacks->pfnAllocation         = VulkanAllocatorAllocate;
+            callbacks->pfnReallocation       = VulkanAllocatorReallocate;
+            callbacks->pfnFree               = VulkanAllocatorFree;
             callbacks->pfnInternalAllocation = VulkanAllocatorInternalAllocation;
-            callbacks->pfnInternalFree = VulkanAllocatorInternalFree;
-            callbacks->pUserData = nullptr;
+            callbacks->pfnInternalFree       = VulkanAllocatorInternalFree;
+            callbacks->pUserData             = nullptr;
             return true;
         }
         return false;

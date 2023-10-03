@@ -12,36 +12,27 @@
 namespace C3D
 {
     RenderViewSkybox::RenderViewSkybox(const RenderViewConfig& config)
-        : RenderView(ToUnderlying(RenderViewKnownType::Skybox), config),
-          m_shader(nullptr),
-          m_fov(DegToRad(45.0f)),
-          m_nearClip(0.1f),
-          m_farClip(1000.0f),
-          m_projectionMatrix(),
-          m_camera(nullptr),
-          m_projectionLocation(0),
-          m_viewLocation(0),
-          m_cubeMapLocation(0)
+        : RenderView(ToUnderlying(RenderViewKnownType::Skybox), config)
     {}
 
     bool RenderViewSkybox::OnCreate()
     {
         // Builtin skybox shader
         const auto shaderName = "Shader.Builtin.Skybox";
-        ShaderResource res;
-        if (!Resources.Load(shaderName, res))
+        ShaderConfig shaderConfig;
+        if (!Resources.Load(shaderName, shaderConfig))
         {
             m_logger.Error("OnCreate() - Failed to load ShaderResource");
             return false;
         }
         // NOTE: Since this view only has 1 pass we assume index 0
-        if (!Shaders.Create(passes[0], res.config))
+        if (!Shaders.Create(passes[0], shaderConfig))
         {
             m_logger.Error("OnCreate() - Failed to create {}", shaderName);
             return false;
         }
 
-        Resources.Unload(res);
+        Resources.Unload(shaderConfig);
 
         m_shader             = Shaders.Get(m_customShaderName ? m_customShaderName.Data() : shaderName);
         m_projectionLocation = Shaders.GetUniformIndex(m_shader, "projection");

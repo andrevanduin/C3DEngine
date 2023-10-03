@@ -29,15 +29,15 @@ namespace C3D
         UIText();
 
         UIText(const UIText&) = delete;
-        UIText(UIText&&) = delete;
+        UIText(UIText&&)      = delete;
 
         UIText& operator=(const UIText&) = delete;
-        UIText& operator=(UIText&&) = delete;
+        UIText& operator=(UIText&&)      = delete;
 
         ~UIText();
 
-        bool Create(const SystemManager* pSystemsManager, UITextType fontType, const char* fontName, u16 fontSize,
-                    const char* textContent);
+        bool Create(const String& name, const SystemManager* pSystemsManager, UITextType fontType, const char* fontName,
+                    u16 fontSize, const char* textContent);
         void Destroy();
 
         void SetPosition(const vec3& pos);
@@ -51,9 +51,9 @@ namespace C3D
         u32 uniqueId = INVALID_ID;
 
         UITextType type = UITextType::Unknown;
-        FontData* data = nullptr;
+        FontData* data  = nullptr;
 
-        u32 instanceId = INVALID_ID;
+        u32 instanceId  = INVALID_ID;
         u64 frameNumber = INVALID_ID_U64;
 
         Transform transform;
@@ -66,7 +66,7 @@ namespace C3D
         LoggerInstance<16> m_logger;
 
         RenderBuffer* m_vertexBuffer = nullptr;
-        RenderBuffer* m_indexBuffer = nullptr;
+        RenderBuffer* m_indexBuffer  = nullptr;
 
         DynamicArray<Vertex2D> m_vertexData;
         DynamicArray<u32> m_indexData;

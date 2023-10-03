@@ -260,7 +260,7 @@ namespace C3D
             {
                 // Clear our world geometries
                 m_worldData.worldGeometries.Clear();
-                m_worldData.terrainData.Clear();
+                m_worldData.terrainGeometries.Clear();
 
                 for (const auto& mesh : m_meshes)
                 {
@@ -319,24 +319,8 @@ namespace C3D
                 {
                     // TODO: Check terrain generation
                     // TODO: Frustum culling
-                    TerrainRenderData data;
-
-                    data.model    = terrain.GetModel();
-                    data.geometry = terrain.GetGeometry();
-                    // TODO: Add unique id to terrain for object picking
-                    data.uniqueId = 0;
-
-                    // Take a copy of the pointers to the materials used by this terrain
-                    const auto& materials = terrain.GetMaterials();
-                    data.numMaterials     = materials.Size();
-
-                    for (u32 i = 0; i < data.numMaterials; i++)
-                    {
-                        data.materials[i] = materials[i];
-                    }
-
-                    m_worldData.terrainData.PushBack(data);
-
+                    // TODO: Add unique id to terrain for object picking (instead of hard-coded 0)
+                    m_worldData.terrainGeometries.EmplaceBack(terrain.GetModel(), terrain.GetGeometry(), 0);
                     // TODO: Seperate counter for terrain meshes/geometry
                     frameData.drawnMeshCount++;
                 }
@@ -630,6 +614,8 @@ namespace C3D
             {
                 m_logger.Error("Unload() - Failed to unload Mesh: '{}'", mesh.GetName());
             }
+
+            mesh.Destroy();
         }
 
         for (auto& terrain : m_terrains)
@@ -638,6 +624,8 @@ namespace C3D
             {
                 m_logger.Error("Unload() - Failed to unload Terrain: '{}'", terrain.GetName());
             }
+
+            terrain.Destroy();
         }
 
         if (m_directionalLight)
@@ -654,9 +642,10 @@ namespace C3D
 
         m_pointLights.Destroy();
         m_meshes.Destroy();
+        m_terrains.Destroy();
 
         m_worldData.worldGeometries.Destroy();
-        m_worldData.terrainData.Destroy();
+        m_worldData.terrainGeometries.Destroy();
 
         m_directionalLight = "";
         m_skybox           = nullptr;

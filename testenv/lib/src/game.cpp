@@ -63,7 +63,7 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 {
     // TEMP
     // Create test ui text objects
-    if (!m_state->testText.Create(m_pSystemsManager, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
+    if (!m_state->testText.Create("TEST_UI_TEXT", m_pSystemsManager, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
                                   "Some test text 123,\nyesyes!\n\tKaas!"))
     {
         m_logger.Fatal("OnRun() - Failed to load basic ui bitmap text.");

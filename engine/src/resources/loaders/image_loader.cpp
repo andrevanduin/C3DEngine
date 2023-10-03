@@ -2,7 +2,7 @@
 #include "image_loader.h"
 
 #include "core/logger.h"
-#include "platform/filesystem.h"
+#include "platform/file_system.h"
 #include "resources/resource_types.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
@@ -14,18 +14,14 @@
 
 namespace C3D
 {
-    ResourceLoader<ImageResource>::ResourceLoader(const SystemManager* pSystemsManager)
+    ResourceLoader<Image>::ResourceLoader(const SystemManager* pSystemsManager)
         : IResourceLoader(pSystemsManager, "IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr,
                           "textures")
     {}
 
-    bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource& resource) const
-    {
-        return Load(name, resource, {});
-    }
+    bool ResourceLoader<Image>::Load(const char* name, Image& resource) const { return Load(name, resource, {}); }
 
-    bool ResourceLoader<ImageResource>::Load(const char* name, ImageResource& resource,
-                                             const ImageResourceParams& params) const
+    bool ResourceLoader<Image>::Load(const char* name, Image& resource, const ImageLoadParams& params) const
     {
         if (std::strlen(name) == 0) return false;
 
@@ -115,7 +111,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<ImageResource>::Unload(ImageResource& resource)
+    void ResourceLoader<Image>::Unload(Image& resource)
     {
         // Free the pixel data loaded in by STBI
         stbi_image_free(resource.pixels);

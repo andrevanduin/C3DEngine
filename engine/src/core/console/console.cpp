@@ -17,9 +17,9 @@ namespace C3D
     {
         m_pSystemsManager = pSystemsManager;
 
-        m_text.Create(m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "-");
-        m_entry.Create(m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, " ");
-        m_cursor.Create(m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "|");
+        m_text.Create("CONSOLE_UI_TEXT", m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "-");
+        m_entry.Create("CONSOLE_UI_ENTRY_TEXT", m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, " ");
+        m_cursor.Create("CONSOLE_UI_CURSOR_TEXT", m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "|");
 
         m_text.SetPosition({ 5, 5, 0 });
         m_entry.SetPosition({ 5, 30, 0 });

@@ -2,9 +2,14 @@
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 1, binding = 0) uniform localUniformObject
+struct UIProperties 
 {
 	vec4 diffuseColor;
+};
+
+layout(set = 1, binding = 0) uniform localUniformObject
+{
+	UIProperties properties;
 } objectUbo;
 
 // Samplers
@@ -18,5 +23,5 @@ layout(location = 1) in struct dto
 
 void main() 
 {
-	outColor = objectUbo.diffuseColor * texture(samplers[SAMP_DIFFUSE], inDto.texCoord);
+	outColor = objectUbo.properties.diffuseColor * texture(samplers[SAMP_DIFFUSE], inDto.texCoord);
 }

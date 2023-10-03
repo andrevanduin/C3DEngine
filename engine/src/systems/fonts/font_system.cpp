@@ -132,13 +132,11 @@ namespace C3D
     bool FontSystem::SetupFontData(FontData& font) const
     {
         // Create our TextureMap resources
-        font.atlas.magnifyFilter = font.atlas.minifyFilter = TextureFilter::ModeLinear;
         font.atlas.repeatU = font.atlas.repeatV = font.atlas.repeatW = TextureRepeat::ClampToEdge;
-        font.atlas.use = TextureUse::Diffuse;
 
-        if (!Renderer.AcquireTextureMapResources(&font.atlas))
+        if (!Renderer.AcquireTextureMapResources(font.atlas))
         {
-            m_logger.Error("SetupFontData() - Unable to acquire resources for font atlas");
+            m_logger.Error("SetupFontData() - Unable to acquire resources for font atlas.");
             return false;
         }
 
@@ -154,7 +152,7 @@ namespace C3D
                 {
                     // If we find the tab character we just use it's xAdvance.
                     font.tabXAdvance = glyph.xAdvance;
-                    found = true;
+                    found            = true;
                     break;
                 }
             }
@@ -168,7 +166,7 @@ namespace C3D
                     {
                         // We set it to 4 x xAdvance of space character.
                         font.tabXAdvance = static_cast<f32>(glyph.xAdvance) * 4.0f;
-                        found = true;
+                        found            = true;
                         break;
                     }
                 }
@@ -187,7 +185,7 @@ namespace C3D
     void FontSystem::CleanupFontData(FontData& font) const
     {
         // Release our texture map resources
-        Renderer.ReleaseTextureMapResources(&font.atlas);
+        Renderer.ReleaseTextureMapResources(font.atlas);
         // If it's a bitmap font, we release the reference to it's texture
         if (font.type == FontType::Bitmap && font.atlas.texture)
         {

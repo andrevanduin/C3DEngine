@@ -3,10 +3,12 @@
 #include "core/defines.h"
 #include "core/events/event_context.h"
 #include "renderer/render_view.h"
-#include "resources/shader.h"
+#include "resources/textures/texture.h"
 
 namespace C3D
 {
+    class Shader;
+
     struct RenderViewPickShaderInfo
     {
         Shader* shader;

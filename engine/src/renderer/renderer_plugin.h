@@ -3,16 +3,22 @@
 #include "core/defines.h"
 #include "core/logger.h"
 #include "render_buffer.h"
+#include "render_view_types.h"
 #include "renderer_types.h"
 
 namespace C3D
 {
     class Engine;
+    class RenderPass;
+    struct RenderTarget;
+    struct RenderTargetAttachment;
     struct Texture;
     struct Shader;
     struct ShaderUniform;
     struct ShaderConfig;
     struct FrameData;
+    struct TextureMap;
+    struct RenderPassConfig;
 
     class RendererPlugin
     {
@@ -34,8 +40,7 @@ namespace C3D
 
         virtual bool BeginFrame(const FrameData& frameData) = 0;
 
-        virtual void DrawGeometry(const GeometryRenderData& data)       = 0;
-        virtual void DrawTerrainGeometry(const TerrainRenderData& data) = 0;
+        virtual void DrawGeometry(const GeometryRenderData& data) = 0;
 
         virtual bool EndFrame(const FrameData& frameData) = 0;
 
@@ -77,11 +82,12 @@ namespace C3D
         virtual bool ShaderApplyGlobals(Shader* shader)                    = 0;
         virtual bool ShaderApplyInstance(Shader* shader, bool needsUpdate) = 0;
 
-        virtual bool AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) = 0;
-        virtual bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId)                        = 0;
+        virtual bool AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+                                                    u32* outInstanceId)             = 0;
+        virtual bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) = 0;
 
-        virtual bool AcquireTextureMapResources(TextureMap* map) = 0;
-        virtual void ReleaseTextureMapResources(TextureMap* map) = 0;
+        virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
+        virtual void ReleaseTextureMapResources(TextureMap& map) = 0;
 
         virtual bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) = 0;
 
@@ -92,8 +98,9 @@ namespace C3D
         virtual RenderPass* CreateRenderPass(const RenderPassConfig& config) = 0;
         virtual bool DestroyRenderPass(RenderPass* pass)                     = 0;
 
-        virtual RenderBuffer* CreateRenderBuffer(RenderBufferType type, u64 totalSize, bool useFreelist) = 0;
-        virtual bool DestroyRenderBuffer(RenderBuffer* buffer)                                           = 0;
+        virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
+                                                 bool useFreelist) = 0;
+        virtual bool DestroyRenderBuffer(RenderBuffer* buffer)     = 0;
 
         virtual Texture* GetWindowAttachment(u8 index) = 0;
         virtual Texture* GetDepthAttachment(u8 index)  = 0;

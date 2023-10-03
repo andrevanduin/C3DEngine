@@ -47,12 +47,11 @@ namespace C3D
         const auto textLoader = Memory.New<ResourceLoader<TextResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto binaryLoader =
             Memory.New<ResourceLoader<BinaryResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto imageLoader =
-            Memory.New<ResourceLoader<ImageResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
+        const auto imageLoader = Memory.New<ResourceLoader<Image>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto materialLoader =
-            Memory.New<ResourceLoader<MaterialResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
+            Memory.New<ResourceLoader<MaterialConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto shaderLoader =
-            Memory.New<ResourceLoader<ShaderResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
+            Memory.New<ResourceLoader<ShaderConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto meshLoader = Memory.New<ResourceLoader<MeshResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto bitmapFontLoader =
             Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader, m_pSystemsManager);

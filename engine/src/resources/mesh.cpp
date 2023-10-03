@@ -68,7 +68,7 @@ namespace C3D
         {
             if (!Unload())
             {
-                m_logger.Error("Destory() - failed to unload");
+                m_logger.Error("Destroy() - failed to unload");
                 return false;
             }
         }

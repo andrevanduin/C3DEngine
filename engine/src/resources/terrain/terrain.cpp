@@ -19,6 +19,11 @@ namespace C3D
         m_pSystemsManager = pSystemsManager;
         m_config          = config;
         m_name            = config.name;
+
+        m_geometry.id         = INVALID_ID;
+        m_geometry.internalId = INVALID_ID;
+        m_geometry.generation = INVALID_ID_U16;
+
         return true;
     }
 
@@ -30,7 +35,8 @@ namespace C3D
 
         m_vertices.Reserve(m_vertexCount);
         m_indices.Reserve(m_totalTileCount * 6);
-        m_materials.Reserve(m_config.materials.Size());
+
+        m_geometry.generation = INVALID_ID_U16;
 
         return true;
     }
@@ -55,17 +61,36 @@ namespace C3D
         return true;
     }
 
-    bool Terrain::Unload() { return true; }
-
-    bool Terrain::Update() { return true; }
-
-    bool Terrain::Render(FrameData& frameData, const mat4& projection, const mat4& view, const mat4& model,
-                         const vec4& ambientColor, const vec3& viewPosition, u32 renderMode)
+    bool Terrain::Unload()
     {
+        Materials.Release(m_geometry.material->name);
+        Renderer.DestroyGeometry(&m_geometry);
         return true;
     }
 
-    void Terrain::Destroy() {}
+    bool Terrain::Update() { return true; }
+
+    void Terrain::Destroy()
+    {
+        m_geometry.id         = INVALID_ID;
+        m_geometry.internalId = INVALID_ID;
+        m_geometry.generation = INVALID_ID_U16;
+        m_geometry.name.Clear();
+
+        m_vertices.Destroy();
+        m_indices.Destroy();
+        m_config.Destroy();
+
+        m_tileScaleX = 0;
+        m_tileScaleY = 0;
+        m_tileScaleZ = 0;
+
+        m_tileCountX = 0;
+        m_tileCountZ = 0;
+
+        m_origin  = vec3(0);
+        m_extents = { vec3(0), vec3(0) };
+    }
 
     bool Terrain::LoadFromResource()
     {
@@ -133,8 +158,11 @@ namespace C3D
                     vert.color    = vec4(1.0f);
                     vert.normal   = { 0, 1, 0 };
                     vert.texture  = { x, z };
-                    // TODO: Figure out a way to auto-assign terrain material weights. (Perhaps with Height?)
-                    vert.materialWeights[0] = 1.0f;
+
+                    vert.materialWeights[0] = SmoothStep(0.00f, 0.25f, m_config.vertexConfigs[i].height);
+                    vert.materialWeights[1] = SmoothStep(0.25f, 0.50f, m_config.vertexConfigs[i].height);
+                    vert.materialWeights[2] = SmoothStep(0.50f, 0.75f, m_config.vertexConfigs[i].height);
+                    vert.materialWeights[3] = SmoothStep(0.75f, 1.00f, m_config.vertexConfigs[i].height);
 
                     m_vertices.PushBack(vert);
                 }
@@ -190,17 +218,17 @@ namespace C3D
         m_geometry.extents = m_extents;
         // TODO: This should be done in the renderer (CreateGeometry() method)
         m_geometry.generation++;
+        m_geometry.id = 0;
 
         {
-            auto timer = ScopedTimer("Acquiring Terrain Materials", m_pSystemsManager);
+            auto timer = ScopedTimer("Acquiring Terrain Material", m_pSystemsManager);
 
-            for (u32 i = 0; i < m_config.materials.Size(); ++i)
+            String terrainMaterialName = String::FromFormat("terrain_mat_{}", m_name);
+            m_geometry.material        = Materials.AcquireTerrain(terrainMaterialName, m_config.materials, true);
+            if (!m_geometry.material)
             {
-                m_materials.PushBack(Materials.Acquire(m_config.materials[i].Data()));
-                if (!m_materials[i])
-                {
-                    m_materials[i] = Materials.GetDefault();
-                }
+                m_logger.Warn("LoadJobSuccess() - Failed to acquire terrain material. Using default instead.");
+                m_geometry.material = Materials.GetDefaultTerrain();
             }
         }
 

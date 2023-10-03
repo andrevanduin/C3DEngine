@@ -1,11 +1,13 @@
 # C3D Terrain config file
 
 version = 1
-heightmapFile = terrain_heightmap
+heightmapFile = terrain_heightmap_256
 
-tileScaleX = 1.0
-tileScaleY = 64.0
-tileScaleZ = 1.0
+tileScaleX = 2.0
+tileScaleY = 32.0
+tileScaleZ = 2.0
 
-material = floor
-material = cobblestone
+material = river_rock
+material = wavy_sand
+material = grass
+material = crusted_snow

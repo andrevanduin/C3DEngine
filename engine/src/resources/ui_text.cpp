@@ -11,7 +11,7 @@
 namespace C3D
 {
     static constexpr u64 VERTICES_PER_QUAD = 4;
-    static constexpr u64 INDICES_PER_QUAD = 6;
+    static constexpr u64 INDICES_PER_QUAD  = 6;
 
     UIText::UIText() : m_logger("UI_TEXT") {}
 
@@ -23,8 +23,8 @@ namespace C3D
         }
     }
 
-    bool UIText::Create(const SystemManager* pSystemsManager, const UITextType fontType, const char* fontName,
-                        const u16 fontSize, const char* textContent)
+    bool UIText::Create(const String& name, const SystemManager* pSystemsManager, const UITextType fontType,
+                        const char* fontName, const u16 fontSize, const char* textContent)
     {
         if (!fontName || !textContent)
         {
@@ -33,7 +33,7 @@ namespace C3D
         }
 
         m_pSystemsManager = pSystemsManager;
-        type = fontType;
+        type              = fontType;
 
         // Acquire our font and assign it's internal data
         if (!Fonts.Acquire(fontName, fontSize, this))
@@ -42,16 +42,16 @@ namespace C3D
             return false;
         }
 
-        m_text = textContent;
-        instanceId = INVALID_ID;
+        m_text      = textContent;
+        instanceId  = INVALID_ID;
         frameNumber = INVALID_ID_U64;
 
         // Acquire resources for font texture map
         // TODO: Switch this to a dedicated text shader
-        Shader* uiShader = Shaders.Get("Shader.Builtin.UI");
-        TextureMap* fontMaps[1] = {&data->atlas};
+        Shader* uiShader        = Shaders.Get("Shader.Builtin.UI");
+        TextureMap* fontMaps[1] = { &data->atlas };
 
-        if (!Renderer.AcquireShaderInstanceResources(uiShader, fontMaps, &instanceId))
+        if (!Renderer.AcquireShaderInstanceResources(uiShader, 1, fontMaps, &instanceId))
         {
             m_logger.Fatal("Create() - Unable to acquire shader resources for font texture map.");
             return false;
@@ -64,7 +64,10 @@ namespace C3D
         // Generate the vertex buffer
         static constexpr u64 quad_size = sizeof(Vertex2D) * VERTICES_PER_QUAD;
 
-        m_vertexBuffer = Renderer.CreateRenderBuffer(RenderBufferType::Vertex, textSize * quad_size, false);
+        const auto vertexBufferName = name + "_VERTEX_BUFFER";
+
+        m_vertexBuffer =
+            Renderer.CreateRenderBuffer(vertexBufferName, RenderBufferType::Vertex, textSize * quad_size, false);
         if (!m_vertexBuffer)
         {
             m_logger.Error("Create() - Failed to create vertex buffer.");
@@ -75,7 +78,10 @@ namespace C3D
         // Generate index buffer
         static constexpr u64 index_size = sizeof(u32) * INDICES_PER_QUAD;
 
-        m_indexBuffer = Renderer.CreateRenderBuffer(RenderBufferType::Index, textSize * index_size, false);
+        const auto indexBufferName = name + "_INDEX_BUFFER";
+
+        m_indexBuffer =
+            Renderer.CreateRenderBuffer(indexBufferName, RenderBufferType::Index, textSize * index_size, false);
         if (!m_indexBuffer)
         {
             m_logger.Error("Create() - Failed to create index buffer.");
@@ -171,10 +177,10 @@ namespace C3D
         if (utf8Size < 1) return;
 
         const u64 vertexCount = VERTICES_PER_QUAD * utf8Size;
-        const u64 indexCount = INDICES_PER_QUAD * utf8Size;
+        const u64 indexCount  = INDICES_PER_QUAD * utf8Size;
 
         const u64 vertexBufferSize = sizeof(Vertex2D) * vertexCount;
-        const u64 indexBufferSize = sizeof(u32) * indexCount;
+        const u64 indexBufferSize  = sizeof(u32) * indexCount;
 
         // Resize our buffers (only if the needed size is larger than what we currently have)
         if (vertexBufferSize > m_vertexBuffer->totalSize)
@@ -224,7 +230,7 @@ namespace C3D
             }
 
             u8 advance = 0;
-            codepoint = m_text.ToCodepoint(c, advance);
+            codepoint  = m_text.ToCodepoint(c, advance);
 
             const FontGlyph* glyph = GetFontGlyph(codepoint);
             if (!glyph)
@@ -248,9 +254,9 @@ namespace C3D
                 const f32 atlasSizeY = static_cast<f32>(data->atlasSizeY);
 
                 const f32 tMinX = static_cast<f32>(glyph->x) / atlasSizeX;
-                f32 tMinY = static_cast<f32>(glyph->y) / atlasSizeY;
+                f32 tMinY       = static_cast<f32>(glyph->y) / atlasSizeY;
                 const f32 tMaxX = static_cast<f32>(glyph->x + glyph->width) / atlasSizeX;
-                f32 tMaxY = static_cast<f32>(glyph->y + glyph->height) / atlasSizeY;
+                f32 tMaxY       = static_cast<f32>(glyph->y + glyph->height) / atlasSizeY;
 
                 // Flip the y-axis for system text
                 if (type == UITextType::System)
@@ -312,7 +318,7 @@ namespace C3D
     {
         if (offset > utf8Size - 1) return 0;
 
-        u8 advanceNext = 0;
+        u8 advanceNext          = 0;
         const i32 nextCodepoint = m_text.ToCodepoint(offset, advanceNext);
         if (nextCodepoint == -1) return 0;
 

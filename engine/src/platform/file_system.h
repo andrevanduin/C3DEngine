@@ -182,8 +182,8 @@ namespace C3D
     class C3D_API FileSystem
     {
     public:
-        static void DirectoryFromPath(char* dest, const char* path);
+        static String DirectoryFromPath(const String& path);
 
-        static void FileNameFromPath(char* dest, const char* path, bool includeExtension = false);
+        static String FileNameFromPath(const String& path, bool includeExtension = false);
     };
 }  // namespace C3D

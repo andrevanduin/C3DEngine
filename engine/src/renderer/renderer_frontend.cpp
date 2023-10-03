@@ -6,7 +6,7 @@
 #include "core/engine.h"
 #include "core/logger.h"
 #include "platform/platform.h"
-#include "resources/shader.h"
+#include "resources/shaders/shader.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/render_views/render_view_system.h"
 #include "systems/system_manager.h"
@@ -166,11 +166,6 @@ namespace C3D
 
     void RenderSystem::DrawGeometry(const GeometryRenderData& data) const { m_backendPlugin->DrawGeometry(data); }
 
-    void RenderSystem::DrawTerrainGeometry(const TerrainRenderData& data) const
-    {
-        m_backendPlugin->DrawTerrainGeometry(data);
-    }
-
     bool RenderSystem::BeginRenderPass(RenderPass* pass, RenderTarget* target) const
     {
         return m_backendPlugin->BeginRenderPass(pass, target);
@@ -203,9 +198,10 @@ namespace C3D
         return m_backendPlugin->ShaderApplyInstance(shader, needsUpdate);
     }
 
-    bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, TextureMap** maps, u32* outInstanceId) const
+    bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+                                                      u32* outInstanceId) const
     {
-        return m_backendPlugin->AcquireShaderInstanceResources(shader, maps, outInstanceId);
+        return m_backendPlugin->AcquireShaderInstanceResources(shader, textureMapCount, maps, outInstanceId);
     }
 
     bool RenderSystem::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId) const
@@ -213,12 +209,12 @@ namespace C3D
         return m_backendPlugin->ReleaseShaderInstanceResources(shader, instanceId);
     }
 
-    bool RenderSystem::AcquireTextureMapResources(TextureMap* map) const
+    bool RenderSystem::AcquireTextureMapResources(TextureMap& map) const
     {
         return m_backendPlugin->AcquireTextureMapResources(map);
     }
 
-    void RenderSystem::ReleaseTextureMapResources(TextureMap* map) const
+    void RenderSystem::ReleaseTextureMapResources(TextureMap& map) const
     {
         m_backendPlugin->ReleaseTextureMapResources(map);
     }
@@ -273,10 +269,10 @@ namespace C3D
 
     u8 RenderSystem::GetWindowAttachmentCount() const { return m_backendPlugin->GetWindowAttachmentCount(); }
 
-    RenderBuffer* RenderSystem::CreateRenderBuffer(const RenderBufferType type, const u64 totalSize,
+    RenderBuffer* RenderSystem::CreateRenderBuffer(const String& name, const RenderBufferType type, const u64 totalSize,
                                                    const bool useFreelist) const
     {
-        return m_backendPlugin->CreateRenderBuffer(type, totalSize, useFreelist);
+        return m_backendPlugin->CreateRenderBuffer(name, type, totalSize, useFreelist);
     }
 
     bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const

@@ -2,10 +2,11 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/clock.h"
-#include "platform/filesystem.h"
+#include "platform/file_system.h"
 #include "renderer/vertex.h"
 #include "resource_loader.h"
 #include "resources/geometry.h"
+#include "resources/materials/material_types.h"
 #include "systems/system_manager.h"
 
 namespace C3D
@@ -73,11 +74,11 @@ namespace C3D
         void ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords,
                               DynamicArray<MeshFaceData>& faces, GeometryConfig* outData) const;
 
-        bool ImportObjMaterialLibraryFile(const char* mtlFilePath) const;
+        bool ImportObjMaterialLibraryFile(const String& mtlFilePath) const;
         void ObjMaterialParseColorLine(const String& line, MaterialConfig& config) const;
         void ObjMaterialParseMapLine(const String& line, MaterialConfig& config) const;
         void ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName,
-                                        const char* mtlFilePath) const;
+                                        const String& mtlFilePath) const;
 
         template <typename VertexType, typename IndexType>
         bool LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const;
@@ -86,7 +87,7 @@ namespace C3D
         bool WriteCsmFile(const String& path, const char* name,
                           DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const;
 
-        bool WriteMtFile(const char* mtlFilePath, MaterialConfig* config) const;
+        bool WriteMtFile(const String& mtlFilePath, const MaterialConfig& config) const;
     };
 
     template <typename VertexType, typename IndexType>
