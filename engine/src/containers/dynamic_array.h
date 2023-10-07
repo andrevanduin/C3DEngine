@@ -378,7 +378,15 @@ namespace C3D
             m_capacity = other.m_size;
         }
 
-        /*
+        /**
+         * @brief Checks if the array contains the provided element.
+         *
+         * @param element The element you want to search for.
+         * @return True if the array contains the element, false otherwise
+         */
+        bool Contains(const T& element) { return std::find(begin(), end(), element) != end(); }
+
+        /**
          * @brief Clears all elements in the array (calling the destructor for every element)
          * Does not delete the memory and the capacity will remain the same.
          */

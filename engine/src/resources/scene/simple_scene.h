@@ -7,6 +7,7 @@
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
 #include "renderer/views/render_view_world.h"
+#include "resources/debug/debug_grid.h"
 #include "resources/geometry.h"
 #include "resources/mesh.h"
 #include "resources/terrain/terrain.h"
@@ -131,6 +132,8 @@ namespace C3D
         String m_description;
 
         Skybox* m_skybox = nullptr;
+
+        DebugGrid m_grid;
 
         String m_directionalLight;
         DynamicArray<String> m_pointLights;

@@ -18,6 +18,14 @@ namespace C3D
     {
         DynamicArray<GeometryRenderData> worldGeometries;
         DynamicArray<GeometryRenderData> terrainGeometries;
+        DynamicArray<GeometryRenderData> debugGeometries;
+    };
+
+    struct DebugColorShaderLocations
+    {
+        u16 projection;
+        u16 view;
+        u16 model;
     };
 
     class RenderViewWorld final : public RenderView
@@ -42,12 +50,15 @@ namespace C3D
 
         Shader* m_materialShader = nullptr;
         Shader* m_terrainShader  = nullptr;
+        Shader* m_debugShader    = nullptr;
 
         f32 m_fov      = DegToRad(45.0f);
         f32 m_nearClip = 0.1f;
         f32 m_farClip  = 4000.0f;
 
         RegisteredEventCallback m_onEventCallback;
+
+        DebugColorShaderLocations m_debugShaderLocations;
 
         mat4 m_projectionMatrix;
         Camera* m_camera = nullptr;

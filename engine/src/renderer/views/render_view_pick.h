@@ -54,6 +54,7 @@ namespace C3D
 
         RenderViewPickShaderInfo m_uiShaderInfo;
         RenderViewPickShaderInfo m_worldShaderInfo;
+        RenderViewPickShaderInfo m_terrainShaderInfo;
 
         Texture m_colorTargetAttachmentTexture;
         Texture m_depthTargetAttachmentTexture;

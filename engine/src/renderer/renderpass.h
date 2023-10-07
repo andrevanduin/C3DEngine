@@ -49,6 +49,8 @@ namespace C3D
         virtual bool Create(const RenderPassConfig& config) = 0;
         virtual void Destroy();
 
+        const String& GetName() const { return m_name; }
+
         u16 id;
 
         ivec4 renderArea;

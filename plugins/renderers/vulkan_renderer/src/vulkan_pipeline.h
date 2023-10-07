@@ -1,49 +1,54 @@
 
 #pragma once
+#include "containers/string.h"
 #include "vulkan_types.h"
 
 namespace C3D
 {
-	struct VulkanPipelineConfig
-	{
-		VulkanRenderPass* renderPass;
-		u32 stride;
+    struct VulkanPipelineConfig
+    {
+        VulkanRenderPass* renderPass;
+        u32 stride;
 
-		u32 attributeCount;
-		VkVertexInputAttributeDescription* attributes;
+        u32 attributeCount;
+        VkVertexInputAttributeDescription* attributes;
 
-		u32 descriptorSetLayoutCount;
-		VkDescriptorSetLayout* descriptorSetLayouts;
+        u32 descriptorSetLayoutCount;
+        VkDescriptorSetLayout* descriptorSetLayouts;
 
-		u32 stageCount;
-		VkPipelineShaderStageCreateInfo* stages;
+        u32 stageCount;
+        VkPipelineShaderStageCreateInfo* stages;
 
-		VkViewport viewport;
-		VkRect2D scissor;
+        VkViewport viewport;
+        VkRect2D scissor;
 
-		FaceCullMode cullMode;
-		bool isWireFrame;
-		u32 shaderFlags;
+        FaceCullMode cullMode;
+        bool isWireFrame;
+        u32 shaderFlags;
 
-		u32 pushConstantRangeCount;
-		Range* pushConstantRanges;
+        u32 pushConstantRangeCount;
+        Range* pushConstantRanges;
+        /** @brief The name of the shader that is associated with this pipeline. */
+        String shaderName;
+    };
 
-		VkPrimitiveTopology topology;
-	};
+    class VulkanPipeline
+    {
+    public:
+        VulkanPipeline(u32 supportedTopologyTypes);
 
-	class VulkanPipeline
-	{
-	public:
-		VulkanPipeline();
+        bool Create(const VulkanContext* context, const VulkanPipelineConfig& config);
 
-		bool Create(const VulkanContext* context, const VulkanPipelineConfig& config);
+        void Destroy(const VulkanContext* context);
 
-		void Destroy(const VulkanContext* context);
+        void Bind(const VulkanCommandBuffer* commandBuffer, VkPipelineBindPoint bindPoint) const;
 
-		void Bind(const VulkanCommandBuffer* commandBuffer, VkPipelineBindPoint bindPoint) const;
+        VkPipelineLayout layout = nullptr;
 
-		VkPipelineLayout layout;
-	private:
-		VkPipeline m_handle;
-	};
-}
+    private:
+        VkPipeline m_handle = nullptr;
+        VkPrimitiveTopology m_currentTopology;
+
+        u32 m_supportedTopologyTypes = 0;
+    };
+}  // namespace C3D

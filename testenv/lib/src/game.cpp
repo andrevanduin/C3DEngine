@@ -125,8 +125,8 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     // TEMP END
 
     m_state->camera = Cam.GetDefault();
-    m_state->camera->SetPosition({ 18.0f, 40.0f, 3.5f });
-    m_state->camera->SetEulerRotation({ C3D::DegToRad(-38.2f), C3D::DegToRad(-127.0f), C3D::DegToRad(0.0f) });
+    m_state->camera->SetPosition({ 67.0f, 11.0f, 76.0f });
+    m_state->camera->SetEulerRotation({ -20.0f, -310.0f, 0.0f });
 
     // Set the allocator for the dynamic array that contains our world geometries to our frame allocator
     auto gameFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
@@ -391,6 +391,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     pickPacket.uiMeshData          = uiPacket.meshData;
     // TODO: This index is hardcoded currently
     pickPacket.worldMeshData = &packet.views[1].geometries;
+    pickPacket.terrainData   = &packet.views[1].terrainGeometries;
     pickPacket.texts         = uiPacket.texts;
     if (!Views.BuildPacket(Views.Get("pick"), frameData.frameAllocator, &pickPacket, &packet.views[3]))
     {

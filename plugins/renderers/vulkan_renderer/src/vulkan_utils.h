@@ -13,12 +13,12 @@ namespace C3D::VulkanUtils
                         VkDebugUtilsMessageTypeFlagsEXT messageType,
                         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
-    bool SetDebugObjectName(const VulkanContext* context, VkObjectType type, void* handle, const String& name);
-    bool SetDebugObjectTag(const VulkanContext* context, VkObjectType type, void* handle, u64 tagSize,
+    void SetDebugObjectName(const VulkanContext* context, VkObjectType type, void* handle, const String& name);
+    void SetDebugObjectTag(const VulkanContext* context, VkObjectType type, void* handle, u64 tagSize,
                            const void* tagData);
-    bool BeginCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer, const String& label,
+    void BeginCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer, const String& label,
                             const vec4& color);
-    bool EndCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer);
+    void EndCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer);
 
 #define VK_SET_DEBUG_OBJECT_NAME(context, type, handle, name) \
     VulkanUtils::SetDebugObjectName(context, type, handle, name)

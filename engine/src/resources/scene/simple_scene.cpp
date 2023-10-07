@@ -3,6 +3,7 @@
 
 #include "core/frame_data.h"
 #include "renderer/renderer_types.h"
+#include "resources/debug/debug_box_3d.h"
 #include "resources/mesh.h"
 #include "systems/lights/light_system.h"
 #include "systems/render_views/render_view_system.h"
@@ -11,6 +12,11 @@
 
 namespace C3D
 {
+    struct LightDebugData
+    {
+        DebugBox3D box;
+    };
+
     static u32 global_scene_id = 0;
 
     SimpleScene::SimpleScene() : m_logger("SIMPLE_SCENE"), m_name("NO_NAME"), m_description("NO_DESCRIPTION") {}
@@ -34,6 +40,21 @@ namespace C3D
         m_worldData.worldGeometries.Reserve(512);
 
         m_config = config;
+
+        DebugGridConfig gridConfig;
+        gridConfig.orientation   = DebugGridOrientation::XZ;
+        gridConfig.tileCountDim0 = 100;
+        gridConfig.tileCountDim1 = 100;
+        gridConfig.tileScale     = 1.0f;
+        gridConfig.name          = "DEBUG_GRID";
+        gridConfig.useThirdAxis  = true;
+
+        if (!m_grid.Create(m_pSystemsManager, gridConfig))
+        {
+            m_logger.Error("Create() - Failed to create debug grid.");
+            return false;
+        }
+
         return true;
     }
 
@@ -73,13 +94,16 @@ namespace C3D
                 m_logger.Error("Create() - Failed to add directional light from config");
                 return false;
             }
+
+            // TODO: Add debug data and initialize it here
         }
 
         if (!m_config.pointLights.Empty())
         {
             for (auto& pointLightConfig : m_config.pointLights)
             {
-                AddPointLight(PointLight(pointLightConfig));
+                auto light = PointLight(pointLightConfig);
+                AddPointLight(light);
             }
         }
 
@@ -91,7 +115,9 @@ namespace C3D
                 continue;
             }
 
-            auto config = MeshConfig(meshConfig);
+            auto config           = MeshConfig(meshConfig);
+            config.enableDebugBox = true;  // Enable debug boxes around our meshes
+
             Mesh mesh;
             if (!mesh.Create(m_pSystemsManager, config))
             {
@@ -122,6 +148,25 @@ namespace C3D
 
             m_terrains.Set(terrainConfig.name, terrain);
         }
+
+        if (!m_grid.Initialize())
+        {
+            m_logger.Error("Initialize() - Failed to initialize Grid.");
+            return false;
+        }
+
+        for (auto& name : m_pointLights)
+        {
+            auto light = Lights.GetPointLight(name);
+            auto debug = static_cast<LightDebugData*>(light->debugData);
+            if (!debug->box.Initialize())
+            {
+                m_logger.Error("AddPointLight() - Failed to initialize debug box for point light: '{}'.", light->name);
+                return false;
+            }
+        }
+
+        // TODO: Handle directional light debug lines
 
         // Handle mesh hierarchy
         for (auto& mesh : m_meshes)
@@ -202,6 +247,22 @@ namespace C3D
             }
         }
 
+        if (!m_grid.Load())
+        {
+            m_logger.Error("Load() - Failed to load grid.");
+            return false;
+        }
+
+        for (auto& name : m_pointLights)
+        {
+            auto light = Lights.GetPointLight(name);
+            auto debug = static_cast<LightDebugData*>(light->debugData);
+            if (!debug->box.Load())
+            {
+                m_logger.Error("Load() - Failed to load debug box for point light: '{}'.", name);
+            }
+        }
+
         m_state = SceneState::Loaded;
         return true;
     }
@@ -226,7 +287,20 @@ namespace C3D
 
         if (m_state != SceneState::Loaded) return true;
 
-        // TODO: Update the scene
+        for (auto& name : m_pointLights)
+        {
+            auto light = Lights.GetPointLight(name);
+            auto debug = static_cast<LightDebugData*>(light->debugData);
+
+            if (debug->box.IsValid())
+            {
+                debug->box.SetPosition(light->data.position);
+
+                // TODO: Other ways of doing this?
+                debug->box.SetColor(light->data.color);
+            }
+        }
+
         return true;
     }
 
@@ -261,7 +335,7 @@ namespace C3D
                 // Clear our world geometries
                 m_worldData.worldGeometries.Clear();
                 m_worldData.terrainGeometries.Clear();
-
+                m_worldData.debugGeometries.Clear();
                 for (const auto& mesh : m_meshes)
                 {
                     // auto meshSet = false;
@@ -269,6 +343,13 @@ namespace C3D
                     if (mesh.generation != INVALID_ID_U8)
                     {
                         mat4 model = mesh.transform.GetWorld();
+
+                        if (mesh.HasDebugBox())
+                        {
+                            const auto box = mesh.GetDebugBox();
+                            m_worldData.debugGeometries.EmplaceBack(box->GetModel(), box->GetGeometry(),
+                                                                    box->GetUniqueId());
+                        }
 
                         for (const auto geometry : mesh.geometries)
                         {
@@ -319,16 +400,36 @@ namespace C3D
                 {
                     // TODO: Check terrain generation
                     // TODO: Frustum culling
-                    // TODO: Add unique id to terrain for object picking (instead of hard-coded 0)
-                    m_worldData.terrainGeometries.EmplaceBack(terrain.GetModel(), terrain.GetGeometry(), 0);
+                    m_worldData.terrainGeometries.EmplaceBack(terrain.GetModel(), terrain.GetGeometry(),
+                                                              terrain.uniqueId);
                     // TODO: Seperate counter for terrain meshes/geometry
                     frameData.drawnMeshCount++;
+                }
+
+                // Debug geometry
+                // Grid
+                constexpr auto identity = mat4(1.0f);
+                m_worldData.debugGeometries.EmplaceBack(identity, m_grid.GetGeometry(), INVALID_ID);
+
+                // TODO: Directional lights
+
+                // Point Lights
+                for (auto& name : m_pointLights)
+                {
+                    auto light = Lights.GetPointLight(name);
+                    auto debug = static_cast<LightDebugData*>(light->debugData);
+
+                    if (debug && debug->box.IsValid())
+                    {
+                        m_worldData.debugGeometries.EmplaceBack(debug->box.GetModel(), debug->box.GetGeometry(),
+                                                                debug->box.GetUniqueId());
+                    }
                 }
 
                 // World
                 if (!Views.BuildPacket(view, frameData.frameAllocator, &m_worldData, &viewPacket))
                 {
-                    m_logger.Error("PopulateRenderPacket() - Failed to populate render packet with world data");
+                    m_logger.Error("PopulateRenderPacket() - Failed to populate render packet with world data.");
                     return false;
                 }
                 break;
@@ -342,7 +443,7 @@ namespace C3D
     {
         if (name.Empty())
         {
-            m_logger.Error("AddDirectionalLight() - Empty name provided");
+            m_logger.Error("AddDirectionalLight() - Empty name provided.");
             return false;
         }
 
@@ -351,12 +452,18 @@ namespace C3D
             // TODO: Do resource unloading when required
             if (!Lights.RemoveDirectionalLight(m_directionalLight))
             {
-                m_logger.Error("AddDirectionalLight() - Failed to remove current directional light");
+                m_logger.Error("AddDirectionalLight() - Failed to remove current directional light.");
                 return false;
+            }
+            if (light.debugData)
+            {
+                // TODO: release debug data
             }
         }
 
         m_directionalLight = name;
+
+        // TODO: Add debug info for directional lights
         return Lights.AddDirectionalLight(light);
     }
 
@@ -364,18 +471,20 @@ namespace C3D
     {
         if (name.Empty())
         {
-            m_logger.Error("RemoveDirectionalLight() - Empty name provided");
+            m_logger.Error("RemoveDirectionalLight() - Empty name provided.");
             return false;
         }
 
         if (m_directionalLight)
         {
+            // TODO: Cleanup debug data
+
             const auto result  = Lights.RemoveDirectionalLight(m_directionalLight);
             m_directionalLight = "";
             return result;
         }
 
-        m_logger.Warn("RemoveDirectionalLight() - Could not remove since provided light is not part of this scene");
+        m_logger.Warn("RemoveDirectionalLight() - Could not remove since provided light is not part of this scene.");
         return false;
     }
 
@@ -383,15 +492,55 @@ namespace C3D
     {
         if (!Lights.AddPointLight(light))
         {
-            m_logger.Error("AddPointLight() - Failed to add point light to lighting system");
+            m_logger.Error("AddPointLight() - Failed to add point light to lighting system.");
             return false;
         }
+
+        auto pLight       = Lights.GetPointLight(light.name);
+        pLight->debugData = Memory.New<LightDebugData>(MemoryType::Resource);
+        auto debug        = static_cast<LightDebugData*>(pLight->debugData);
+
+        if (!debug->box.Create(m_pSystemsManager, vec3(0.2f, 0.2f, 0.2f), nullptr))
+        {
+            m_logger.Error("AddPointLight() - Failed to add debug box to point light: '{}'", light.name);
+            return false;
+        }
+
+        debug->box.SetPosition(light.data.position);
+
+        if (m_state >= SceneState::Initialized)
+        {
+            if (!debug->box.Initialize())
+            {
+                m_logger.Error("AddPointLight() - Failed to initialize debug box for point light: '{}'.", light.name);
+                return false;
+            }
+        }
+
+        if (m_state >= SceneState::Loaded)
+        {
+            if (!debug->box.Load())
+            {
+                m_logger.Error("AddPointLight() - Failed to load debug box for point light: '{}'.", light.name);
+                return false;
+            }
+        }
+
         m_pointLights.PushBack(light.name);
         return true;
     }
 
     bool SimpleScene::RemovePointLight(const String& name)
     {
+        if (m_pointLights.Contains(name))
+        {
+            auto pLight = Lights.GetPointLight(name);
+            auto debug  = static_cast<LightDebugData*>(pLight->debugData);
+            debug->box.Unload();
+            debug->box.Destroy();
+            Memory.Delete(MemoryType::Resource, debug);
+        }
+
         auto result = Lights.RemovePointLight(name);
         if (result)
         {
@@ -399,7 +548,7 @@ namespace C3D
             return true;
         }
 
-        m_logger.Error("RemovePointLight() - Failed to remove Point Light");
+        m_logger.Error("RemovePointLight() - Failed to remove Point Light.");
         return false;
     }
 
@@ -409,13 +558,13 @@ namespace C3D
     {
         if (name.Empty())
         {
-            m_logger.Error("AddMesh() - Empty name provided");
+            m_logger.Error("AddMesh() - Empty name provided.");
             return false;
         }
 
         if (m_meshes.Has(name))
         {
-            m_logger.Error("AddMesh() - A mesh with the name '{}' already exists", name);
+            m_logger.Error("AddMesh() - A mesh with the name '{}' already exists.", name);
             return false;
         }
 
@@ -424,7 +573,7 @@ namespace C3D
             // The scene has already been initialized so we need to initialize the mesh now
             if (!mesh.Initialize())
             {
-                m_logger.Error("AddMesh() - Failed to initialize mesh: '{}'", name);
+                m_logger.Error("AddMesh() - Failed to initialize mesh: '{}'.", name);
                 return false;
             }
         }
@@ -580,7 +729,7 @@ namespace C3D
     {
         if (name.Empty())
         {
-            m_logger.Error("RemoveSkybox() - Empty name provided");
+            m_logger.Error("RemoveSkybox() - Empty name provided.");
             return false;
         }
 
@@ -590,7 +739,7 @@ namespace C3D
             return true;
         }
 
-        m_logger.Warn("RemoveSkybox() - Could not remove since scene does not have a skybox");
+        m_logger.Warn("RemoveSkybox() - Could not remove since scene does not have a skybox.");
         return false;
     }
 
@@ -600,7 +749,7 @@ namespace C3D
         {
             if (!m_skybox->Unload())
             {
-                m_logger.Error("Unload() - Failed to unload skybox");
+                m_logger.Error("Unload() - Failed to unload skybox.");
             }
 
             m_skybox->Destroy();
@@ -612,7 +761,7 @@ namespace C3D
 
             if (!mesh.Unload())
             {
-                m_logger.Error("Unload() - Failed to unload Mesh: '{}'", mesh.GetName());
+                m_logger.Error("Unload() - Failed to unload Mesh: '{}'.", mesh.GetName());
             }
 
             mesh.Destroy();
@@ -622,20 +771,32 @@ namespace C3D
         {
             if (!terrain.Unload())
             {
-                m_logger.Error("Unload() - Failed to unload Terrain: '{}'", terrain.GetName());
+                m_logger.Error("Unload() - Failed to unload Terrain: '{}'.", terrain.GetName());
             }
 
             terrain.Destroy();
         }
 
+        if (!m_grid.Unload())
+        {
+            m_logger.Error("Unload() - Failed to unload Grid.");
+        }
+
         if (m_directionalLight)
         {
+            // TODO: Cleanup debug data once we add it
+
             Lights.RemoveDirectionalLight(m_directionalLight);
         }
 
-        for (auto& light : m_pointLights)
+        for (auto& name : m_pointLights)
         {
-            Lights.RemovePointLight(light);
+            auto pLight = Lights.GetPointLight(name);
+            auto debug  = static_cast<LightDebugData*>(pLight->debugData);
+            debug->box.Unload();
+            debug->box.Destroy();
+            Memory.Delete(MemoryType::Resource, debug);
+            Lights.RemovePointLight(name);
         }
 
         m_state = SceneState::Unloaded;
@@ -646,6 +807,7 @@ namespace C3D
 
         m_worldData.worldGeometries.Destroy();
         m_worldData.terrainGeometries.Destroy();
+        m_worldData.debugGeometries.Destroy();
 
         m_directionalLight = "";
         m_skybox           = nullptr;

@@ -66,8 +66,9 @@ namespace C3D
         virtual void DestroyTexture(Texture* texture) = 0;
 
         virtual bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices,
-                                    u32 indexSize, u64 indexCount, const void* indices) = 0;
-        virtual void DestroyGeometry(Geometry* geometry)                                = 0;
+                                    u32 indexSize, u64 indexCount, const void* indices)                    = 0;
+        virtual void UpdateGeometry(Geometry* geometry, u32 offset, u32 vertexCount, const void* vertices) = 0;
+        virtual void DestroyGeometry(Geometry* geometry)                                                   = 0;
 
         virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
         virtual void DestroyShader(Shader& shader)                                                    = 0;

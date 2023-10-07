@@ -34,13 +34,13 @@ namespace C3D
 
         void End(VulkanCommandBuffer* commandBuffer) const;
 
-        VkRenderPass handle;
+        VkRenderPass handle = nullptr;
         VulkanRenderPassState state;
 
     private:
-        f32 m_depth;
-        u32 m_stencil;
+        f32 m_depth   = 0.0f;
+        u32 m_stencil = 0;
 
-        VulkanContext* m_context;
+        VulkanContext* m_context = nullptr;
     };
 }  // namespace C3D

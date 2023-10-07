@@ -194,6 +194,8 @@ namespace C3D
             return false;
         }
 
+        VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_DEVICE_MEMORY, newMemory, m_name);
+
         // Bind the new buffer's memory
         VK_CHECK(vkBindBufferMemory(m_context->device.logicalDevice, newBuffer, newMemory, 0));
 

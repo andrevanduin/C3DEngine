@@ -2,6 +2,7 @@
 #include "shader_loader.h"
 
 #include "core/engine.h"
+#include "core/exceptions.h"
 #include "platform/file_system.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
@@ -30,8 +31,9 @@ namespace C3D
             return false;
         }
 
-        resource.fullPath = fullPath;
-        resource.cullMode = FaceCullMode::Back;
+        resource.fullPath      = fullPath;
+        resource.cullMode      = FaceCullMode::Back;
+        resource.topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST;
 
         resource.attributes.Reserve(4);
         resource.uniforms.Reserve(8);
@@ -79,7 +81,7 @@ namespace C3D
 
             if (varName.IEquals("version"))
             {
-                // TODO: version
+                resource.version = value.ToU8();
             }
             else if (varName.IEquals("name"))
             {
@@ -97,6 +99,18 @@ namespace C3D
             else if (varName.IEquals("depthWrite"))
             {
                 resource.depthWrite = value.ToBool();
+            }
+            else if (varName.IEquals("topology"))
+            {
+                // Reset our topology types
+                resource.topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_NONE;
+                // Parse them as a comma-seperated list
+                const auto topologyTypes = value.Split(',');
+                // Add them to our config one by one
+                for (auto topology : topologyTypes)
+                {
+                    ParseTopology(resource, topology);
+                }
             }
             else if (varName.IEquals("stages"))
             {
@@ -388,17 +402,33 @@ namespace C3D
 
     void ResourceLoader<ShaderConfig>::ParseTopology(ShaderConfig& data, const String& value)
     {
-        if (value.IEquals("points"))
+        if (value.IEquals("triangleList"))
         {
-            data.topology = ShaderTopology::Points;
+            data.topologyTypes |= PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST;
         }
-        else if (value.IEquals("lines"))
+        else if (value.IEquals("triangleStrip"))
         {
-            data.topology = ShaderTopology::Lines;
+            data.topologyTypes |= PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP;
+        }
+        else if (value.IEquals("triangleFan"))
+        {
+            data.topologyTypes |= PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN;
+        }
+        else if (value.IEquals("lineList"))
+        {
+            data.topologyTypes |= PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST;
+        }
+        else if (value.IEquals("lineStrip"))
+        {
+            data.topologyTypes |= PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP;
+        }
+        else if (value.IEquals("pointList"))
+        {
+            data.topologyTypes |= PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST;
         }
         else
         {
-            data.topology = ShaderTopology::Triangles;
+            throw Exception("Invalid topology type: '{}'", value);
         }
     }
 

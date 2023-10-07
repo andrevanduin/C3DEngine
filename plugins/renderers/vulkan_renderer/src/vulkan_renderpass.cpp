@@ -10,12 +10,10 @@
 
 namespace C3D
 {
-    VulkanRenderPass::VulkanRenderPass()
-        : RenderPass(), handle(nullptr), state(), m_depth(0), m_stencil(0), m_context(nullptr)
-    {}
+    VulkanRenderPass::VulkanRenderPass() : RenderPass() {}
 
     VulkanRenderPass::VulkanRenderPass(VulkanContext* context, const RenderPassConfig& config)
-        : RenderPass(config), handle(nullptr), state(), m_depth(0), m_stencil(0), m_context(context)
+        : RenderPass(config), m_context(context)
     {}
 
     bool VulkanRenderPass::Create(const RenderPassConfig& config)
@@ -362,10 +360,13 @@ namespace C3D
         vkCmdBeginRenderPass(commandBuffer->handle, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
         commandBuffer->state = VulkanCommandBufferState::InRenderPass;
 
+#ifdef _DEBUG
         f32 r      = Random.Generate(0.0f, 1.0f);
         f32 g      = Random.Generate(0.0f, 1.0f);
         f32 b      = Random.Generate(0.0f, 1.0f);
         vec4 color = { r, g, b, 1.0f };
+#endif
+
         VK_BEGIN_CMD_DEBUG_LABEL(m_context, commandBuffer->handle, m_name, color);
     }
 

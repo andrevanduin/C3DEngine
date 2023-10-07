@@ -61,7 +61,9 @@ namespace C3D
 
         bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize,
                             u64 indexCount, const void* indices) const;
+        void UpdateGeometry(Geometry* geometry, u32 offset, u32 vertexCount, const void* vertices) const;
         void DestroyGeometry(Geometry* geometry) const;
+
         void DrawGeometry(const GeometryRenderData& data) const;
 
         bool BeginRenderPass(RenderPass* pass, RenderTarget* target) const;

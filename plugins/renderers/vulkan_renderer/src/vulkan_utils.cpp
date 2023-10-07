@@ -236,7 +236,7 @@ namespace C3D
         return VK_FALSE;
     }
 
-    bool VulkanUtils::SetDebugObjectName(const VulkanContext* context, VkObjectType type, void* handle,
+    void VulkanUtils::SetDebugObjectName(const VulkanContext* context, VkObjectType type, void* handle,
                                          const String& name)
     {
         const VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, nullptr,
@@ -245,12 +245,10 @@ namespace C3D
         if (context->pfnSetDebugUtilsObjectNameEXT)
         {
             VK_CHECK(context->pfnSetDebugUtilsObjectNameEXT(context->device.logicalDevice, &nameInfo));
-            return true;
-        }
-        return false;
+        };
     }
 
-    bool VulkanUtils::SetDebugObjectTag(const VulkanContext* context, VkObjectType type, void* handle, u64 tagSize,
+    void VulkanUtils::SetDebugObjectTag(const VulkanContext* context, VkObjectType type, void* handle, u64 tagSize,
                                         const void* tagData)
     {
         const VkDebugUtilsObjectTagInfoEXT tagInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT,
@@ -264,12 +262,10 @@ namespace C3D
         if (context->pfnSetDebugUtilsObjectTagEXT)
         {
             VK_CHECK(context->pfnSetDebugUtilsObjectTagEXT(context->device.logicalDevice, &tagInfo));
-            return true;
         }
-        return false;
     }
 
-    bool VulkanUtils::BeginCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer, const String& label,
+    void VulkanUtils::BeginCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer, const String& label,
                                          const vec4& color)
     {
         VkDebugUtilsLabelEXT labelInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, nullptr, label.Data() };
@@ -278,19 +274,15 @@ namespace C3D
         if (context->pfnCmdBeginDebugUtilsLabelEXT)
         {
             context->pfnCmdBeginDebugUtilsLabelEXT(buffer, &labelInfo);
-            return true;
         }
-        return false;
     }
 
-    bool VulkanUtils::EndCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer)
+    void VulkanUtils::EndCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer)
     {
         if (context->pfnCmdEndDebugUtilsLabelEXT)
         {
             context->pfnCmdEndDebugUtilsLabelEXT(buffer);
-            return true;
         }
-        return false;
     }
 #endif
 }  // namespace C3D

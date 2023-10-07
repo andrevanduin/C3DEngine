@@ -54,6 +54,7 @@ namespace C3D
     {
         packet.geometries.Clear();
         packet.terrainGeometries.Clear();
+        packet.debugGeometries.Clear();
     }
 
     void RenderView::OnResize() {}

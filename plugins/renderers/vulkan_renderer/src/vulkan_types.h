@@ -39,6 +39,14 @@ namespace C3D
         u64 indexBufferOffset;
     };
 
+    enum VulkanTopologyClass
+    {
+        VULKAN_TOPOLOGY_CLASS_POINT    = 0,
+        VULKAN_TOPOLOGY_CLASS_LINE     = 1,
+        VULKAN_TOPOLOGY_CLASS_TRIANGLE = 2,
+        VULKAN_TOPOLOGY_CLASS_MAX      = 3
+    };
+
     struct VulkanContext
     {
         VkInstance instance;

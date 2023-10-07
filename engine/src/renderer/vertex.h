@@ -29,6 +29,19 @@ namespace C3D
         }
     };
 
+    /** @brief A 3D Vertex with only position and color data. */
+    struct ColorVertex3D
+    {
+        ColorVertex3D() = default;
+
+        ColorVertex3D(const vec4& pos, const vec4& color) : position(pos), color(color) {}
+
+        /** @brief The position of the vertex. W is only for alignment. */
+        vec4 position;
+        /** @brief The color of the vertex. */
+        vec4 color;
+    };
+
     struct Vertex2D
     {
         Vertex2D() = default;

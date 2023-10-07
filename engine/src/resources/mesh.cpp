@@ -3,6 +3,7 @@
 
 #include "core/identifier.h"
 #include "core/scoped_timer.h"
+#include "resources/debug/debug_box_3d.h"
 #include "systems/geometry/geometry_system.h"
 #include "systems/jobs/job_system.h"
 #include "systems/resources/resource_system.h"
@@ -17,11 +18,27 @@ namespace C3D
         config            = cfg;
         generation        = INVALID_ID_U8;
 
+        if (cfg.enableDebugBox)
+        {
+            m_debugBox = Memory.New<DebugBox3D>(MemoryType::Resource);
+            m_debugBox->Create(pSystemsManager, vec3(1.0f), nullptr);
+        }
+
         return true;
     }
 
     bool Mesh::Initialize()
     {
+        if (m_debugBox)
+        {
+            if (!m_debugBox->Initialize())
+            {
+                m_logger.Warn("Initialize() - Failed to initialize Debug Box.");
+                Memory.Delete(MemoryType::Resource, m_debugBox);
+                m_debugBox = nullptr;
+            }
+        }
+
         if (config.resourceName) return true;
 
         const auto geometryCount = config.geometryConfigs.Size();
@@ -48,6 +65,19 @@ namespace C3D
 
         generation = 0;
         uniqueId   = Identifier::GetNewId(this);
+
+        if (m_debugBox)
+        {
+            if (!m_debugBox->Load())
+            {
+                m_logger.Warn("Load() - Failed to load Debug Box.");
+                m_debugBox->Destroy();
+
+                Memory.Delete(MemoryType::Resource, m_debugBox);
+                m_debugBox = nullptr;
+            }
+        }
+
         return true;
     }
 
@@ -59,6 +89,18 @@ namespace C3D
         }
         generation = INVALID_ID_U8;
         geometries.Destroy();
+
+        if (m_debugBox)
+        {
+            if (!m_debugBox->Unload())
+            {
+                m_logger.Warn("Unload() - Failed to unload Debug Box.");
+                m_debugBox->Destroy();
+
+                Memory.Delete(MemoryType::Resource, m_debugBox);
+                m_debugBox = nullptr;
+            }
+        }
         return true;
     }
 
@@ -71,6 +113,13 @@ namespace C3D
                 m_logger.Error("Destroy() - failed to unload");
                 return false;
             }
+        }
+
+        if (m_debugBox)
+        {
+            m_debugBox->Destroy();
+            Memory.Delete(MemoryType::Resource, m_debugBox);
+            m_debugBox = nullptr;
         }
 
         Identifier::ReleaseId(uniqueId);
@@ -100,11 +149,95 @@ namespace C3D
             geometries.Reserve(m_resource.geometryConfigs.Size());
             for (auto& c : m_resource.geometryConfigs)
             {
-                geometries.PushBack(Geometric.AcquireFromConfig(c, true));
+                Geometry* g = Geometric.AcquireFromConfig(c, true);
+
+                Extents3D& local = g->extents;
+
+                for (u32 v = 0; v < c.vertices.Size(); v++)
+                {
+                    auto& vert = c.vertices[v];
+
+                    // Min
+                    if (vert.position.x < local.min.x)
+                    {
+                        local.min.x = vert.position.x;
+                    }
+                    if (vert.position.y < local.min.y)
+                    {
+                        local.min.y = vert.position.y;
+                    }
+                    if (vert.position.z < local.min.z)
+                    {
+                        local.min.z = vert.position.z;
+                    }
+
+                    // Max
+                    if (vert.position.x > local.max.x)
+                    {
+                        local.max.x = vert.position.x;
+                    }
+                    if (vert.position.y > local.max.y)
+                    {
+                        local.max.y = vert.position.y;
+                    }
+                    if (vert.position.z > local.max.z)
+                    {
+                        local.max.z = vert.position.z;
+                    }
+                }
+
+                // Min
+                if (local.min.x < m_extents.min.x)
+                {
+                    m_extents.min.x = local.min.x;
+                }
+                if (local.min.y < m_extents.min.y)
+                {
+                    m_extents.min.y = local.min.y;
+                }
+                if (local.min.z < m_extents.min.z)
+                {
+                    m_extents.min.z = local.min.z;
+                }
+
+                // Max
+                if (local.max.x > m_extents.max.x)
+                {
+                    m_extents.max.x = local.max.x;
+                }
+                if (local.max.y > m_extents.max.y)
+                {
+                    m_extents.max.y = local.max.y;
+                }
+                if (local.max.z > m_extents.max.z)
+                {
+                    m_extents.max.z = local.max.z;
+                }
+
+                geometries.PushBack(g);
             }
 
             generation++;
             uniqueId = Identifier::GetNewId(this);
+
+            if (m_debugBox)
+            {
+                m_debugBox->SetParent(&transform);
+
+                if (!m_debugBox->Load())
+                {
+                    m_logger.Warn("Load() - Failed to load Debug Box.");
+                    m_debugBox->Destroy();
+
+                    Memory.Delete(MemoryType::Resource, m_debugBox);
+                    m_debugBox = nullptr;
+                }
+                else
+                {
+                    m_debugBox->SetExtents(m_extents);
+                    m_debugBox->SetColor(vec4(0.0f, 1.0f, 0.0f, 1.0f));
+                }
+            }
         }
 
         {
