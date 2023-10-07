@@ -15,16 +15,6 @@
 #include "systems/resources/resource_system.h"
 #include "systems/shaders/shader_system.h"
 
-namespace
-{
-    struct MaterialInfo
-    {
-        vec4 diffuseColor;
-        float shininess;
-        vec3 padding;
-    };
-}  // namespace
-
 namespace C3D
 {
     RenderViewWorld::RenderViewWorld(const RenderViewConfig& config)
@@ -36,6 +26,7 @@ namespace C3D
         // Builtin skybox shader
         const auto materialShaderName = "Shader.Builtin.Material";
         const auto terrainShaderName  = "Shader.Builtin.Terrain";
+        const auto debugShaderName    = "Shader.Builtin.Color3DShader";
 
         ShaderConfig shaderConfig;
         if (!Resources.Load(materialShaderName, shaderConfig))
@@ -54,13 +45,27 @@ namespace C3D
 
         if (!Resources.Load(terrainShaderName, shaderConfig))
         {
-            m_logger.Error("OnCreate() - Failed to load ShaderResource for Terrain Shader");
+            m_logger.Error("OnCreate() - Failed to load ShaderResource for Terrain Shader.");
             return false;
         }
         // NOTE: Since this view only has 1 pass we assume index 0
         if (!Shaders.Create(passes[0], shaderConfig))
         {
-            m_logger.Error("OnCreate() - Failed to create {}", terrainShaderName);
+            m_logger.Error("OnCreate() - Failed to create '{}'.", terrainShaderName);
+            return false;
+        }
+
+        Resources.Unload(shaderConfig);
+
+        if (!Resources.Load(debugShaderName, shaderConfig))
+        {
+            m_logger.Error("OnCreate() - Failed to load ShaderResource for Debug Shader.");
+            return false;
+        }
+        // NOTE: Since this view only has 1 pass we assume index 0
+        if (!Shaders.Create(passes[0], shaderConfig))
+        {
+            m_logger.Error("OnCreate() - Failed to create '{}'.", debugShaderName);
             return false;
         }
 
@@ -68,16 +73,21 @@ namespace C3D
 
         m_materialShader = Shaders.Get(m_customShaderName ? m_customShaderName.Data() : materialShaderName);
         m_terrainShader  = Shaders.Get(terrainShaderName);
+        m_debugShader    = Shaders.Get(debugShaderName);
+
+        m_debugShaderLocations.projection = m_debugShader->GetUniformIndex("projection");
+        m_debugShaderLocations.view       = m_debugShader->GetUniformIndex("view");
+        m_debugShaderLocations.model      = m_debugShader->GetUniformIndex("model");
 
         if (!m_materialShader)
         {
-            m_logger.Error("Load() - Failed to get Material Shader");
+            m_logger.Error("Load() - Failed to get Material Shader.");
             return false;
         }
 
         if (!m_terrainShader)
         {
-            m_logger.Error("Load() - Failed to get Terrain Shader");
+            m_logger.Error("Load() - Failed to get Terrain Shader.");
             return false;
         }
 
@@ -127,6 +137,7 @@ namespace C3D
 
         outPacket->geometries.SetAllocator(frameAllocator);
         outPacket->terrainGeometries.SetAllocator(frameAllocator);
+        outPacket->debugGeometries.SetAllocator(frameAllocator);
 
         m_distances.SetAllocator(frameAllocator);
 
@@ -168,6 +179,11 @@ namespace C3D
             outPacket->terrainGeometries.PushBack(terrain);
         }
 
+        for (auto& debug : worldData.debugGeometries)
+        {
+            outPacket->debugGeometries.PushBack(debug);
+        }
+
         m_distances.Clear();
         return true;
     }
@@ -188,7 +204,7 @@ namespace C3D
             {
                 if (!Shaders.UseById(m_terrainShader->id))
                 {
-                    m_logger.Error("OnRender() - Failed to use shader with id: '{}'.", m_terrainShader->id);
+                    m_logger.Error("OnRender() - Failed to use shader: '{}'.", m_terrainShader->name);
                     return false;
                 }
 
@@ -230,7 +246,7 @@ namespace C3D
             {
                 if (!Shaders.UseById(m_materialShader->id))
                 {
-                    m_logger.Error("OnRender() - Failed to use shader with id {}.", m_materialShader->id);
+                    m_logger.Error("OnRender() - Failed to use shader: '{}'.", m_materialShader->name);
                     return false;
                 }
 
@@ -258,6 +274,33 @@ namespace C3D
 
                     Materials.ApplyLocal(mat, &geometry.model);
                     Renderer.DrawGeometry(geometry);
+                }
+            }
+
+            // Debug geometries
+            if (!packet->debugGeometries.Empty())
+            {
+                if (!Shaders.UseById(m_debugShader->id))
+                {
+                    m_logger.Error("OnRender() - Failed to use shader: '{}'.", m_debugShader->name);
+                    return false;
+                }
+
+                // Globals
+                Shaders.SetUniformByIndex(m_debugShaderLocations.projection, &packet->projectionMatrix);
+                Shaders.SetUniformByIndex(m_debugShaderLocations.view, &packet->viewMatrix);
+
+                Shaders.ApplyGlobal();
+
+                for (auto& debug : packet->debugGeometries)
+                {
+                    // NOTE: No instance-level uniforms required
+
+                    // Set local
+                    Shaders.SetUniformByIndex(m_debugShaderLocations.model, &debug.model);
+
+                    // Draw it
+                    Renderer.DrawGeometry(debug);
                 }
             }
 

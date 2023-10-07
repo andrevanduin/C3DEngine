@@ -39,6 +39,8 @@ namespace C3D
 
         void SetTransform(const Transform& t) { m_transform = t; }
 
+        u32 uniqueId;
+
     private:
         bool LoadFromResource();
 
@@ -47,6 +49,7 @@ namespace C3D
         void LoadJobFailure();
 
         String m_name;
+
         u32 m_tileCountX = 0, m_tileCountZ = 0;
         u32 m_totalTileCount = 0, m_vertexCount = 0;
 

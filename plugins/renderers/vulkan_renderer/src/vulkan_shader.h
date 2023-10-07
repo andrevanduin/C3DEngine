@@ -34,6 +34,8 @@ namespace C3D
     constexpr auto VULKAN_SHADER_MAX_BINDINGS = 2;
     /** @brief The maximum number of push constant ranges for a shader. */
     constexpr auto VULKAN_SHADER_MAX_PUSH_CONST_RANGES = 32;
+    /** @brief The maximum number of topology classes that our shader can have. */
+    constexpr auto VULKAN_MAX_NUMBER_OF_TOPOLOGY_CLASSES = 3;
 
     // TODO: make configurable
     constexpr auto VULKAN_MAX_MATERIAL_COUNT = 1024;
@@ -89,8 +91,8 @@ namespace C3D
         VkVertexInputAttributeDescription attributes[VULKAN_SHADER_MAX_ATTRIBUTES];
         /** @brief Face culling mode, provided by the front end. */
         FaceCullMode cullMode;
-        /** @brief Topology used by the shader. */
-        ShaderTopology topology;
+        /** @brief Topology types used by the shader. */
+        u32 topologyTypes;
     };
 
     struct VulkanDescriptorState
@@ -150,7 +152,8 @@ namespace C3D
 
         VulkanBuffer uniformBuffer;
 
-        VulkanPipeline pipeline;
+        VulkanPipeline* pipelines[VULKAN_TOPOLOGY_CLASS_MAX] = { nullptr, nullptr, nullptr };
+        u8 boundPipeline                                     = INVALID_ID_U8;
 
         u32 instanceCount = 0;
         VulkanShaderInstanceState instanceStates[VULKAN_MAX_MATERIAL_COUNT];
@@ -164,15 +167,15 @@ namespace C3D
             localUniformCount           = 0;
         }
 
-        /* @brief The number of global non-sampler uniforms. */
+        /** @brief The number of global non-sampler uniforms. */
         u8 globalUniformCount = 0;
-        /* @brief The number of global sampler uniforms. */
+        /** @brief The number of global sampler uniforms. */
         u8 globalUniformSamplerCount = 0;
-        /* @brief The number of instance non-sampler uniforms. */
+        /** @brief The number of instance non-sampler uniforms. */
         u8 instanceUniformCount = 0;
-        /* @brief The number of instance sampler uniforms. */
+        /** @brief The number of instance sampler uniforms. */
         u8 instanceUniformSamplerCount = 0;
-        /* @brief The number of local non-sampler uniforms. */
+        /** @brief The number of local non-sampler uniforms. */
         u8 localUniformCount = 0;
     };
 }  // namespace C3D

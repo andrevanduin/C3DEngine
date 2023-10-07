@@ -10,6 +10,7 @@ namespace C3D
 {
     class SystemManager;
     class Mesh;
+    class DebugBox3D;
 
     struct MeshConfig
     {
@@ -27,6 +28,7 @@ namespace C3D
         String resourceName;
         String parentName;
         DynamicArray<GeometryConfig> geometryConfigs;
+        bool enableDebugBox = false;
     };
 
     struct MeshLoadParams
@@ -52,6 +54,10 @@ namespace C3D
 
         const String& GetName() const { return config.name; }
 
+        DebugBox3D* GetDebugBox() const { return m_debugBox; }
+
+        bool HasDebugBox() const { return m_debugBox != nullptr; }
+
         u32 uniqueId  = INVALID_ID;
         u8 generation = INVALID_ID_U8;
 
@@ -69,6 +75,8 @@ namespace C3D
 
         LoggerInstance<8> m_logger;
         MeshResource m_resource;
+        Extents3D m_extents;
+        DebugBox3D* m_debugBox = nullptr;
 
         const SystemManager* m_pSystemsManager = nullptr;
     };

@@ -53,4 +53,16 @@ namespace C3D
         Fragment,
         Compute
     };
+
+    enum PrimitiveTopologyType : u32
+    {
+        PRIMITIVE_TOPOLOGY_TYPE_NONE           = 0,
+        PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST  = 1,
+        PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP = 2,
+        PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN   = 4,
+        PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST      = 8,
+        PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP     = 16,
+        PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST     = 32,
+        PRIMITIVE_TOPOLOGY_TYPE_MAX            = 64
+    };
 }  // namespace C3D

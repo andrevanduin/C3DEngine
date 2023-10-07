@@ -21,21 +21,22 @@ namespace C3D
 
     bool RenderViewPick::OnCreate()
     {
-        m_worldShaderInfo.pass = passes[0];
-        m_uiShaderInfo.pass    = passes[1];
+        m_worldShaderInfo.pass   = passes[0];
+        m_terrainShaderInfo.pass = passes[0];
+        m_uiShaderInfo.pass      = passes[1];
 
         // UI Shader
         constexpr auto uiShaderName = "Shader.Builtin.UIPick";
         ShaderConfig shaderConfig;
         if (!Resources.Load(uiShaderName, shaderConfig))
         {
-            m_logger.Error("Failed to load builtin UI Pick shader.");
+            m_logger.Error("OnCreate() - Failed to load builtin UI Pick shader.");
             return false;
         }
 
         if (!Shaders.Create(m_uiShaderInfo.pass, shaderConfig))
         {
-            m_logger.Error("Failed to create builtin UI Pick Shader.");
+            m_logger.Error("OnCreate() - Failed to create builtin UI Pick Shader.");
             return false;
         }
 
@@ -60,13 +61,13 @@ namespace C3D
         constexpr auto worldShaderName = "Shader.Builtin.WorldPick";
         if (!Resources.Load(worldShaderName, shaderConfig))
         {
-            m_logger.Error("Failed to load builtin World Pick shader.");
+            m_logger.Error("OnCreate() - Failed to load builtin World Pick shader.");
             return false;
         }
 
         if (!Shaders.Create(m_worldShaderInfo.pass, shaderConfig))
         {
-            m_logger.Error("Failed to create builtin World Pick Shader.");
+            m_logger.Error("OnCreate() - Failed to create builtin World Pick Shader.");
             return false;
         }
 
@@ -86,6 +87,37 @@ namespace C3D
         m_worldShaderInfo.projection = glm::perspective(m_worldShaderInfo.fov, 1280 / 720.0f,
                                                         m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
         m_worldShaderInfo.view       = mat4(1.0f);
+
+        // Terrain Shader
+        constexpr auto terrainShaderName = "Shader.Builtin.TerrainPick";
+        if (!Resources.Load(terrainShaderName, shaderConfig))
+        {
+            m_logger.Error("OnCreate() - Failed to load builtin Terrain Pick shader.");
+            return false;
+        }
+
+        if (!Shaders.Create(m_terrainShaderInfo.pass, shaderConfig))
+        {
+            m_logger.Error("OnCreate() - Failed to create builtin World Pick Shader.");
+            return false;
+        }
+
+        Resources.Unload(shaderConfig);
+        m_terrainShaderInfo.shader = Shaders.Get(terrainShaderName);
+
+        // Get the uniform locations
+        m_terrainShaderInfo.idColorLocation    = Shaders.GetUniformIndex(m_terrainShaderInfo.shader, "idColor");
+        m_terrainShaderInfo.modelLocation      = Shaders.GetUniformIndex(m_terrainShaderInfo.shader, "model");
+        m_terrainShaderInfo.projectionLocation = Shaders.GetUniformIndex(m_terrainShaderInfo.shader, "projection");
+        m_terrainShaderInfo.viewLocation       = Shaders.GetUniformIndex(m_terrainShaderInfo.shader, "view");
+
+        // Default world properties
+        m_terrainShaderInfo.nearClip   = 0.1f;
+        m_terrainShaderInfo.farClip    = 4000.0f;
+        m_terrainShaderInfo.fov        = DegToRad(45.0f);
+        m_terrainShaderInfo.projection = glm::perspective(m_terrainShaderInfo.fov, 1280 / 720.0f,
+                                                          m_terrainShaderInfo.nearClip, m_terrainShaderInfo.farClip);
+        m_terrainShaderInfo.view       = mat4(1.0f);
 
         m_instanceCount = 0;
 
@@ -120,6 +152,8 @@ namespace C3D
             glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
         m_worldShaderInfo.projection =
             glm::perspective(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
+        m_terrainShaderInfo.projection = glm::perspective(m_terrainShaderInfo.fov, aspect, m_terrainShaderInfo.nearClip,
+                                                          m_terrainShaderInfo.farClip);
     }
 
     bool RenderViewPick::OnBuildPacket(LinearAllocator* frameAllocator, void* data, RenderViewPacket* outPacket)
@@ -141,12 +175,28 @@ namespace C3D
         outPacket->extendedData     = frameAllocator->New<PickPacketData>(MemoryType::RenderView);
 
         u32 highestInstanceId = 0;
-        // Iterate all geometries in world data
 
+        // Iterate all terrains in world data
+        const auto& terrainData = *packetData->terrainData;
+        for (const auto& terrain : terrainData)
+        {
+            if (terrain.geometry->id == INVALID_ID) continue;
+
+            outPacket->geometries.PushBack(terrain);
+            packetData->terrainGeometryCount++;
+
+            if (terrain.uniqueId > highestInstanceId)
+            {
+                highestInstanceId = terrain.uniqueId;
+            }
+        }
+
+        // Iterate all geometries in world data
         const auto& worldMeshData = *packetData->worldMeshData;
         for (const auto& geometry : worldMeshData)
         {
             outPacket->geometries.PushBack(geometry);
+            packetData->worldGeometryCount++;
 
             if (geometry.uniqueId > highestInstanceId)
             {
@@ -208,7 +258,7 @@ namespace C3D
 
             if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
             {
-                m_logger.Error("OnRender() - BeginRenderPass() failed for pass: '{}'", pass->id);
+                m_logger.Error("OnRender() - BeginRenderPass() failed for pass: '{}'.", pass->GetName());
                 return false;
             }
 
@@ -216,66 +266,139 @@ namespace C3D
 
             u32 currentInstanceId = 0;
 
-            // World
-            if (!Shaders.UseById(m_worldShaderInfo.shader->id))
-            {
-                m_logger.Error("OnRender() - Failed to use world pick shader. Render frame failed.");
-                return false;
-            }
+            // Begin Terrain
+            const auto terrainIndexStart = 0;
+            const auto terrainIndexEnd   = terrainIndexStart + packetData->terrainGeometryCount;
+            const auto terrainCount      = terrainIndexEnd - terrainIndexStart;
 
-            // Apply globals
-            if (!Shaders.SetUniformByIndex(m_worldShaderInfo.projectionLocation, &m_worldShaderInfo.projection))
+            if (terrainCount > 0)
             {
-                m_logger.Error("OnRender() - Failed to apply projection matrix");
-            }
-
-            if (!Shaders.SetUniformByIndex(m_worldShaderInfo.viewLocation, &m_worldShaderInfo.view))
-            {
-                m_logger.Error("OnRender() - Failed to apply view matrix");
-            }
-
-            if (!Shaders.ApplyGlobal())
-            {
-                m_logger.Error("OnRender() - Failed to apply globals");
-            }
-
-            // Draw world geometries. Start from 0 since world geometries are added first
-            for (u32 i = 0; i < packetData->worldMeshData->Size(); i++)
-            {
-                auto& geo         = packet->geometries[i];
-                currentInstanceId = geo.uniqueId;
-
-                if (!Shaders.BindInstance(currentInstanceId))
+                if (!Shaders.UseById(m_terrainShaderInfo.shader->id))
                 {
-                    m_logger.Error("OnRender() - Failed to bind instance with id: {}", currentInstanceId);
-                }
-
-                u32 r, g, b;
-                U32ToRgb(geo.uniqueId, &r, &g, &b);
-                vec3 color = RgbToVec3(r, g, b);
-
-                if (!Shaders.SetUniformByIndex(m_worldShaderInfo.idColorLocation, &color))
-                {
-                    m_logger.Error("OnRender() - Failed to apply id color uniform.");
+                    m_logger.Error("OnRender() - Failed to use terrain pick shader. Render frame failed.");
                     return false;
                 }
 
-                Shaders.ApplyInstance(!m_instanceUpdated[currentInstanceId]);
-                m_instanceUpdated[currentInstanceId] = true;
-
-                // Apply the locals
-                if (!Shaders.SetUniformByIndex(m_worldShaderInfo.modelLocation, &geo.model))
+                // Apply globals
+                if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.projectionLocation, &m_terrainShaderInfo.projection))
                 {
-                    m_logger.Error("OnRender() - Failed to apply model matrix for world geometry.");
+                    m_logger.Error("OnRender() - Failed to apply projection matrix.");
                 }
 
-                // Actually draw the geometry
-                Renderer.DrawGeometry(packet->geometries[i]);
+                if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.viewLocation, &m_terrainShaderInfo.view))
+                {
+                    m_logger.Error("OnRender() - Failed to apply view matrix.");
+                }
+
+                if (!Shaders.ApplyGlobal())
+                {
+                    m_logger.Error("OnRender() - Failed to apply globals.");
+                }
+
+                // Draw terrain geometries.
+                for (u32 i = terrainIndexStart; i < terrainIndexEnd; i++)
+                {
+                    auto& geo         = packet->geometries[i];
+                    currentInstanceId = geo.uniqueId;
+
+                    if (!Shaders.BindInstance(currentInstanceId))
+                    {
+                        m_logger.Error("OnRender() - Failed to bind instance with id: {}.", currentInstanceId);
+                    }
+
+                    u32 r, g, b;
+                    U32ToRgb(geo.uniqueId, &r, &g, &b);
+                    vec3 color = RgbToVec3(r, g, b);
+
+                    if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.idColorLocation, &color))
+                    {
+                        m_logger.Error("OnRender() - Failed to apply id color uniform.");
+                        return false;
+                    }
+
+                    Shaders.ApplyInstance(!m_instanceUpdated[currentInstanceId]);
+                    m_instanceUpdated[currentInstanceId] = true;
+
+                    // Apply the locals
+                    if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.modelLocation, &geo.model))
+                    {
+                        m_logger.Error("OnRender() - Failed to apply model matrix for terrain geometry.");
+                    }
+
+                    // Actually draw the geometry
+                    Renderer.DrawGeometry(packet->geometries[i]);
+                }
             }
+            // End Terrain
+
+            // Begin World
+            const auto worldIndexStart = terrainIndexEnd;
+            const auto worldIndexEnd   = worldIndexStart + packetData->worldGeometryCount;
+            const auto worldCount      = worldIndexEnd - worldIndexStart;
+
+            if (worldCount > 0)
+            {
+                if (!Shaders.UseById(m_worldShaderInfo.shader->id))
+                {
+                    m_logger.Error("OnRender() - Failed to use world pick shader. Render frame failed.");
+                    return false;
+                }
+
+                // Apply globals
+                if (!Shaders.SetUniformByIndex(m_worldShaderInfo.projectionLocation, &m_worldShaderInfo.projection))
+                {
+                    m_logger.Error("OnRender() - Failed to apply projection matrix.");
+                }
+
+                if (!Shaders.SetUniformByIndex(m_worldShaderInfo.viewLocation, &m_worldShaderInfo.view))
+                {
+                    m_logger.Error("OnRender() - Failed to apply view matrix.");
+                }
+
+                if (!Shaders.ApplyGlobal())
+                {
+                    m_logger.Error("OnRender() - Failed to apply globals.");
+                }
+
+                // Draw world geometries.
+                for (u32 i = worldIndexStart; i < worldIndexEnd; i++)
+                {
+                    auto& geo         = packet->geometries[i];
+                    currentInstanceId = geo.uniqueId;
+
+                    if (!Shaders.BindInstance(currentInstanceId))
+                    {
+                        m_logger.Error("OnRender() - Failed to bind instance with id: {}.", currentInstanceId);
+                    }
+
+                    u32 r, g, b;
+                    U32ToRgb(geo.uniqueId, &r, &g, &b);
+                    vec3 color = RgbToVec3(r, g, b);
+
+                    if (!Shaders.SetUniformByIndex(m_worldShaderInfo.idColorLocation, &color))
+                    {
+                        m_logger.Error("OnRender() - Failed to apply id color uniform.");
+                        return false;
+                    }
+
+                    Shaders.ApplyInstance(!m_instanceUpdated[currentInstanceId]);
+                    m_instanceUpdated[currentInstanceId] = true;
+
+                    // Apply the locals
+                    if (!Shaders.SetUniformByIndex(m_worldShaderInfo.modelLocation, &geo.model))
+                    {
+                        m_logger.Error("OnRender() - Failed to apply model matrix for world geometry.");
+                    }
+
+                    // Actually draw the geometry
+                    Renderer.DrawGeometry(packet->geometries[i]);
+                }
+            }
+            // End World
 
             if (!Renderer.EndRenderPass(pass))
             {
-                m_logger.Error("OnRender() - EndRenderPass() failed for pass: '{}'", pass->id);
+                m_logger.Error("OnRender() - EndRenderPass() failed for pass: '{}'.", pass->id);
                 return false;
             }
 
@@ -284,7 +407,7 @@ namespace C3D
 
             if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
             {
-                m_logger.Error("OnRender() - BeginRenderPass() failed for pass: '{}'", pass->id);
+                m_logger.Error("OnRender() - BeginRenderPass() failed for pass: '{}'.", pass->id);
                 return false;
             }
 
@@ -298,28 +421,30 @@ namespace C3D
             // Apply globals
             if (!Shaders.SetUniformByIndex(m_uiShaderInfo.projectionLocation, &m_uiShaderInfo.projection))
             {
-                m_logger.Error("OnRender() - Failed to apply projection matrix");
+                m_logger.Error("OnRender() - Failed to apply projection matrix.");
             }
 
             if (!Shaders.SetUniformByIndex(m_uiShaderInfo.viewLocation, &m_uiShaderInfo.view))
             {
-                m_logger.Error("OnRender() - Failed to apply view matrix");
+                m_logger.Error("OnRender() - Failed to apply view matrix.");
             }
 
             if (!Shaders.ApplyGlobal())
             {
-                m_logger.Error("OnRender() - Failed to apply globals");
+                m_logger.Error("OnRender() - Failed to apply globals.");
             }
 
-            // Draw our ui geometries. We start where the world geometries left off.
-            for (u64 i = packetData->worldMeshData->Size(); i < packet->geometries.Size(); i++)
+            // Draw our ui geometries. We start where the terrain geometries left off.
+            const auto uiIndexStart = worldIndexEnd;
+            const auto uiIndexEnd   = uiIndexStart + packetData->uiGeometryCount;
+            for (u64 i = uiIndexStart; i < uiIndexEnd; i++)
             {
                 auto& geo         = packet->geometries[i];
                 currentInstanceId = geo.uniqueId;
 
                 if (!Shaders.BindInstance(currentInstanceId))
                 {
-                    m_logger.Error("OnRender() - Failed to bind instance with id: {}", currentInstanceId);
+                    m_logger.Error("OnRender() - Failed to bind instance with id: {}.", currentInstanceId);
                 }
 
                 u32 r, g, b;
@@ -351,7 +476,7 @@ namespace C3D
                 currentInstanceId = text->uniqueId;
                 if (!Shaders.BindInstance(currentInstanceId))
                 {
-                    m_logger.Error("OnRender() - Failed to bind instance with id: {}", currentInstanceId);
+                    m_logger.Error("OnRender() - Failed to bind instance with id: {}.", currentInstanceId);
                 }
 
                 u32 r, g, b;
@@ -366,14 +491,14 @@ namespace C3D
 
                 if (!Shaders.ApplyInstance(true))
                 {
-                    m_logger.Error("OnRender() - Failed to apply instance");
+                    m_logger.Error("OnRender() - Failed to apply instance.");
                 }
 
                 // Apply the locals
                 mat4 model = text->transform.GetWorld();
                 if (!Shaders.SetUniformByIndex(m_uiShaderInfo.modelLocation, &model))
                 {
-                    m_logger.Error("OnRender() - Failed to apply model matrix for text");
+                    m_logger.Error("OnRender() - Failed to apply model matrix for text.");
                 }
 
                 // Actually draw the text
@@ -382,7 +507,7 @@ namespace C3D
 
             if (!Renderer.EndRenderPass(pass))
             {
-                m_logger.Error("OnRender() - EndRenderPass() failed for pass: '{}'", pass->id);
+                m_logger.Error("OnRender() - EndRenderPass() failed for pass: '{}'.", pass->id);
                 return false;
             }
         }
@@ -443,16 +568,18 @@ namespace C3D
         // Generate a UUID to act as the name
         const auto textureNameUUID = UUIDS::Generate();
 
-        const u32 width                = passes[passIndex]->renderArea.z;
-        const u32 height               = passes[passIndex]->renderArea.w;
-        constexpr bool hasTransparency = false;  // TODO: make this configurable
+        const u32 width  = passes[passIndex]->renderArea.z;
+        const u32 height = passes[passIndex]->renderArea.w;
+        // TODO: make this configurable
+        constexpr bool hasTransparency = false;
 
-        attachment->texture->id           = INVALID_ID;
-        attachment->texture->type         = TextureType::Type2D;
-        attachment->texture->name         = textureNameUUID.value;
-        attachment->texture->width        = width;
-        attachment->texture->height       = height;
-        attachment->texture->channelCount = 4;  // TODO: Configurable
+        attachment->texture->id     = INVALID_ID;
+        attachment->texture->type   = TextureType::Type2D;
+        attachment->texture->name   = textureNameUUID.value;
+        attachment->texture->width  = width;
+        attachment->texture->height = height;
+        // TODO: Configurable
+        attachment->texture->channelCount = 4;
         attachment->texture->generation   = INVALID_ID;
         attachment->texture->flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
         attachment->texture->flags |= TextureFlag::IsWritable;
@@ -489,6 +616,11 @@ namespace C3D
         if (!Renderer.AcquireShaderInstanceResources(m_worldShaderInfo.shader, 0, nullptr, &instance))
         {
             m_logger.Fatal("AcquireShaderInstances() - Failed to acquire World shader resources from Renderer.");
+        }
+
+        if (!Renderer.AcquireShaderInstanceResources(m_terrainShaderInfo.shader, 0, nullptr, &instance))
+        {
+            m_logger.Fatal("AcquireShaderInstances() - Failed to acquire Terrain shader resources from Renderer.");
         }
 
         m_instanceCount++;

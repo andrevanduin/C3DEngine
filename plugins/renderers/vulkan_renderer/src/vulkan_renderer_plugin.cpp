@@ -42,7 +42,7 @@ namespace C3D
         m_context.allocator = Memory.Allocate<VkAllocationCallbacks>(MemoryType::RenderSystem);
         if (!CreateVulkanAllocator(m_context.allocator))
         {
-            m_logger.Error("Failed to initialize requested CustomVulkanAllocator");
+            m_logger.Error("Init() - Failed to initialize requested CustomVulkanAllocator.");
             return false;
         }
 #else
@@ -60,14 +60,14 @@ namespace C3D
         auto vkbInstanceResult = instanceBuilder.set_app_name(config.applicationName)
                                      .set_engine_name("C3DEngine")
                                      .set_app_version(config.applicationVersion)
-                                     .set_engine_version(VK_MAKE_VERSION(0, 2, 0))
+                                     .set_engine_version(VK_MAKE_VERSION(0, 3, 0))
 #if defined(_DEBUG)
                                      .request_validation_layers(true)
                                      .set_debug_callback(VulkanUtils::VkDebugLog)
                                      .enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
 #endif
                                      .set_allocation_callbacks(m_context.allocator)
-                                     .require_api_version(1, 2)
+                                     .require_api_version(1, 3)
                                      .build();
 
         m_logger.Info("Instance Initialized");
@@ -904,18 +904,42 @@ namespace C3D
         if (isReupload)
         {
             // Free vertex data
-            m_objectVertexBuffer.Free(static_cast<u64>(oldRange.vertexElementSize) * oldRange.vertexCount,
-                                      oldRange.vertexBufferOffset);
+            if (!m_objectVertexBuffer.Free(static_cast<u64>(oldRange.vertexElementSize) * oldRange.vertexCount,
+                                           oldRange.vertexBufferOffset))
+            {
+                m_logger.Error("CreateGeometry() - Failed to free vertex data during reupload.");
+            }
 
             // Free index data, if applicable
             if (oldRange.indexElementSize > 0)
             {
-                m_objectIndexBuffer.Free(static_cast<u64>(oldRange.indexElementSize) * oldRange.indexCount,
-                                         oldRange.indexBufferOffset);
+                if (!m_objectIndexBuffer.Free(static_cast<u64>(oldRange.indexElementSize) * oldRange.indexCount,
+                                              oldRange.indexBufferOffset))
+                {
+                    m_logger.Error("CreateGeometry() - Failed to free index data during reupload.");
+                }
             }
         }
 
         return true;
+    }
+
+    void VulkanRendererPlugin::UpdateGeometry(Geometry* geometry, u32 offset, u32 vertexCount, const void* vertices)
+    {
+        VulkanGeometryData& internalData = m_geometries[geometry->internalId];
+        if (vertexCount > internalData.vertexCount)
+        {
+            m_logger.Fatal("UpdateGeometry() - Realloc is not supported.");
+            return;
+        }
+
+        u32 totalSize = vertexCount * internalData.vertexElementSize;
+
+        // Load the data
+        if (!m_objectVertexBuffer.LoadRange(internalData.vertexBufferOffset + offset, totalSize, vertices))
+        {
+            m_logger.Error("UpdateGeometry() - Failed to upload vertices to the vertex buffer.");
+        }
     }
 
     void VulkanRendererPlugin::DestroyGeometry(Geometry* geometry)
@@ -924,24 +948,24 @@ namespace C3D
         {
             vkDeviceWaitIdle(m_context.device.logicalDevice);
 
-            VulkanGeometryData* internalData = &m_geometries[geometry->internalId];
+            VulkanGeometryData& internalData = m_geometries[geometry->internalId];
 
             // Free vertex data
-            m_objectVertexBuffer.Free(static_cast<u64>(internalData->vertexElementSize) * internalData->vertexCount,
-                                      internalData->vertexBufferOffset);
+            m_objectVertexBuffer.Free(static_cast<u64>(internalData.vertexElementSize) * internalData.vertexCount,
+                                      internalData.vertexBufferOffset);
 
             // Free index data, if applicable
-            if (internalData->indexElementSize > 0)
+            if (internalData.indexElementSize > 0)
             {
-                m_objectIndexBuffer.Free(static_cast<u64>(internalData->indexElementSize) * internalData->indexCount,
-                                         internalData->indexBufferOffset);
+                m_objectIndexBuffer.Free(static_cast<u64>(internalData.indexElementSize) * internalData.indexCount,
+                                         internalData.indexBufferOffset);
             }
 
             // Clean up data
-            std::memset(internalData, 0, sizeof(VulkanGeometryData));
-            internalData->id         = INVALID_ID;
-            internalData->generation = INVALID_ID;
-            geometry->internalId     = INVALID_ID;
+            std::memset(&internalData, 0, sizeof(VulkanGeometryData));
+            internalData.id         = INVALID_ID;
+            internalData.generation = INVALID_ID;
+            geometry->internalId    = INVALID_ID;
         }
     }
 
@@ -1125,8 +1149,8 @@ namespace C3D
         }
 
         // Copy over our cull mode
-        vulkanShader->config.cullMode = config.cullMode;
-        vulkanShader->config.topology = config.topology;
+        vulkanShader->config.cullMode      = config.cullMode;
+        vulkanShader->config.topologyTypes = config.topologyTypes;
 
         return true;
     }
@@ -1163,7 +1187,10 @@ namespace C3D
             vulkanShader->uniformBuffer.Destroy();
 
             // Cleanup Pipeline
-            vulkanShader->pipeline.Destroy(&m_context);
+            for (const auto pipeline : vulkanShader->pipelines)
+            {
+                if (pipeline) pipeline->Destroy(&m_context);
+            }
 
             // Cleanup Shader Modules
             for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
@@ -1302,28 +1329,70 @@ namespace C3D
             stageCreateInfos[i] = vulkanShader->stages[i].shaderStageCreateInfo;
         }
 
-        VulkanPipelineConfig config     = {};
-        config.renderPass               = vulkanShader->renderPass;
-        config.stride                   = shader->attributeStride;
-        config.attributeCount           = static_cast<u32>(shader->attributes.Size());
-        config.attributes               = vulkanShader->config.attributes;
-        config.descriptorSetLayoutCount = vulkanShader->config.descriptorSetCount;
-        config.descriptorSetLayouts     = vulkanShader->descriptorSetLayouts;
-        config.stageCount               = vulkanShader->config.stageCount;
-        config.stages                   = stageCreateInfos;
-        config.viewport                 = viewport;
-        config.scissor                  = scissor;
-        config.cullMode                 = vulkanShader->config.cullMode;
-        config.isWireFrame              = false;
-        config.shaderFlags              = shader->flags;
-        config.pushConstantRangeCount   = shader->pushConstantRangeCount;
-        config.pushConstantRanges       = shader->pushConstantRanges;
-        config.topology                 = GetVkPrimitiveTopology(vulkanShader->config.topology);
-
-        const bool pipelineCreateResult = vulkanShader->pipeline.Create(&m_context, config);
-        if (!pipelineCreateResult)
+        // Create one pipeline per topology class
+        // Point class
+        if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST)
         {
-            m_logger.Error("InitializeShader() - Failed to load graphics pipeline.");
+            vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_POINT] =
+                Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST);
+        }
+
+        // Line class
+        if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST ||
+            vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP)
+        {
+            vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_LINE] = Memory.New<VulkanPipeline>(
+                MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST | PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP);
+        }
+
+        // Triangle class
+        if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST ||
+            vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP ||
+            vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN)
+        {
+            vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_TRIANGLE] = Memory.New<VulkanPipeline>(
+                MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP |
+                                        PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN);
+        }
+
+        for (u32 i = 0; i < VULKAN_TOPOLOGY_CLASS_MAX; i++)
+        {
+            if (!vulkanShader->pipelines[i]) continue;
+
+            VulkanPipelineConfig config     = {};
+            config.renderPass               = vulkanShader->renderPass;
+            config.stride                   = shader->attributeStride;
+            config.attributeCount           = static_cast<u32>(shader->attributes.Size());
+            config.attributes               = vulkanShader->config.attributes;
+            config.descriptorSetLayoutCount = vulkanShader->config.descriptorSetCount;
+            config.descriptorSetLayouts     = vulkanShader->descriptorSetLayouts;
+            config.stageCount               = vulkanShader->config.stageCount;
+            config.stages                   = stageCreateInfos;
+            config.viewport                 = viewport;
+            config.scissor                  = scissor;
+            config.cullMode                 = vulkanShader->config.cullMode;
+            config.isWireFrame              = false;
+            config.shaderFlags              = shader->flags;
+            config.pushConstantRangeCount   = shader->pushConstantRangeCount;
+            config.pushConstantRanges       = shader->pushConstantRanges;
+            config.shaderName               = shader->name;
+
+            if (vulkanShader->boundPipeline == INVALID_ID_U8)
+            {
+                // Set the bound pipeline to the first valid pipeline
+                vulkanShader->boundPipeline = i;
+            }
+
+            if (!vulkanShader->pipelines[i]->Create(&m_context, config))
+            {
+                m_logger.Error("InitializeShader() - Failed to create pipeline for topology type: {}.", i);
+                return false;
+            }
+        }
+
+        if (vulkanShader->boundPipeline == INVALID_ID_U8)
+        {
+            m_logger.Error("InitializeShader() - No valid bound pipeline for shader.");
             return false;
         }
 
@@ -1372,8 +1441,8 @@ namespace C3D
     bool VulkanRendererPlugin::UseShader(Shader* shader)
     {
         const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
-        vulkanShader->pipeline.Bind(&m_context.graphicsCommandBuffers[m_context.imageIndex],
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS);
+        vulkanShader->pipelines[vulkanShader->boundPipeline]->Bind(
+            &m_context.graphicsCommandBuffers[m_context.imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
         return true;
     }
 
@@ -1434,8 +1503,9 @@ namespace C3D
 
         vkUpdateDescriptorSets(m_context.device.logicalDevice, globalSetBindingCount, descriptorWrites, 0, nullptr);
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internal->pipeline.layout, 0, 1,
-                                &globalDescriptor, 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                internal->pipelines[internal->boundPipeline]->layout, 0, 1, &globalDescriptor, 0,
+                                nullptr);
         return true;
     }
 
@@ -1543,8 +1613,9 @@ namespace C3D
         }
 
         // We always bind for every instance however
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internal->pipeline.layout, 1, 1,
-                                &objectDescriptorSet, 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                internal->pipelines[internal->boundPipeline]->layout, 1, 1, &objectDescriptorSet, 0,
+                                nullptr);
         return true;
     }
 
@@ -1775,7 +1846,7 @@ namespace C3D
             {
                 // Is local, using push constants. Do this immediately.
                 VkCommandBuffer commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex].handle;
-                vkCmdPushConstants(commandBuffer, internal->pipeline.layout,
+                vkCmdPushConstants(commandBuffer, internal->pipelines[internal->boundPipeline]->layout,
                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                    static_cast<u32>(uniform->offset), uniform->size, value);
             }

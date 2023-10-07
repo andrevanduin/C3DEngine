@@ -86,6 +86,7 @@ namespace C3D
 
         DynamicArray<GeometryRenderData, LinearAllocator> geometries;
         DynamicArray<GeometryRenderData, LinearAllocator> terrainGeometries;
+        DynamicArray<GeometryRenderData, LinearAllocator> debugGeometries;
 
         // @brief The name of the custom shader to use, if not using it is nullptr.
         const char* customShaderName;
@@ -121,9 +122,13 @@ namespace C3D
     struct PickPacketData
     {
         DynamicArray<GeometryRenderData, LinearAllocator>* worldMeshData;
+        DynamicArray<GeometryRenderData, LinearAllocator>* terrainData;
 
         UIMeshPacketData uiMeshData;
-        u32 uiGeometryCount;
+        u32 worldGeometryCount   = 0;
+        u32 terrainGeometryCount = 0;
+        u32 uiGeometryCount      = 0;
+
         // TEMP:
         DynamicArray<UIText*, LinearAllocator> texts;
         // TEMP END

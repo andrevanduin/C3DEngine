@@ -152,6 +152,8 @@ namespace C3D
         m_backendPlugin->ReadPixelFromTexture(texture, x, y, outRgba);
     }
 
+    void RenderSystem::DestroyTexture(Texture* texture) const { m_backendPlugin->DestroyTexture(texture); }
+
     bool RenderSystem::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount,
                                       const void* vertices, const u32 indexSize, const u64 indexCount,
                                       const void* indices) const
@@ -160,7 +162,10 @@ namespace C3D
                                                indices);
     }
 
-    void RenderSystem::DestroyTexture(Texture* texture) const { m_backendPlugin->DestroyTexture(texture); }
+    void RenderSystem::UpdateGeometry(Geometry* geometry, u32 offset, u32 vertexCount, const void* vertices) const
+    {
+        m_backendPlugin->UpdateGeometry(geometry, offset, vertexCount, vertices);
+    }
 
     void RenderSystem::DestroyGeometry(Geometry* geometry) const { m_backendPlugin->DestroyGeometry(geometry); }
 

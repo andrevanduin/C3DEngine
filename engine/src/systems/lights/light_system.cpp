@@ -1,5 +1,7 @@
 #include "light_system.h"
 
+#include "resources/debug/debug_box_3d.h"
+
 namespace C3D
 {
     LightSystem::LightSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager, "LIGHT_SYSTEM") {}

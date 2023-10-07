@@ -8,8 +8,6 @@
 
 namespace C3D
 {
-    VulkanPipeline::VulkanPipeline() : layout(nullptr), m_handle(nullptr) {}
-
     VkCullModeFlagBits GetVkCullMode(const FaceCullMode cullMode)
     {
         switch (cullMode)
@@ -25,6 +23,8 @@ namespace C3D
         }
         return VK_CULL_MODE_BACK_BIT;
     }
+
+    VulkanPipeline::VulkanPipeline(u32 supportedTopologyTypes) : m_supportedTopologyTypes(supportedTopologyTypes) {}
 
     bool VulkanPipeline::Create(const VulkanContext* context, const VulkanPipelineConfig& config)
     {
@@ -99,7 +99,7 @@ namespace C3D
         // Dynamic state
         constexpr u32 dynamicStateCount                 = 3;
         VkDynamicState dynamicStates[dynamicStateCount] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
-                                                            VK_DYNAMIC_STATE_LINE_WIDTH };
+                                                            VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY };
 
         VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {
             VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
@@ -126,7 +126,45 @@ namespace C3D
         VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
             VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
         };
-        inputAssembly.topology               = config.topology;
+        for (u32 i = 1; i < PRIMITIVE_TOPOLOGY_TYPE_MAX; i = i << 1)
+        {
+            if (m_supportedTopologyTypes & i)
+            {
+                const auto ptt = static_cast<PrimitiveTopologyType>(i);
+                switch (ptt)
+                {
+                    case PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST:
+                        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+                        m_currentTopology      = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+                        break;
+                    case PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST:
+                        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+                        m_currentTopology      = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+                        break;
+                    case PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP:
+                        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+                        m_currentTopology      = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+                        break;
+                    case PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST:
+                        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+                        m_currentTopology      = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+                        break;
+                    case PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP:
+                        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+                        m_currentTopology      = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+                        break;
+                    case PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN:
+                        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+                        m_currentTopology      = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+                        break;
+                    default:
+                        Logger::Warn("[VULKAN_PIPELINE] - Create() - Unsupported primitive topology: '{}'. Skipping",
+                                     ToUnderlying(ptt));
+                }
+                break;
+            }
+        }
+
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
         // Pipeline layout create info
@@ -170,6 +208,9 @@ namespace C3D
         VK_CHECK(vkCreatePipelineLayout(context->device.logicalDevice, &pipelineLayoutCreateInfo, context->allocator,
                                         &layout));
 
+        VK_SET_DEBUG_OBJECT_NAME(context, VK_OBJECT_TYPE_PIPELINE_LAYOUT, layout,
+                                 "PIPELINE_LAYOUT_" + config.shaderName);
+
         // Pipeline create info
         VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
         pipelineCreateInfo.stageCount                   = config.stageCount;
@@ -195,6 +236,9 @@ namespace C3D
         // Create our pipeline
         VkResult result = vkCreateGraphicsPipelines(context->device.logicalDevice, VK_NULL_HANDLE, 1,
                                                     &pipelineCreateInfo, context->allocator, &m_handle);
+
+        VK_SET_DEBUG_OBJECT_NAME(context, VK_OBJECT_TYPE_PIPELINE, m_handle, "PIPELINE_" + config.shaderName);
+
         if (VulkanUtils::IsSuccess(result))
         {
             Logger::Debug("[VULKAN_PIPELINE] - Graphics pipeline created");
@@ -223,5 +267,7 @@ namespace C3D
     void VulkanPipeline::Bind(const VulkanCommandBuffer* commandBuffer, const VkPipelineBindPoint bindPoint) const
     {
         vkCmdBindPipeline(commandBuffer->handle, bindPoint, m_handle);
+        // Make sure to use the bound topology type
+        vkCmdSetPrimitiveTopology(commandBuffer->handle, m_currentTopology);
     }
 }  // namespace C3D

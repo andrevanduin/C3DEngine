@@ -130,7 +130,8 @@ namespace C3D
         DynamicArray<String> stageNames;
         DynamicArray<String> stageFileNames;
 
-        ShaderTopology topology = ShaderTopology::Triangles;
+        /** @brief The types of toplogy that this shader should support. */
+        u32 topologyTypes = 0;
 
         // TODO: Convert these bools to flags to save space
         /** @brief Indicates if depth testing should be done by this shader. */

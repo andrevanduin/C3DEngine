@@ -399,15 +399,15 @@ namespace C3D
             // Remove the material reference
             m_registeredMaterials.Delete(nameCopy);
 
-            m_logger.Info(
+            m_logger.Trace(
                 "Release() - The Material: '{}' was released. The texture was unloaded because refCount = 0 and "
                 "autoRelease = true.",
                 nameCopy);
         }
         else
         {
-            m_logger.Info("Release() - The Material: '{}' now has a refCount = {} (autoRelease = {}).", name,
-                          ref.referenceCount, ref.autoRelease);
+            m_logger.Trace("Release() - The Material: '{}' now has a refCount = {} (autoRelease = {}).", name,
+                           ref.referenceCount, ref.autoRelease);
         }
     }
 

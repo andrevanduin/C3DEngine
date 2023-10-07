@@ -22,8 +22,12 @@ namespace C3D
     /** @brief Structure for a directional light (typically used to emulate a sun) */
     struct DirectionalLight
     {
+        /** @brief The name of this Directional Light. */
         String name;
+        /** @brief The Shader data for this Directional Light. */
         DirectionalLightData data;
+        /** @brief User-defined debug data. */
+        void* debugData;
 
         DirectionalLight() {}
 
@@ -52,8 +56,12 @@ namespace C3D
     /* @brief Structure for a Point Light */
     struct PointLight
     {
+        /** @brief The name of this Point Light. */
         String name;
+        /** @brief The Shader data for this Point Light. */
         PointLightData data;
+        /** @brief User-defined debug data. */
+        void* debugData;
 
         PointLight(const SimpleScenePointLightConfig& config) : name(config.name)
         {
