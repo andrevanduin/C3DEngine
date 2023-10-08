@@ -32,7 +32,7 @@ transform = 10.0 0.8 20.0 0.0 0.0 0.0 1.0 0.35 0.35 0.35
 [PointLight]
 name = point_light_0
 color = 1.0 0.0 0.0 1.0
-position = 7.0 1.25 18.0 0.0
+position = 4.0 1.25 18.0 0.0
 constant = 1.0
 linear = 0.35
 quadratic = 0.44

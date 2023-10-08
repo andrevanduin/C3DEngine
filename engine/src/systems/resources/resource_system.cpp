@@ -10,7 +10,6 @@
 #include "resources/loaders/material_loader.h"
 #include "resources/loaders/mesh_loader.h"
 #include "resources/loaders/shader_loader.h"
-#include "resources/loaders/simple_scene_loader.h"
 #include "resources/loaders/terrain_loader.h"
 #include "resources/loaders/text_loader.h"
 
@@ -55,13 +54,11 @@ namespace C3D
         const auto meshLoader = Memory.New<ResourceLoader<MeshResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto bitmapFontLoader =
             Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto simpleSceneLoader =
-            Memory.New<ResourceLoader<SimpleSceneConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto terrainLoader =
             Memory.New<ResourceLoader<TerrainConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
 
-        for (IResourceLoader* loaders[9] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader,
-                                             meshLoader, bitmapFontLoader, simpleSceneLoader, terrainLoader };
+        for (IResourceLoader* loaders[8] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader,
+                                             meshLoader, bitmapFontLoader, terrainLoader };
              const auto loader : loaders)
         {
             if (!RegisterLoader(loader))

@@ -14,7 +14,7 @@ namespace C3D
     class SystemManager;
     struct Material;
 
-    class Terrain
+    class C3D_API Terrain
     {
     public:
         Terrain();

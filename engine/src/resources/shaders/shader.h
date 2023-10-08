@@ -11,7 +11,7 @@ namespace C3D
     struct Texture;
     struct TextureMap;
 
-    class Shader
+    class C3D_API Shader
     {
     public:
         u16 GetUniformIndex(const char* uniformName);

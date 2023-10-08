@@ -9,7 +9,7 @@ namespace C3D
 {
     class SystemManager;
 
-    class DebugLine3D
+    class C3D_API DebugLine3D
     {
     public:
         DebugLine3D() = default;

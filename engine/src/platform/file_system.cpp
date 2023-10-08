@@ -196,7 +196,7 @@ namespace C3D
     {
         String dir;
         auto lastSlash = path.FindLastWhere([](const char c) { return c == '/' || c == '\\'; });
-        dir            = path.SubStr(path.begin(), lastSlash);
+        dir            = path.SubStr(path.begin(), lastSlash + 1);
         return dir;
     }
 
@@ -205,7 +205,7 @@ namespace C3D
         String result;
 
         auto lastSlash = path.FindLastWhere([](const char c) { return c == '/' || c == '\\'; });
-        result         = path.SubStr(lastSlash);
+        result         = path.SubStr(lastSlash + 1);
 
         if (!includeExtension)
         {

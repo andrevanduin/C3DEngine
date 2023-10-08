@@ -4,7 +4,6 @@
 #include "loaders/mesh_loader.h"
 #include "renderer/transform.h"
 #include "resources/geometry.h"
-#include "resources/scene/simple_scene_config.h"
 
 namespace C3D
 {
@@ -15,14 +14,6 @@ namespace C3D
     struct MeshConfig
     {
         MeshConfig() = default;
-
-        MeshConfig(const SimpleSceneMeshConfig& cfg) : name(cfg.name), resourceName(cfg.resourceName)
-        {
-            if (!cfg.parentName.Empty())
-            {
-                parentName = cfg.parentName;
-            }
-        }
 
         String name;
         String resourceName;

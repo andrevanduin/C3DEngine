@@ -19,11 +19,11 @@ namespace C3D
         bool Init(const RenderViewSystemConfig& config) override;
         void Shutdown() override;
 
-        bool Create(RenderViewConfig& config);
+        bool Register(RenderView* view);
 
         void OnWindowResize(u32 width, u32 height) const;
 
-        RenderView* Get(const char* name);
+        RenderView* Get(const String& name);
 
         bool BuildPacket(RenderView* view, LinearAllocator* pFrameAllocator, void* data,
                          RenderViewPacket* outPacket) const;
@@ -31,8 +31,6 @@ namespace C3D
 
         bool OnRender(const FrameData& frameData, RenderView* view, const RenderViewPacket* packet, u64 frameNumber,
                       u64 renderTargetIndex) const;
-
-        void RegenerateRenderTargets(RenderView* view) const;
 
     private:
         HashMap<String, RenderView*> m_registeredViews;

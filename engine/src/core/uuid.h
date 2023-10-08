@@ -6,17 +6,17 @@
 
 namespace C3D
 {
-	/* @brief A universally unique identifier (UUID). */
-	struct UUID
-	{
-		char value[37];
-	};
+    /** @brief A universally unique identifier (UUID). */
+    struct UUID
+    {
+        char value[37];
+    };
 
-	class UUIDS
-	{
-	public:
-		static void Seed(u64 seed);
+    class C3D_API UUIDS
+    {
+    public:
+        static void Seed(u64 seed);
 
-		static UUID Generate();
-	};
-}
+        static UUID Generate();
+    };
+}  // namespace C3D

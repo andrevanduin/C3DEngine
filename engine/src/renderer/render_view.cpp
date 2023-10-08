@@ -3,32 +3,51 @@
 
 #include "core/engine.h"
 #include "renderer_frontend.h"
+#include "resources/textures/texture.h"
 #include "systems/events/event_system.h"
 #include "systems/render_views/render_view_system.h"
 
 namespace C3D
 {
-    RenderView::RenderView(const u16 _id, const RenderViewConfig& config)
-        : id(_id),
-          name(config.name),
-          type(config.type),
-          m_width(config.width),
-          m_height(config.height),
-          m_customShaderName(config.customShaderName),
-          m_logger(config.name.Data()),
-          m_pSystemsManager(config.pSystemsManager)
+    RenderView::RenderView(const String& name, const String& customShaderName)
+        : m_name(name), m_customShaderName(customShaderName), m_logger(name.Data())
+    {}
+
+    bool RenderView::OnRegister(const SystemManager* pSystemsManager)
     {
+        m_pSystemsManager = pSystemsManager;
+
+        // We Register the RenderTargetRefreshRequired event here since this is the first time
+        // we actually have access to the SystemsManager
         m_defaultRenderTargetRefreshRequiredCallback =
             Event.Register(EventCodeDefaultRenderTargetRefreshRequired,
                            [this](const u16 code, void* sender, const EventContext& context) {
                                return OnRenderTargetRefreshRequired(code, sender, context);
                            });
+
+        // Setup our passes so we can start creating them (again called here because we need the SystemsManager)
+        OnSetupPasses();
+
+        // Initialize passes for the view
+        for (auto& config : m_passConfigs)
+        {
+            const auto pass = Renderer.CreateRenderPass(config);
+            if (!pass)
+            {
+                m_logger.Error("OnRegister() - RenderPass: '{}' could not be created.", config.name);
+                return false;
+            }
+            m_passes.PushBack(pass);
+        }
+
+        // Call the OnCreate method that the user has specified and return it's result
+        return OnCreate();
     }
 
     void RenderView::OnDestroy()
     {
         Event.Unregister(m_defaultRenderTargetRefreshRequiredCallback);
-        for (const auto pass : passes)
+        for (const auto pass : m_passes)
         {
             Renderer.DestroyRenderPass(pass);
         }
@@ -41,7 +60,7 @@ namespace C3D
             m_width  = static_cast<u16>(width);
             m_height = static_cast<u16>(height);
 
-            for (const auto pass : passes)
+            for (const auto pass : m_passes)
             {
                 pass->renderArea = ivec4(0, 0, m_width, m_height);
             }
@@ -65,8 +84,60 @@ namespace C3D
     {
         if (code == EventCodeDefaultRenderTargetRefreshRequired)
         {
-            Views.RegenerateRenderTargets(this);
+            RegenerateRenderTargets();
         }
         return false;
     }
+
+    void RenderView::RegenerateRenderTargets()
+    {
+        for (u32 r = 0; r < m_passes.Size(); r++)
+        {
+            const auto pass = m_passes[r];
+
+            for (u8 i = 0; i < pass->renderTargetCount; i++)
+            {
+                auto& target = pass->targets[i];
+                // Destroy the old target if it exists
+                Renderer.DestroyRenderTarget(&target, false);
+
+                for (u32 a = 0; a < target.attachmentCount; a++)
+                {
+                    auto& attachment = target.attachments[a];
+                    if (attachment.source == RenderTargetAttachmentSource::Default)
+                    {
+                        if (attachment.type == RenderTargetAttachmentType::Color)
+                        {
+                            attachment.texture = Renderer.GetWindowAttachment(i);
+                        }
+                        else if (attachment.type == RenderTargetAttachmentType::Depth)
+                        {
+                            attachment.texture = Renderer.GetDepthAttachment(i);
+                        }
+                        else
+                        {
+                            m_logger.Fatal("RegenerateRenderTargets() -  attachment type: '{}'.",
+                                           ToUnderlying(attachment.type));
+                        }
+                    }
+                    else if (attachment.source == RenderTargetAttachmentSource::View)
+                    {
+                        if (!RegenerateAttachmentTarget(r, &attachment))
+                        {
+                            m_logger.Error(
+                                "RegenerateRenderTargets() - View failed to regenerate attachment target for "
+                                "attachment type: '{}'.",
+                                ToUnderlying(attachment.type));
+                        }
+                    }
+                }
+
+                // Create the render target
+                Renderer.CreateRenderTarget(target.attachmentCount, target.attachments, pass,
+                                            target.attachments[0].texture->width, target.attachments[0].texture->height,
+                                            &pass->targets[i]);
+            }
+        }
+    }
+
 }  // namespace C3D
