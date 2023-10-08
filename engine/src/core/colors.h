@@ -4,7 +4,7 @@
 
 namespace C3D
 {
-    constexpr auto HSV_60 = 60.0f / 360.0f;
+    constexpr auto HSV_60  = 60.0f / 360.0f;
     constexpr auto HSV_120 = 120.0f / 360.0f;
     constexpr auto HSV_180 = 180.0f / 360.0f;
     constexpr auto HSV_240 = 240.0f / 360.0f;
@@ -49,7 +49,7 @@ namespace C3D
 
     C3D_API C3D_INLINE vec3 RgbToVec3(const u32 r, const u32 g, const u32 b)
     {
-        return {static_cast<f32>(r) / 255.0f, static_cast<f32>(g) / 255.0f, static_cast<f32>(b) / 255.0f};
+        return { static_cast<f32>(r) / 255.0f, static_cast<f32>(g) / 255.0f, static_cast<f32>(b) / 255.0f };
     }
 
     C3D_API C3D_INLINE void Vec3ToRgb(const vec3& v, u32* outR, u32* outG, u32* outB)
@@ -59,7 +59,7 @@ namespace C3D
         *outB = static_cast<u32>(v.b) * 255;
     }
 
-    C3D_API RGBA HsvToRgba(const HSV& hsv)
+    C3D_API C3D_INLINE RGBA HsvToRgba(const HSV& hsv)
     {
         RGBA rgba(0, 0, 0, 1);
 

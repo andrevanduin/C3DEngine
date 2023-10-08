@@ -6,7 +6,7 @@
 namespace C3D
 {
     template <>
-    class ResourceLoader<ShaderConfig> final : public IResourceLoader
+    class C3D_API ResourceLoader<ShaderConfig> final : public IResourceLoader
     {
     public:
         explicit ResourceLoader(const SystemManager* pSystemsManager);

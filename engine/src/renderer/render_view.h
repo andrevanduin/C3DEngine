@@ -20,10 +20,10 @@ namespace C3D
 
     struct RenderViewPacket;
 
-    class RenderView
+    class C3D_API RenderView
     {
     public:
-        RenderView(u16 _id, const RenderViewConfig& config);
+        RenderView(const String& name, const String& customShaderName);
 
         RenderView(const RenderView&) = delete;
         RenderView(RenderView&&)      = delete;
@@ -33,10 +33,12 @@ namespace C3D
 
         virtual ~RenderView() = default;
 
+        bool OnRegister(const SystemManager* pSystemsManager);
+
         virtual bool OnCreate() = 0;
         virtual void OnDestroy();
 
-        /*
+        /**
          * @brief Base method that gets called on resize and performs basic verification, sets the m_width and m_height
          * and resizes the view's passes then it calls the OnResize event. You can override this event if you need
          * custom behaviour like for example a view that does not automatically resize to the size of the screen.
@@ -51,20 +53,27 @@ namespace C3D
 
         virtual bool RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment);
 
-        u16 id;
-        String name;
+        virtual void RegenerateRenderTargets();
 
-        RenderViewKnownType type;
-        DynamicArray<RenderPass*> passes;
+        const String& GetName() const { return m_name; }
 
     protected:
         bool OnRenderTargetRefreshRequired(u16 code, void* sender, const EventContext& context);
 
-        /* @brief Method that gets called by OnBaseResize() where you can put your basic extra OnResize behaviour. */
+        /** @brief Method that gets called by OnBaseResize() where you can put your basic extra OnResize behaviour. */
         virtual void OnResize();
 
-        u16 m_width;
-        u16 m_height;
+        /** @brief A method that gets called right after the SystemsManager is setup so you can use the already
+         * initialized systems (like for example the Renderer). */
+        virtual void OnSetupPasses() = 0;
+
+        String m_name;
+
+        u16 m_width  = 1280;
+        u16 m_height = 720;
+
+        DynamicArray<RenderPass*> m_passes;
+        DynamicArray<RenderPassConfig> m_passConfigs;
 
         RegisteredEventCallback m_defaultRenderTargetRefreshRequiredCallback;
 

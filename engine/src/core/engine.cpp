@@ -160,11 +160,12 @@ namespace C3D
         });
 
         // Load render views
-        for (auto& view : appState->renderViews)
+        for (auto view : appState->renderViews)
         {
-            if (!Views.Create(view))
+            if (!Views.Register(view))
             {
-                m_logger.Fatal("Failed to Create view: '{}'", view.name);
+                String name = view ? view->GetName() : "UNKOWN";
+                m_logger.Fatal("Failed to Create view: '{}'", name);
             }
         }
 

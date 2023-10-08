@@ -25,7 +25,7 @@ namespace C3D
         MaxValue
     };
 
-    /* @brief The header for our proprietary resource files. */
+    /** @brief The header for our proprietary resource files. */
     struct ResourceHeader
     {
         /* @brief A magic number indicating this file is a C3D binary file. */

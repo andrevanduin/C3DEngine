@@ -3,7 +3,6 @@
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
 #include "resources/resource_types.h"
-#include "resources/scene/simple_scene_config.h"
 
 namespace C3D
 {
@@ -17,9 +16,6 @@ namespace C3D
     struct TerrainConfig final : Resource
     {
         TerrainConfig() = default;
-
-        TerrainConfig(const SimpleSceneTerrainConfig& cfg) : name(cfg.name), resourceName(cfg.resourceName)
-        {}
 
         void Destroy()
         {

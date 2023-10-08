@@ -33,7 +33,7 @@ namespace C3D
         bool useThirdAxis;
     };
 
-    class DebugGrid
+    class C3D_API DebugGrid
     {
     public:
         DebugGrid() = default;

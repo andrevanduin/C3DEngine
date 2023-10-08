@@ -10,19 +10,27 @@
 #include <core/logger.h>
 #include <core/metrics/metrics.h>
 #include <renderer/renderer_types.h>
-#include <resources/scene/simple_scene_config.h>
 #include <resources/skybox.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/events/event_system.h>
 #include <systems/geometry/geometry_system.h>
 #include <systems/input/input_system.h>
+#include <systems/lights/light_system.h>
 #include <systems/render_views/render_view_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
 #include <systems/textures/texture_system.h>
 
 #include <glm/gtx/matrix_decompose.hpp>
-#include <map>
+
+#include "resources/loaders/simple_scene_loader.h"
+#include "resources/scenes/simple_scene.h"
+#include "resources/scenes/simple_scene_config.h"
+#include "test_env_types.h"
+#include "views/render_view_pick.h"
+#include "views/render_view_skybox.h"
+#include "views/render_view_ui.h"
+#include "views/render_view_world.h"
 
 TestEnv::TestEnv(C3D::ApplicationState* state) : Application(state), m_state(reinterpret_cast<GameState*>(state)) {}
 
@@ -61,6 +69,11 @@ bool TestEnv::OnBoot()
 
 bool TestEnv::OnRun(C3D::FrameData& frameData)
 {
+    // Register our simple scene loader so we can use it to load our simple scene
+    const auto simpleSceneLoader =
+        Memory.New<C3D::ResourceLoader<SimpleSceneConfig>>(C3D::MemoryType::ResourceLoader, m_pSystemsManager);
+    Resources.RegisterLoader(simpleSceneLoader);
+
     // TEMP
     // Create test ui text objects
     if (!m_state->testText.Create("TEST_UI_TEXT", m_pSystemsManager, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
@@ -70,12 +83,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     }
 
     m_state->testText.SetPosition({ 10, 640, 0 });
-
-    if (!m_state->simpleScene.Create(m_pSystemsManager))
-    {
-        m_logger.Error("OnRun() - Failed to create simple scene");
-        return false;
-    }
 
     // Load up our test ui geometry
     C3D::UIGeometryConfig uiConfig = {};
@@ -253,15 +260,14 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         m_logger.Error("Update() - Failed to update main scene");
     }
 
-    if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized &&
-        m_state->reloadState == ReloadState::Unloading)
+    if (m_state->simpleScene.GetState() == SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
     {
         m_state->reloadState = ReloadState::Loading;
         m_logger.Info("OnDebugEvent() - Loading Main Scene...");
         LoadTestScene();
     }
 
-    if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
+    if (m_state->simpleScene.GetState() == SceneState::Loaded)
     {
         // Rotate
         quat rotation = angleAxis(0.2f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
@@ -278,12 +284,12 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         const auto rgba = C3D::HsvToRgba(hsv);
 
         m_state->pLights[0]->data.color = vec4(rgba.r, rgba.g, rgba.b, rgba.a);
-        m_state->pLights[0]->data.position.x += sinTime2;
+        m_state->pLights[0]->data.position.z += sinTime2;
         m_state->pLights[0]->data.linear    = 0.5f;
         m_state->pLights[0]->data.quadratic = 0.2f;
 
-        if (m_state->pLights[0]->data.position.x < 20.0f) m_state->pLights[0]->data.position.x = 20.0f;
-        if (m_state->pLights[0]->data.position.x > 60.0f) m_state->pLights[0]->data.position.x = 60.0f;
+        if (m_state->pLights[0]->data.position.z < 10.0f) m_state->pLights[0]->data.position.z = 10.0f;
+        if (m_state->pLights[0]->data.position.z > 40.0f) m_state->pLights[0]->data.position.z = 40.0f;
 
         Lights.InvalidatePointLightCache();
     }
@@ -347,17 +353,17 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     packet.views.Resize(4);
 
     // FIXME: Read this from a config
-    packet.views[0].view = Views.Get("skybox");
-    packet.views[0].geometries.SetAllocator(frameData.frameAllocator);
+    packet.views[TEST_ENV_VIEW_SKYBOX].view = Views.Get("SKYBOX_VIEW");
+    packet.views[TEST_ENV_VIEW_SKYBOX].geometries.SetAllocator(frameData.frameAllocator);
 
-    packet.views[1].view = Views.Get("world");
-    packet.views[1].geometries.SetAllocator(frameData.frameAllocator);
+    packet.views[TEST_ENV_VIEW_WORLD].view = Views.Get("WORLD_VIEW");
+    packet.views[TEST_ENV_VIEW_WORLD].geometries.SetAllocator(frameData.frameAllocator);
 
-    packet.views[2].view = Views.Get("ui");
-    packet.views[2].geometries.SetAllocator(frameData.frameAllocator);
+    packet.views[TEST_ENV_VIEW_UI].view = Views.Get("UI_VIEW");
+    packet.views[TEST_ENV_VIEW_UI].geometries.SetAllocator(frameData.frameAllocator);
 
-    packet.views[3].view = Views.Get("pick");
-    packet.views[3].geometries.SetAllocator(frameData.frameAllocator);
+    packet.views[TEST_ENV_VIEW_PICK].view = Views.Get("PICK_VIEW");
+    packet.views[TEST_ENV_VIEW_PICK].geometries.SetAllocator(frameData.frameAllocator);
 
     if (!m_state->simpleScene.PopulateRenderPacket(frameData, packet))
     {
@@ -380,9 +386,10 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
 
     m_pConsole->OnRender(uiPacket);
 
-    if (!Views.BuildPacket(Views.Get("ui"), frameData.frameAllocator, &uiPacket, &packet.views[2]))
+    auto& uiViewPacket = packet.views[TEST_ENV_VIEW_UI];
+    if (!Views.BuildPacket(uiViewPacket.view, frameData.frameAllocator, &uiPacket, &uiViewPacket))
     {
-        m_logger.Error("Failed to build packet for view: 'ui'");
+        m_logger.Error("Failed to build packet for view: 'ui'.");
         return false;
     }
 
@@ -390,12 +397,14 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     C3D::PickPacketData pickPacket = {};
     pickPacket.uiMeshData          = uiPacket.meshData;
     // TODO: This index is hardcoded currently
-    pickPacket.worldMeshData = &packet.views[1].geometries;
-    pickPacket.terrainData   = &packet.views[1].terrainGeometries;
+    pickPacket.worldMeshData = &packet.views[TEST_ENV_VIEW_WORLD].geometries;
+    pickPacket.terrainData   = &packet.views[TEST_ENV_VIEW_WORLD].terrainGeometries;
     pickPacket.texts         = uiPacket.texts;
-    if (!Views.BuildPacket(Views.Get("pick"), frameData.frameAllocator, &pickPacket, &packet.views[3]))
+
+    auto& pickViewPacket = packet.views[TEST_ENV_VIEW_PICK];
+    if (!Views.BuildPacket(pickViewPacket.view, frameData.frameAllocator, &pickPacket, &pickViewPacket))
     {
-        m_logger.Error("Failed to build packet for view: 'pick'");
+        m_logger.Error("Failed to build packet for view: 'pick'.");
         return false;
     }
 
@@ -465,7 +474,7 @@ void TestEnv::OnLibraryLoad()
     m_pConsole->RegisterCommand("reload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         m_state->reloadState = ReloadState::Unloading;
 
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
+        if (m_state->simpleScene.GetState() == SceneState::Loaded)
         {
             m_logger.Info("OnDebugEvent() - Unloading models...");
             m_state->simpleScene.Unload();
@@ -490,163 +499,20 @@ void TestEnv::OnLibraryUnload()
 bool TestEnv::ConfigureRenderViews() const
 {
     // Skybox View
-    C3D::RenderViewConfig skyboxConfig{};
-    skyboxConfig.type             = C3D::RenderViewKnownType::Skybox;
-    skyboxConfig.width            = 1280;
-    skyboxConfig.height           = 720;
-    skyboxConfig.name             = "skybox";
-    skyboxConfig.passCount        = 1;
-    skyboxConfig.viewMatrixSource = C3D::RenderViewViewMatrixSource::SceneCamera;
-
-    C3D::RenderPassConfig skyboxPass{};
-    skyboxPass.name       = "RenderPass.Builtin.Skybox";
-    skyboxPass.renderArea = { 0, 0, 1280, 720 };
-    skyboxPass.clearColor = { 0, 0, 0.2f, 1.0f };
-    skyboxPass.clearFlags = C3D::ClearColorBuffer;
-    skyboxPass.depth      = 1.0f;
-    skyboxPass.stencil    = 0;
-
-    C3D::RenderTargetAttachmentConfig skyboxTargetAttachment = {};
-    skyboxTargetAttachment.type                              = C3D::RenderTargetAttachmentType::Color;
-    skyboxTargetAttachment.source                            = C3D::RenderTargetAttachmentSource::Default;
-    skyboxTargetAttachment.loadOperation                     = C3D::RenderTargetAttachmentLoadOperation::DontCare;
-    skyboxTargetAttachment.storeOperation                    = C3D::RenderTargetAttachmentStoreOperation::Store;
-    skyboxTargetAttachment.presentAfter                      = false;
-
-    skyboxPass.target.attachments.PushBack(skyboxTargetAttachment);
-    skyboxPass.renderTargetCount = Renderer.GetWindowAttachmentCount();
-
-    skyboxConfig.passes.PushBack(skyboxPass);
-
-    m_state->renderViews.PushBack(skyboxConfig);
+    RenderViewSkybox* skyboxView = Memory.New<RenderViewSkybox>(C3D::MemoryType::RenderView);
+    m_state->renderViews.PushBack(skyboxView);
 
     // World View
-    C3D::RenderViewConfig worldConfig{};
-    worldConfig.type             = C3D::RenderViewKnownType::World;
-    worldConfig.width            = 1280;
-    worldConfig.height           = 720;
-    worldConfig.name             = "world";
-    worldConfig.passCount        = 1;
-    worldConfig.viewMatrixSource = C3D::RenderViewViewMatrixSource::SceneCamera;
-
-    C3D::RenderPassConfig worldPass;
-    worldPass.name       = "RenderPass.Builtin.World";
-    worldPass.renderArea = { 0, 0, 1280, 720 };
-    worldPass.clearColor = { 0, 0, 0.2f, 1.0f };
-    worldPass.clearFlags = C3D::ClearDepthBuffer | C3D::ClearStencilBuffer;
-    worldPass.depth      = 1.0f;
-    worldPass.stencil    = 0;
-
-    C3D::RenderTargetAttachmentConfig worldTargetAttachments[2]{};
-    worldTargetAttachments[0].type           = C3D::RenderTargetAttachmentType::Color;
-    worldTargetAttachments[0].source         = C3D::RenderTargetAttachmentSource::Default;
-    worldTargetAttachments[0].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::Load;
-    worldTargetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
-    worldTargetAttachments[0].presentAfter   = false;
-
-    worldTargetAttachments[1].type           = C3D::RenderTargetAttachmentType::Depth;
-    worldTargetAttachments[1].source         = C3D::RenderTargetAttachmentSource::Default;
-    worldTargetAttachments[1].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
-    worldTargetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
-    worldTargetAttachments[1].presentAfter   = false;
-
-    worldPass.target.attachments.PushBack(worldTargetAttachments[0]);
-    worldPass.target.attachments.PushBack(worldTargetAttachments[1]);
-    worldPass.renderTargetCount = Renderer.GetWindowAttachmentCount();
-
-    worldConfig.passes.PushBack(worldPass);
-
-    m_state->renderViews.PushBack(worldConfig);
+    RenderViewWorld* worldView = Memory.New<RenderViewWorld>(C3D::MemoryType::RenderView);
+    m_state->renderViews.PushBack(worldView);
 
     // UI View
-    C3D::RenderViewConfig uiViewConfig{};
-    uiViewConfig.type             = C3D::RenderViewKnownType::UI;
-    uiViewConfig.width            = 1280;
-    uiViewConfig.height           = 720;
-    uiViewConfig.name             = "ui";
-    uiViewConfig.passCount        = 1;
-    uiViewConfig.viewMatrixSource = C3D::RenderViewViewMatrixSource::SceneCamera;
-
-    C3D::RenderPassConfig uiPass;
-    uiPass.name       = "RenderPass.Builtin.UI";
-    uiPass.renderArea = { 0, 0, 1280, 720 };
-    uiPass.clearColor = { 0, 0, 0.2f, 1.0f };
-    uiPass.clearFlags = C3D::ClearNone;
-    uiPass.depth      = 1.0f;
-    uiPass.stencil    = 0;
-
-    C3D::RenderTargetAttachmentConfig uiAttachment = {};
-    uiAttachment.type                              = C3D::RenderTargetAttachmentType::Color;
-    uiAttachment.source                            = C3D::RenderTargetAttachmentSource::Default;
-    uiAttachment.loadOperation                     = C3D::RenderTargetAttachmentLoadOperation::Load;
-    uiAttachment.storeOperation                    = C3D::RenderTargetAttachmentStoreOperation::Store;
-    uiAttachment.presentAfter                      = true;
-
-    uiPass.target.attachments.PushBack(uiAttachment);
-    uiPass.renderTargetCount = Renderer.GetWindowAttachmentCount();
-
-    uiViewConfig.passes.PushBack(uiPass);
-
-    m_state->renderViews.PushBack(uiViewConfig);
+    RenderViewUi* uiView = Memory.New<RenderViewUi>(C3D::MemoryType::RenderView);
+    m_state->renderViews.PushBack(uiView);
 
     // Pick View
-    C3D::RenderViewConfig pickViewConfig = {};
-    pickViewConfig.type                  = C3D::RenderViewKnownType::Pick;
-    pickViewConfig.width                 = 1280;
-    pickViewConfig.height                = 720;
-    pickViewConfig.name                  = "pick";
-    pickViewConfig.passCount             = 2;
-    pickViewConfig.viewMatrixSource      = C3D::RenderViewViewMatrixSource::SceneCamera;
-
-    C3D::RenderPassConfig pickPasses[2] = {};
-
-    pickPasses[0].name       = "RenderPass.Builtin.WorldPick";
-    pickPasses[0].renderArea = { 0, 0, 1280, 720 };
-    // HACK: Clear to white for better visibility (should be 0 since it's invalid id)
-    pickPasses[0].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-    pickPasses[0].clearFlags =
-        C3D::RenderPassClearFlags::ClearColorBuffer | C3D::RenderPassClearFlags::ClearDepthBuffer;
-    pickPasses[0].depth   = 1.0f;
-    pickPasses[0].stencil = 0;
-
-    C3D::RenderTargetAttachmentConfig worldPickTargetAttachments[2];
-    worldPickTargetAttachments[0].type           = C3D::RenderTargetAttachmentType::Color;
-    worldPickTargetAttachments[0].source         = C3D::RenderTargetAttachmentSource::View;
-    worldPickTargetAttachments[0].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
-    worldPickTargetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
-    worldPickTargetAttachments[0].presentAfter   = false;
-
-    worldPickTargetAttachments[1].type           = C3D::RenderTargetAttachmentType::Depth;
-    worldPickTargetAttachments[1].source         = C3D::RenderTargetAttachmentSource::View;
-    worldPickTargetAttachments[1].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
-    worldPickTargetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
-    worldPickTargetAttachments[1].presentAfter   = false;
-
-    pickPasses[0].target.attachments.PushBack(worldPickTargetAttachments[0]);
-    pickPasses[0].target.attachments.PushBack(worldPickTargetAttachments[1]);
-    pickPasses[0].renderTargetCount = 1;
-
-    pickPasses[1].name       = "RenderPass.Builtin.UIPick";
-    pickPasses[1].renderArea = { 0, 0, 1280, 720 };
-    pickPasses[1].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-    pickPasses[1].clearFlags = C3D::RenderPassClearFlags::ClearNone;
-    pickPasses[1].depth      = 1.0f;
-    pickPasses[1].stencil    = 0;
-
-    C3D::RenderTargetAttachmentConfig uiPickTargetAttachment{};
-    uiPickTargetAttachment.type           = C3D::RenderTargetAttachmentType::Color;
-    uiPickTargetAttachment.source         = C3D::RenderTargetAttachmentSource::View;
-    uiPickTargetAttachment.loadOperation  = C3D::RenderTargetAttachmentLoadOperation::Load;
-    uiPickTargetAttachment.storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
-    uiPickTargetAttachment.presentAfter   = false;
-
-    pickPasses[1].target.attachments.PushBack(uiPickTargetAttachment);
-    pickPasses[1].renderTargetCount = 1;
-
-    pickViewConfig.passes.PushBack(pickPasses[0]);
-    pickViewConfig.passes.PushBack(pickPasses[1]);
-
-    m_state->renderViews.PushBack(pickViewConfig);
+    RenderViewPick* pickView = Memory.New<RenderViewPick>(C3D::MemoryType::RenderView);
+    m_state->renderViews.PushBack(pickView);
 
     return true;
 }
@@ -692,7 +558,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
     if (code == C3D::EventCodeDebug1)
     {
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized)
+        if (m_state->simpleScene.GetState() == SceneState::Uninitialized)
         {
             m_logger.Info("OnDebugEvent() - Loading Main Scene...");
             LoadTestScene();
@@ -703,7 +569,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
     if (code == C3D::EventCodeDebug2)
     {
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
+        if (m_state->simpleScene.GetState() == SceneState::Loaded)
         {
             m_logger.Info("OnDebugEvent() - Unloading models...");
             m_state->simpleScene.Unload();
@@ -717,7 +583,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
 bool TestEnv::LoadTestScene()
 {
-    C3D::SimpleSceneConfig sceneConfig;
+    SimpleSceneConfig sceneConfig;
     Resources.Load("test_scene", sceneConfig);
 
     if (!m_state->simpleScene.Create(m_pSystemsManager, sceneConfig))

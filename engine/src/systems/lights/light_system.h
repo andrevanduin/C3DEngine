@@ -5,7 +5,6 @@
 #include "containers/hash_map.h"
 #include "core/defines.h"
 #include "math/math_types.h"
-#include "resources/scene/simple_scene_config.h"
 #include "systems/system.h"
 
 namespace C3D
@@ -29,14 +28,7 @@ namespace C3D
         /** @brief User-defined debug data. */
         void* debugData;
 
-        DirectionalLight() {}
-
-        DirectionalLight(const SimpleSceneDirectionalLightConfig& config)
-        {
-            name           = config.name;
-            data.color     = config.color;
-            data.direction = config.direction;
-        }
+        DirectionalLight() = default;
     };
 
     /** @brief Shader data required for a Point Light */
@@ -62,15 +54,6 @@ namespace C3D
         PointLightData data;
         /** @brief User-defined debug data. */
         void* debugData;
-
-        PointLight(const SimpleScenePointLightConfig& config) : name(config.name)
-        {
-            data.color     = config.color;
-            data.position  = config.position;
-            data.fConstant = config.constant;
-            data.linear    = config.linear;
-            data.quadratic = config.quadratic;
-        }
     };
 
     class C3D_API LightSystem final : public BaseSystem

@@ -4,14 +4,16 @@
 #include <core/frame_data.h>
 #include <math/frustum.h>
 #include <resources/mesh.h>
-#include <resources/scene/simple_scene.h>
 #include <resources/ui_text.h>
-#include <systems/lights/light_system.h>
+#include <systems/events/event_system.h>
+
+#include "resources/scenes/simple_scene.h"
 
 namespace C3D
 {
     class Camera;
-}
+    class PointLight;
+}  // namespace C3D
 
 enum class ReloadState
 {
@@ -30,7 +32,7 @@ struct GameState final : C3D::ApplicationState
     ReloadState reloadState = ReloadState::Done;
 
     // TEMP
-    C3D::SimpleScene simpleScene;
+    SimpleScene simpleScene;
 
     C3D::PointLight* pLights[4];
 

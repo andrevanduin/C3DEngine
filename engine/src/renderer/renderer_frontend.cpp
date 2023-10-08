@@ -96,7 +96,8 @@ namespace C3D
                 if (!Views.OnRender(frameData, viewPacket.view, &viewPacket, m_backendPlugin->frameNumber,
                                     attachmentIndex))
                 {
-                    m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.", viewPacket.view->name);
+                    m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.",
+                                   viewPacket.view->GetName());
                     return false;
                 }
             }

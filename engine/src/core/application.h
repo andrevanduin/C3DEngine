@@ -19,7 +19,7 @@ namespace C3D
         RendererPlugin* rendererPlugin;
         FontSystemConfig fontConfig;
 
-        DynamicArray<RenderViewConfig> renderViews;
+        DynamicArray<RenderView*> renderViews;
 
         /** @brief The size that should be allocated for the per-frame allocator. */
         u64 frameAllocatorSize;
@@ -33,24 +33,24 @@ namespace C3D
         explicit Application(ApplicationState* appState) : m_logger(appState->name.Data()), m_appState(appState) {}
 
         Application(const Application&) = delete;
-        Application(Application&&) = delete;
+        Application(Application&&)      = delete;
 
         Application& operator=(const Application&) = delete;
-        Application& operator=(Application&&) = delete;
+        Application& operator=(Application&&)      = delete;
 
         virtual ~Application() = default;
 
-        virtual bool OnBoot() = 0;
+        virtual bool OnBoot()                    = 0;
         virtual bool OnRun(FrameData& frameData) = 0;
 
-        virtual void OnUpdate(FrameData& frameData) = 0;
+        virtual void OnUpdate(FrameData& frameData)                       = 0;
         virtual bool OnRender(RenderPacket& packet, FrameData& frameData) = 0;
 
         virtual void OnResize() = 0;
 
         virtual void OnShutdown() = 0;
 
-        virtual void OnLibraryLoad() = 0;
+        virtual void OnLibraryLoad()   = 0;
         virtual void OnLibraryUnload() = 0;
 
         friend Engine;
@@ -59,7 +59,7 @@ namespace C3D
         LoggerInstance<64> m_logger;
 
         ApplicationState* m_appState;
-        UIConsole* m_pConsole = nullptr;
+        UIConsole* m_pConsole                  = nullptr;
         const SystemManager* m_pSystemsManager = nullptr;
     };
 

@@ -692,7 +692,7 @@ namespace C3D
          */
         [[nodiscard]] const_iterator FindLastOf(const char c) const
         {
-            for (u32 i = 0; i >= 0; i--)
+            for (u32 i = m_size - 1; i >= 0; i--)
             {
                 if (m_data[i] == c)
                 {
@@ -712,7 +712,7 @@ namespace C3D
         template <typename Predicate>
         [[nodiscard]] const_iterator FindLastWhere(Predicate p) const
         {
-            for (u32 i = 0; i >= 0; i--)
+            for (u32 i = m_size - 1; i >= 0; i--)
             {
                 if (p(m_data[i]))
                 {

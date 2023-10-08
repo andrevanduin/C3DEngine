@@ -7,7 +7,7 @@ namespace C3D
 {
     class SystemManager;
 
-    class IResourceLoader
+    class C3D_API IResourceLoader
     {
     public:
         IResourceLoader(const SystemManager* pSystemsManager, const char* name, MemoryType memoryType,
