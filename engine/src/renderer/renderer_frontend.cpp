@@ -155,20 +155,55 @@ namespace C3D
 
     void RenderSystem::DestroyTexture(Texture* texture) const { m_backendPlugin->DestroyTexture(texture); }
 
-    bool RenderSystem::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount,
+    bool RenderSystem::CreateGeometry(Geometry& geometry, const u32 vertexSize, const u64 vertexCount,
                                       const void* vertices, const u32 indexSize, const u64 indexCount,
                                       const void* indices) const
     {
-        return m_backendPlugin->CreateGeometry(geometry, vertexSize, vertexCount, vertices, indexSize, indexCount,
-                                               indices);
+        if (!vertexCount || !vertices || !vertexSize)
+        {
+            m_logger.Error("CreateGeometry() - Invalid vertex data was supplied.");
+            return false;
+        }
+
+        geometry.material = nullptr;
+
+        // Invalidate IDs
+        geometry.internalId = INVALID_ID;
+        geometry.generation = INVALID_ID_U16;
+
+        // Take a copy of our vertex data
+        geometry.vertexCount       = vertexCount;
+        geometry.vertexElementSize = vertexSize;
+        geometry.vertices          = Memory.AllocateBlock(MemoryType::RenderSystem, vertexSize * vertexCount);
+        std::memcpy(geometry.vertices, vertices, vertexSize * vertexCount);
+
+        geometry.indexCount       = indexCount;
+        geometry.indexElementSize = indexSize;
+        geometry.indices          = nullptr;
+
+        // If index data is supplied we take a copy of it
+        if (indexSize && indexCount)
+        {
+            geometry.indices = Memory.AllocateBlock(MemoryType::RenderSystem, indexSize * indexCount);
+            std::memcpy(geometry.indices, indices, indexSize * indexCount);
+        }
+
+        return m_backendPlugin->CreateGeometry(geometry);
     }
 
-    void RenderSystem::UpdateGeometry(Geometry* geometry, u32 offset, u32 vertexCount, const void* vertices) const
+    bool RenderSystem::UploadGeometry(Geometry& geometry) const
     {
-        m_backendPlugin->UpdateGeometry(geometry, offset, vertexCount, vertices);
+        return m_backendPlugin->UploadGeometry(geometry, 0, geometry.vertexElementSize * geometry.vertexCount, 0,
+                                               geometry.indexElementSize * geometry.indexCount);
     }
 
-    void RenderSystem::DestroyGeometry(Geometry* geometry) const { m_backendPlugin->DestroyGeometry(geometry); }
+    void RenderSystem::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount,
+                                              const void* vertices) const
+    {
+        m_backendPlugin->UpdateGeometryVertices(geometry, offset, vertexCount, vertices);
+    }
+
+    void RenderSystem::DestroyGeometry(Geometry& geometry) const { m_backendPlugin->DestroyGeometry(geometry); }
 
     void RenderSystem::DrawGeometry(const GeometryRenderData& data) const { m_backendPlugin->DrawGeometry(data); }
 
@@ -186,31 +221,34 @@ namespace C3D
 
     void RenderSystem::DestroyShader(Shader& shader) const { return m_backendPlugin->DestroyShader(shader); }
 
-    bool RenderSystem::InitializeShader(Shader* shader) const { return m_backendPlugin->InitializeShader(shader); }
+    bool RenderSystem::InitializeShader(Shader& shader) const { return m_backendPlugin->InitializeShader(shader); }
 
-    bool RenderSystem::UseShader(Shader* shader) const { return m_backendPlugin->UseShader(shader); }
+    bool RenderSystem::UseShader(const Shader& shader) const { return m_backendPlugin->UseShader(shader); }
 
-    bool RenderSystem::ShaderBindGlobals(Shader* shader) const { return m_backendPlugin->ShaderBindGlobals(shader); }
+    bool RenderSystem::ShaderBindGlobals(Shader& shader) const { return m_backendPlugin->ShaderBindGlobals(shader); }
 
-    bool RenderSystem::ShaderBindInstance(Shader* shader, u32 instanceId) const
+    bool RenderSystem::ShaderBindInstance(Shader& shader, u32 instanceId) const
     {
         return m_backendPlugin->ShaderBindInstance(shader, instanceId);
     }
 
-    bool RenderSystem::ShaderApplyGlobals(Shader* shader) const { return m_backendPlugin->ShaderApplyGlobals(shader); }
+    bool RenderSystem::ShaderApplyGlobals(const Shader& shader, bool needsUpdate) const
+    {
+        return m_backendPlugin->ShaderApplyGlobals(shader, needsUpdate);
+    }
 
-    bool RenderSystem::ShaderApplyInstance(Shader* shader, const bool needsUpdate) const
+    bool RenderSystem::ShaderApplyInstance(const Shader& shader, const bool needsUpdate) const
     {
         return m_backendPlugin->ShaderApplyInstance(shader, needsUpdate);
     }
 
-    bool RenderSystem::AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+    bool RenderSystem::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps,
                                                       u32* outInstanceId) const
     {
         return m_backendPlugin->AcquireShaderInstanceResources(shader, textureMapCount, maps, outInstanceId);
     }
 
-    bool RenderSystem::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId) const
+    bool RenderSystem::ReleaseShaderInstanceResources(const Shader& shader, const u32 instanceId) const
     {
         return m_backendPlugin->ReleaseShaderInstanceResources(shader, instanceId);
     }
@@ -225,7 +263,7 @@ namespace C3D
         m_backendPlugin->ReleaseTextureMapResources(map);
     }
 
-    bool RenderSystem::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) const
+    bool RenderSystem::SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) const
     {
         return m_backendPlugin->SetUniform(shader, uniform, value);
     }

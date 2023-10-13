@@ -5,9 +5,10 @@
 #include "core/defines.h"
 #include "core/engine.h"
 #include "core/logger.h"
+#include "renderer/geometry.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
-#include "resources/geometry.h"
+#include "resources/geometry_config.h"
 #include "systems/materials/material_system.h"
 #include "systems/system_manager.h"
 
@@ -26,11 +27,11 @@ namespace C3D
 
     struct GeometryReference
     {
-        GeometryReference() : referenceCount(0), geometry(), autoRelease(false) {}
+        GeometryReference() = default;
 
-        u64 referenceCount;
+        u64 referenceCount = 0;
         Geometry geometry;
-        bool autoRelease;
+        bool autoRelease = false;
     };
 
     class C3D_API GeometrySystem final : public SystemWithConfig<GeometrySystemConfig>
@@ -119,10 +120,29 @@ namespace C3D
     template <typename VertexType, typename IndexType>
     bool GeometrySystem::CreateGeometry(const IGeometryConfig<VertexType, IndexType>& config, Geometry* g) const
     {
+        if (!g)
+        {
+            m_logger.Error("CreateGeometry() - Requires a valid pointer to geometry.");
+            return false;
+        }
+
         // Send the geometry off to the renderer to be uploaded to the gpu
-        if (!Renderer.CreateGeometry(g, sizeof(VertexType), config.vertices.Size(), config.vertices.GetData(),
+        if (!Renderer.CreateGeometry(*g, sizeof(VertexType), config.vertices.Size(), config.vertices.GetData(),
                                      sizeof(IndexType), config.indices.Size(), config.indices.GetData()))
         {
+            m_logger.Error("CreateGeometry() - Creating geometry failed during the Renderer's CreateGeometry.");
+            m_registeredGeometries[g->id].referenceCount = 0;
+            m_registeredGeometries[g->id].autoRelease    = false;
+            g->id                                        = INVALID_ID;
+            g->internalId                                = INVALID_ID;
+            g->generation                                = INVALID_ID_U16;
+
+            return false;
+        }
+
+        if (!Renderer.UploadGeometry(*g))
+        {
+            m_logger.Error("CreateGeometry() - Creating geometry failed during the Renderer's UploadGeometry.");
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;

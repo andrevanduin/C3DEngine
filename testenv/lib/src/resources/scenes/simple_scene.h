@@ -8,7 +8,6 @@
 #include <renderer/transform.h>
 #include <renderer/vertex.h>
 #include <resources/debug/debug_grid.h>
-#include <resources/geometry.h>
 #include <resources/mesh.h>
 #include <resources/terrain/terrain.h>
 
@@ -22,6 +21,10 @@ namespace C3D
     struct DirectionalLight;
     struct PointLight;
     struct Skybox;
+
+    class Ray;
+    struct RayCastResult;
+
 }  // namespace C3D
 
 enum class SceneState
@@ -113,6 +116,8 @@ public:
 
     bool AddSkybox(const C3D::String& name, C3D::Skybox* skybox);
     bool RemoveSkybox(const C3D::String& name);
+
+    bool RayCast(const C3D::Ray& ray, C3D::RayCastResult& result);
 
     [[nodiscard]] u32 GetId() const { return m_id; }
     [[nodiscard]] SceneState GetState() const { return m_state; }

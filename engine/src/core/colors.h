@@ -10,6 +10,15 @@ namespace C3D
     constexpr auto HSV_240 = 240.0f / 360.0f;
     constexpr auto HSV_300 = 300.0f / 360.0f;
 
+    constexpr auto RED     = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    constexpr auto GREEN   = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    constexpr auto BLUE    = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+    constexpr auto BLACK   = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    constexpr auto WHITE   = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    constexpr auto GRAY    = vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    constexpr auto MAGENTA = vec4(1.0f, 0.0f, 1.0f, 1.0f);
+    constexpr auto YELLOW  = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+
     struct RGB
     {
         f32 r;

@@ -3,13 +3,14 @@
 #include "containers/string.h"
 #include "loaders/mesh_loader.h"
 #include "renderer/transform.h"
-#include "resources/geometry.h"
+#include "resources/geometry_config.h"
 
 namespace C3D
 {
     class SystemManager;
     class Mesh;
     class DebugBox3D;
+    class Geometry;
 
     struct MeshConfig
     {
@@ -48,6 +49,8 @@ namespace C3D
         DebugBox3D* GetDebugBox() const { return m_debugBox; }
 
         bool HasDebugBox() const { return m_debugBox != nullptr; }
+
+        const Extents3D& GetExtents() const { return m_extents; }
 
         u32 uniqueId  = INVALID_ID;
         u8 generation = INVALID_ID_U8;

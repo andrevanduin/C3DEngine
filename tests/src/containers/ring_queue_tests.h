@@ -4,5 +4,5 @@
 
 namespace RingQueue
 {
-	void RegisterTests(TestManager* manager);
+	void RegisterTests(TestManager& manager);
 }

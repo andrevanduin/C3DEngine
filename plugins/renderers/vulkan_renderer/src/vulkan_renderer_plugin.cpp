@@ -568,9 +568,9 @@ namespace C3D
         if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
 
         const auto bufferData        = &m_geometries[data.geometry->internalId];
-        const bool includesIndexData = bufferData->indexCount > 0;
+        const bool includesIndexData = data.geometry->indexCount > 0;
 
-        if (!m_objectVertexBuffer.Draw(bufferData->vertexBufferOffset, bufferData->vertexCount, includesIndexData))
+        if (!m_objectVertexBuffer.Draw(bufferData->vertexBufferOffset, data.geometry->vertexCount, includesIndexData))
         {
             m_logger.Error("DrawGeometry() - Failed to draw vertex buffer.");
             return;
@@ -578,7 +578,7 @@ namespace C3D
 
         if (includesIndexData)
         {
-            if (!m_objectIndexBuffer.Draw(bufferData->indexBufferOffset, bufferData->indexCount, false))
+            if (!m_objectIndexBuffer.Draw(bufferData->indexBufferOffset, data.geometry->indexCount, false))
             {
                 m_logger.Error("DrawGeometry() - Failed to draw index buffer.");
             }
@@ -811,31 +811,19 @@ namespace C3D
         }
     }
 
-    bool VulkanRendererPlugin::CreateGeometry(Geometry* geometry, const u32 vertexSize, const u64 vertexCount,
-                                              const void* vertices, const u32 indexSize, const u64 indexCount,
-                                              const void* indices)
-    {
-        if (!vertexCount || !vertices)
-        {
-            m_logger.Error("CreateGeometry() requires vertex data and none was supplied.");
-            return false;
-        }
+    // NOTE: Nothing needs to happen for Vulkan at this stage
+    bool VulkanRendererPlugin::CreateGeometry(Geometry& geometry) { return true; }
 
-        // Check if this is a re-upload. If it is we need to free the old data afterwards
-        const bool isReupload = geometry->internalId != INVALID_ID;
-        VulkanGeometryData oldRange{};
-        VulkanGeometryData* internalData = nullptr;
+    bool VulkanRendererPlugin::UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset,
+                                              u32 indexSize)
+    {
+        // Check if this is a reupload. If it is we don't need to allocate
+        bool isReupload = geometry.internalId != INVALID_ID;
+
+        VulkanGeometryData* internalData;
         if (isReupload)
         {
-            internalData = &m_geometries[geometry->internalId];
-
-            // Take a copy of the old data
-            oldRange.indexBufferOffset  = internalData->indexBufferOffset;
-            oldRange.indexCount         = internalData->indexCount;
-            oldRange.indexElementSize   = internalData->indexElementSize;
-            oldRange.vertexBufferOffset = internalData->vertexBufferOffset;
-            oldRange.vertexCount        = internalData->vertexCount;
-            oldRange.vertexElementSize  = internalData->vertexElementSize;
+            internalData = &m_geometries[geometry.internalId];
         }
         else
         {
@@ -843,9 +831,10 @@ namespace C3D
             {
                 if (m_geometries[i].id == INVALID_ID)
                 {
-                    geometry->internalId = i;
-                    m_geometries[i].id   = i;
-                    internalData         = &m_geometries[i];
+                    // We have found a free index
+                    geometry.internalId = i;
+                    m_geometries[i].id  = i;
+                    internalData        = &m_geometries[i];
                     break;
                 }
             }
@@ -854,118 +843,108 @@ namespace C3D
         if (!internalData)
         {
             m_logger.Fatal(
-                "CreateGeometry() failed to find a free index for a new geometry upload. Adjust the config to allow "
+                "UploadGeometry() - Failed to find a free geometry index for the upload. Adjust your config to allow "
                 "for more.");
             return false;
         }
 
-        // Vertex data
-        internalData->vertexCount       = static_cast<u32>(vertexCount);
-        internalData->vertexElementSize = vertexSize;
-        u64 totalSize                   = vertexCount * vertexSize;
-
-        if (!m_objectVertexBuffer.Allocate(totalSize, &internalData->vertexBufferOffset))
+        if (!isReupload)
         {
-            m_logger.Error("CreateGeometry() - Failed to allocate from the vertex buffer.");
-            return false;
-        }
-
-        if (!m_objectVertexBuffer.LoadRange(internalData->vertexBufferOffset, totalSize, vertices))
-        {
-            m_logger.Error("CreateGeometry() - Failed to upload vertices to the vertex buffer.");
-            return false;
-        }
-
-        // Index data, if applicable
-        if (indexCount && indices)
-        {
-            internalData->indexCount       = static_cast<u32>(indexCount);
-            internalData->indexElementSize = indexSize;
-            totalSize                      = indexCount * indexSize;
-
-            if (!m_objectIndexBuffer.Allocate(totalSize, &internalData->indexBufferOffset))
+            // Allocate space in the buffer.
+            if (!m_objectVertexBuffer.Allocate(geometry.vertexElementSize * geometry.vertexCount,
+                                               &internalData->vertexBufferOffset))
             {
-                m_logger.Error("CreateGeometry() - Failed to allocate from the index buffer.");
-                return false;
-            }
-
-            if (!m_objectIndexBuffer.LoadRange(internalData->indexBufferOffset, totalSize, indices))
-            {
-                m_logger.Error("CreateGeometry() - Failed to upload indices to the index buffer.");
+                m_logger.Error("UploadGeometry() - Failed to allocate memory frome the vertex buffer.");
                 return false;
             }
         }
 
-        if (internalData->generation == INVALID_ID)
-            internalData->generation = 0;
-        else
-            internalData->generation++;
-
-        if (isReupload)
+        // Load the data
+        const char* vertices = static_cast<char*>(geometry.vertices) + vertexOffset;
+        if (!m_objectVertexBuffer.LoadRange(internalData->vertexBufferOffset + vertexOffset, vertexSize, vertices))
         {
-            // Free vertex data
-            if (!m_objectVertexBuffer.Free(static_cast<u64>(oldRange.vertexElementSize) * oldRange.vertexCount,
-                                           oldRange.vertexBufferOffset))
-            {
-                m_logger.Error("CreateGeometry() - Failed to free vertex data during reupload.");
-            }
+            m_logger.Error("UploadGeometry() - Failed to upload to the vertex buffer.");
+            return false;
+        }
 
-            // Free index data, if applicable
-            if (oldRange.indexElementSize > 0)
+        if (geometry.indexCount && geometry.indices && indexSize)
+        {
+            if (!isReupload)
             {
-                if (!m_objectIndexBuffer.Free(static_cast<u64>(oldRange.indexElementSize) * oldRange.indexCount,
-                                              oldRange.indexBufferOffset))
+                // Allocate space in the buffer.
+                if (!m_objectIndexBuffer.Allocate(geometry.indexElementSize * geometry.indexCount,
+                                                  &internalData->indexBufferOffset))
                 {
-                    m_logger.Error("CreateGeometry() - Failed to free index data during reupload.");
+                    m_logger.Error("UploadGeometry() - Failed to allocate memory frome the index buffer.");
+                    return false;
                 }
             }
+
+            // Load the data
+            const char* indices = static_cast<char*>(geometry.indices) + indexOffset;
+            if (!m_objectIndexBuffer.LoadRange(internalData->indexBufferOffset + indexOffset, indexSize, indices))
+            {
+                m_logger.Error("UploadGeometry() - Failed to upload to the index buffer.");
+                return false;
+            }
         }
+
+        internalData->generation++;
 
         return true;
     }
 
-    void VulkanRendererPlugin::UpdateGeometry(Geometry* geometry, u32 offset, u32 vertexCount, const void* vertices)
+    void VulkanRendererPlugin::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount,
+                                                      const void* vertices)
     {
-        VulkanGeometryData& internalData = m_geometries[geometry->internalId];
-        if (vertexCount > internalData.vertexCount)
+        VulkanGeometryData& internalData = m_geometries[geometry.internalId];
+        if (vertexCount > geometry.vertexCount)
         {
+            // TODO: Implement realloc here
             m_logger.Fatal("UpdateGeometry() - Realloc is not supported.");
             return;
         }
 
-        u32 totalSize = vertexCount * internalData.vertexElementSize;
+        u32 totalSize = vertexCount * geometry.vertexElementSize;
 
         // Load the data
-        if (!m_objectVertexBuffer.LoadRange(internalData.vertexBufferOffset + offset, totalSize, vertices))
+        const char* v = static_cast<const char*>(vertices) + offset;
+        if (!m_objectVertexBuffer.LoadRange(internalData.vertexBufferOffset + offset, totalSize, v))
         {
             m_logger.Error("UpdateGeometry() - Failed to upload vertices to the vertex buffer.");
         }
     }
 
-    void VulkanRendererPlugin::DestroyGeometry(Geometry* geometry)
+    void VulkanRendererPlugin::DestroyGeometry(Geometry& geometry)
     {
-        if (geometry && geometry->internalId != INVALID_ID)
+        if (geometry.internalId != INVALID_ID)
         {
             vkDeviceWaitIdle(m_context.device.logicalDevice);
 
-            VulkanGeometryData& internalData = m_geometries[geometry->internalId];
+            VulkanGeometryData& internalData = m_geometries[geometry.internalId];
 
             // Free vertex data
-            m_objectVertexBuffer.Free(static_cast<u64>(internalData.vertexElementSize) * internalData.vertexCount,
-                                      internalData.vertexBufferOffset);
+            if (!m_objectVertexBuffer.Free(geometry.vertexElementSize * geometry.vertexCount,
+                                           internalData.vertexBufferOffset))
+            {
+                m_logger.Error("DestroyGeometry() - Failed to free vertex buffer range.");
+            }
 
             // Free index data, if applicable
-            if (internalData.indexElementSize > 0)
+            if (geometry.indexElementSize > 0)
             {
-                m_objectIndexBuffer.Free(static_cast<u64>(internalData.indexElementSize) * internalData.indexCount,
-                                         internalData.indexBufferOffset);
+                if (!m_objectIndexBuffer.Free(geometry.indexElementSize * geometry.indexCount,
+                                              internalData.indexBufferOffset))
+                {
+                    m_logger.Error("DestroyGeometry() - Failed to free index buffer range.");
+                }
             }
 
             // Clean up data
             std::memset(&internalData, 0, sizeof(VulkanGeometryData));
             internalData.id         = INVALID_ID;
             internalData.generation = INVALID_ID;
-            geometry->internalId    = INVALID_ID;
+            geometry.internalId     = INVALID_ID;
         }
     }
 
@@ -1222,11 +1201,11 @@ namespace C3D
         return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     }
 
-    bool VulkanRendererPlugin::InitializeShader(Shader* shader)
+    bool VulkanRendererPlugin::InitializeShader(Shader& shader)
     {
         VkDevice logicalDevice                   = m_context.device.logicalDevice;
         const VkAllocationCallbacks* vkAllocator = m_context.allocator;
-        const auto vulkanShader                  = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto vulkanShader                  = static_cast<VulkanShader*>(shader.apiSpecificData);
 
         for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
         {
@@ -1234,7 +1213,7 @@ namespace C3D
             {
                 m_logger.Error(
                     "InitializeShader() - Unable to create '{}' shader module for '{}'. Shader will be destroyed.",
-                    vulkanShader->config.stages[i].fileName, shader->name);
+                    vulkanShader->config.stages[i].fileName, shader.name);
                 return false;
             }
         }
@@ -1258,7 +1237,7 @@ namespace C3D
         }
 
         // Process attributes
-        const u64 attributeCount = shader->attributes.Size();
+        const u64 attributeCount = shader.attributes.Size();
         u32 offset               = 0;
         for (u32 i = 0; i < attributeCount; i++)
         {
@@ -1267,10 +1246,10 @@ namespace C3D
             attribute.location = i;
             attribute.binding  = 0;
             attribute.offset   = offset;
-            attribute.format   = types[shader->attributes[i].type];
+            attribute.format   = types[shader.attributes[i].type];
 
             vulkanShader->config.attributes[i] = attribute;
-            offset += shader->attributes[i].size;
+            offset += shader.attributes[i].size;
         }
 
         // Create descriptor pool
@@ -1361,8 +1340,8 @@ namespace C3D
 
             VulkanPipelineConfig config     = {};
             config.renderPass               = vulkanShader->renderPass;
-            config.stride                   = shader->attributeStride;
-            config.attributeCount           = static_cast<u32>(shader->attributes.Size());
+            config.stride                   = shader.attributeStride;
+            config.attributeCount           = static_cast<u32>(shader.attributes.Size());
             config.attributes               = vulkanShader->config.attributes;
             config.descriptorSetLayoutCount = vulkanShader->config.descriptorSetCount;
             config.descriptorSetLayouts     = vulkanShader->descriptorSetLayouts;
@@ -1372,10 +1351,10 @@ namespace C3D
             config.scissor                  = scissor;
             config.cullMode                 = vulkanShader->config.cullMode;
             config.isWireFrame              = false;
-            config.shaderFlags              = shader->flags;
-            config.pushConstantRangeCount   = shader->pushConstantRangeCount;
-            config.pushConstantRanges       = shader->pushConstantRanges;
-            config.shaderName               = shader->name;
+            config.shaderFlags              = shader.flags;
+            config.pushConstantRangeCount   = shader.pushConstantRangeCount;
+            config.pushConstantRanges       = shader.pushConstantRanges;
+            config.shaderName               = shader.name;
 
             if (vulkanShader->boundPipeline == INVALID_ID_U8)
             {
@@ -1397,15 +1376,15 @@ namespace C3D
         }
 
         // Grab the UBO alignment requirement from our device
-        shader->requiredUboAlignment = m_context.device.properties.limits.minUniformBufferOffsetAlignment;
+        shader.requiredUboAlignment = m_context.device.properties.limits.minUniformBufferOffsetAlignment;
 
         // Make sure the UBO is aligned according to device requirements
-        shader->globalUboStride = GetAligned(shader->globalUboSize, shader->requiredUboAlignment);
-        shader->uboStride       = GetAligned(shader->uboSize, shader->requiredUboAlignment);
+        shader.globalUboStride = GetAligned(shader.globalUboSize, shader.requiredUboAlignment);
+        shader.uboStride       = GetAligned(shader.uboSize, shader.requiredUboAlignment);
 
         // Uniform buffer
         // TODO: max count should be configurable, or perhaps long term support of buffer resizing
-        const u64 totalBufferSize = shader->globalUboStride + shader->uboStride * VULKAN_MAX_MATERIAL_COUNT;
+        const u64 totalBufferSize = shader.globalUboStride + shader.uboStride * VULKAN_MAX_MATERIAL_COUNT;
         if (!vulkanShader->uniformBuffer.Create(RenderBufferType::Uniform, totalBufferSize, true))
         {
             m_logger.Error("InitializeShader() - Failed to create VulkanBuffer.");
@@ -1414,7 +1393,7 @@ namespace C3D
         vulkanShader->uniformBuffer.Bind(0);
 
         // Allocate space for the global UBO, which should occupy the stride space and not the actual size need
-        if (!vulkanShader->uniformBuffer.Allocate(shader->globalUboStride, &shader->globalUboOffset))
+        if (!vulkanShader->uniformBuffer.Allocate(shader.globalUboStride, &shader.globalUboOffset))
         {
             m_logger.Error("InitializeShader() - Failed to allocate space for the uniform buffer.");
             return false;
@@ -1438,70 +1417,69 @@ namespace C3D
         return true;
     }
 
-    bool VulkanRendererPlugin::UseShader(Shader* shader)
+    bool VulkanRendererPlugin::UseShader(const Shader& shader)
     {
-        const auto vulkanShader = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto vulkanShader = static_cast<VulkanShader*>(shader.apiSpecificData);
         vulkanShader->pipelines[vulkanShader->boundPipeline]->Bind(
             &m_context.graphicsCommandBuffers[m_context.imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
         return true;
     }
 
-    bool VulkanRendererPlugin::ShaderBindGlobals(Shader* shader)
+    bool VulkanRendererPlugin::ShaderBindGlobals(Shader& shader)
     {
-        if (!shader) return false;
-        shader->boundUboOffset = static_cast<u32>(shader->globalUboOffset);
+        // Global UBO is always at the beginning, but let's use this anyways for completeness
+        shader.boundUboOffset = static_cast<u32>(shader.globalUboOffset);
         return true;
     }
 
-    bool VulkanRendererPlugin::ShaderBindInstance(Shader* shader, const u32 instanceId)
+    bool VulkanRendererPlugin::ShaderBindInstance(Shader& shader, const u32 instanceId)
     {
-        if (!shader)
-        {
-            m_logger.Error("ShaderBindInstance() - No valid shader.");
-            return false;
-        }
+        const auto internal = static_cast<VulkanShader*>(shader.apiSpecificData);
 
-        const auto internal                            = static_cast<VulkanShader*>(shader->apiSpecificData);
         const VulkanShaderInstanceState* instanceState = &internal->instanceStates[instanceId];
-        shader->boundUboOffset                         = static_cast<u32>(instanceState->offset);
+
+        shader.boundUboOffset = static_cast<u32>(instanceState->offset);
         return true;
     }
 
-    bool VulkanRendererPlugin::ShaderApplyGlobals(Shader* shader)
+    bool VulkanRendererPlugin::ShaderApplyGlobals(const Shader& shader, bool needsUpdate)
     {
         const u32 imageIndex = m_context.imageIndex;
-        const auto internal  = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto internal  = static_cast<VulkanShader*>(shader.apiSpecificData);
 
         VkCommandBuffer commandBuffer    = m_context.graphicsCommandBuffers[imageIndex].handle;
         VkDescriptorSet globalDescriptor = internal->globalDescriptorSets[imageIndex];
 
-        // Apply UBO first
-        VkDescriptorBufferInfo bufferInfo;
-        bufferInfo.buffer = internal->uniformBuffer.handle;
-        bufferInfo.offset = shader->globalUboOffset;
-        bufferInfo.range  = shader->globalUboStride;
-
-        // Update descriptor sets
-        VkWriteDescriptorSet uboWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-        uboWrite.dstSet               = internal->globalDescriptorSets[imageIndex];
-        uboWrite.dstBinding           = 0;
-        uboWrite.dstArrayElement      = 0;
-        uboWrite.descriptorType       = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboWrite.descriptorCount      = 1;
-        uboWrite.pBufferInfo          = &bufferInfo;
-
-        VkWriteDescriptorSet descriptorWrites[2];
-        descriptorWrites[0] = uboWrite;
-
-        u32 globalSetBindingCount = internal->config.descriptorSets[DESC_SET_INDEX_GLOBAL].bindingCount;
-        if (globalSetBindingCount > 1)
+        if (needsUpdate)
         {
-            // TODO: There are samplers to be written.
-            globalSetBindingCount = 1;
-            m_logger.Error("ShaderApplyGlobals() - Global image samplers are not yet supported.");
-        }
+            // Apply UBO first
+            VkDescriptorBufferInfo bufferInfo;
+            bufferInfo.buffer = internal->uniformBuffer.handle;
+            bufferInfo.offset = shader.globalUboOffset;
+            bufferInfo.range  = shader.globalUboStride;
 
-        vkUpdateDescriptorSets(m_context.device.logicalDevice, globalSetBindingCount, descriptorWrites, 0, nullptr);
+            // Update descriptor sets
+            VkWriteDescriptorSet uboWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+            uboWrite.dstSet               = internal->globalDescriptorSets[imageIndex];
+            uboWrite.dstBinding           = 0;
+            uboWrite.dstArrayElement      = 0;
+            uboWrite.descriptorType       = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uboWrite.descriptorCount      = 1;
+            uboWrite.pBufferInfo          = &bufferInfo;
+
+            VkWriteDescriptorSet descriptorWrites[2];
+            descriptorWrites[0] = uboWrite;
+
+            u32 globalSetBindingCount = internal->config.descriptorSets[DESC_SET_INDEX_GLOBAL].bindingCount;
+            if (globalSetBindingCount > 1)
+            {
+                // TODO: There are samplers to be written.
+                globalSetBindingCount = 1;
+                m_logger.Error("ShaderApplyGlobals() - Global image samplers are not yet supported.");
+            }
+
+            vkUpdateDescriptorSets(m_context.device.logicalDevice, globalSetBindingCount, descriptorWrites, 0, nullptr);
+        }
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 internal->pipelines[internal->boundPipeline]->layout, 0, 1, &globalDescriptor, 0,
@@ -1509,9 +1487,9 @@ namespace C3D
         return true;
     }
 
-    bool VulkanRendererPlugin::ShaderApplyInstance(Shader* shader, const bool needsUpdate)
+    bool VulkanRendererPlugin::ShaderApplyInstance(const Shader& shader, const bool needsUpdate)
     {
-        const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto internal = static_cast<VulkanShader*>(shader.apiSpecificData);
         if (internal->instanceUniformCount == 0 && internal->instanceUniformSamplerCount == 0)
         {
             m_logger.Error("ShaderApplyInstance() - This shader does not use instances.");
@@ -1522,7 +1500,7 @@ namespace C3D
         VkCommandBuffer commandBuffer = m_context.graphicsCommandBuffers[imageIndex].handle;
 
         // Obtain instance data
-        VulkanShaderInstanceState* objectState = &internal->instanceStates[shader->boundInstanceId];
+        VulkanShaderInstanceState* objectState = &internal->instanceStates[shader.boundInstanceId];
         VkDescriptorSet objectDescriptorSet    = objectState->descriptorSetState.descriptorSets[imageIndex];
 
         // We only update if it is needed
@@ -1544,7 +1522,7 @@ namespace C3D
                 {
                     bufferInfo.buffer = internal->uniformBuffer.handle;
                     bufferInfo.offset = objectState->offset;
-                    bufferInfo.range  = shader->uboStride;
+                    bufferInfo.range  = shader.uboStride;
 
                     VkWriteDescriptorSet uboDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
                     uboDescriptor.dstSet               = objectDescriptorSet;
@@ -1575,11 +1553,16 @@ namespace C3D
                 for (u32 i = 0; i < totalSamplerCount; i++)
                 {
                     // TODO: only update in the list if actually needing an update
-                    const TextureMap* map = internal->instanceStates[shader->boundInstanceId].instanceTextureMaps[i];
-                    const Texture* t      = map->texture;
+                    const TextureMap* map = internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[i];
+                    if (!map->internalData)
+                    {
+                        // No valid sampler available so we skip this texture map.
+                        continue;
+                    }
 
+                    const Texture* t = map->texture;
                     // Ensure the texture is valid.
-                    if (t->generation == INVALID_ID)
+                    if (!t || t->generation == INVALID_ID)
                     {
                         t = Textures.GetDefault();
                     }
@@ -1591,19 +1574,21 @@ namespace C3D
 
                     // TODO: change up descriptor state to handle this properly.
                     // Sync frame generation if not using a default texture.
-
                     updateSamplerCount++;
                 }
 
-                VkWriteDescriptorSet samplerDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-                samplerDescriptor.dstSet               = objectDescriptorSet;
-                samplerDescriptor.dstBinding           = descriptorIndex;
-                samplerDescriptor.descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                samplerDescriptor.descriptorCount      = updateSamplerCount;
-                samplerDescriptor.pImageInfo           = imageInfos;
+                if (updateSamplerCount > 0)
+                {
+                    VkWriteDescriptorSet samplerDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+                    samplerDescriptor.dstSet               = objectDescriptorSet;
+                    samplerDescriptor.dstBinding           = descriptorIndex;
+                    samplerDescriptor.descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    samplerDescriptor.descriptorCount      = updateSamplerCount;
+                    samplerDescriptor.pImageInfo           = imageInfos;
 
-                descriptorWrites[descriptorCount] = samplerDescriptor;
-                descriptorCount++;
+                    descriptorWrites[descriptorCount] = samplerDescriptor;
+                    descriptorCount++;
+                }
             }
 
             if (descriptorCount > 0)
@@ -1653,10 +1638,10 @@ namespace C3D
         }
     }
 
-    bool VulkanRendererPlugin::AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
-                                                              u32* outInstanceId)
+    bool VulkanRendererPlugin::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount,
+                                                              TextureMap** maps, u32* outInstanceId)
     {
-        const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto internal = static_cast<VulkanShader*>(shader.apiSpecificData);
         // TODO: dynamic
         *outInstanceId = INVALID_ID;
         for (u32 i = 0; i < VULKAN_MAX_MATERIAL_COUNT; i++)
@@ -1677,11 +1662,11 @@ namespace C3D
 
         VulkanShaderInstanceState* instanceState = &internal->instanceStates[*outInstanceId];
         // Only setup if the shader actually requires it
-        if (shader->instanceTextureCount > 0)
+        if (shader.instanceTextureCount > 0)
         {
             // Wipe out the memory for the entire array, even if it isn't all used.
             instanceState->instanceTextureMaps =
-                Memory.Allocate<TextureMap*>(MemoryType::Array, shader->instanceTextureCount);
+                Memory.Allocate<TextureMap*>(MemoryType::Array, shader.instanceTextureCount);
             Texture* defaultTexture = Textures.GetDefault();
             std::memcpy(instanceState->instanceTextureMaps, maps, sizeof(TextureMap*) * textureMapCount);
             // Set unassigned texture pointers to default until assigned
@@ -1695,7 +1680,7 @@ namespace C3D
         }
 
         // Allocate some space in the UBO - by the stride, not the size
-        const u64 size = shader->uboStride;
+        const u64 size = shader.uboStride;
         if (size > 0)
         {
             if (!internal->uniformBuffer.Allocate(size, &instanceState->offset))
@@ -1741,9 +1726,9 @@ namespace C3D
         return true;
     }
 
-    bool VulkanRendererPlugin::ReleaseShaderInstanceResources(Shader* shader, const u32 instanceId)
+    bool VulkanRendererPlugin::ReleaseShaderInstanceResources(const Shader& shader, const u32 instanceId)
     {
-        const auto internal                      = static_cast<VulkanShader*>(shader->apiSpecificData);
+        const auto internal                      = static_cast<VulkanShader*>(shader.apiSpecificData);
         VulkanShaderInstanceState* instanceState = &internal->instanceStates[instanceId];
 
         // Wait for any pending operations using the descriptor set to finish
@@ -1769,9 +1754,9 @@ namespace C3D
             instanceState->instanceTextureMaps = nullptr;
         }
 
-        if (shader->uboStride != 0)
+        if (shader.uboStride != 0)
         {
-            internal->uniformBuffer.Free(shader->uboStride, instanceState->offset);
+            internal->uniformBuffer.Free(shader.uboStride, instanceState->offset);
         }
         instanceState->offset = INVALID_ID;
         instanceState->id     = INVALID_ID;
@@ -1825,37 +1810,37 @@ namespace C3D
         map.internalData = nullptr;
     }
 
-    bool VulkanRendererPlugin::SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value)
+    bool VulkanRendererPlugin::SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value)
     {
-        const auto internal = static_cast<VulkanShader*>(shader->apiSpecificData);
-        if (uniform->type == Uniform_Sampler)
+        const auto internal = static_cast<VulkanShader*>(shader.apiSpecificData);
+        if (uniform.type == Uniform_Sampler)
         {
-            if (uniform->scope == ShaderScope::Global)
+            if (uniform.scope == ShaderScope::Global)
             {
-                shader->globalTextureMaps[uniform->location] = (TextureMap*)value;
+                shader.globalTextureMaps[uniform.location] = (TextureMap*)value;
             }
             else
             {
-                internal->instanceStates[shader->boundInstanceId].instanceTextureMaps[uniform->location] =
+                internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[uniform.location] =
                     (TextureMap*)value;
             }
         }
         else
         {
-            if (uniform->scope == ShaderScope::Local)
+            if (uniform.scope == ShaderScope::Local)
             {
                 // Is local, using push constants. Do this immediately.
                 VkCommandBuffer commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex].handle;
                 vkCmdPushConstants(commandBuffer, internal->pipelines[internal->boundPipeline]->layout,
                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                                   static_cast<u32>(uniform->offset), uniform->size, value);
+                                   static_cast<u32>(uniform.offset), uniform.size, value);
             }
             else
             {
                 // Map the appropriate memory location and copy the data over.
                 auto address = static_cast<u8*>(internal->mappedUniformBufferBlock);
-                address += shader->boundUboOffset + uniform->offset;
-                std::memcpy(address, value, uniform->size);
+                address += shader.boundUboOffset + uniform.offset;
+                std::memcpy(address, value, uniform.size);
             }
         }
 

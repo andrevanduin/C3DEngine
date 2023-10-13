@@ -27,8 +27,8 @@ namespace C3D
     constexpr auto INF = 1e30f;
 
     // Smallest positive number where 1.0 + FLOAT_EPSILON != 0
-    constexpr auto FLOAT_EPSILON     = 1.192092896e-07f;
-    constexpr auto FLOAT_EPSILON_F64 = 1.192092896e-07;
+    constexpr auto F32_EPSILON = std::numeric_limits<f32>::epsilon();
+    constexpr auto F64_EPSILON = std::numeric_limits<f64>::epsilon();
 
     C3D_INLINE bool IsPowerOf2(const u64 value) { return (value != 0) && ((value & (value - 1)) == 1); }
 
@@ -44,6 +44,12 @@ namespace C3D
     C3D_INLINE constexpr C3D_API T Sin(T x)
     {
         return std::sin(x);
+    }
+
+    template <typename T>
+    C3D_INLINE constexpr C3D_API T Cos(T x)
+    {
+        return std::cos(x);
     }
 
     template <typename T>
@@ -100,19 +106,19 @@ namespace C3D
         return std::max(std::max(a, b), c);
     }
 
-    C3D_API C3D_INLINE bool EpsilonEqual(const f32 a, const f32 b, const f32 tolerance = FLOAT_EPSILON)
+    C3D_API C3D_INLINE bool EpsilonEqual(const f32 a, const f32 b, const f32 tolerance = F32_EPSILON)
     {
         if (Abs(a - b) > tolerance) return false;
         return true;
     }
 
-    C3D_API C3D_INLINE bool EpsilonEqual(const f64 a, const f64 b, const f64 tolerance = FLOAT_EPSILON_F64)
+    C3D_API C3D_INLINE bool EpsilonEqual(const f64 a, const f64 b, const f64 tolerance = F64_EPSILON)
     {
         if (Abs(a - b) > tolerance) return false;
         return true;
     }
 
-    C3D_API C3D_INLINE bool EpsilonEqual(const vec2& a, const vec2& b, const f32 tolerance = FLOAT_EPSILON)
+    C3D_API C3D_INLINE bool EpsilonEqual(const vec2& a, const vec2& b, const f32 tolerance = F32_EPSILON)
     {
         if (Abs(a.x - b.x) > tolerance) return false;
         if (Abs(a.y - b.y) > tolerance) return false;
@@ -120,7 +126,7 @@ namespace C3D
         return true;
     }
 
-    C3D_API C3D_INLINE bool EpsilonEqual(const vec3& a, const vec3& b, const f32 tolerance = FLOAT_EPSILON)
+    C3D_API C3D_INLINE bool EpsilonEqual(const vec3& a, const vec3& b, const f32 tolerance = F32_EPSILON)
     {
         if (Abs(a.x - b.x) > tolerance) return false;
         if (Abs(a.y - b.y) > tolerance) return false;
@@ -128,7 +134,7 @@ namespace C3D
 
         return true;
     }
-    C3D_API C3D_INLINE bool EpsilonEqual(const vec4& a, const vec4& b, const f32 tolerance = FLOAT_EPSILON)
+    C3D_API C3D_INLINE bool EpsilonEqual(const vec4& a, const vec4& b, const f32 tolerance = F32_EPSILON)
     {
         if (Abs(a.x - b.x) > tolerance) return false;
         if (Abs(a.y - b.y) > tolerance) return false;
@@ -157,5 +163,38 @@ namespace C3D
     {
         const f32 t = C3D_CLAMP((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
         return t * t * (3.0 - 2.0 * t);
+    }
+
+    /** @brief Extract the position from the provided model matrix. */
+    C3D_API C3D_INLINE vec3 GetPositionFromModel(const mat4& model)
+    {
+        return vec3(model[3][0], model[3][1], model[3][2]);
+    }
+
+    C3D_API C3D_INLINE vec3 GetForward(const mat4& model)
+    {
+        return normalize(vec3(-model[0][2], -model[1][2], -model[2][2]));
+    }
+
+    C3D_API C3D_INLINE vec3 GetBackward(const mat4& model)
+    {
+        return normalize(vec3(model[0][2], model[1][2], model[2][2]));
+    }
+
+    C3D_API C3D_INLINE vec3 GetLeft(const mat4& model)
+    {
+        return normalize(vec3(-model[0][0], -model[1][0], -model[2][0]));
+    }
+
+    C3D_API C3D_INLINE vec3 GetRight(const mat4& model)
+    {
+        return normalize(vec3(model[0][0], model[1][0], model[2][0]));
+    }
+
+    C3D_API C3D_INLINE vec3 GetUp(const mat4& model) { return normalize(vec3(model[0][1], model[1][1], model[2][1])); }
+
+    C3D_API C3D_INLINE vec3 GetDown(const mat4& model)
+    {
+        return normalize(vec3(-model[0][1], -model[1][1], -model[2][1]));
     }
 }  // namespace C3D

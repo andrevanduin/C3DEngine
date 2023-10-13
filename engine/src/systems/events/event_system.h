@@ -11,14 +11,15 @@ namespace C3D
 {
     constexpr auto MAX_MESSAGE_CODES = 4096;
 
-    using EventCallbackFunc = StackFunction<bool(u16, void*, const EventContext&), 16>;
-    using EventCallbackId = u16;
+    // TODO: Replace with fancy StackFunction<bool(u16, void*, const EventContext&), 16> after it's properly implemented
+    using EventCallbackFunc = std::function<bool(u16, void*, const EventContext&)>;
+    using EventCallbackId   = u16;
 
 #define INVALID_CALLBACK std::numeric_limits<u16>::max()
 
     struct RegisteredEventCallback
     {
-        u16 code = INVALID_ID_U16;
+        u16 code           = INVALID_ID_U16;
         EventCallbackId id = INVALID_ID_U16;
     };
 
@@ -40,6 +41,7 @@ namespace C3D
     public:
         explicit EventSystem(const SystemManager* pSystemsManager);
 
+        bool Init() override;
         void Shutdown() override;
 
         RegisteredEventCallback Register(u16 code, const EventCallbackFunc& callback);

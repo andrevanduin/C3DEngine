@@ -6,6 +6,7 @@
 #include <core/defines.h>
 #include <core/logger.h>
 #include <core/metrics/metrics.h>
+#include <core/random.h>
 
 #include <iostream>
 
@@ -549,50 +550,127 @@ u8 DynamicArrayShouldRemove()
     return true;
 }
 
-void DynamicArray::RegisterTests(TestManager* manager)
+class CopyConstructorObject
 {
-    manager->StartType("DynamicArray");
-    manager->Register(DynamicArrayShouldCreateAndDestroy,
-                      "Dynamic array should internally allocate memory and destroy it properly on destroy");
-    manager->Register(DynamicArrayShouldReserve,
-                      "Dynamic array should internally allocate enough space after Reserve() call");
-    manager->Register(DynamicArrayShouldReserveWithElementsPresent,
-                      "Dynamic array should internally allocate enough space after Reserve() call");
-    manager->Register(DynamicArrayShouldResize,
-                      "Dynamic array should Resize() and allocate enough memory with default objects");
-    manager->Register(DynamicArrayShouldAllocateLargeBlocks,
-                      "Dynamic array should also work when allocating lots of storage for complex structs");
-    manager->Register(DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize,
-                      "Dynamic array should also work when allocating lots of storage for complex structs after at "
-                      "least 1 element is added");
-    manager->Register(
+public:
+    CopyConstructorObject()
+    {
+        m_size          = 100;
+        m_ptr           = Memory.Allocate<int>(C3D::MemoryType::Test, m_size);
+        auto randomInts = C3D::Random.GenerateMultiple(100, 0, 100);
+        for (u32 i = 0; i < 100; i++)
+        {
+            m_ptr[i] = randomInts[i];
+        }
+    }
+
+    CopyConstructorObject(const CopyConstructorObject& other)
+    {
+        if (this != &other)
+        {
+            if (m_ptr)
+            {
+                Memory.Free(C3D::MemoryType::Test, m_ptr);
+            }
+
+            if (other.m_ptr)
+            {
+                m_ptr = Memory.Allocate<int>(C3D::MemoryType::Test, m_size);
+
+                for (u32 i = 0; i < 100; i++)
+                {
+                    m_ptr[i] = other.m_ptr[i];
+                }
+            }
+        }
+    }
+
+    bool Match(const CopyConstructorObject& other)
+    {
+        for (u32 i = 0; i < 100; i++)
+        {
+            if (!m_ptr[i] == other.m_ptr[i]) return false;
+        }
+        return true;
+    }
+
+private:
+    int* m_ptr = nullptr;
+    u64 m_size = 0;
+};
+
+u8 DynamicArrayShouldReallocWithNonTrivialCopyConstructorObjects()
+{
+    CopyConstructorObject obj1;
+    CopyConstructorObject obj2;
+    CopyConstructorObject obj3;
+    CopyConstructorObject obj4;
+    CopyConstructorObject obj5;
+
+    C3D::DynamicArray<CopyConstructorObject> array;
+    // Push 5 items to ensure we need to do a realloc (default size == 4)
+    array.PushBack(obj1);
+    array.PushBack(obj2);
+    array.PushBack(obj3);
+    array.PushBack(obj4);
+    array.PushBack(obj5);
+
+    // After the realloc all our objects should still match
+    ExpectToBeTrue(obj1.Match(array[0]));
+    ExpectToBeTrue(obj2.Match(array[1]));
+    ExpectToBeTrue(obj3.Match(array[2]));
+    ExpectToBeTrue(obj4.Match(array[3]));
+    ExpectToBeTrue(obj5.Match(array[4]));
+
+    return true;
+}
+
+void DynamicArray::RegisterTests(TestManager& manager)
+{
+    manager.StartType("DynamicArray");
+    manager.Register(DynamicArrayShouldCreateAndDestroy,
+                     "Dynamic array should internally allocate memory and destroy it properly on destroy");
+    manager.Register(DynamicArrayShouldReserve,
+                     "Dynamic array should internally allocate enough space after Reserve() call");
+    manager.Register(DynamicArrayShouldReserveWithElementsPresent,
+                     "Dynamic array should internally allocate enough space after Reserve() call");
+    manager.Register(DynamicArrayShouldResize,
+                     "Dynamic array should Resize() and allocate enough memory with default objects");
+    manager.Register(DynamicArrayShouldAllocateLargeBlocks,
+                     "Dynamic array should also work when allocating lots of storage for complex structs");
+    manager.Register(DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize,
+                     "Dynamic array should also work when allocating lots of storage for complex structs after at "
+                     "least 1 element is added");
+    manager.Register(
         DynamicArrayShouldReallocate,
         "Dynamic array should reallocate whenever there is not enough space and also cleanup the old memory.");
-    manager->Register(DynamicArrayShouldIterate,
-                      "Dynamic array should iterate over all it's elements in a foreach loop");
-    manager->Register(DynamicArrayShouldDestroyWhenLeavingScope,
-                      "Dynamic array should be automatically destroyed and cleaned up after leaving scope");
-    manager->Register(DynamicArrayShouldCallDestructorsOfElementsWhenDestroyed,
-                      "Dynamic array should automatically call the destructor of every element when it is destroyed");
-    manager->Register(
+    manager.Register(DynamicArrayShouldIterate,
+                     "Dynamic array should iterate over all it's elements in a foreach loop");
+    manager.Register(DynamicArrayShouldDestroyWhenLeavingScope,
+                     "Dynamic array should be automatically destroyed and cleaned up after leaving scope");
+    manager.Register(DynamicArrayShouldCallDestructorsOfElementsWhenDestroyed,
+                     "Dynamic array should automatically call the destructor of every element when it is destroyed");
+    manager.Register(
         DynamicArrayShouldCallDestructorsOfElementsWhenGoingOutOfScope,
         "Dynamic array should automatically call the destructor of every element when it goes out of scope");
-    manager->Register(
+    manager.Register(
         DynamicArrayShouldFindAndErase,
         "Dynamic array should erase elements based on iterator and move all elements after it to the left");
-    manager->Register(DynamicArrayEraseLast, "Dynamic array should erase last element correctly");
-    manager->Register(DynamicArrayEraseByIndex, "Dynamic array should erase by index");
-    manager->Register(DynamicArrayEraseByIndexLast, "Dynamic array should erase by index for the last element");
-    manager->Register(DynamicArrayShouldInsert, "Dynamic array should insert elements at a random iterator location");
-    manager->Register(DynamicArrayShouldInsertRange,
-                      "Dynamic array should insert range of elements at a random iterator location");
-    manager->Register(DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled,
-                      "If you call reserve on a dynamic array with elements already present they should be preserved");
-    manager->Register(DynamicArrayShouldShrinkCorrectly, "Dynamic array should shrink correctly");
-    manager->Register(DynamicArrayShouldClearCorrectly,
-                      "Dynamic array should have size == 0 and capacity == unchanged after a Clear()");
-    manager->Register(
+    manager.Register(DynamicArrayEraseLast, "Dynamic array should erase last element correctly");
+    manager.Register(DynamicArrayEraseByIndex, "Dynamic array should erase by index");
+    manager.Register(DynamicArrayEraseByIndexLast, "Dynamic array should erase by index for the last element");
+    manager.Register(DynamicArrayShouldInsert, "Dynamic array should insert elements at a random iterator location");
+    manager.Register(DynamicArrayShouldInsertRange,
+                     "Dynamic array should insert range of elements at a random iterator location");
+    manager.Register(DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled,
+                     "If you call reserve on a dynamic array with elements already present they should be preserved");
+    manager.Register(DynamicArrayShouldShrinkCorrectly, "Dynamic array should shrink correctly");
+    manager.Register(DynamicArrayShouldClearCorrectly,
+                     "Dynamic array should have size == 0 and capacity == unchanged after a Clear()");
+    manager.Register(
         DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize,
         "Dynamic array should not do anything when resize is called with a smaller size then current capacity");
-    manager->Register(DynamicArrayShouldRemove, "Dynamic array should be able to remove element by value");
+    manager.Register(DynamicArrayShouldRemove, "Dynamic array should be able to remove element by value");
+    manager.Register(DynamicArrayShouldReallocWithNonTrivialCopyConstructorObjects,
+                     "Dynamic array should be able to realloc also with non-trivial copy constructors");
 }

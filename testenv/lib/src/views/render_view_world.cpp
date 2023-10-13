@@ -243,8 +243,6 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
 
             for (auto& terrain : packet->terrainGeometries)
             {
-                if (terrain.geometry->id == INVALID_ID) continue;
-
                 C3D::Material* mat =
                     terrain.geometry->material ? terrain.geometry->material : Materials.GetDefaultTerrain();
 
@@ -314,7 +312,7 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
             Shaders.SetUniformByIndex(m_debugShaderLocations.projection, &packet->projectionMatrix);
             Shaders.SetUniformByIndex(m_debugShaderLocations.view, &packet->viewMatrix);
 
-            Shaders.ApplyGlobal();
+            Shaders.ApplyGlobal(true);
 
             for (auto& debug : packet->debugGeometries)
             {
@@ -326,6 +324,9 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 // Draw it
                 Renderer.DrawGeometry(debug);
             }
+
+            // HACK: This should be handled every frame, by the shader system
+            m_debugShader->frameNumber = frameNumber;
         }
 
         if (!Renderer.EndRenderPass(pass))

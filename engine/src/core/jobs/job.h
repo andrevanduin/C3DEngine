@@ -47,7 +47,7 @@ namespace C3D
     {
         bool inUse = false;
 
-        JobType type = JobTypeGeneral;
+        JobType type         = JobTypeGeneral;
         JobPriority priority = JobPriority::Normal;
 
         /** @brief The entry point of the job. Gets called when the job starts. */
@@ -61,7 +61,7 @@ namespace C3D
     class JobThread
     {
     public:
-        JobThread() : index(0), typeMask(0) {}
+        JobThread() = default;
 
         /** @brief Sets the thread's info. Thread should be locked before calling this! */
         void SetInfo(JobInfo&& info);
@@ -75,12 +75,12 @@ namespace C3D
         /** @brief Checks if the thread currently has any work assigned. Thread should be locked before calling this! */
         [[nodiscard]] bool IsFree() const;
 
-        u8 index;
+        u8 index = 0;
         std::thread thread;
         std::mutex mutex;
 
-        /* @brief The types of jobs this thread can handle. */
-        u32 typeMask;
+        /** @brief The types of jobs this thread can handle. */
+        u32 typeMask = 0;
 
     private:
         JobInfo m_info;

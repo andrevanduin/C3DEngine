@@ -55,7 +55,7 @@ bool RenderViewSkybox::OnCreate()
 
     Resources.Unload(shaderConfig);
 
-    m_shader             = Shaders.Get(m_customShaderName ? m_customShaderName.Data() : shaderName);
+    m_shader             = Shaders.Get(m_customShaderName ? m_customShaderName : shaderName);
     m_projectionLocation = Shaders.GetUniformIndex(m_shader, "projection");
     m_viewLocation       = Shaders.GetUniformIndex(m_shader, "view");
     m_cubeMapLocation    = Shaders.GetUniformIndex(m_shader, "cubeTexture");
@@ -106,7 +106,7 @@ bool RenderViewSkybox::OnRender(const C3D::FrameData& frameData, const C3D::Rend
 
         if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
         {
-            m_logger.Error("OnRender() - BeginRenderPass failed for pass width id '{}'", pass->id);
+            m_logger.Error("OnRender() - BeginRenderPass failed for pass: '{}'.", pass->GetName());
             return false;
         }
 
@@ -114,7 +114,7 @@ bool RenderViewSkybox::OnRender(const C3D::FrameData& frameData, const C3D::Rend
         {
             if (!Shaders.UseById(shaderId))
             {
-                m_logger.Error("OnRender() - Failed to use shader with id {}", shaderId);
+                m_logger.Error("OnRender() - Failed to use shader: '{}'.", m_shader->name);
                 return false;
             }
 
@@ -126,21 +126,21 @@ bool RenderViewSkybox::OnRender(const C3D::FrameData& frameData, const C3D::Rend
 
             // TODO: Change this
 
-            // Global
-            Renderer.ShaderBindGlobals(Shaders.GetById(shaderId));
+            // Apply Globals
+            Renderer.ShaderBindGlobals(*m_shader);
             if (!Shaders.SetUniformByIndex(m_projectionLocation, &packet->projectionMatrix))
             {
-                m_logger.Error("Failed to apply projection matrix.");
+                m_logger.Error("OnRender() - Failed to apply projection matrix.");
                 return false;
             }
             if (!Shaders.SetUniformByIndex(m_viewLocation, &view))
             {
-                m_logger.Error("Failed to apply view position.");
+                m_logger.Error("OnRender() - Failed to apply view position.");
                 return false;
             }
-            Shaders.ApplyGlobal();
+            Shaders.ApplyGlobal(true);
 
-            // Instance
+            // Apply Instance
             Shaders.BindInstance(skyBoxData->box->instanceId);
             if (!Shaders.SetUniformByIndex(m_cubeMapLocation, &skyBoxData->box->cubeMap))
             {
@@ -160,7 +160,7 @@ bool RenderViewSkybox::OnRender(const C3D::FrameData& frameData, const C3D::Rend
 
         if (!Renderer.EndRenderPass(pass))
         {
-            m_logger.Error("OnRender() - EndRenderPass failed for pass with id '{}'", pass->id);
+            m_logger.Error("OnRender() - EndRenderPass failed for pass: '{}'.", pass->GetName());
             return false;
         }
     }

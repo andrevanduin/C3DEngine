@@ -2,6 +2,7 @@
 #include "simple_scene.h"
 
 #include <core/frame_data.h>
+#include <math/ray.h>
 #include <renderer/renderer_types.h>
 #include <resources/debug/debug_box_3d.h>
 #include <resources/mesh.h>
@@ -743,6 +744,30 @@ bool SimpleScene::RemoveSkybox(const C3D::String& name)
 
     m_logger.Warn("RemoveSkybox() - Could not remove since scene does not have a skybox.");
     return false;
+}
+
+bool SimpleScene::RayCast(const C3D::Ray& ray, C3D::RayCastResult& result)
+{
+    if (m_state < SceneState::Loaded)
+    {
+        return false;
+    }
+
+    // TODO: Optimize to not check every mesh (with Spatial partitioning)
+    // to ensure we remain performant with many meshes
+    for (auto& mesh : m_meshes)
+    {
+        f32 distance;
+
+        if (ray.TestAgainstExtents(mesh.GetExtents(), mesh.transform.GetWorld(), distance))
+        {
+            // We have a hit
+            vec3 position = ray.origin + (ray.direction * distance);
+            result.hits.EmplaceBack(C3D::RAY_CAST_HIT_TYPE_OBB, mesh.uniqueId, position, distance);
+        }
+    }
+
+    return !result.hits.Empty();
 }
 
 void SimpleScene::UnloadInternal()

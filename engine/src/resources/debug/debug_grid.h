@@ -4,7 +4,8 @@
 #include "containers/string.h"
 #include "core/defines.h"
 #include "math/math_types.h"
-#include "resources/geometry.h"
+#include "renderer/geometry.h"
+#include "renderer/vertex.h"
 
 namespace C3D
 {

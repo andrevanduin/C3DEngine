@@ -44,11 +44,11 @@ u8 StackAllocatorShouldWorkWithDynamicArray()
     return true;
 }
 
-void StackAllocator::RegisterTests(TestManager* manager)
+void StackAllocator::RegisterTests(TestManager& manager)
 {
-    manager->StartType("Stack Allocator");
-    manager->Register(StackAllocatorShouldCreate, "Stack Allocator should correctly create and destroy");
-    manager->Register(StackAllocatorShouldErrorOnOverAllocation,
+    manager.StartType("Stack Allocator");
+    manager.Register(StackAllocatorShouldCreate, "Stack Allocator should correctly create and destroy");
+    manager.Register(StackAllocatorShouldErrorOnOverAllocation,
                       "Stack allocator should throw if you try to over allocate");
-    manager->Register(StackAllocatorShouldWorkWithDynamicArray, "Stack allocator should be usable for a dynamic array");
+    manager.Register(StackAllocatorShouldWorkWithDynamicArray, "Stack allocator should be usable for a dynamic array");
 }

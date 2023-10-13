@@ -3,10 +3,12 @@
 #include <core/application.h>
 #include <core/frame_data.h>
 #include <math/frustum.h>
+#include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
 #include <resources/ui_text.h>
 #include <systems/events/event_system.h>
 
+#include "editor/editor_gizmo.h"
 #include "resources/scenes/simple_scene.h"
 
 namespace C3D
@@ -33,6 +35,10 @@ struct GameState final : C3D::ApplicationState
 
     // TEMP
     SimpleScene simpleScene;
+    EditorGizmo gizmo;
+
+    C3D::DynamicArray<C3D::DebugLine3D> testLines;
+    C3D::DynamicArray<C3D::DebugBox3D> testBoxes;
 
     C3D::PointLight* pLights[4];
 
@@ -41,7 +47,7 @@ struct GameState final : C3D::ApplicationState
 
     u32 hoveredObjectId = INVALID_ID;
 
-    C3D::DynamicArray<C3D::RegisteredEventCallback> m_registeredCallbacks;
+    C3D::DynamicArray<C3D::RegisteredEventCallback> registeredCallbacks;
     // TEMP
 };
 

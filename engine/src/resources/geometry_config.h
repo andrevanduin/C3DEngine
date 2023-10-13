@@ -6,8 +6,6 @@ namespace C3D
 {
     constexpr auto GEOMETRY_NAME_MAX_LENGTH = 256;
 
-    struct Material;
-
     template <typename VertexType, typename IndexType>
     struct IGeometryConfig
     {
@@ -27,17 +25,4 @@ namespace C3D
 
     using GeometryConfig   = IGeometryConfig<Vertex3D, u32>;
     using UIGeometryConfig = IGeometryConfig<Vertex2D, u32>;
-
-    struct Geometry
-    {
-        u32 id         = INVALID_ID;
-        u32 internalId = INVALID_ID;
-        u16 generation = INVALID_ID_U16;
-
-        vec3 center;
-        Extents3D extents;
-
-        String name;
-        Material* material = nullptr;
-    };
 }  // namespace C3D

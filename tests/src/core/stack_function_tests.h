@@ -3,7 +3,7 @@
 #pragma once
 #include "../test_manager.h"
 
-namespace Array
+namespace StackFunction
 {
     void RegisterTests(TestManager& manager);
 }

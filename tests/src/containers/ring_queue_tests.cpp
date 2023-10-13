@@ -40,9 +40,9 @@ u8 RingQueueShouldDestroyWhenLeavingScope()
 	return true;
 }
 
-void RingQueue::RegisterTests(TestManager* manager)
+void RingQueue::RegisterTests(TestManager& manager)
 {
-	manager->StartType("RingQueue");
-	manager->Register(RingQueueShouldCreateAndDestroy, "RingQueue should internally allocate memory and destroy it properly on destroy");
-	manager->Register(RingQueueShouldDestroyWhenLeavingScope, "RingQueue should internally deallocate memory when leaving the scope");
+	manager.StartType("RingQueue");
+	manager.Register(RingQueueShouldCreateAndDestroy, "RingQueue should internally allocate memory and destroy it properly on destroy");
+	manager.Register(RingQueueShouldDestroyWhenLeavingScope, "RingQueue should internally deallocate memory when leaving the scope");
 }

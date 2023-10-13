@@ -23,6 +23,10 @@
 
 #include <glm/gtx/matrix_decompose.hpp>
 
+#include "editor/render_view_editor_world.h"
+#include "math/ray.h"
+#include "resources/debug/debug_box_3d.h"
+#include "resources/debug/debug_line_3d.h"
 #include "resources/loaders/simple_scene_loader.h"
 #include "resources/scenes/simple_scene.h"
 #include "resources/scenes/simple_scene_config.h"
@@ -132,12 +136,31 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     // TEMP END
 
     m_state->camera = Cam.GetDefault();
-    m_state->camera->SetPosition({ 67.0f, 11.0f, 76.0f });
-    m_state->camera->SetEulerRotation({ -20.0f, -310.0f, 0.0f });
+    m_state->camera->SetPosition({ 16.07f, 4.5f, 25.0f });
+    m_state->camera->SetEulerRotation({ -20.0f, 51.0f, 0.0f });
 
     // Set the allocator for the dynamic array that contains our world geometries to our frame allocator
     auto gameFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
     gameFrameData->worldGeometries.SetAllocator(frameData.frameAllocator);
+
+    // Create, initialize and load our editor gizmo
+    if (!m_state->gizmo.Create(m_pSystemsManager))
+    {
+        m_logger.Error("OnRun() - Failed to create editor gizmo.");
+        return false;
+    }
+
+    if (!m_state->gizmo.Initialize())
+    {
+        m_logger.Error("OnRun() - Failed to initialize editor gizmo.");
+        return false;
+    }
+
+    if (!m_state->gizmo.Load())
+    {
+        m_logger.Error("OnRun() - Failed to load editor gizmo.");
+        return false;
+    }
 
     return true;
 }
@@ -161,32 +184,53 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             Metrics.PrintMemoryUsage(true);
         }
 
-        if (Input.IsKeyUp('p') && Input.WasKeyDown('p'))
+        if (Input.IsKeyPressed('p'))
         {
             const auto pos = m_state->camera->GetPosition();
             C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
         }
 
         // Renderer Debug functions
-        if (Input.IsKeyPressed('1'))
+        if (Input.IsKeyPressed(C3D::KeyF1))
         {
             C3D::EventContext context = {};
             context.data.i32[0]       = C3D::RendererViewMode::Default;
             Event.Fire(C3D::EventCodeSetRenderMode, this, context);
         }
 
-        if (Input.IsKeyPressed('2'))
+        if (Input.IsKeyPressed(C3D::KeyF2))
         {
             C3D::EventContext context = {};
             context.data.i32[0]       = C3D::RendererViewMode::Lighting;
             Event.Fire(C3D::EventCodeSetRenderMode, this, context);
         }
 
-        if (Input.IsKeyPressed('3'))
+        if (Input.IsKeyPressed(C3D::KeyF3))
         {
             C3D::EventContext context = {};
             context.data.i32[0]       = C3D::RendererViewMode::Normals;
             Event.Fire(C3D::EventCodeSetRenderMode, this, context);
+        }
+
+        // Gizmo mode keys
+        if (Input.IsKeyPressed('1'))
+        {
+            m_state->gizmo.SetMode(EditorGizmoMode::None);
+        }
+
+        if (Input.IsKeyPressed('2'))
+        {
+            m_state->gizmo.SetMode(EditorGizmoMode::Move);
+        }
+
+        if (Input.IsKeyPressed('3'))
+        {
+            m_state->gizmo.SetMode(EditorGizmoMode::Rotate);
+        }
+
+        if (Input.IsKeyPressed('4'))
+        {
+            m_state->gizmo.SetMode(EditorGizmoMode::Scale);
         }
 
         if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyArrowLeft))
@@ -350,7 +394,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     // Get our application specific frame data
     auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
     // Pre-Allocate enough space for 4 views (and default initialize them)
-    packet.views.Resize(4);
+    packet.views.Resize(5);
 
     // FIXME: Read this from a config
     packet.views[TEST_ENV_VIEW_SKYBOX].view = Views.Get("SKYBOX_VIEW");
@@ -359,15 +403,46 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     packet.views[TEST_ENV_VIEW_WORLD].view = Views.Get("WORLD_VIEW");
     packet.views[TEST_ENV_VIEW_WORLD].geometries.SetAllocator(frameData.frameAllocator);
 
+    packet.views[TEST_ENV_VIEW_EDITOR_WORLD].view = Views.Get("EDITOR_WORLD_VIEW");
+    packet.views[TEST_ENV_VIEW_EDITOR_WORLD].geometries.SetAllocator(frameData.frameAllocator);
+
     packet.views[TEST_ENV_VIEW_UI].view = Views.Get("UI_VIEW");
     packet.views[TEST_ENV_VIEW_UI].geometries.SetAllocator(frameData.frameAllocator);
 
     packet.views[TEST_ENV_VIEW_PICK].view = Views.Get("PICK_VIEW");
     packet.views[TEST_ENV_VIEW_PICK].geometries.SetAllocator(frameData.frameAllocator);
 
+    // This method generate the skybox and world packet for us
     if (!m_state->simpleScene.PopulateRenderPacket(frameData, packet))
     {
         m_logger.Error("OnRender() - Failed to populate render packet for simple scene");
+        return false;
+    }
+
+    // HACK: Inject debug geometries into world packet
+    if (m_state->simpleScene.GetState() == SceneState::Loaded)
+    {
+        for (auto& line : m_state->testLines)
+        {
+            packet.views[TEST_ENV_VIEW_WORLD].debugGeometries.EmplaceBack(line.GetModel(), line.GetGeometry(),
+                                                                          INVALID_ID);
+        }
+        for (auto& box : m_state->testBoxes)
+        {
+            packet.views[TEST_ENV_VIEW_WORLD].debugGeometries.EmplaceBack(box.GetModel(), box.GetGeometry(),
+                                                                          INVALID_ID);
+        }
+    }
+
+    // Editor world
+    EditorWorldPacketData editorWorldPacket = {};
+    editorWorldPacket.gizmo                 = &m_state->gizmo;
+
+    auto& editorWorldViewPacket = packet.views[TEST_ENV_VIEW_EDITOR_WORLD];
+    if (!Views.BuildPacket(editorWorldViewPacket.view, frameData.frameAllocator, &editorWorldPacket,
+                           &editorWorldViewPacket))
+    {
+        m_logger.Error("OnRender() - Failed to build packet for view: 'editor world'.");
         return false;
     }
 
@@ -389,22 +464,21 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     auto& uiViewPacket = packet.views[TEST_ENV_VIEW_UI];
     if (!Views.BuildPacket(uiViewPacket.view, frameData.frameAllocator, &uiPacket, &uiViewPacket))
     {
-        m_logger.Error("Failed to build packet for view: 'ui'.");
+        m_logger.Error("OnRender() - Failed to build packet for view: 'ui'.");
         return false;
     }
 
     // Pick
     C3D::PickPacketData pickPacket = {};
     pickPacket.uiMeshData          = uiPacket.meshData;
-    // TODO: This index is hardcoded currently
-    pickPacket.worldMeshData = &packet.views[TEST_ENV_VIEW_WORLD].geometries;
-    pickPacket.terrainData   = &packet.views[TEST_ENV_VIEW_WORLD].terrainGeometries;
-    pickPacket.texts         = uiPacket.texts;
+    pickPacket.worldMeshData       = &packet.views[TEST_ENV_VIEW_WORLD].geometries;
+    pickPacket.terrainData         = &packet.views[TEST_ENV_VIEW_WORLD].terrainGeometries;
+    pickPacket.texts               = uiPacket.texts;
 
     auto& pickViewPacket = packet.views[TEST_ENV_VIEW_PICK];
     if (!Views.BuildPacket(pickViewPacket.view, frameData.frameAllocator, &pickPacket, &pickViewPacket))
     {
-        m_logger.Error("Failed to build packet for view: 'pick'.");
+        m_logger.Error("OnRender() - Failed to build packet for view: 'pick'.");
         return false;
     }
 
@@ -443,23 +517,28 @@ void TestEnv::OnLibraryLoad()
     cb = Event.Register(C3D::EventCodeDebug0, [this](const u16 code, void* sender, const C3D::EventContext& context) {
         return OnDebugEvent(code, sender, context);
     });
-    m_state->m_registeredCallbacks.PushBack(cb);
+    m_state->registeredCallbacks.PushBack(cb);
 
     cb = Event.Register(C3D::EventCodeDebug1, [this](const u16 code, void* sender, const C3D::EventContext& context) {
         return OnDebugEvent(code, sender, context);
     });
-    m_state->m_registeredCallbacks.PushBack(cb);
+    m_state->registeredCallbacks.PushBack(cb);
 
     cb = Event.Register(C3D::EventCodeDebug2, [this](const u16 code, void* sender, const C3D::EventContext& context) {
         return OnDebugEvent(code, sender, context);
     });
-    m_state->m_registeredCallbacks.PushBack(cb);
+    m_state->registeredCallbacks.PushBack(cb);
 
     cb = Event.Register(C3D::EventCodeObjectHoverIdChanged,
                         [this](const u16 code, void* sender, const C3D::EventContext& context) {
                             return OnEvent(code, sender, context);
                         });
-    m_state->m_registeredCallbacks.PushBack(cb);
+    m_state->registeredCallbacks.PushBack(cb);
+
+    cb = Event.Register(C3D::EventCodeButtonUp, [this](const u16 code, void* sender, const C3D::EventContext& context) {
+        return OnButtonUp(code, sender, context);
+    });
+    m_state->registeredCallbacks.PushBack(cb);
 
     m_pConsole->RegisterCommand("load_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         Event.Fire(C3D::EventCodeDebug1, this, {});
@@ -485,11 +564,11 @@ void TestEnv::OnLibraryLoad()
 
 void TestEnv::OnLibraryUnload()
 {
-    for (auto& cb : m_state->m_registeredCallbacks)
+    for (auto& cb : m_state->registeredCallbacks)
     {
         Event.Unregister(cb);
     }
-    m_state->m_registeredCallbacks.Clear();
+    m_state->registeredCallbacks.Clear();
 
     m_pConsole->UnregisterCommand("load_scene");
     m_pConsole->UnregisterCommand("unload_scene");
@@ -506,6 +585,10 @@ bool TestEnv::ConfigureRenderViews() const
     RenderViewWorld* worldView = Memory.New<RenderViewWorld>(C3D::MemoryType::RenderView);
     m_state->renderViews.PushBack(worldView);
 
+    // Editor World View
+    RenderViewEditorWorld* editorWorldView = Memory.New<RenderViewEditorWorld>(C3D::MemoryType::RenderView);
+    m_state->renderViews.PushBack(editorWorldView);
+
     // UI View
     RenderViewUi* uiView = Memory.New<RenderViewUi>(C3D::MemoryType::RenderView);
     m_state->renderViews.PushBack(uiView);
@@ -517,16 +600,126 @@ bool TestEnv::ConfigureRenderViews() const
     return true;
 }
 
-bool TestEnv::OnEvent(const u16 code, void*, const C3D::EventContext& context) const
+bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext& context)
 {
     switch (code)
     {
         case C3D::EventCodeObjectHoverIdChanged:
             m_state->hoveredObjectId = context.data.u32[0];
             return true;
+        case C3D::EventCodeButtonUp:
+            OnButtonUp(code, sender, context);
+            return false;
         default:
             return false;
     }
+}
+
+bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& context)
+{
+    u16 button = context.data.u16[0];
+    switch (button)
+    {
+        case C3D::ButtonLeft:
+            f32 x = static_cast<f32>(context.data.i16[1]);
+            f32 y = static_cast<f32>(context.data.i16[2]);
+
+            if (m_state->simpleScene.GetState() < SceneState::Loaded)
+            {
+                return false;
+            }
+
+            mat4 view   = m_state->camera->GetViewMatrix();
+            vec3 origin = m_state->camera->GetPosition();
+            // TODO: Get this from the viewport
+            vec2 viewPortSize = vec2(static_cast<f32>(m_state->width), static_cast<f32>(m_state->height));
+
+            mat4 projection = glm::perspective(C3D::DegToRad(45.0f), viewPortSize.x / viewPortSize.y, 0.1f, 4000.0f);
+
+            C3D::Ray ray = C3D::Ray::FromScreen(vec2(x, y), viewPortSize, origin, view, projection);
+
+            C3D::RayCastResult result;
+            if (m_state->simpleScene.RayCast(ray, result))
+            {
+                for (auto& hit : result.hits)
+                {
+                    // Create a debug line
+                    C3D::DebugLine3D line;
+                    if (!line.Create(m_pSystemsManager, ray.origin, hit.position, nullptr))
+                    {
+                        m_logger.Error("OnButtonUp() - Failed to create debug line.");
+                        return false;
+                    }
+                    if (!line.Initialize())
+                    {
+                        m_logger.Error("OnButtonUp() - Failed to initialize debug line.");
+                        return false;
+                    }
+                    if (!line.Load())
+                    {
+                        m_logger.Error("OnButtonUp() - Failed to load debug line.");
+                        return false;
+                    }
+                    // We set the line to yellow for hits
+                    line.SetColor(C3D::YELLOW);
+
+                    m_state->testLines.PushBack(line);
+
+                    C3D::DebugBox3D box;
+                    if (!box.Create(m_pSystemsManager, vec3(0.1f), nullptr))
+                    {
+                        m_logger.Error("OnButtonUp() - Failed to create debug box.");
+                        return false;
+                    }
+                    if (!box.Initialize())
+                    {
+                        m_logger.Error("OnButtonUp() - Failed to initialize debug box.");
+                        return false;
+                    }
+                    if (!box.Load())
+                    {
+                        m_logger.Error("OnButtonUp() - Failed to load debug box.");
+                        return false;
+                    }
+
+                    box.SetPosition(hit.position);
+
+                    m_state->testBoxes.PushBack(box);
+
+                    m_logger.Info("OnButtonUp() - Ray HIT on id: {}.", hit.uniqueId);
+                }
+            }
+            else
+            {
+                m_logger.Info("OnButtonUp() - Ray MISSED!");
+
+                // Create a debug line
+                C3D::DebugLine3D line;
+                if (!line.Create(m_pSystemsManager, origin, origin + (ray.direction * 100.0f), nullptr))
+                {
+                    m_logger.Error("OnButtonUp() - Failed to create debug line.");
+                    return false;
+                }
+                if (!line.Initialize())
+                {
+                    m_logger.Error("OnButtonUp() - Failed to initialize debug line.");
+                    return false;
+                }
+                if (!line.Load())
+                {
+                    m_logger.Error("OnButtonUp() - Failed to load debug line.");
+                    return false;
+                }
+                // We set the line to magenta for non-hits
+                line.SetColor(C3D::MAGENTA);
+
+                m_state->testLines.PushBack(line);
+            }
+
+            break;
+    }
+
+    return false;
 }
 
 bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
@@ -571,8 +764,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
     {
         if (m_state->simpleScene.GetState() == SceneState::Loaded)
         {
-            m_logger.Info("OnDebugEvent() - Unloading models...");
-            m_state->simpleScene.Unload();
+            UnloadTestScene();
         }
 
         return true;
@@ -588,13 +780,13 @@ bool TestEnv::LoadTestScene()
 
     if (!m_state->simpleScene.Create(m_pSystemsManager, sceneConfig))
     {
-        m_logger.Error("LoadTestScene() - Creating SimpleScene failed");
+        m_logger.Error("LoadTestScene() - Creating SimpleScene failed.");
         return false;
     }
 
     if (!m_state->simpleScene.Initialize())
     {
-        m_logger.Error("LoadTestScene() - Initializing SimpleScene failed");
+        m_logger.Error("LoadTestScene() - Initializing SimpleScene failed.");
         return false;
     }
 
@@ -602,12 +794,31 @@ bool TestEnv::LoadTestScene()
 
     if (!m_state->simpleScene.Load())
     {
-        m_logger.Error("LoadTestScene() - Loading SimpleScene failed");
+        m_logger.Error("LoadTestScene() - Loading SimpleScene failed.");
         return false;
     }
 
     m_state->reloadState = ReloadState::Done;
     return true;
+}
+
+void TestEnv::UnloadTestScene()
+{
+    for (auto& line : m_state->testLines)
+    {
+        line.Unload();
+        line.Destroy();
+    }
+    m_state->testLines.Destroy();
+
+    for (auto& box : m_state->testBoxes)
+    {
+        box.Unload();
+        box.Destroy();
+    }
+    m_state->testBoxes.Destroy();
+
+    m_state->simpleScene.Unload();
 }
 
 C3D::Application* CreateApplication(C3D::ApplicationState* state)

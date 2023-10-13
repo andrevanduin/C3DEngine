@@ -1,7 +1,7 @@
 
 #pragma once
 #include "core/defines.h"
-#include "geometry.h"
+#include "geometry_config.h"
 #include "renderer/vertex.h"
 #include "resources/textures/texture_map.h"
 

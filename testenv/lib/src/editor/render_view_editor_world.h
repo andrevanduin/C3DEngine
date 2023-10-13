@@ -1,6 +1,6 @@
 
 #pragma once
-#include <core/events/event_context.h>
+#include <core/defines.h>
 #include <renderer/render_view.h>
 
 #include "test_env_types.h"
@@ -11,19 +11,19 @@ namespace C3D
     class Shader;
 }  // namespace C3D
 
-struct GeometryDistance
+class EditorGizmo;
+
+struct EditorWorldPacketData
 {
-    C3D::GeometryRenderData g;
-    f32 distance;
+    EditorGizmo* gizmo;
 };
 
-class RenderViewWorld final : public C3D::RenderView
+class RenderViewEditorWorld final : public C3D::RenderView
 {
 public:
-    RenderViewWorld();
+    RenderViewEditorWorld();
 
     bool OnCreate() override;
-    void OnDestroy() override;
 
     void OnResize() override;
 
@@ -33,27 +33,16 @@ public:
                   u64 renderTargetIndex) override;
 
 private:
-    bool OnEvent(u16 code, void* sender, const C3D::EventContext& context);
-
     void OnSetupPasses() override;
 
-    C3D::DynamicArray<GeometryDistance, C3D::LinearAllocator> m_distances;
-
-    C3D::Shader* m_materialShader = nullptr;
-    C3D::Shader* m_terrainShader  = nullptr;
-    C3D::Shader* m_debugShader    = nullptr;
+    C3D::Shader* m_shader = nullptr;
 
     f32 m_fov      = C3D::DegToRad(45.0f);
     f32 m_nearClip = 0.1f;
     f32 m_farClip  = 4000.0f;
 
-    C3D::RegisteredEventCallback m_onEventCallback;
-
     DebugColorShaderLocations m_debugShaderLocations;
 
     mat4 m_projectionMatrix;
     C3D::Camera* m_camera = nullptr;
-
-    vec4 m_ambientColor;
-    u32 m_renderMode = 0;
 };

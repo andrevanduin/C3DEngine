@@ -29,7 +29,8 @@ namespace C3D
                                                                                                 const T high)
         {
             std::uniform_int_distribution distribution(low, high);
-            DynamicArray<int> values(amount);
+            DynamicArray<T> values;
+            values.Resize(amount);
             std::generate(values.begin(), values.end(), [&] { return distribution(m_generator); });
             return values;
         }

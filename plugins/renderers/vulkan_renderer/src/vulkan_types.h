@@ -27,16 +27,14 @@ namespace C3D
 
     struct VulkanGeometryData
     {
-        u32 id;
-        u32 generation;
-
-        u32 vertexCount;
-        u32 vertexElementSize;
-        u64 vertexBufferOffset;
-
-        u32 indexCount;
-        u32 indexElementSize;
-        u64 indexBufferOffset;
+        /** @brief The Vulkan geometry id. */
+        u32 id = INVALID_ID;
+        /** @brief The Vulkan geometry generation, which gets incremented everytime the data changes. */
+        u32 generation = INVALID_ID;
+        /** @brief The offset in bytes into the vertex buffer. */
+        u64 vertexBufferOffset = 0;
+        /** @brief The offset in bytes into the index buffer. */
+        u64 indexBufferOffset = 0;
     };
 
     enum VulkanTopologyClass

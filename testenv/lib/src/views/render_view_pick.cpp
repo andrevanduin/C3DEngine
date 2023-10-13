@@ -226,7 +226,7 @@ bool RenderViewPick::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* d
     const auto& terrainData = *packetData->terrainData;
     for (const auto& terrain : terrainData)
     {
-        if (terrain.geometry->id == INVALID_ID) continue;
+        if (terrain.uniqueId == INVALID_ID) continue;
 
         outPacket->geometries.PushBack(terrain);
         packetData->terrainGeometryCount++;
@@ -338,7 +338,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
                 m_logger.Error("OnRender() - Failed to apply view matrix.");
             }
 
-            if (!Shaders.ApplyGlobal())
+            if (!Shaders.ApplyGlobal(true))
             {
                 m_logger.Error("OnRender() - Failed to apply globals.");
             }
@@ -403,7 +403,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
                 m_logger.Error("OnRender() - Failed to apply view matrix.");
             }
 
-            if (!Shaders.ApplyGlobal())
+            if (!Shaders.ApplyGlobal(true))
             {
                 m_logger.Error("OnRender() - Failed to apply globals.");
             }
@@ -477,7 +477,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
             m_logger.Error("OnRender() - Failed to apply view matrix.");
         }
 
-        if (!Shaders.ApplyGlobal())
+        if (!Shaders.ApplyGlobal(true))
         {
             m_logger.Error("OnRender() - Failed to apply globals.");
         }
@@ -655,17 +655,17 @@ bool RenderViewPick::OnMouseMovedEvent(const u16 code, void*, const C3D::EventCo
 void RenderViewPick::AcquireShaderInstances()
 {
     u32 instance;
-    if (!Renderer.AcquireShaderInstanceResources(m_uiShaderInfo.shader, 0, nullptr, &instance))
+    if (!Renderer.AcquireShaderInstanceResources(*m_uiShaderInfo.shader, 0, nullptr, &instance))
     {
         m_logger.Fatal("AcquireShaderInstances() - Failed to acquire UI shader resources from Renderer.");
     }
 
-    if (!Renderer.AcquireShaderInstanceResources(m_worldShaderInfo.shader, 0, nullptr, &instance))
+    if (!Renderer.AcquireShaderInstanceResources(*m_worldShaderInfo.shader, 0, nullptr, &instance))
     {
         m_logger.Fatal("AcquireShaderInstances() - Failed to acquire World shader resources from Renderer.");
     }
 
-    if (!Renderer.AcquireShaderInstanceResources(m_terrainShaderInfo.shader, 0, nullptr, &instance))
+    if (!Renderer.AcquireShaderInstanceResources(*m_terrainShaderInfo.shader, 0, nullptr, &instance))
     {
         m_logger.Fatal("AcquireShaderInstances() - Failed to acquire Terrain shader resources from Renderer.");
     }
@@ -678,17 +678,17 @@ void RenderViewPick::ReleaseShaderInstances()
 {
     for (u32 i = 0; i < m_instanceCount; i++)
     {
-        if (!Renderer.ReleaseShaderInstanceResources(m_uiShaderInfo.shader, i))
+        if (!Renderer.ReleaseShaderInstanceResources(*m_uiShaderInfo.shader, i))
         {
             m_logger.Warn("ReleaseShaderInstances() - Failed to release UI shader resources.");
         }
 
-        if (!Renderer.ReleaseShaderInstanceResources(m_worldShaderInfo.shader, i))
+        if (!Renderer.ReleaseShaderInstanceResources(*m_worldShaderInfo.shader, i))
         {
             m_logger.Warn("ReleaseShaderInstances() - Failed to release World shader resources.");
         }
 
-        if (!Renderer.ReleaseShaderInstanceResources(m_terrainShaderInfo.shader, i))
+        if (!Renderer.ReleaseShaderInstanceResources(*m_terrainShaderInfo.shader, i))
         {
             m_logger.Warn("ReleaseShaderInstances() - Failed to release Terrain shader resources.");
         }

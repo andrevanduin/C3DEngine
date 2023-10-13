@@ -176,18 +176,29 @@ namespace C3D
 
     bool DebugGrid::Load()
     {
-        if (!Renderer.CreateGeometry(&m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
+        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
                                      0))
         {
             Logger::Error("[DEBUG_GRID] - Load() - Failed to create geometry.");
             return false;
         }
+
+        if (!Renderer.UploadGeometry(m_geometry))
+        {
+            Logger::Error("[DEBUG_GRID] - Load() - Failed to upload geometry.");
+            return false;
+        }
+
         return true;
     }
 
     bool DebugGrid::Unload()
     {
-        Renderer.DestroyGeometry(&m_geometry);
+        if (m_uniqueId != INVALID_ID)
+        {
+            Renderer.DestroyGeometry(m_geometry);
+        }
+
         return true;
     }
 

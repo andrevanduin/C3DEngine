@@ -65,14 +65,14 @@ u8 ArrayShouldBeIterableWithBeginAndEnd()
     return true;
 }
 
-void Array::RegisterTests(TestManager* manager)
+void Array::RegisterTests(TestManager& manager)
 {
-    manager->StartType("Array");
-    manager->Register(ArrayShouldCreate, "Array should properly create and hold values.");
-    manager->Register(ArrayShouldCreateWithInitializerList,
+    manager.StartType("Array");
+    manager.Register(ArrayShouldCreate, "Array should properly create and hold values.");
+    manager.Register(ArrayShouldCreateWithInitializerList,
                       "Array should properly create and hold values when provided with an initializer list.");
-    manager->Register(ArrayShouldSetAndGetValuesCorrectly, "Array should set and get values properly.");
-    manager->Register(ArrayShouldBeIterable, "Arrays should be iterable with the [] operator.");
-    manager->Register(ArrayShouldBeIterableWithBeginAndEnd,
+    manager.Register(ArrayShouldSetAndGetValuesCorrectly, "Array should set and get values properly.");
+    manager.Register(ArrayShouldBeIterable, "Arrays should be iterable with the [] operator.");
+    manager.Register(ArrayShouldBeIterableWithBeginAndEnd,
                       "Arrays should be iterable with begin() and end() methods.");
 }

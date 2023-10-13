@@ -163,16 +163,16 @@ u8 StringShouldSplit()
     return true;
 }
 
-void String::RegisterTests(TestManager* manager)
+void String::RegisterTests(TestManager& manager)
 {
-    manager->StartType("String");
-    manager->Register(StringShouldCreateEmptyWithEmptyCtor, "Strings should be created empty with default CTOR.");
-    manager->Register(StringShouldDoIntegerConversion, "You should be able to create string from integers.");
-    manager->Register(StringShouldDoBooleanConversion, "You should be able to create string from booleans.");
-    manager->Register(StringShouldUseSso, "Strings should not dynamically allocate memory if they are small (SSO).");
-    manager->Register(StringShouldCompare, "String should compare with each other and with char* .");
-    manager->Register(StringShouldBeTruthy, "String should evaluate to truthy values.");
-    manager->Register(StringShouldAppend, "Strings and chars should append to strings.");
-    manager->Register(StringShouldTrim, "String should properly trim.");
-    manager->Register(StringShouldSplit, "String should properly split into parts.");
+    manager.StartType("String");
+    manager.Register(StringShouldCreateEmptyWithEmptyCtor, "Strings should be created empty with default CTOR.");
+    manager.Register(StringShouldDoIntegerConversion, "You should be able to create string from integers.");
+    manager.Register(StringShouldDoBooleanConversion, "You should be able to create string from booleans.");
+    manager.Register(StringShouldUseSso, "Strings should not dynamically allocate memory if they are small (SSO).");
+    manager.Register(StringShouldCompare, "String should compare with each other and with char* .");
+    manager.Register(StringShouldBeTruthy, "String should evaluate to truthy values.");
+    manager.Register(StringShouldAppend, "Strings and chars should append to strings.");
+    manager.Register(StringShouldTrim, "String should properly trim.");
+    manager.Register(StringShouldSplit, "String should properly split into parts.");
 }

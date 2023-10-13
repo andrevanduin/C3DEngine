@@ -51,7 +51,7 @@ namespace C3D
         Shader* uiShader        = Shaders.Get("Shader.Builtin.UI");
         TextureMap* fontMaps[1] = { &data->atlas };
 
-        if (!Renderer.AcquireShaderInstanceResources(uiShader, 1, fontMaps, &instanceId))
+        if (!Renderer.AcquireShaderInstanceResources(*uiShader, 1, fontMaps, &instanceId))
         {
             m_logger.Fatal("Create() - Unable to acquire shader resources for font texture map.");
             return false;
@@ -121,7 +121,7 @@ namespace C3D
         // Release resources for font texture map
         // TODO: use a text shader
         Shader* uiShader = Shaders.Get("Shader.Builtin.UI");
-        if (!Renderer.ReleaseShaderInstanceResources(uiShader, instanceId))
+        if (!Renderer.ReleaseShaderInstanceResources(*uiShader, instanceId))
         {
             m_logger.Fatal("Destroy() - Failed to release shader resources for font texture map.");
         }

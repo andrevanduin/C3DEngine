@@ -103,12 +103,12 @@ u8 LinearAllocatorMultiAllocationAllSpaceThenFree()
     return true;
 }
 
-void LinearAllocator::RegisterTests(TestManager* manager)
+void LinearAllocator::RegisterTests(TestManager& manager)
 {
-    manager->StartType("Linear Allocator");
-	manager->Register(LinearAllocatorShouldCreateAndDestroy, "Linear Allocator should create and destroy");
-    manager->Register(LinearAllocatorSingleAllocationAllSpace, "Linear Allocator single alloc for all space");
-    manager->Register(LinearAllocatorMultiAllocationAllSpace, "Linear Allocator multi alloc for all space");
-    manager->Register(LinearAllocatorMultiAllocationOverAllocate, "Linear Allocator try over allocate");
-    manager->Register(LinearAllocatorMultiAllocationAllSpaceThenFree, "Linear Allocator allocated should be 0 after FreeAll()");
+    manager.StartType("Linear Allocator");
+	manager.Register(LinearAllocatorShouldCreateAndDestroy, "Linear Allocator should create and destroy");
+    manager.Register(LinearAllocatorSingleAllocationAllSpace, "Linear Allocator single alloc for all space");
+    manager.Register(LinearAllocatorMultiAllocationAllSpace, "Linear Allocator multi alloc for all space");
+    manager.Register(LinearAllocatorMultiAllocationOverAllocate, "Linear Allocator try over allocate");
+    manager.Register(LinearAllocatorMultiAllocationAllSpaceThenFree, "Linear Allocator allocated should be 0 after FreeAll()");
 }
