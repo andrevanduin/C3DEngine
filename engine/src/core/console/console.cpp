@@ -232,6 +232,9 @@ namespace C3D
 
         if (keyCode >= KeyA && keyCode <= KeyZ)
         {
+            // Ingore '`' key so we don't type that into the console immediatly after opening it
+            if (keyCode == KeyGrave) return false;
+
             // Characters
             typedChar = static_cast<char>(keyCode);
             if (shiftHeld) typedChar -= 32;  // If shift is held we want capital letters

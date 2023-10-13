@@ -22,7 +22,7 @@ namespace C3D
         if (!m_initialized) return;
 
         m_keyboardPrevious = m_keyboardCurrent;
-        m_mousePrevious = m_mouseCurrent;
+        m_mousePrevious    = m_mouseCurrent;
     }
 
     void InputSystem::ProcessKey(const SDL_Keycode sdlKey, const InputState state)
@@ -61,7 +61,7 @@ namespace C3D
                 key = KeyRControl;
                 break;
             default:
-                key = static_cast<u8>(sdlKey);
+                key = static_cast<u16>(sdlKey);
                 break;
         }
 
@@ -110,15 +110,18 @@ namespace C3D
     void InputSystem::ProcessButton(const u8 button, const InputState state)
     {
         auto& currentButtonState = m_mouseCurrent.buttons[button];
+
+        EventContext context{};
+        context.data.u16[0] = button;
+        context.data.i16[1] = m_mouseCurrent.x;
+        context.data.i16[2] = m_mouseCurrent.y;
+
         if (state == InputState::Down)
         {
             if (currentButtonState.state == InputState::Up)
             {
                 /* Up -> Down fire a ButtonDown event and set to the Down state. */
-                EventContext context{};
-                context.data.u16[0] = button;
                 Event.Fire(EventCodeButtonDown, nullptr, context);
-
                 currentButtonState.state = InputState::Down;
             }
             else if (currentButtonState.state == InputState::Down)
@@ -137,10 +140,7 @@ namespace C3D
         else if (currentButtonState.state == InputState::Down || currentButtonState.state == InputState::Held)
         {
             /* Down -> Up fire a ButtonUp event and set to the Up state. */
-            EventContext context{};
-            context.data.u16[0] = button;
             Event.Fire(EventCodeButtonUp, nullptr, context);
-
             currentButtonState.state = InputState::Up;
         }
     }
@@ -246,7 +246,7 @@ namespace C3D
         {
             return ivec2(0);
         }
-        return {m_mouseCurrent.x, m_mouseCurrent.y};
+        return { m_mouseCurrent.x, m_mouseCurrent.y };
     }
 
     ivec2 InputSystem::GetPreviousMousePosition()
@@ -255,6 +255,6 @@ namespace C3D
         {
             return ivec2(0);
         }
-        return {m_mousePrevious.x, m_mousePrevious.y};
+        return { m_mousePrevious.x, m_mousePrevious.y };
     }
 }  // namespace C3D

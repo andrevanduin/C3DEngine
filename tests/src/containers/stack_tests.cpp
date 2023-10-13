@@ -110,13 +110,13 @@ u8 StackShouldBeConstructableByInitializerList()
 	return true;
 }
 
-void Stack::RegisterTests(TestManager* manager)
+void Stack::RegisterTests(TestManager& manager)
 {
-	manager->StartType("Stack");
-	manager->Register(StackShouldCreateEmptyWithDefaultCtor, "Stacks should be created without any capacity and size if empty constructor is used");
-	manager->Register(StackShouldCleanupWhenLeaveScope, "Stacks should be cleanup up after leaving scope");
-	manager->Register(StackShouldPop, "Stacks should pop elements from top to bottom");
-	manager->Register(StackShouldClear, "Stacks should clear size to 0 and capacity should remain the same");
-	manager->Register(StackShouldBeIterable, "Stacks should be iterable");
-	manager->Register(StackShouldBeConstructableByInitializerList, "Stacks should be constructable by an initializer list");
+	manager.StartType("Stack");
+	manager.Register(StackShouldCreateEmptyWithDefaultCtor, "Stacks should be created without any capacity and size if empty constructor is used");
+	manager.Register(StackShouldCleanupWhenLeaveScope, "Stacks should be cleanup up after leaving scope");
+	manager.Register(StackShouldPop, "Stacks should pop elements from top to bottom");
+	manager.Register(StackShouldClear, "Stacks should clear size to 0 and capacity should remain the same");
+	manager.Register(StackShouldBeIterable, "Stacks should be iterable");
+	manager.Register(StackShouldBeConstructableByInitializerList, "Stacks should be constructable by an initializer list");
 }

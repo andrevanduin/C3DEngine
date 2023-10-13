@@ -1,7 +1,11 @@
 
 #pragma once
 #include "core/defines.h"
+#include "core/logger.h"
 
+/* TODO: Rework into nice implementation based on JUCE's FixedSizeFunction:
+ * https://github.com/juce-framework/JUCE/blob/master/modules/juce_dsp/containers/juce_FixedSizeFunction.h
+ */
 namespace C3D
 {
     template <typename... Args>
@@ -13,13 +17,13 @@ namespace C3D
     public:
         Function() = default;
 
-        Function(const Function&) = delete;
+        Function(const Function&)            = delete;
         Function& operator=(const Function&) = delete;
 
-        Function(Function&&) = delete;
+        Function(Function&&)            = delete;
         Function& operator=(Function&&) = delete;
 
-        virtual ~Function() = default;
+        virtual ~Function()                      = default;
         virtual Result operator()(Args...) const = 0;
     };
 
@@ -50,6 +54,7 @@ namespace C3D
             }
         }
 
+        /*
         StackFunction(StackFunction&& other) noexcept
         {
             if (other.m_functorHolderPtr != nullptr)
@@ -76,22 +81,23 @@ namespace C3D
             }
 
             return *this;
-        }
+        }*/
 
         StackFunction& operator=(const StackFunction& other)
         {
-            if (this == &other) return *this;
-
-            if (m_functorHolderPtr != nullptr)
+            if (this != &other)
             {
-                m_functorHolderPtr->~IFunctorHolder<Result, Args...>();
-                m_functorHolderPtr = nullptr;
-            }
+                if (m_functorHolderPtr != nullptr)
+                {
+                    m_functorHolderPtr->~IFunctorHolder<Result, Args...>();
+                    m_functorHolderPtr = nullptr;
+                }
 
-            if (other.m_functorHolderPtr != nullptr)
-            {
-                m_functorHolderPtr = reinterpret_cast<IFunctorHolder<Result, Args...>*>(std::addressof(m_stack));
-                other.m_functorHolderPtr->CopyInto(m_functorHolderPtr);
+                if (other.m_functorHolderPtr != nullptr)
+                {
+                    m_functorHolderPtr = reinterpret_cast<IFunctorHolder<Result, Args...>*>(std::addressof(m_stack));
+                    other.m_functorHolderPtr->CopyInto(m_functorHolderPtr);
+                }
             }
 
             return *this;
@@ -107,7 +113,7 @@ namespace C3D
 
         Result operator()(Args... args) const override { return (*m_functorHolderPtr)(std::forward<Args>(args)...); }
 
-        explicit operator bool() const noexcept { return m_functorHolderPtr != nullptr; }
+        operator bool() const noexcept { return m_functorHolderPtr != nullptr; }
 
         bool operator==(const StackFunction& other) const
         {
@@ -118,17 +124,9 @@ namespace C3D
         template <typename ReturnType, typename... Arguments>
         struct IFunctorHolder
         {
-            IFunctorHolder() = default;
-
-            IFunctorHolder(const IFunctorHolder&) = delete;
-            IFunctorHolder(IFunctorHolder&&) = delete;
-
-            IFunctorHolder& operator=(const IFunctorHolder&) = delete;
-            IFunctorHolder& operator=(IFunctorHolder&&) = delete;
-
-            virtual ~IFunctorHolder() = default;
+            virtual ~IFunctorHolder() {}
             virtual ReturnType operator()(Arguments...) = 0;
-            virtual void CopyInto(void*) const = 0;
+            virtual void CopyInto(void*) const          = 0;
         };
 
         template <typename Functor, typename ReturnType, typename... Arguments>
@@ -144,6 +142,6 @@ namespace C3D
         };
 
         IFunctorHolder<Result, Args...>* m_functorHolderPtr = nullptr;
-        byte m_stack[stackSize] = {0};
+        byte m_stack[stackSize]                             = { 0 };
     };
 }  // namespace C3D

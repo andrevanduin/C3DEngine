@@ -353,7 +353,7 @@ namespace C3D
 
     void GeometrySystem::DestroyGeometry(Geometry* g) const
     {
-        Renderer.DestroyGeometry(g);
+        Renderer.DestroyGeometry(*g);
         g->internalId = INVALID_ID;
         g->generation = INVALID_ID_U16;
         g->id         = INVALID_ID;
@@ -399,10 +399,16 @@ namespace C3D
         const u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
 
         m_defaultGeometry.internalId = INVALID_ID;
-        if (!Renderer.CreateGeometry(&m_defaultGeometry, sizeof(Vertex3D), vertexCount, vertices, sizeof(u32),
+        if (!Renderer.CreateGeometry(m_defaultGeometry, sizeof(Vertex3D), vertexCount, vertices, sizeof(u32),
                                      indexCount, indices))
         {
-            m_logger.Fatal("Failed to create default geometry");
+            m_logger.Fatal("CreateDefaultGeometries() - Failed to create default geometry.");
+            return false;
+        }
+
+        if (!Renderer.UploadGeometry(m_defaultGeometry))
+        {
+            m_logger.Fatal("CreateDefaultGeometries() - Failed to upload default geometry.");
             return false;
         }
 
@@ -436,10 +442,16 @@ namespace C3D
         const u32 indices2d[indexCount] = { 2, 1, 0, 3, 0, 1 };
 
         m_default2DGeometry.internalId = INVALID_ID;
-        if (!Renderer.CreateGeometry(&m_default2DGeometry, sizeof(Vertex2D), vertexCount, vertices2d, sizeof(u32),
+        if (!Renderer.CreateGeometry(m_default2DGeometry, sizeof(Vertex2D), vertexCount, vertices2d, sizeof(u32),
                                      indexCount, indices2d))
         {
-            m_logger.Fatal("Failed to create default 2d geometry");
+            m_logger.Fatal("CreateDefaultGeometries() - Failed to create default 2d geometry.");
+            return false;
+        }
+
+        if (!Renderer.UploadGeometry(m_default2DGeometry))
+        {
+            m_logger.Fatal("CreateDefaultGeometries() - Failed to upload default 2d geometry.");
             return false;
         }
 

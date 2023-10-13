@@ -54,10 +54,10 @@ u8 HashTableShouldSetAndGetForPointerTypes()
 	return true;
 }
 
-void HashTable::RegisterTests(TestManager* manager)
+void HashTable::RegisterTests(TestManager& manager)
 {
-	manager->StartType("HashTable");
-	manager->Register(HashTableShouldCreateAndDestroy, "HashTable internal allocation and free should happen properly.");
-	manager->Register(HashTableShouldSetAndGetForValueTypes, "HashTable Set and Get should work for value types.");
-	manager->Register(HashTableShouldSetAndGetForPointerTypes, "HashTable Set and Get should work for pointer types.");
+	manager.StartType("HashTable");
+	manager.Register(HashTableShouldCreateAndDestroy, "HashTable internal allocation and free should happen properly.");
+	manager.Register(HashTableShouldSetAndGetForValueTypes, "HashTable Set and Get should work for value types.");
+	manager.Register(HashTableShouldSetAndGetForPointerTypes, "HashTable Set and Get should work for pointer types.");
 }

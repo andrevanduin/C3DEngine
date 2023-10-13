@@ -4,5 +4,5 @@
 
 namespace String
 {
-	void RegisterTests(TestManager* manager);
+	void RegisterTests(TestManager& manager);
 }

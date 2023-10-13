@@ -21,11 +21,11 @@ namespace C3D
 
         bool operator==(const Vertex3D& other) const
         {
-            return all(epsilonEqual(position, other.position, FLOAT_EPSILON)) &&
-                   all(epsilonEqual(normal, other.normal, FLOAT_EPSILON)) &&
-                   all(epsilonEqual(texture, other.texture, FLOAT_EPSILON)) &&
-                   all(epsilonEqual(color, other.color, FLOAT_EPSILON)) &&
-                   all(epsilonEqual(tangent, other.tangent, FLOAT_EPSILON));
+            return all(epsilonEqual(position, other.position, F32_EPSILON)) &&
+                   all(epsilonEqual(normal, other.normal, F32_EPSILON)) &&
+                   all(epsilonEqual(texture, other.texture, F32_EPSILON)) &&
+                   all(epsilonEqual(color, other.color, F32_EPSILON)) &&
+                   all(epsilonEqual(tangent, other.tangent, F32_EPSILON));
         }
     };
 

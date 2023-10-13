@@ -58,31 +58,33 @@ namespace C3D
 
         void DestroyTexture(Texture* texture) override;
 
-        bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize,
-                            u64 indexCount, const void* indices) override;
-        void UpdateGeometry(Geometry* geometry, u32 offset, u32 vertexCount, const void* vertices) override;
-        void DestroyGeometry(Geometry* geometry) override;
+        bool CreateGeometry(Geometry& geometry) override;
+        bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset,
+                            u32 indexSize) override;
+        void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount,
+                                    const void* vertices) override;
+        void DestroyGeometry(Geometry& geometry) override;
 
         bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const override;
         void DestroyShader(Shader& shader) override;
 
-        bool InitializeShader(Shader* shader) override;
-        bool UseShader(Shader* shader) override;
+        bool InitializeShader(Shader& shader) override;
+        bool UseShader(const Shader& shader) override;
 
-        bool ShaderBindGlobals(Shader* shader) override;
-        bool ShaderBindInstance(Shader* shader, u32 instanceId) override;
+        bool ShaderBindGlobals(Shader& shader) override;
+        bool ShaderBindInstance(Shader& shader, u32 instanceId) override;
 
-        bool ShaderApplyGlobals(Shader* shader) override;
-        bool ShaderApplyInstance(Shader* shader, bool needsUpdate) override;
+        bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) override;
+        bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) override;
 
-        bool AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
+        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps,
                                             u32* outInstanceId) override;
-        bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) override;
+        bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) override;
 
         bool AcquireTextureMapResources(TextureMap& map) override;
         void ReleaseTextureMapResources(TextureMap& map) override;
 
-        bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) override;
+        bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) override;
 
         void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width,
                                 u32 height, RenderTarget* outTarget) override;

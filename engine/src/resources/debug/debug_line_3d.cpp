@@ -7,16 +7,24 @@
 
 namespace C3D
 {
-    bool DebugLine3D::Create(const vec3& point0, const vec3& point1, Transform* parent)
+    bool DebugLine3D::Create(const SystemManager* systemsManager, const vec3& point0, const vec3& point1,
+                             Transform* parent)
     {
+        m_pSystemsManager = systemsManager;
+
         m_point0   = point0;
         m_point1   = point1;
         m_uniqueId = Identifier::GetNewId(this);
-        m_color    = vec4();  // Default is white
+        m_color    = vec4(1.0f);  // Default is white
 
         m_geometry.id         = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
         m_geometry.internalId = INVALID_ID;
+
+        if (parent)
+        {
+            SetParent(parent);
+        }
 
         return true;
     }
@@ -41,19 +49,26 @@ namespace C3D
 
     bool DebugLine3D::Load()
     {
-        if (!Renderer.CreateGeometry(&m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
+        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
                                      0))
         {
             Logger::Error("[DEBUG_LINE] - Load() - Failed to create geometry.");
             return false;
         }
+
+        if (!Renderer.UploadGeometry(m_geometry))
+        {
+            Logger::Error("[DEBUG_LINE] - Load() - Failed to upload geometry.");
+            return false;
+        }
+
         m_geometry.generation++;
         return true;
     }
 
     bool DebugLine3D::Unload()
     {
-        Renderer.DestroyGeometry(&m_geometry);
+        Renderer.DestroyGeometry(m_geometry);
         return true;
     }
 
@@ -66,7 +81,7 @@ namespace C3D
         {
             UpdateVertexColor();
 
-            Renderer.UpdateGeometry(&m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
+            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
 
             m_geometry.generation++;
 
@@ -87,7 +102,7 @@ namespace C3D
 
             RecalculatePoints();
 
-            Renderer.UpdateGeometry(&m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
+            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
 
             m_geometry.generation++;
 

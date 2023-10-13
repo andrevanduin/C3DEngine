@@ -11,6 +11,12 @@ namespace C3D
         : BaseSystem(pSystemsManager, "EVENT"), m_registered{}
     {}
 
+    bool EventSystem::Init()
+    {
+        m_initialized = true;
+        return true;
+    }
+
     void EventSystem::Shutdown()
     {
         m_logger.Info("Shutting Down");
@@ -27,7 +33,7 @@ namespace C3D
         auto& events = m_registered[code].events;
         events.EmplaceBack(UNIQUE_ID, callback);
 
-        RegisteredEventCallback cb = {code, UNIQUE_ID++};
+        RegisteredEventCallback cb = { code, UNIQUE_ID++ };
         return cb;
     }
 

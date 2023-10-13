@@ -7,8 +7,8 @@
 #include "math/math_types.h"
 #include "memory/allocators/linear_allocator.h"
 #include "render_view_types.h"
+#include "renderer/geometry.h"
 #include "renderer/renderpass.h"
-#include "resources/geometry.h"
 #include "resources/skybox.h"
 #include "systems/events/event_system.h"
 

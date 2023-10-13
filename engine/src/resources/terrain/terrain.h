@@ -6,7 +6,7 @@
 #include "math/math_types.h"
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
-#include "resources/geometry.h"
+#include "renderer/geometry.h"
 #include "terrain_config.h"
 
 namespace C3D
@@ -39,7 +39,7 @@ namespace C3D
 
         void SetTransform(const Transform& t) { m_transform = t; }
 
-        u32 uniqueId;
+        u32 uniqueId = INVALID_ID;
 
     private:
         bool LoadFromResource();

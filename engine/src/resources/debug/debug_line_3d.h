@@ -2,8 +2,9 @@
 #pragma once
 #include "containers/string.h"
 #include "core/defines.h"
+#include "renderer/geometry.h"
 #include "renderer/transform.h"
-#include "resources/geometry.h"
+#include "renderer/vertex.h"
 
 namespace C3D
 {
@@ -14,7 +15,7 @@ namespace C3D
     public:
         DebugLine3D() = default;
 
-        bool Create(const vec3& point0, const vec3& point1, Transform* parent);
+        bool Create(const SystemManager* systemsManager, const vec3& point0, const vec3& point1, Transform* parent);
 
         void Destroy();
 
@@ -23,6 +24,9 @@ namespace C3D
         bool Unload();
 
         bool Update();
+
+        mat4 GetModel() const { return m_transform.GetWorld(); }
+        Geometry* GetGeometry() { return &m_geometry; }
 
         void SetParent(Transform* parent) { m_transform.SetParent(parent); }
         void SetColor(const vec4& color);

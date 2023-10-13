@@ -89,11 +89,11 @@ namespace C3D::GeometryUtils
 
     bool Vertex3DEqual(const Vertex3D& vert0, const Vertex3D& vert1)
     {
-        return EpsilonEqual(vert0.position, vert1.position, FLOAT_EPSILON) &&
-               EpsilonEqual(vert0.normal, vert1.normal, FLOAT_EPSILON) &&
-               EpsilonEqual(vert0.texture, vert1.texture, FLOAT_EPSILON) &&
-               EpsilonEqual(vert0.color, vert1.color, FLOAT_EPSILON) &&
-               EpsilonEqual(vert0.tangent, vert1.tangent, FLOAT_EPSILON);
+        return EpsilonEqual(vert0.position, vert1.position, F32_EPSILON) &&
+               EpsilonEqual(vert0.normal, vert1.normal, F32_EPSILON) &&
+               EpsilonEqual(vert0.texture, vert1.texture, F32_EPSILON) &&
+               EpsilonEqual(vert0.color, vert1.color, F32_EPSILON) &&
+               EpsilonEqual(vert0.tangent, vert1.tangent, F32_EPSILON);
     }
 
     void ReassignIndex(const DynamicArray<u32>& indices, const u32 from, const u32 to)

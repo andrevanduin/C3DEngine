@@ -5,7 +5,7 @@
 #include "platform/file_system.h"
 #include "renderer/vertex.h"
 #include "resource_loader.h"
-#include "resources/geometry.h"
+#include "resources/geometry_config.h"
 #include "resources/materials/material_types.h"
 #include "systems/system_manager.h"
 

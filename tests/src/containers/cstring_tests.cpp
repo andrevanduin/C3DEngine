@@ -17,8 +17,8 @@ u8 CStringShouldCreateEmptyWithEmptyCtor()
 	return true;
 }
 
-void CString::RegisterTests(TestManager* manager)
+void CString::RegisterTests(TestManager& manager)
 {
-	manager->StartType("CString");
-	manager->Register(CStringShouldCreateEmptyWithEmptyCtor, "Strings should be created empty with default CTOR.");
+	manager.StartType("CString");
+	manager.Register(CStringShouldCreateEmptyWithEmptyCtor, "Strings should be created empty with default CTOR.");
 }

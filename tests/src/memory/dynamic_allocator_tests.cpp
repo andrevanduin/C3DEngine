@@ -257,14 +257,14 @@ u8 DynamicAllocatorShouldHaveNoDataCorruptionWithFrees()
     return true;
 }
 
-void DynamicAllocator::RegisterTests(TestManager* manager)
+void DynamicAllocator::RegisterTests(TestManager& manager)
 {
-    manager->StartType("Dynamic Allocator");
-    manager->Register(DynamicAllocatorShouldCreateAndDestroy, "Dynamic Allocator should create and destroy.");
-    manager->Register(DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees,
-                      "Dynamic Allocator should always allocate and free for lot's of random allocations");
-    manager->Register(DynamicAllocatorShouldHaveNoDataCorruption,
-                      "Dynamic Allocator should always allocate without data corruption");
-    manager->Register(DynamicAllocatorShouldHaveNoDataCorruptionWithFrees,
-                      "Dynamic Allocator should always allocate and free without data corruption");
+    manager.StartType("Dynamic Allocator");
+    manager.Register(DynamicAllocatorShouldCreateAndDestroy, "Dynamic Allocator should create and destroy.");
+    manager.Register(DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees,
+                     "Dynamic Allocator should always allocate and free for lot's of random allocations");
+    manager.Register(DynamicAllocatorShouldHaveNoDataCorruption,
+                     "Dynamic Allocator should always allocate without data corruption");
+    manager.Register(DynamicAllocatorShouldHaveNoDataCorruptionWithFrees,
+                     "Dynamic Allocator should always allocate and free without data corruption");
 }

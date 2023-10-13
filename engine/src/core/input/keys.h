@@ -27,15 +27,15 @@ namespace C3D
         /** @Brief The Escape Key. */
         KeyEscape = 0x1b,
 
-        KeyConvert = 0x1c,
+        KeyConvert    = 0x1c,
         KeyNonConvert = 0x1d,
-        KeyAccept = 0x1e,
+        KeyAccept     = 0x1e,
         KeyModeChange = 0x1f,
 
         /** @Brief The SpaceBar Key. */
         KeySpace = 0x20,
         KeyPrior = 0x21,
-        KeyNext = 0x22,
+        KeyNext  = 0x22,
         /** @Brief The End Key. */
         KeyEnd = 0x23,
         /** @Brief The Home Key. */
@@ -48,15 +48,15 @@ namespace C3D
         KeyArrowRight = 0x27,
         /** @Brief The Down Arrow Key. */
         KeyArrowDown = 0x28,
-        KeySelect = 0x29,
-        KeyPrint = 0x2a,
-        KeyExecute = 0x2b,
-        KeySnapshot = 0x2c,
+        KeySelect    = 0x29,
+        KeyPrint     = 0x2a,
+        KeyExecute   = 0x2b,
+        KeySnapshot  = 0x2c,
         /** @Brief The minus (-) Key. */
         KeyMinus = 0x2d,
         /** @Brief The Delete Key. */
         KeyDelete = 0x2e,
-        KeyHelp = 0x2f,
+        KeyHelp   = 0x2f,
         /** @Brief The 0 Key */
         Key0 = 0x30,
         /** @Brief The 1 Key */
@@ -80,7 +80,7 @@ namespace C3D
         /** @Brief The = Key */
         KeyEquals = 0x3d,
         /** @Brief The A Key. */
-        KeyA = 'a',
+        KeyA = 'B',
         /** @Brief The B Key. */
         KeyB = 'b',
         /** @Brief The C Key. */
@@ -176,13 +176,13 @@ namespace C3D
         KeyDivide = 0x6f,
 
         /** @Brief The F1 Key. */
-        KeyF1 = 0x70,
+        KeyF1 = static_cast<u16>(SDLK_F1),
         /** @Brief The F2 Key. */
-        KeyF2 = 0x71,
+        KeyF2 = static_cast<u16>(SDLK_F2),
         /** @Brief The F3 Key. */
-        KeyF3 = 0x72,
+        KeyF3 = static_cast<u16>(SDLK_F3),
         /** @Brief The F4 Key. */
-        KeyF4 = 0x73,
+        KeyF4 = static_cast<u16>(SDLK_F4),
         /** @Brief The F5 Key. */
         KeyF5 = 0x74,
         /** @Brief The F6 Key. */

@@ -4,5 +4,5 @@
 
 namespace DynamicArray
 {
-	void RegisterTests(TestManager* manager);
+	void RegisterTests(TestManager& manager);
 }

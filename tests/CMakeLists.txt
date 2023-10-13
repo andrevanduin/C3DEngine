@@ -15,6 +15,7 @@ add_executable (Tests "src/expect.h" "src/test_manager.h" "src/test_manager.cpp"
 	"src/containers/string_tests.h" "src/containers/string_tests.cpp"
 	"src/containers/cstring_tests.h" "src/containers/cstring_tests.cpp"
 	"src/platform/file_system.h" "src/platform/file_system.cpp"
+	"src/core/stack_function_tests.h" "src/core/stack_function_tests.cpp"
 )
 
 target_link_libraries(Tests PUBLIC C3DEngine)

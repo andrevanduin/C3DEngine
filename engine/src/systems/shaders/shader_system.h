@@ -32,6 +32,8 @@ namespace C3D
         Shader* GetById(u32 shaderId);
 
         bool Use(const char* name);
+        bool Use(const String& name);
+
         bool UseById(u32 shaderId);
 
         u16 GetUniformIndex(Shader* shader, const char* name) const;
@@ -42,25 +44,25 @@ namespace C3D
         bool SetSampler(const char* name, const Texture* t);
         bool SetSamplerByIndex(u16 index, const Texture* t);
 
-        bool ApplyGlobal();
+        bool ApplyGlobal(bool needsUpdate);
         bool ApplyInstance(bool needsUpdate);
 
         bool BindInstance(u32 instanceId);
 
     private:
-        bool AddAttribute(Shader* shader, const ShaderAttributeConfig* config) const;
-        bool AddSampler(Shader* shader, const ShaderUniformConfig* config);
+        bool AddAttribute(Shader& shader, const ShaderAttributeConfig& config) const;
+        bool AddSampler(Shader& shader, const ShaderUniformConfig& config);
 
-        bool AddUniform(Shader* shader, const ShaderUniformConfig* config);
-        bool AddUniform(Shader* shader, const String& name, u16 size, ShaderUniformType type, ShaderScope scope,
+        bool AddUniform(Shader& shader, const ShaderUniformConfig& config);
+        bool AddUniform(Shader& shader, const String& name, u16 size, ShaderUniformType type, ShaderScope scope,
                         u16 setLocation, bool isSampler);
 
         void ShaderDestroy(Shader& shader) const;
 
-        bool UniformAddStateIsValid(const Shader* shader) const;
-        bool UniformNameIsValid(Shader* shader, const String& name) const;
+        bool UniformAddStateIsValid(const Shader& shader) const;
+        bool UniformNameIsValid(const Shader& shader, const String& name) const;
 
-        u32 m_currentShaderId;
+        u32 m_currentShaderId = 0;
         HashMap<String, Shader> m_shaders;
     };
 }  // namespace C3D

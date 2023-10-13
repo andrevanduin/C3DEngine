@@ -298,7 +298,7 @@ namespace C3D
                 maps[i] = &mat.maps[i];
             }
 
-            bool result = Renderer.AcquireShaderInstanceResources(shader, maxMapCount, maps, &mat.internalId);
+            bool result = Renderer.AcquireShaderInstanceResources(*shader, maxMapCount, maps, &mat.internalId);
             if (!result)
             {
                 m_logger.Error("AcquireTerrain() - Failed to acquire renderer resources for material: '{}'.", mat.name);
@@ -482,7 +482,7 @@ namespace C3D
             return false;
         }
 
-        MATERIAL_APPLY_OR_FAIL(Shaders.ApplyGlobal())
+        MATERIAL_APPLY_OR_FAIL(Shaders.ApplyGlobal(true));
 
         // Sync the frameNumber
         s->frameNumber = frameNumber;
@@ -596,7 +596,7 @@ namespace C3D
         TextureMap* maps[3] = { &m_defaultMaterial.maps[0], &m_defaultMaterial.maps[1], &m_defaultMaterial.maps[2] };
 
         Shader* shader = Shaders.Get("Shader.Builtin.Material");
-        if (!Renderer.AcquireShaderInstanceResources(shader, 3, maps, &m_defaultMaterial.internalId))
+        if (!Renderer.AcquireShaderInstanceResources(*shader, 3, maps, &m_defaultMaterial.internalId))
         {
             m_logger.Error("CreateDefaultMaterial() - Failed to acquire renderer resources for the Default Material.");
             return false;
@@ -623,7 +623,7 @@ namespace C3D
         TextureMap* maps[1] = { &m_defaultUIMaterial.maps[0] };
 
         Shader* shader = Shaders.Get("Shader.Builtin.UI");
-        if (!Renderer.AcquireShaderInstanceResources(shader, 1, maps, &m_defaultUIMaterial.internalId))
+        if (!Renderer.AcquireShaderInstanceResources(*shader, 1, maps, &m_defaultUIMaterial.internalId))
         {
             m_logger.Error(
                 "CreateDefaultUIMaterial() - Failed to acquire renderer resources for the Default UI Material.");
@@ -657,7 +657,7 @@ namespace C3D
                                 &m_defaultTerrainMaterial.maps[2] };
 
         Shader* shader = Shaders.Get("Shader.Builtin.Terrain");
-        if (!Renderer.AcquireShaderInstanceResources(shader, 3, maps, &m_defaultTerrainMaterial.internalId))
+        if (!Renderer.AcquireShaderInstanceResources(*shader, 3, maps, &m_defaultTerrainMaterial.internalId))
         {
             m_logger.Error(
                 "CreateDefaultTerrainMaterial() - Failed to acquire renderer resources for the Default Terrain "
@@ -891,7 +891,7 @@ namespace C3D
             maps[i] = &mat.maps[i];
         }
 
-        bool result = Renderer.AcquireShaderInstanceResources(shader, mapCount, maps, &mat.internalId);
+        bool result = Renderer.AcquireShaderInstanceResources(*shader, mapCount, maps, &mat.internalId);
         if (!result)
         {
             m_logger.Error("LoadMaterial() - Failed to acquire renderer resources for Material: '{}'.", mat.name);
@@ -926,7 +926,7 @@ namespace C3D
         if (mat.shaderId != INVALID_ID && mat.internalId != INVALID_ID)
         {
             Shader* shader = Shaders.GetById(mat.shaderId);
-            Renderer.ReleaseShaderInstanceResources(shader, mat.internalId);
+            Renderer.ReleaseShaderInstanceResources(*shader, mat.internalId);
             mat.shaderId = INVALID_ID;
         }
 

@@ -20,7 +20,10 @@ namespace C3D
         m_geometry.generation = INVALID_ID_U16;
         m_geometry.internalId = INVALID_ID;
 
-        SetParent(parent);
+        if (parent)
+        {
+            SetParent(parent);
+        }
 
         return true;
     }
@@ -46,10 +49,16 @@ namespace C3D
 
     bool DebugBox3D::Load()
     {
-        if (!Renderer.CreateGeometry(&m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
+        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
                                      0))
         {
             Logger::Error("[DEBUG_BOX_3D] - Load() - Failed to create geometry.");
+            return false;
+        }
+
+        if (!Renderer.UploadGeometry(m_geometry))
+        {
+            Logger::Error("[DEBUG_BOX_3D] - Load() - Failed to upload geometry.");
             return false;
         }
 
@@ -59,7 +68,7 @@ namespace C3D
 
     bool DebugBox3D::Unload()
     {
-        Renderer.DestroyGeometry(&m_geometry);
+        Renderer.DestroyGeometry(m_geometry);
         return true;
     }
 
@@ -76,7 +85,7 @@ namespace C3D
         {
             UpdateVertexColor();
 
-            Renderer.UpdateGeometry(&m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
+            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
 
             m_geometry.generation++;
             // Rollover to zero when we reach INVALID_ID_U16 again for the generation
@@ -93,7 +102,7 @@ namespace C3D
         {
             RecalculateExtents(extents);
 
-            Renderer.UpdateGeometry(&m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
+            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
 
             m_geometry.generation++;
             // Rollover to zero when we reach INVALID_ID_U16 again for the generation

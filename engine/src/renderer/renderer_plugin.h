@@ -9,11 +9,12 @@
 namespace C3D
 {
     class Engine;
+    class Shader;
+
     class RenderPass;
     struct RenderTarget;
     struct RenderTargetAttachment;
     struct Texture;
-    struct Shader;
     struct ShaderUniform;
     struct ShaderConfig;
     struct FrameData;
@@ -65,32 +66,33 @@ namespace C3D
 
         virtual void DestroyTexture(Texture* texture) = 0;
 
-        virtual bool CreateGeometry(Geometry* geometry, u32 vertexSize, u64 vertexCount, const void* vertices,
-                                    u32 indexSize, u64 indexCount, const void* indices)                    = 0;
-        virtual void UpdateGeometry(Geometry* geometry, u32 offset, u32 vertexCount, const void* vertices) = 0;
-        virtual void DestroyGeometry(Geometry* geometry)                                                   = 0;
+        virtual bool CreateGeometry(Geometry& geometry)           = 0;
+        virtual bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset,
+                                    u32 indexRange)               = 0;
+        virtual void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount,
+                                            const void* vertices) = 0;
+        virtual void DestroyGeometry(Geometry& geometry)          = 0;
 
         virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
         virtual void DestroyShader(Shader& shader)                                                    = 0;
 
-        virtual bool InitializeShader(Shader* shader) = 0;
+        virtual bool InitializeShader(Shader& shader) = 0;
+        virtual bool UseShader(const Shader& shader)  = 0;
 
-        virtual bool UseShader(Shader* shader) = 0;
+        virtual bool ShaderBindGlobals(Shader& shader)                  = 0;
+        virtual bool ShaderBindInstance(Shader& shader, u32 instanceId) = 0;
 
-        virtual bool ShaderBindGlobals(Shader* shader)                  = 0;
-        virtual bool ShaderBindInstance(Shader* shader, u32 instanceId) = 0;
+        virtual bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate)  = 0;
+        virtual bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) = 0;
 
-        virtual bool ShaderApplyGlobals(Shader* shader)                    = 0;
-        virtual bool ShaderApplyInstance(Shader* shader, bool needsUpdate) = 0;
-
-        virtual bool AcquireShaderInstanceResources(Shader* shader, u32 textureMapCount, TextureMap** maps,
-                                                    u32* outInstanceId)             = 0;
-        virtual bool ReleaseShaderInstanceResources(Shader* shader, u32 instanceId) = 0;
+        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, TextureMap** maps,
+                                                    u32* outInstanceId)            = 0;
+        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId) = 0;
 
         virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
         virtual void ReleaseTextureMapResources(TextureMap& map) = 0;
 
-        virtual bool SetUniform(Shader* shader, const ShaderUniform* uniform, const void* value) = 0;
+        virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) = 0;
 
         virtual void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass,
                                         u32 width, u32 height, RenderTarget* outTarget) = 0;

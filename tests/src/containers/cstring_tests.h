@@ -4,5 +4,5 @@
 
 namespace CString
 {
-	void RegisterTests(TestManager* manager);
+	void RegisterTests(TestManager& manager);
 }

@@ -65,7 +65,7 @@ namespace C3D
     bool Terrain::Unload()
     {
         Materials.Release(m_geometry.material->name);
-        Renderer.DestroyGeometry(&m_geometry);
+        Renderer.DestroyGeometry(m_geometry);
         return true;
     }
 
@@ -209,10 +209,20 @@ namespace C3D
         {
             auto timer = ScopedTimer("Creating Terrain Geometry", m_pSystemsManager);
 
-            if (!Renderer.CreateGeometry(&m_geometry, sizeof(TerrainVertex), m_vertices.Size(), m_vertices.GetData(),
+            if (!Renderer.CreateGeometry(m_geometry, sizeof(TerrainVertex), m_vertices.Size(), m_vertices.GetData(),
                                          sizeof(u32), m_indices.Size(), m_indices.GetData()))
             {
                 m_logger.Error("LoadJobSuccess() - Failed to create geometry.");
+                return;
+            }
+        }
+
+        {
+            auto timer = ScopedTimer("Uploading Terrain Geometry", m_pSystemsManager);
+
+            if (!Renderer.UploadGeometry(m_geometry))
+            {
+                m_logger.Error("LoadJobSuccess() - Failed to upload geometry.");
                 return;
             }
         }
@@ -221,7 +231,6 @@ namespace C3D
         m_geometry.extents = m_extents;
         // TODO: This should be done in the renderer (CreateGeometry() method)
         m_geometry.generation++;
-        m_geometry.id = 0;
 
         uniqueId = Identifier::GetNewId(this);
 
