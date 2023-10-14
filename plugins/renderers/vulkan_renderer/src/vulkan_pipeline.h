@@ -39,7 +39,7 @@ namespace C3D
 
         bool Create(const VulkanContext* context, const VulkanPipelineConfig& config);
 
-        void Destroy(const VulkanContext* context);
+        void Destroy();
 
         void Bind(const VulkanCommandBuffer* commandBuffer, VkPipelineBindPoint bindPoint) const;
 
@@ -50,5 +50,7 @@ namespace C3D
         VkPrimitiveTopology m_currentTopology;
 
         u32 m_supportedTopologyTypes = 0;
+
+        const VulkanContext* m_context;
     };
 }  // namespace C3D

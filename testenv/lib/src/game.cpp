@@ -74,8 +74,7 @@ bool TestEnv::OnBoot()
 bool TestEnv::OnRun(C3D::FrameData& frameData)
 {
     // Register our simple scene loader so we can use it to load our simple scene
-    const auto simpleSceneLoader =
-        Memory.New<C3D::ResourceLoader<SimpleSceneConfig>>(C3D::MemoryType::ResourceLoader, m_pSystemsManager);
+    const auto simpleSceneLoader = Memory.New<C3D::ResourceLoader<SimpleSceneConfig>>(C3D::MemoryType::ResourceLoader, m_pSystemsManager);
     Resources.RegisterLoader(simpleSceneLoader);
 
     // TEMP
@@ -179,12 +178,11 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     {
         if (Input.IsKeyPressed(C3D::KeyM))
         {
-            C3D::Logger::Info("Allocations: {} of which {} happened this frame", allocCount,
-                              allocCount - prevAllocCount);
+            C3D::Logger::Info("Allocations: {} of which {} happened this frame", allocCount, allocCount - prevAllocCount);
             Metrics.PrintMemoryUsage(true);
         }
 
-        if (Input.IsKeyPressed('p'))
+        if (Input.IsKeyPressed(C3D::KeyP))
         {
             const auto pos = m_state->camera->GetPosition();
             C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
@@ -233,12 +231,12 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             m_state->gizmo.SetMode(EditorGizmoMode::Scale);
         }
 
-        if (Input.IsKeyDown('a') || Input.IsKeyDown(C3D::KeyArrowLeft))
+        if (Input.IsKeyDown('A') || Input.IsKeyDown(C3D::KeyArrowLeft))
         {
             m_state->camera->AddYaw(1.0 * deltaTime);
         }
 
-        if (Input.IsKeyDown('d') || Input.IsKeyDown(C3D::KeyArrowRight))
+        if (Input.IsKeyDown('D') || Input.IsKeyDown(C3D::KeyArrowRight))
         {
             m_state->camera->AddYaw(-1.0 * deltaTime);
         }
@@ -259,13 +257,13 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             move_speed = 150.0;
         }
 
-        if (Input.IsKeyDown('w'))
+        if (Input.IsKeyDown('W'))
         {
             m_state->camera->MoveForward(move_speed * deltaTime);
         }
 
         // TEMP
-        if (Input.IsKeyPressed('t'))
+        if (Input.IsKeyPressed('T'))
         {
             C3D::Logger::Debug("Swapping Texture");
             C3D::EventContext context = {};
@@ -273,17 +271,17 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         }
         // TEMP END
 
-        if (Input.IsKeyDown('s'))
+        if (Input.IsKeyDown('S'))
         {
             m_state->camera->MoveBackward(move_speed * deltaTime);
         }
 
-        if (Input.IsKeyDown('q'))
+        if (Input.IsKeyDown('Q'))
         {
             m_state->camera->MoveLeft(move_speed * deltaTime);
         }
 
-        if (Input.IsKeyDown('e'))
+        if (Input.IsKeyDown('E'))
         {
             m_state->camera->MoveRight(move_speed * deltaTime);
         }
@@ -381,10 +379,9 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         "{:<10} : Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\n"
         "{:<10} : Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}\n"
         "{:<10} : DrawCount: {} FPS: {} FrameTime: {:.3f}ms VSync: {}",
-        "Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), "Mouse",
-        mouseNdcX, mouseNdcY, leftButton, middleButton, rightButton, hoveredBuffer, "Renderer",
-        frameData.drawnMeshCount, Metrics.GetFps(), Metrics.GetFrameTime(),
-        Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No");
+        "Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), "Mouse", mouseNdcX, mouseNdcY,
+        leftButton, middleButton, rightButton, hoveredBuffer, "Renderer", frameData.drawnMeshCount, Metrics.GetFps(),
+        Metrics.GetFrameTime(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No");
 
     m_state->testText.SetText(buffer.Data());
 }
@@ -424,13 +421,11 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     {
         for (auto& line : m_state->testLines)
         {
-            packet.views[TEST_ENV_VIEW_WORLD].debugGeometries.EmplaceBack(line.GetModel(), line.GetGeometry(),
-                                                                          INVALID_ID);
+            packet.views[TEST_ENV_VIEW_WORLD].debugGeometries.EmplaceBack(line.GetModel(), line.GetGeometry(), INVALID_ID);
         }
         for (auto& box : m_state->testBoxes)
         {
-            packet.views[TEST_ENV_VIEW_WORLD].debugGeometries.EmplaceBack(box.GetModel(), box.GetGeometry(),
-                                                                          INVALID_ID);
+            packet.views[TEST_ENV_VIEW_WORLD].debugGeometries.EmplaceBack(box.GetModel(), box.GetGeometry(), INVALID_ID);
         }
     }
 
@@ -439,8 +434,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     editorWorldPacket.gizmo                 = &m_state->gizmo;
 
     auto& editorWorldViewPacket = packet.views[TEST_ENV_VIEW_EDITOR_WORLD];
-    if (!Views.BuildPacket(editorWorldViewPacket.view, frameData.frameAllocator, &editorWorldPacket,
-                           &editorWorldViewPacket))
+    if (!Views.BuildPacket(editorWorldViewPacket.view, frameData.frameAllocator, &editorWorldPacket, &editorWorldViewPacket))
     {
         m_logger.Error("OnRender() - Failed to build packet for view: 'editor world'.");
         return false;
@@ -530,9 +524,7 @@ void TestEnv::OnLibraryLoad()
     m_state->registeredCallbacks.PushBack(cb);
 
     cb = Event.Register(C3D::EventCodeObjectHoverIdChanged,
-                        [this](const u16 code, void* sender, const C3D::EventContext& context) {
-                            return OnEvent(code, sender, context);
-                        });
+                        [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnEvent(code, sender, context); });
     m_state->registeredCallbacks.PushBack(cb);
 
     cb = Event.Register(C3D::EventCodeButtonUp, [this](const u16 code, void* sender, const C3D::EventContext& context) {
@@ -821,10 +813,7 @@ void TestEnv::UnloadTestScene()
     m_state->simpleScene.Unload();
 }
 
-C3D::Application* CreateApplication(C3D::ApplicationState* state)
-{
-    return Memory.New<TestEnv>(C3D::MemoryType::Game, state);
-}
+C3D::Application* CreateApplication(C3D::ApplicationState* state) { return Memory.New<TestEnv>(C3D::MemoryType::Game, state); }
 
 C3D::ApplicationState* CreateApplicationState()
 {

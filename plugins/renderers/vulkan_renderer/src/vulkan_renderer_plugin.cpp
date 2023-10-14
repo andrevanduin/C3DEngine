@@ -16,11 +16,13 @@
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
 #include <systems/textures/texture_system.h>
-#include <vendor/VkBootstrap/VkBootstrap.h>
 
+#include "platform/vulkan_platform.h"
 #include "vulkan_allocator.h"
 #include "vulkan_command_buffer.h"
+#include "vulkan_debugger.h"
 #include "vulkan_device.h"
+#include "vulkan_instance.h"
 #include "vulkan_renderpass.h"
 #include "vulkan_shader.h"
 #include "vulkan_swapchain.h"
@@ -36,13 +38,15 @@ namespace C3D
 
     bool VulkanRendererPlugin::Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount)
     {
+        m_logger.Info("Init() - Started.");
+
         type = RendererPluginType::Vulkan;
 
 #ifdef C3D_VULKAN_USE_CUSTOM_ALLOCATOR
         m_context.allocator = Memory.Allocate<VkAllocationCallbacks>(MemoryType::RenderSystem);
-        if (!CreateVulkanAllocator(m_context.allocator))
+        if (!VulkanAllocator::Create(m_context.allocator))
         {
-            m_logger.Error("Init() - Failed to initialize requested CustomVulkanAllocator.");
+            m_logger.Error("Init() - Creation of Custom Vulkan Allocator failed.");
             return false;
         }
 #else
@@ -55,104 +59,55 @@ namespace C3D
         m_config                    = config;
         m_pSystemsManager           = config.pSystemsManager;
 
-        vkb::InstanceBuilder instanceBuilder;
-
-        auto vkbInstanceResult = instanceBuilder.set_app_name(config.applicationName)
-                                     .set_engine_name("C3DEngine")
-                                     .set_app_version(config.applicationVersion)
-                                     .set_engine_version(VK_MAKE_VERSION(0, 3, 0))
-#if defined(_DEBUG)
-                                     .request_validation_layers(true)
-                                     .set_debug_callback(VulkanUtils::VkDebugLog)
-                                     .enable_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-#endif
-                                     .set_allocation_callbacks(m_context.allocator)
-                                     .require_api_version(1, 3)
-                                     .build();
-
-        m_logger.Info("Instance Initialized");
-        const vkb::Instance vkbInstance = vkbInstanceResult.value();
-
-        m_context.instance = vkbInstance.instance;
-
-#if defined(_DEBUG)
-        m_debugMessenger = vkbInstance.debug_messenger;
-
-        // Load up our debug function pointers
-        m_context.pfnSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
-            vkGetInstanceProcAddr(m_context.instance, "vkSetDebugUtilsObjectNameEXT"));
-        if (!m_context.pfnSetDebugUtilsObjectNameEXT)
+        if (!VulkanInstance::Create(m_context, config.applicationName, config.applicationVersion))
         {
-            m_logger.Error("Init() - Failed to get instance proc address for 'vkSetDebugUtilsObjectNameEXT'");
+            m_logger.Error("Init() - Creation of Vulkan Instance failed.");
             return false;
         }
-
-        m_context.pfnSetDebugUtilsObjectTagEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectTagEXT>(
-            vkGetInstanceProcAddr(m_context.instance, "vkSetDebugUtilsObjectTagEXT"));
-        if (!m_context.pfnSetDebugUtilsObjectTagEXT)
-        {
-            m_logger.Error("Init() - Failed to get instance proc address for 'vkSetDebugUtilsObjectTagEXT'");
-            return false;
-        }
-
-        m_context.pfnCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
-            vkGetInstanceProcAddr(m_context.instance, "vkCmdBeginDebugUtilsLabelEXT"));
-        if (!m_context.pfnCmdBeginDebugUtilsLabelEXT)
-        {
-            m_logger.Error("Init() - Failed to get instance proc address for 'vkCmdBeginDebugUtilsLabelEXT'");
-            return false;
-        }
-
-        m_context.pfnCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
-            vkGetInstanceProcAddr(m_context.instance, "vkCmdEndDebugUtilsLabelEXT"));
-        if (!m_context.pfnCmdEndDebugUtilsLabelEXT)
-        {
-            m_logger.Error("Init() - Failed to get instance proc address for 'vkCmdEndDebugUtilsLabelEXT'");
-            return false;
-        }
-#endif
 
         // TODO: Implement multiThreading
         m_context.multiThreadingEnabled = false;
 
-        if (!SDL_Vulkan_CreateSurface(config.pWindow, m_context.instance, &m_context.surface))
+        if (!VulkanDebugger::Create(m_context))
+        {
+            m_logger.Error("Init() - Create of Vulkan Debugger failed.");
+            return false;
+        }
+
+        if (!VulkanPlatform::CreateSurface(m_pSystemsManager, m_context))
         {
             m_logger.Error("Init() - Failed to create Vulkan Surface.");
             return false;
         }
 
-        m_logger.Info("SDL Surface Initialized");
-        if (!m_context.device.Create(vkbInstance, &m_context, m_context.allocator))
+        if (!m_context.device.Create(&m_context))
         {
             m_logger.Error("Init() - Failed to create Vulkan Device.");
             return false;
         }
 
-        m_context.swapChain.Create(m_pSystemsManager, &m_context, m_context.frameBufferWidth,
-                                   m_context.frameBufferHeight, config.flags);
+        m_context.swapChain.Create(m_pSystemsManager, &m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, config.flags);
 
         // Save the number of images we have as a the number of render targets required
         *outWindowRenderTargetCount = static_cast<u8>(m_context.swapChain.imageCount);
 
         CreateCommandBuffers();
-        m_logger.Info("Init() - Command Buffers Initialized");
+        m_logger.Info("Init() - Command Buffers Initialized.");
 
         m_context.imageAvailableSemaphores.Resize(m_context.swapChain.maxFramesInFlight);
         m_context.queueCompleteSemaphores.Resize(m_context.swapChain.maxFramesInFlight);
 
-        m_logger.Info("Init() - Creating Semaphores and Fences");
+        m_logger.Info("Init() - Creating Semaphores and Fences.");
+        auto logicalDevice = m_context.device.GetLogical();
         for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
         {
             VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-            vkCreateSemaphore(m_context.device.logicalDevice, &semaphoreCreateInfo, m_context.allocator,
-                              &m_context.imageAvailableSemaphores[i]);
-            vkCreateSemaphore(m_context.device.logicalDevice, &semaphoreCreateInfo, m_context.allocator,
-                              &m_context.queueCompleteSemaphores[i]);
+            vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, m_context.allocator, &m_context.imageAvailableSemaphores[i]);
+            vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, m_context.allocator, &m_context.queueCompleteSemaphores[i]);
 
             VkFenceCreateInfo fenceCreateInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
             fenceCreateInfo.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
-            VK_CHECK(vkCreateFence(m_context.device.logicalDevice, &fenceCreateInfo, m_context.allocator,
-                                   &m_context.inFlightFences[i]));
+            VK_CHECK(vkCreateFence(logicalDevice, &fenceCreateInfo, m_context.allocator, &m_context.inFlightFences[i]));
         }
 
         for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
@@ -189,7 +144,7 @@ namespace C3D
 
     void VulkanRendererPlugin::Shutdown()
     {
-        m_logger.Info("Shutdown()");
+        m_logger.Info("Shutdown() - Started.");
 
         // Wait for our device to be finished with it's current frame
         m_context.device.WaitIdle();
@@ -198,45 +153,50 @@ namespace C3D
         m_objectVertexBuffer.Destroy();
         m_objectIndexBuffer.Destroy();
 
-        m_logger.Info("Destroying Semaphores and Fences");
+        m_logger.Info("Shutdown() - Destroying Semaphores and Fences.");
+        auto logicalDevice = m_context.device.GetLogical();
         for (u8 i = 0; i < m_context.swapChain.maxFramesInFlight; i++)
         {
             if (m_context.imageAvailableSemaphores[i])
             {
-                vkDestroySemaphore(m_context.device.logicalDevice, m_context.imageAvailableSemaphores[i],
-                                   m_context.allocator);
+                vkDestroySemaphore(logicalDevice, m_context.imageAvailableSemaphores[i], m_context.allocator);
                 m_context.imageAvailableSemaphores[i] = nullptr;
             }
             if (m_context.queueCompleteSemaphores[i])
             {
-                vkDestroySemaphore(m_context.device.logicalDevice, m_context.queueCompleteSemaphores[i],
-                                   m_context.allocator);
+                vkDestroySemaphore(logicalDevice, m_context.queueCompleteSemaphores[i], m_context.allocator);
                 m_context.queueCompleteSemaphores[i] = nullptr;
             }
-            vkDestroyFence(m_context.device.logicalDevice, m_context.inFlightFences[i], m_context.allocator);
+            vkDestroyFence(logicalDevice, m_context.inFlightFences[i], m_context.allocator);
         }
+
         m_context.imageAvailableSemaphores.Clear();
         m_context.queueCompleteSemaphores.Clear();
 
-        vkDestroyCommandPool(m_context.device.logicalDevice, m_context.device.graphicsCommandPool, m_context.allocator);
+        m_logger.Info("Shutdown() - Freeing Command buffers.");
+        auto graphicsCommandPool = m_context.device.GetGraphicsCommandPool();
+        for (auto& buffer : m_context.graphicsCommandBuffers)
+        {
+            buffer.Free(&m_context, graphicsCommandPool);
+        }
         m_context.graphicsCommandBuffers.Clear();
 
-        m_logger.Info("Destroying SwapChain");
-        m_context.swapChain.Destroy(&m_context);
+        m_logger.Info("Shutdown() - Destroying SwapChain.");
+        m_context.swapChain.Destroy();
 
-        m_logger.Info("Destroying Device");
-        m_context.device.Destroy(&m_context);
+        m_logger.Info("Shutdown() - Destroying Device.");
+        m_context.device.Destroy();
 
-        // TODO: This should use our custom allocator
-        m_logger.Info("Destroying Vulkan Surface");
-        vkDestroySurfaceKHR(m_context.instance, m_context.surface, nullptr);
+        m_logger.Info("Shutdown() - Destroying Vulkan Surface.");
+        if (m_context.surface)
+        {
+            vkDestroySurfaceKHR(m_context.instance, m_context.surface, m_context.allocator);
+            m_context.surface = nullptr;
+        }
 
-#ifdef _DEBUG
-        m_logger.Info("Destroying Vulkan debug messenger");
-        vkb::destroy_debug_utils_messenger(m_context.instance, m_debugMessenger, m_context.allocator);
-#endif
+        VulkanDebugger::Destroy(m_context);
 
-        m_logger.Info("Destroying Instance");
+        m_logger.Info("Shutdown() - Destroying Instance.");
         vkDestroyInstance(m_context.instance, m_context.allocator);
 
 #if C3D_VULKAN_USE_CUSTOM_ALLOCATOR == 1
@@ -246,6 +206,8 @@ namespace C3D
             m_context.allocator = nullptr;
         }
 #endif
+
+        m_logger.Info("Shutdown() - Complete.");
     }
 
     void VulkanRendererPlugin::OnResize(const u32 width, const u32 height)
@@ -254,8 +216,7 @@ namespace C3D
         m_context.frameBufferHeight = height;
         m_context.frameBufferSizeGeneration++;
 
-        m_logger.Info("OnResize() - Width: {}, Height: {} and Generation: {}.", width, height,
-                      m_context.frameBufferSizeGeneration);
+        m_logger.Info("OnResize() - Width: {}, Height: {} and Generation: {}.", width, height, m_context.frameBufferSizeGeneration);
     }
 
     bool VulkanRendererPlugin::BeginFrame(const FrameData& frameData)
@@ -265,7 +226,7 @@ namespace C3D
         // If we are recreating the SwapChain we should stop this frame
         if (m_context.recreatingSwapChain)
         {
-            const auto result = vkDeviceWaitIdle(device.logicalDevice);
+            const auto result = device.WaitIdle();
             if (!VulkanUtils::IsSuccess(result))
             {
                 m_logger.Error("vkDeviceWaitIdle (1) failed: {}", VulkanUtils::ResultString(result, true));
@@ -276,11 +237,10 @@ namespace C3D
         }
 
         // If the FrameBuffer was resized or a render flag was changed we must also create a new SwapChain.
-        if (m_context.frameBufferSizeGeneration != m_context.frameBufferSizeLastGeneration ||
-            m_context.renderFlagChanged)
+        if (m_context.frameBufferSizeGeneration != m_context.frameBufferSizeLastGeneration || m_context.renderFlagChanged)
         {
             // FrameBuffer was resized. We need to recreate it.
-            const auto result = vkDeviceWaitIdle(device.logicalDevice);
+            const auto result = device.WaitIdle();
             if (!VulkanUtils::IsSuccess(result))
             {
                 m_logger.Error("vkDeviceWaitIdle (2) failed: {}", VulkanUtils::ResultString(result, true));
@@ -300,8 +260,8 @@ namespace C3D
         }
 
         // Wait for the execution of the current frame to complete.
-        const VkResult result = vkWaitForFences(m_context.device.logicalDevice, 1,
-                                                &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
+        const VkResult result =
+            vkWaitForFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
         if (!VulkanUtils::IsSuccess(result))
         {
             m_logger.Fatal("vkWaitForFences() failed: '{}'", VulkanUtils::ResultString(result));
@@ -311,9 +271,8 @@ namespace C3D
         // Acquire the next image from the SwapChain. Pass along the semaphore that should be signaled when this
         // completes. This same semaphore will later be waited on by the queue submission to ensure this image is
         // available.
-        if (!m_context.swapChain.AcquireNextImageIndex(&m_context, UINT64_MAX,
-                                                       m_context.imageAvailableSemaphores[m_context.currentFrame],
-                                                       nullptr, &m_context.imageIndex))
+        if (!m_context.swapChain.AcquireNextImageIndex(UINT64_MAX, m_context.imageAvailableSemaphores[m_context.currentFrame], nullptr,
+                                                       &m_context.imageIndex))
         {
             m_logger.Error("Failed to acquire next image index.");
             return false;
@@ -325,8 +284,7 @@ namespace C3D
         commandBuffer->Begin(false, false, false);
 
         // Dynamic state
-        m_context.viewportRect = { 0.0f, static_cast<f32>(m_context.frameBufferHeight),
-                                   static_cast<f32>(m_context.frameBufferWidth),
+        m_context.viewportRect = { 0.0f, static_cast<f32>(m_context.frameBufferHeight), static_cast<f32>(m_context.frameBufferWidth),
                                    -static_cast<f32>(m_context.frameBufferHeight) };
         SetViewport(m_context.viewportRect);
 
@@ -346,8 +304,8 @@ namespace C3D
         // Ensure that the previous frame is not using this image
         if (m_context.imagesInFlight[m_context.imageIndex] != VK_NULL_HANDLE)
         {
-            const VkResult result = vkWaitForFences(m_context.device.logicalDevice, 1,
-                                                    m_context.imagesInFlight[m_context.imageIndex], true, UINT64_MAX);
+            const VkResult result =
+                vkWaitForFences(m_context.device.GetLogical(), 1, m_context.imagesInFlight[m_context.imageIndex], true, UINT64_MAX);
             if (!VulkanUtils::IsSuccess(result))
             {
                 m_logger.Fatal("vkWaitForFences() failed: '{}'", VulkanUtils::ResultString(result));
@@ -358,7 +316,7 @@ namespace C3D
         m_context.imagesInFlight[m_context.imageIndex] = &m_context.inFlightFences[m_context.currentFrame];
 
         // Reset the fence for use on the next frame
-        VK_CHECK(vkResetFences(m_context.device.logicalDevice, 1, &m_context.inFlightFences[m_context.currentFrame]));
+        VK_CHECK(vkResetFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame]));
 
         VkSubmitInfo submitInfo       = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
         submitInfo.commandBufferCount = 1;
@@ -374,8 +332,8 @@ namespace C3D
         submitInfo.pWaitDstStageMask            = flags;
 
         // Submit all the commands that we have queued
-        const auto result = vkQueueSubmit(m_context.device.graphicsQueue, 1, &submitInfo,
-                                          m_context.inFlightFences[m_context.currentFrame]);
+        auto graphicsQueue = m_context.device.GetGraphicsQueue();
+        const auto result  = vkQueueSubmit(graphicsQueue, 1, &submitInfo, m_context.inFlightFences[m_context.currentFrame]);
 
         if (result != VK_SUCCESS)
         {
@@ -387,8 +345,8 @@ namespace C3D
         commandBuffer->UpdateSubmitted();
 
         // Present the image (and give it back to the SwapChain)
-        m_context.swapChain.Present(&m_context, m_context.device.presentQueue,
-                                    m_context.queueCompleteSemaphores[m_context.currentFrame], m_context.imageIndex);
+        auto presentQueue = m_context.device.GetPresentQueue();
+        m_context.swapChain.Present(presentQueue, m_context.queueCompleteSemaphores[m_context.currentFrame], m_context.imageIndex);
 
         return true;
     }
@@ -433,9 +391,8 @@ namespace C3D
         vkCmdSetLineWidth(commandBuffer.handle, lineWidth);
     }
 
-    void VulkanRendererPlugin::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments,
-                                                  RenderPass* pass, const u32 width, const u32 height,
-                                                  RenderTarget* outTarget)
+    void VulkanRendererPlugin::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass,
+                                                  const u32 width, const u32 height, RenderTarget* outTarget)
     {
         VkImageView attachmentViews[32];
         for (u32 i = 0; i < attachmentCount; i++)
@@ -453,7 +410,7 @@ namespace C3D
         frameBufferCreateInfo.height                  = height;
         frameBufferCreateInfo.layers                  = 1;
 
-        VK_CHECK(vkCreateFramebuffer(m_context.device.logicalDevice, &frameBufferCreateInfo, m_context.allocator,
+        VK_CHECK(vkCreateFramebuffer(m_context.device.GetLogical(), &frameBufferCreateInfo, m_context.allocator,
                                      reinterpret_cast<VkFramebuffer*>(&outTarget->internalFrameBuffer)));
     }
 
@@ -461,8 +418,8 @@ namespace C3D
     {
         if (target && target->internalFrameBuffer)
         {
-            vkDestroyFramebuffer(m_context.device.logicalDevice,
-                                 static_cast<VkFramebuffer>(target->internalFrameBuffer), m_context.allocator);
+            vkDestroyFramebuffer(m_context.device.GetLogical(), static_cast<VkFramebuffer>(target->internalFrameBuffer),
+                                 m_context.allocator);
             target->internalFrameBuffer = nullptr;
             if (freeInternalMemory)
             {
@@ -491,8 +448,8 @@ namespace C3D
         return true;
     }
 
-    RenderBuffer* VulkanRendererPlugin::CreateRenderBuffer(const String& name, const RenderBufferType bufferType,
-                                                           const u64 totalSize, const bool useFreelist)
+    RenderBuffer* VulkanRendererPlugin::CreateRenderBuffer(const String& name, const RenderBufferType bufferType, const u64 totalSize,
+                                                           const bool useFreelist)
     {
         const auto buffer = Memory.New<VulkanBuffer>(MemoryType::RenderSystem, &m_context, name);
         if (!buffer->Create(bufferType, totalSize, useFreelist)) return nullptr;
@@ -591,13 +548,12 @@ namespace C3D
         texture->internalData = Memory.Allocate<VulkanImage>(MemoryType::Texture);
 
         const auto image             = static_cast<VulkanImage*>(texture->internalData);
-        const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height *
-                                       texture->channelCount * (texture->type == TextureType::TypeCube ? 6 : 1);
+        const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height * texture->channelCount *
+                                       (texture->type == TextureType::TypeCube ? 6 : 1);
 
         // NOTE: Assumes 8 bits per channel
         constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
-        image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat,
-                      VK_IMAGE_TILING_OPTIMAL,
+        image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
                       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -637,19 +593,18 @@ namespace C3D
         {
             usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
             aspect      = VK_IMAGE_ASPECT_DEPTH_BIT;
-            imageFormat = m_context.device.depthFormat;
+            imageFormat = m_context.device.GetDepthFormat();
         }
         else
         {
-            usage =
-                static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                                                  VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+            usage       = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                                      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
             aspect      = VK_IMAGE_ASPECT_COLOR_BIT;
             imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
         }
 
-        image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat,
-                      VK_IMAGE_TILING_OPTIMAL, usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, aspect);
+        image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+                      usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, aspect);
 
         texture->generation++;
     }
@@ -668,21 +623,20 @@ namespace C3D
         staging.LoadRange(0, size, pixels);
 
         VulkanCommandBuffer tempBuffer;
-        VkCommandPool pool = m_context.device.graphicsCommandPool;
-        VkQueue queue      = m_context.device.graphicsQueue;
+        VkCommandPool pool = m_context.device.GetGraphicsCommandPool();
+        VkQueue queue      = m_context.device.GetGraphicsQueue();
 
         tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
 
         // Transition the layout from whatever it is currently to optimal for receiving data.
-        image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED,
-                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        image->TransitionLayout(&tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
         // Copy the data from the buffer.
         image->CopyFromBuffer(texture->type, staging.handle, &tempBuffer);
 
         // Transition from optimal for receiving data to shader-read-only optimal layout.
-        image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat,
-                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        image->TransitionLayout(&tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         tempBuffer.EndSingleUse(&m_context, pool, queue);
 
@@ -701,10 +655,9 @@ namespace C3D
             const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
             // TODO: Lot's of assumptions here
-            image->Create(&m_context, texture->name, texture->type, newWidth, newHeight, imageFormat,
-                          VK_IMAGE_TILING_OPTIMAL,
-                          VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                              VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            image->Create(&m_context, texture->name, texture->type, newWidth, newHeight, imageFormat, VK_IMAGE_TILING_OPTIMAL,
+                          VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
 
             texture->generation++;
@@ -727,21 +680,20 @@ namespace C3D
         staging.Bind(0);
 
         VulkanCommandBuffer tempBuffer;
-        VkCommandPool pool = m_context.device.graphicsCommandPool;
-        VkQueue queue      = m_context.device.graphicsQueue;
+        VkCommandPool pool = m_context.device.GetGraphicsCommandPool();
+        VkQueue queue      = m_context.device.GetGraphicsQueue();
 
         tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
 
         // Transition the layout from whatever it is currently to optimal for handing out data
-        image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED,
-                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        image->TransitionLayout(&tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
         // Copy the data to the buffer
         image->CopyToBuffer(texture->type, staging.handle, &tempBuffer);
 
         // Transition from optimal for data reading to shader-read-only optimal layout
-        image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat,
-                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        image->TransitionLayout(&tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         tempBuffer.EndSingleUse(&m_context, pool, queue);
 
@@ -772,21 +724,20 @@ namespace C3D
         staging.Bind(0);
 
         VulkanCommandBuffer tempBuffer;
-        VkCommandPool pool = m_context.device.graphicsCommandPool;
-        VkQueue queue      = m_context.device.graphicsQueue;
+        VkCommandPool pool = m_context.device.GetGraphicsCommandPool();
+        VkQueue queue      = m_context.device.GetGraphicsQueue();
 
         tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
 
         // Transition the layout from whatever it is currently to optimal for handing out data
-        image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED,
-                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        image->TransitionLayout(&tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
         // Copy the data to the buffer
         image->CopyPixelToBuffer(texture->type, staging.handle, x, y, &tempBuffer);
 
         // Transition from optimal for data reading to shader-read-only optimal layout
-        image->TransitionLayout(&m_context, &tempBuffer, texture->type, imageFormat,
-                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        image->TransitionLayout(&tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         tempBuffer.EndSingleUse(&m_context, pool, queue);
 
@@ -801,7 +752,7 @@ namespace C3D
 
     void VulkanRendererPlugin::DestroyTexture(Texture* texture)
     {
-        vkDeviceWaitIdle(m_context.device.logicalDevice);
+        m_context.device.WaitIdle();
 
         if (const auto data = static_cast<VulkanTextureData*>(texture->internalData))
         {
@@ -814,8 +765,7 @@ namespace C3D
     // NOTE: Nothing needs to happen for Vulkan at this stage
     bool VulkanRendererPlugin::CreateGeometry(Geometry& geometry) { return true; }
 
-    bool VulkanRendererPlugin::UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset,
-                                              u32 indexSize)
+    bool VulkanRendererPlugin::UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset, u32 indexSize)
     {
         // Check if this is a reupload. If it is we don't need to allocate
         bool isReupload = geometry.internalId != INVALID_ID;
@@ -851,8 +801,7 @@ namespace C3D
         if (!isReupload)
         {
             // Allocate space in the buffer.
-            if (!m_objectVertexBuffer.Allocate(geometry.vertexElementSize * geometry.vertexCount,
-                                               &internalData->vertexBufferOffset))
+            if (!m_objectVertexBuffer.Allocate(geometry.vertexElementSize * geometry.vertexCount, &internalData->vertexBufferOffset))
             {
                 m_logger.Error("UploadGeometry() - Failed to allocate memory frome the vertex buffer.");
                 return false;
@@ -872,8 +821,7 @@ namespace C3D
             if (!isReupload)
             {
                 // Allocate space in the buffer.
-                if (!m_objectIndexBuffer.Allocate(geometry.indexElementSize * geometry.indexCount,
-                                                  &internalData->indexBufferOffset))
+                if (!m_objectIndexBuffer.Allocate(geometry.indexElementSize * geometry.indexCount, &internalData->indexBufferOffset))
                 {
                     m_logger.Error("UploadGeometry() - Failed to allocate memory frome the index buffer.");
                     return false;
@@ -894,8 +842,7 @@ namespace C3D
         return true;
     }
 
-    void VulkanRendererPlugin::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount,
-                                                      const void* vertices)
+    void VulkanRendererPlugin::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices)
     {
         VulkanGeometryData& internalData = m_geometries[geometry.internalId];
         if (vertexCount > geometry.vertexCount)
@@ -919,13 +866,12 @@ namespace C3D
     {
         if (geometry.internalId != INVALID_ID)
         {
-            vkDeviceWaitIdle(m_context.device.logicalDevice);
+            m_context.device.WaitIdle();
 
             VulkanGeometryData& internalData = m_geometries[geometry.internalId];
 
             // Free vertex data
-            if (!m_objectVertexBuffer.Free(geometry.vertexElementSize * geometry.vertexCount,
-                                           internalData.vertexBufferOffset))
+            if (!m_objectVertexBuffer.Free(geometry.vertexElementSize * geometry.vertexCount, internalData.vertexBufferOffset))
             {
                 m_logger.Error("DestroyGeometry() - Failed to free vertex buffer range.");
             }
@@ -933,8 +879,7 @@ namespace C3D
             // Free index data, if applicable
             if (geometry.indexElementSize > 0)
             {
-                if (!m_objectIndexBuffer.Free(geometry.indexElementSize * geometry.indexCount,
-                                              internalData.indexBufferOffset))
+                if (!m_objectIndexBuffer.Free(geometry.indexElementSize * geometry.indexCount, internalData.indexBufferOffset))
                 {
                     m_logger.Error("DestroyGeometry() - Failed to free index buffer range.");
                 }
@@ -1005,8 +950,7 @@ namespace C3D
                     stageFlag = VK_SHADER_STAGE_FRAGMENT_BIT;
                     break;
                 default:
-                    m_logger.Error("CreateShader() - Unsupported shader stage {}. Stage ignored.",
-                                   ToUnderlying(config.stages[i]));
+                    m_logger.Error("CreateShader() - Unsupported shader stage {}. Stage ignored.", ToUnderlying(config.stages[i]));
                     continue;
             }
 
@@ -1023,8 +967,7 @@ namespace C3D
         vulkanShader->config.descriptorSets[1].samplerBindingIndex = INVALID_ID_U8;
 
         // Zero out attribute arrays
-        std::memset(vulkanShader->config.attributes, 0,
-                    sizeof(VkVertexInputAttributeDescription) * VULKAN_SHADER_MAX_ATTRIBUTES);
+        std::memset(vulkanShader->config.attributes, 0, sizeof(VkVertexInputAttributeDescription) * VULKAN_SHADER_MAX_ATTRIBUTES);
 
         // Get the uniform counts
         vulkanShader->ZeroOutCounts();
@@ -1068,7 +1011,7 @@ namespace C3D
                 setConfig.bindings[bindingIndex].binding         = bindingIndex;
                 setConfig.bindings[bindingIndex].descriptorCount = 1;
                 setConfig.bindings[bindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                setConfig.bindings[bindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+                setConfig.bindings[bindingIndex].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
                 setConfig.bindingCount++;
             }
 
@@ -1079,8 +1022,8 @@ namespace C3D
                 setConfig.bindings[bindingIndex].binding         = bindingIndex;
                 setConfig.bindings[bindingIndex].descriptorCount = vulkanShader->globalUniformSamplerCount;
                 setConfig.bindings[bindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                setConfig.bindings[bindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-                setConfig.samplerBindingIndex               = bindingIndex;
+                setConfig.bindings[bindingIndex].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+                setConfig.samplerBindingIndex                    = bindingIndex;
                 setConfig.bindingCount++;
             }
 
@@ -1100,7 +1043,7 @@ namespace C3D
                 setConfig.bindings[bindingIndex].binding         = bindingIndex;
                 setConfig.bindings[bindingIndex].descriptorCount = 1;
                 setConfig.bindings[bindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                setConfig.bindings[bindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+                setConfig.bindings[bindingIndex].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
                 setConfig.bindingCount++;
             }
 
@@ -1111,8 +1054,8 @@ namespace C3D
                 setConfig.bindings[bindingIndex].binding         = bindingIndex;
                 setConfig.bindings[bindingIndex].descriptorCount = vulkanShader->instanceUniformSamplerCount;
                 setConfig.bindings[bindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                setConfig.bindings[bindingIndex].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-                setConfig.samplerBindingIndex               = bindingIndex;
+                setConfig.bindings[bindingIndex].stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+                setConfig.samplerBindingIndex                    = bindingIndex;
                 setConfig.bindingCount++;
             }
 
@@ -1141,7 +1084,7 @@ namespace C3D
         {
             const auto vulkanShader = static_cast<VulkanShader*>(shader.apiSpecificData);
 
-            VkDevice logicalDevice                   = m_context.device.logicalDevice;
+            VkDevice logicalDevice                   = m_context.device.GetLogical();
             const VkAllocationCallbacks* vkAllocator = m_context.allocator;
 
             // Cleanup the descriptor set layouts
@@ -1168,7 +1111,7 @@ namespace C3D
             // Cleanup Pipeline
             for (const auto pipeline : vulkanShader->pipelines)
             {
-                if (pipeline) pipeline->Destroy(&m_context);
+                if (pipeline) pipeline->Destroy();
             }
 
             // Cleanup Shader Modules
@@ -1203,7 +1146,7 @@ namespace C3D
 
     bool VulkanRendererPlugin::InitializeShader(Shader& shader)
     {
-        VkDevice logicalDevice                   = m_context.device.logicalDevice;
+        VkDevice logicalDevice                   = m_context.device.GetLogical();
         const VkAllocationCallbacks* vkAllocator = m_context.allocator;
         const auto vulkanShader                  = static_cast<VulkanShader*>(shader.apiSpecificData);
 
@@ -1211,9 +1154,8 @@ namespace C3D
         {
             if (!CreateModule(vulkanShader->config.stages[i], &vulkanShader->stages[i]))
             {
-                m_logger.Error(
-                    "InitializeShader() - Unable to create '{}' shader module for '{}'. Shader will be destroyed.",
-                    vulkanShader->config.stages[i].fileName, shader.name);
+                m_logger.Error("InitializeShader() - Unable to create '{}' shader module for '{}'. Shader will be destroyed.",
+                               vulkanShader->config.stages[i].fileName, shader.name);
                 return false;
             }
         }
@@ -1262,8 +1204,7 @@ namespace C3D
         VkResult result = vkCreateDescriptorPool(logicalDevice, &poolInfo, vkAllocator, &vulkanShader->descriptorPool);
         if (!VulkanUtils::IsSuccess(result))
         {
-            m_logger.Error("InitializeShader() - Failed to create descriptor pool: {}.",
-                           VulkanUtils::ResultString(result));
+            m_logger.Error("InitializeShader() - Failed to create descriptor pool: '{}'.", VulkanUtils::ResultString(result));
             return false;
         }
 
@@ -1273,12 +1214,10 @@ namespace C3D
             VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
             layoutInfo.bindingCount                    = vulkanShader->config.descriptorSets[i].bindingCount;
             layoutInfo.pBindings                       = vulkanShader->config.descriptorSets[i].bindings;
-            result = vkCreateDescriptorSetLayout(logicalDevice, &layoutInfo, vkAllocator,
-                                                 &vulkanShader->descriptorSetLayouts[i]);
+            result = vkCreateDescriptorSetLayout(logicalDevice, &layoutInfo, vkAllocator, &vulkanShader->descriptorSetLayouts[i]);
             if (!VulkanUtils::IsSuccess(result))
             {
-                m_logger.Error("InitializeShader() - Failed to create Descriptor Set Layout: {}.",
-                               VulkanUtils::ResultString(result));
+                m_logger.Error("InitializeShader() - Failed to create Descriptor Set Layout: '{}'.", VulkanUtils::ResultString(result));
                 return false;
             }
         }
@@ -1320,8 +1259,8 @@ namespace C3D
         if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST ||
             vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP)
         {
-            vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_LINE] = Memory.New<VulkanPipeline>(
-                MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST | PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP);
+            vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_LINE] =
+                Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST | PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP);
         }
 
         // Triangle class
@@ -1330,8 +1269,8 @@ namespace C3D
             vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN)
         {
             vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_TRIANGLE] = Memory.New<VulkanPipeline>(
-                MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP |
-                                        PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN);
+                MemoryType::Vulkan,
+                PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN);
         }
 
         for (u32 i = 0; i < VULKAN_TOPOLOGY_CLASS_MAX; i++)
@@ -1364,7 +1303,7 @@ namespace C3D
 
             if (!vulkanShader->pipelines[i]->Create(&m_context, config))
             {
-                m_logger.Error("InitializeShader() - Failed to create pipeline for topology type: {}.", i);
+                m_logger.Error("InitializeShader() - Failed to create pipeline for topology type: '{}'.", i);
                 return false;
             }
         }
@@ -1376,7 +1315,7 @@ namespace C3D
         }
 
         // Grab the UBO alignment requirement from our device
-        shader.requiredUboAlignment = m_context.device.properties.limits.minUniformBufferOffsetAlignment;
+        shader.requiredUboAlignment = m_context.device.GetMinUboAlignment();
 
         // Make sure the UBO is aligned according to device requirements
         shader.globalUboStride = GetAligned(shader.globalUboSize, shader.requiredUboAlignment);
@@ -1420,8 +1359,8 @@ namespace C3D
     bool VulkanRendererPlugin::UseShader(const Shader& shader)
     {
         const auto vulkanShader = static_cast<VulkanShader*>(shader.apiSpecificData);
-        vulkanShader->pipelines[vulkanShader->boundPipeline]->Bind(
-            &m_context.graphicsCommandBuffers[m_context.imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS);
+        vulkanShader->pipelines[vulkanShader->boundPipeline]->Bind(&m_context.graphicsCommandBuffers[m_context.imageIndex],
+                                                                   VK_PIPELINE_BIND_POINT_GRAPHICS);
         return true;
     }
 
@@ -1478,12 +1417,11 @@ namespace C3D
                 m_logger.Error("ShaderApplyGlobals() - Global image samplers are not yet supported.");
             }
 
-            vkUpdateDescriptorSets(m_context.device.logicalDevice, globalSetBindingCount, descriptorWrites, 0, nullptr);
+            vkUpdateDescriptorSets(m_context.device.GetLogical(), globalSetBindingCount, descriptorWrites, 0, nullptr);
         }
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                internal->pipelines[internal->boundPipeline]->layout, 0, 1, &globalDescriptor, 0,
-                                nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internal->pipelines[internal->boundPipeline]->layout, 0, 1,
+                                &globalDescriptor, 0, nullptr);
         return true;
     }
 
@@ -1516,8 +1454,7 @@ namespace C3D
             if (internal->instanceUniformCount > 0)
             {
                 // Only do this if the descriptor has not yet been updated
-                u8& instanceUboGeneration =
-                    objectState->descriptorSetState.descriptorStates[descriptorIndex].generations[imageIndex];
+                u8& instanceUboGeneration = objectState->descriptorSetState.descriptorStates[descriptorIndex].generations[imageIndex];
                 if (instanceUboGeneration == INVALID_ID_U8)
                 {
                     bufferInfo.buffer = internal->uniformBuffer.handle;
@@ -1543,11 +1480,9 @@ namespace C3D
             // Iterate samplers.
             if (internal->instanceUniformSamplerCount > 0)
             {
-                const auto samplerBindingIndex =
-                    internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].samplerBindingIndex;
-                const u32 totalSamplerCount = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE]
-                                                  .bindings[samplerBindingIndex]
-                                                  .descriptorCount;
+                const auto samplerBindingIndex = internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].samplerBindingIndex;
+                const u32 totalSamplerCount =
+                    internal->config.descriptorSets[DESC_SET_INDEX_INSTANCE].bindings[samplerBindingIndex].descriptorCount;
                 u32 updateSamplerCount = 0;
                 VkDescriptorImageInfo imageInfos[VULKAN_SHADER_MAX_GLOBAL_TEXTURES];
                 for (u32 i = 0; i < totalSamplerCount; i++)
@@ -1593,14 +1528,13 @@ namespace C3D
 
             if (descriptorCount > 0)
             {
-                vkUpdateDescriptorSets(m_context.device.logicalDevice, descriptorCount, descriptorWrites, 0, nullptr);
+                vkUpdateDescriptorSets(m_context.device.GetLogical(), descriptorCount, descriptorWrites, 0, nullptr);
             }
         }
 
         // We always bind for every instance however
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                internal->pipelines[internal->boundPipeline]->layout, 1, 1, &objectDescriptorSet, 0,
-                                nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internal->pipelines[internal->boundPipeline]->layout, 1, 1,
+                                &objectDescriptorSet, 0, nullptr);
         return true;
     }
 
@@ -1632,14 +1566,13 @@ namespace C3D
             case TextureFilter::ModeLinear:
                 return VK_FILTER_LINEAR;
             default:
-                m_logger.Warn("ConvertRepeatType(op = {}) - Filter '{}' is not supported. Defaulting to linear.", op,
-                              ToUnderlying(filter));
+                m_logger.Warn("ConvertRepeatType(op = {}) - Filter '{}' is not supported. Defaulting to linear.", op, ToUnderlying(filter));
                 return VK_FILTER_LINEAR;
         }
     }
 
-    bool VulkanRendererPlugin::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount,
-                                                              TextureMap** maps, u32* outInstanceId)
+    bool VulkanRendererPlugin::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps,
+                                                              u32* outInstanceId)
     {
         const auto internal = static_cast<VulkanShader*>(shader.apiSpecificData);
         // TODO: dynamic
@@ -1656,7 +1589,7 @@ namespace C3D
 
         if (*outInstanceId == INVALID_ID)
         {
-            m_logger.Error("AcquireShaderInstanceResources() - Failed to acquire new id");
+            m_logger.Error("AcquireShaderInstanceResources() - Failed to acquire new id.");
             return false;
         }
 
@@ -1665,9 +1598,8 @@ namespace C3D
         if (shader.instanceTextureCount > 0)
         {
             // Wipe out the memory for the entire array, even if it isn't all used.
-            instanceState->instanceTextureMaps =
-                Memory.Allocate<TextureMap*>(MemoryType::Array, shader.instanceTextureCount);
-            Texture* defaultTexture = Textures.GetDefault();
+            instanceState->instanceTextureMaps = Memory.Allocate<TextureMap*>(MemoryType::Array, shader.instanceTextureCount);
+            Texture* defaultTexture            = Textures.GetDefault();
             std::memcpy(instanceState->instanceTextureMaps, maps, sizeof(TextureMap*) * textureMapCount);
             // Set unassigned texture pointers to default until assigned
             for (u32 i = 0; i < textureMapCount; i++)
@@ -1715,8 +1647,8 @@ namespace C3D
         allocInfo.descriptorPool              = internal->descriptorPool;
         allocInfo.descriptorSetCount          = 3;
         allocInfo.pSetLayouts                 = layouts;
-        const VkResult result                 = vkAllocateDescriptorSets(m_context.device.logicalDevice, &allocInfo,
-                                                                         instanceState->descriptorSetState.descriptorSets);
+        const VkResult result =
+            vkAllocateDescriptorSets(m_context.device.GetLogical(), &allocInfo, instanceState->descriptorSetState.descriptorSets);
         if (result != VK_SUCCESS)
         {
             m_logger.Error("AcquireShaderInstanceResources() - Error allocating descriptor sets in shader: '{}'.",
@@ -1732,10 +1664,10 @@ namespace C3D
         VulkanShaderInstanceState* instanceState = &internal->instanceStates[instanceId];
 
         // Wait for any pending operations using the descriptor set to finish
-        vkDeviceWaitIdle(m_context.device.logicalDevice);
+        m_context.device.WaitIdle();
 
         // Free 3 descriptor sets (one per frame)
-        const VkResult result = vkFreeDescriptorSets(m_context.device.logicalDevice, internal->descriptorPool, 3,
+        const VkResult result = vkFreeDescriptorSets(m_context.device.GetLogical(), internal->descriptorPool, 3,
                                                      instanceState->descriptorSetState.descriptorSets);
 
         if (result != VK_SUCCESS)
@@ -1744,8 +1676,7 @@ namespace C3D
         }
 
         // Destroy descriptor states
-        std::memset(instanceState->descriptorSetState.descriptorStates, 0,
-                    sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
+        std::memset(instanceState->descriptorSetState.descriptorStates, 0, sizeof(VulkanDescriptorState) * VULKAN_SHADER_MAX_BINDINGS);
 
         // Free the memory for the instance texture pointer array
         if (instanceState->instanceTextureMaps)
@@ -1787,12 +1718,11 @@ namespace C3D
         samplerInfo.minLod                  = 0.0f;
         samplerInfo.maxLod                  = 0.0f;
 
-        const VkResult result = vkCreateSampler(m_context.device.logicalDevice, &samplerInfo, m_context.allocator,
+        const VkResult result = vkCreateSampler(m_context.device.GetLogical(), &samplerInfo, m_context.allocator,
                                                 reinterpret_cast<VkSampler*>(&map.internalData));
         if (!VulkanUtils::IsSuccess(result))
         {
-            m_logger.Error("AcquireTextureMapResources() - Error creating texture sampler: '{}'",
-                           VulkanUtils::ResultString(result));
+            m_logger.Error("AcquireTextureMapResources() - Error creating texture sampler: '{}'.", VulkanUtils::ResultString(result));
             return false;
         }
 
@@ -1805,8 +1735,8 @@ namespace C3D
     void VulkanRendererPlugin::ReleaseTextureMapResources(TextureMap& map)
     {
         // NOTE: This ensures there's no way this is in use.
-        vkDeviceWaitIdle(m_context.device.logicalDevice);
-        vkDestroySampler(m_context.device.logicalDevice, static_cast<VkSampler>(map.internalData), m_context.allocator);
+        m_context.device.WaitIdle();
+        vkDestroySampler(m_context.device.GetLogical(), static_cast<VkSampler>(map.internalData), m_context.allocator);
         map.internalData = nullptr;
     }
 
@@ -1821,8 +1751,7 @@ namespace C3D
             }
             else
             {
-                internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[uniform.location] =
-                    (TextureMap*)value;
+                internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[uniform.location] = (TextureMap*)value;
             }
         }
         else
@@ -1832,8 +1761,8 @@ namespace C3D
                 // Is local, using push constants. Do this immediately.
                 VkCommandBuffer commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex].handle;
                 vkCmdPushConstants(commandBuffer, internal->pipelines[internal->boundPipeline]->layout,
-                                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                                   static_cast<u32>(uniform.offset), uniform.size, value);
+                                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, static_cast<u32>(uniform.offset),
+                                   uniform.size, value);
             }
             else
             {
@@ -1854,14 +1783,15 @@ namespace C3D
             m_context.graphicsCommandBuffers.Resize(m_context.swapChain.imageCount);
         }
 
+        auto graphicsCommandPool = m_context.device.GetGraphicsCommandPool();
         for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
         {
             if (m_context.graphicsCommandBuffers[i].handle)
             {
-                m_context.graphicsCommandBuffers[i].Free(&m_context, m_context.device.graphicsCommandPool);
+                m_context.graphicsCommandBuffers[i].Free(&m_context, graphicsCommandPool);
             }
 
-            m_context.graphicsCommandBuffers[i].Allocate(&m_context, m_context.device.graphicsCommandPool, true);
+            m_context.graphicsCommandBuffers[i].Allocate(&m_context, graphicsCommandPool, true);
         }
     }
 
@@ -1882,7 +1812,7 @@ namespace C3D
         m_context.recreatingSwapChain = true;
 
         // Ensure that our device is not busy
-        vkDeviceWaitIdle(m_context.device.logicalDevice);
+        m_context.device.WaitIdle();
 
         // Clear out all the in-flight images since the size of the FrameBuffer will change
         for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
@@ -1891,19 +1821,19 @@ namespace C3D
         }
 
         // Re-query the SwapChain support and depth format since it might have changed
-        m_context.device.QuerySwapChainSupport(m_context.surface, &m_context.device.swapChainSupport);
+        m_context.device.QuerySwapChainSupport();
         m_context.device.DetectDepthFormat();
 
-        m_context.swapChain.Recreate(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight,
-                                     m_config.flags);
+        m_context.swapChain.Recreate(m_context.frameBufferWidth, m_context.frameBufferHeight, m_config.flags);
 
         // Update the size generation so that they are in sync again
         m_context.frameBufferSizeLastGeneration = m_context.frameBufferSizeGeneration;
 
         // Cleanup SwapChain
+        auto graphicsCommandPool = m_context.device.GetGraphicsCommandPool();
         for (u32 i = 0; i < m_context.swapChain.imageCount; i++)
         {
-            m_context.graphicsCommandBuffers[i].Free(&m_context, m_context.device.graphicsCommandPool);
+            m_context.graphicsCommandBuffers[i].Free(&m_context, graphicsCommandPool);
         }
 
         // Tell the renderer that a refresh is required
@@ -1929,8 +1859,9 @@ namespace C3D
         shaderStage->createInfo.codeSize = res.size;
         shaderStage->createInfo.pCode    = reinterpret_cast<u32*>(res.data);
 
-        VK_CHECK(vkCreateShaderModule(m_context.device.logicalDevice, &shaderStage->createInfo, m_context.allocator,
-                                      &shaderStage->handle));
+        VK_CHECK(vkCreateShaderModule(m_context.device.GetLogical(), &shaderStage->createInfo, m_context.allocator, &shaderStage->handle));
+
+        VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SHADER_MODULE, shaderStage->handle, res.name);
 
         // Release our resource
         Resources.Unload(res);

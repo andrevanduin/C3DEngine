@@ -10,8 +10,7 @@ namespace C3D
     template <class T, class Allocator = DynamicAllocator>
     class C3D_API DynamicArray
     {
-        static_assert(std::is_base_of_v<BaseAllocator<Allocator>, Allocator>,
-                      "Allocator must derive from BaseAllocator");
+        static_assert(std::is_base_of_v<BaseAllocator<Allocator>, Allocator>, "Allocator must derive from BaseAllocator");
 
     public:
         constexpr static auto default_capacity = 4;
@@ -32,10 +31,7 @@ namespace C3D
         DynamicArray(const DynamicArray& other) : m_capacity(0), m_size(0), m_elements(nullptr) { Copy(other); }
 
         DynamicArray(DynamicArray&& other) noexcept
-            : m_capacity(other.Capacity()),
-              m_size(other.Size()),
-              m_elements(other.GetData()),
-              m_allocator(other.m_allocator)
+            : m_capacity(other.Capacity()), m_size(other.Size()), m_elements(other.GetData()), m_allocator(other.m_allocator)
         {
             other.m_capacity = 0;
             // Take all data from other and null out other so it does not call Free() twice on the sa

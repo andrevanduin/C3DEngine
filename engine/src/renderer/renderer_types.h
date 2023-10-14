@@ -42,7 +42,6 @@ namespace C3D
 
         RendererConfigFlags flags;
 
-        SDL_Window* pWindow;
         const SystemManager* pSystemsManager;
     };
 

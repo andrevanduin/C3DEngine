@@ -27,11 +27,7 @@
 namespace C3D
 {
     Engine::Engine(Application* pApplication, UIConsole* pConsole)
-        : m_logger("ENGINE"),
-          m_application(pApplication),
-          m_pConsole(pConsole),
-          m_frameData(),
-          m_pSystemsManager(&m_systemsManager)
+        : m_logger("ENGINE"), m_application(pApplication), m_pConsole(pConsole), m_pSystemsManager(&m_systemsManager)
     {
         m_application->m_pSystemsManager = &m_systemsManager;
         m_application->m_pConsole        = pConsole;
@@ -59,28 +55,10 @@ namespace C3D
             m_frameData.applicationFrameData = nullptr;
         }
 
-        if (SDL_Init(SDL_INIT_VIDEO) != 0)
-        {
-            m_logger.Fatal("Failed to initialize SDL: {}", SDL_GetError());
-        }
-
-        m_logger.Info("Successfully initialized SDL");
-
-        String windowName = String::FromFormat("C3DEngine - {}", appState->name);
-        m_window = SDL_CreateWindow(windowName.Data(), appState->x, appState->y, appState->width, appState->height,
-                                    SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
-        if (m_window == nullptr)
-        {
-            m_logger.Fatal("Failed to create a Window: {}", SDL_GetError());
-        }
-
-        m_logger.Info("Successfully created SDL Window");
-
         auto threadCount = Platform::GetProcessorCount();
         if (threadCount <= 1)
         {
-            m_logger.Fatal("System reported {} threads. C3DEngine requires at least 1 thread besides the main thread.",
-                           threadCount);
+            m_logger.Fatal("System reported {} threads. C3DEngine requires at least 1 thread besides the main thread.", threadCount);
         }
         else
         {
@@ -89,17 +67,19 @@ namespace C3D
 
         m_systemsManager.Init();
 
+        String windowName = String::FromFormat("C3DEngine - {}", appState->name);
+
         constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
         constexpr ShaderSystemConfig shaderSystemConfig{ 128, 128, 31, 31 };
+        const PlatformSystemConfig platformConfig{ windowName.Data(), appState->x, appState->y, appState->width, appState->height };
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
-        const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin,
-                                                     FlagVSyncEnabled | FlagPowerSavingEnabled, m_window };
+        const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled };
 
         // Init before boot systems
-        m_systemsManager.RegisterSystem<Platform>(PlatformSystemType);                  // Platform (OS) System
-        m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);                  // Event System
-        m_systemsManager.RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);  // CVar System
-        m_systemsManager.RegisterSystem<InputSystem>(InputSystemType);                  // Input System
+        m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);                              // Event System
+        m_systemsManager.RegisterSystem<Platform>(PlatformSystemType, platformConfig);              // Platform (OS) System
+        m_systemsManager.RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);              // CVar System
+        m_systemsManager.RegisterSystem<InputSystem>(InputSystemType);                              // Input System
         m_systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);  // Resource System
         m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);        // Shader System
         m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);        // Render System
@@ -111,8 +91,8 @@ namespace C3D
         constexpr auto maxThreadCount = 15;
         if (threadCount - 1 > maxThreadCount)
         {
-            m_logger.Info("Available threads on this system is greater than {} (). Capping used threads at {}",
-                          maxThreadCount, (threadCount - 1), maxThreadCount);
+            m_logger.Info("Available threads on this system is greater than {} (). Capping used threads at {}", maxThreadCount,
+                          (threadCount - 1), maxThreadCount);
             threadCount = maxThreadCount;
         }
 
@@ -146,18 +126,16 @@ namespace C3D
         m_systemsManager.RegisterSystem<RenderViewSystem>(RenderViewSystemType,
                                                           viewSystemConfig);  // Render View System
 
-        Event.Register(EventCodeResized, [this](const u16 code, void* sender, const EventContext& context) {
-            return OnResizeEvent(code, sender, context);
-        });
+        Event.Register(EventCodeResized,
+                       [this](const u16 code, void* sender, const EventContext& context) { return OnResizeEvent(code, sender, context); });
         Event.Register(EventCodeMinimized, [this](const u16 code, void* sender, const EventContext& context) {
             return OnMinimizeEvent(code, sender, context);
         });
         Event.Register(EventCodeFocusGained, [this](const u16 code, void* sender, const EventContext& context) {
             return OnFocusGainedEvent(code, sender, context);
         });
-        Event.Register(EventCodeApplicationQuit, [this](const u16 code, void* sender, const EventContext& context) {
-            return OnQuitEvent(code, sender, context);
-        });
+        Event.Register(EventCodeApplicationQuit,
+                       [this](const u16 code, void* sender, const EventContext& context) { return OnQuitEvent(code, sender, context); });
 
         // Load render views
         for (auto view : appState->renderViews)
@@ -206,7 +184,10 @@ namespace C3D
 
         while (m_state.running)
         {
-            HandleSdlEvents();
+            if (!OS.PumpMessages())
+            {
+                m_state.running = false;
+            }
 
             if (!m_state.suspended)
             {
@@ -291,10 +272,6 @@ namespace C3D
 
     void Engine::OnResize(const u32 width, const u32 height) const
     {
-        const auto appState = m_application->m_appState;
-        appState->width     = width;
-        appState->height    = height;
-
         m_application->OnResize();
         Renderer.OnResize(width, height);
     }
@@ -306,8 +283,6 @@ namespace C3D
         *width  = appState->width;
         *height = appState->height;
     }
-
-    SDL_Window* Engine::GetWindow() const { return m_window; }
 
     const EngineState* Engine::GetState() const { return &m_state; }
 
@@ -337,76 +312,10 @@ namespace C3D
 
         m_systemsManager.Shutdown();
 
-        SDL_DestroyWindow(m_window);
-
         m_state.initialized = false;
     }
 
-    void Engine::HandleSdlEvents()
-    {
-        SDL_Event e;
-        while (SDL_PollEvent(&e) != 0)
-        {
-            // TODO: ImGUI event process here
-
-            switch (e.type)
-            {
-                case SDL_QUIT:
-                    Quit();
-                    break;
-                case SDL_KEYDOWN:
-                    Input.ProcessKey(e.key.keysym.sym, InputState::Down);
-                    break;
-                case SDL_KEYUP:
-                    Input.ProcessKey(e.key.keysym.sym, InputState::Up);
-                    break;
-                case SDL_MOUSEBUTTONDOWN:
-                    Input.ProcessButton(e.button.button, InputState::Down);
-                    break;
-                case SDL_MOUSEBUTTONUP:
-                    Input.ProcessButton(e.button.button, InputState::Up);
-                    break;
-                case SDL_MOUSEMOTION:
-                    Input.ProcessMouseMove(e.motion.x, e.motion.y);
-                    break;
-                case SDL_MOUSEWHEEL:
-                    Input.ProcessMouseWheel(e.wheel.y);
-                    break;
-                case SDL_WINDOWEVENT:
-                    if (e.window.event == SDL_WINDOWEVENT_RESIZED)
-                    {
-                        EventContext context{};
-                        context.data.u16[0] = static_cast<u16>(e.window.data1);
-                        context.data.u16[1] = static_cast<u16>(e.window.data2);
-                        Event.Fire(EventCodeResized, nullptr, context);
-                    }
-                    else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED)
-                    {
-                        constexpr EventContext context{};
-                        Event.Fire(EventCodeMinimized, nullptr, context);
-                    }
-                    else if (e.window.event == SDL_WINDOWEVENT_ENTER && m_state.suspended)
-                    {
-                        const auto appState = m_application->m_appState;
-
-                        EventContext context{};
-                        context.data.u16[0] = static_cast<u16>(appState->width);
-                        context.data.u16[1] = static_cast<u16>(appState->height);
-                        Event.Fire(EventCodeFocusGained, nullptr, context);
-                    }
-                    break;
-                case SDL_TEXTINPUT:
-                    // TODO: Possibly change this is the future. But currently this spams the console if letters are
-                    // pressed
-                    break;
-                default:
-                    m_logger.Trace("Unhandled SDL Event: {}", e.type);
-                    break;
-            }
-        }
-    }
-
-    bool Engine::OnResizeEvent(const u16 code, void* sender, const EventContext& context) const
+    bool Engine::OnResizeEvent(const u16 code, void* sender, const EventContext& context)
     {
         if (code == EventCodeResized)
         {
@@ -417,14 +326,20 @@ namespace C3D
             // We only update out width and height if they actually changed
             if (width != appState->width || height != appState->height)
             {
-                m_logger.Debug("Window Resize: {} {}", width, height);
+                m_logger.Info("OnResizeEvent() - width: '{}' and height: '{}'.", width, height);
+
+                const auto appState = m_application->m_appState;
+                appState->width     = width;
+                appState->height    = height;
 
                 if (width == 0 || height == 0)
                 {
-                    m_logger.Warn("Invalid width or height");
+                    m_logger.Info("OnResizeEvent() - Window minimized, supsending application.");
+                    m_state.suspended = true;
                     return true;
                 }
 
+                m_state.suspended = false;
                 OnResize(width, height);
             }
         }

@@ -12,9 +12,7 @@ namespace C3D
 {
     VulkanRenderPass::VulkanRenderPass() : RenderPass() {}
 
-    VulkanRenderPass::VulkanRenderPass(VulkanContext* context, const RenderPassConfig& config)
-        : RenderPass(config), m_context(context)
-    {}
+    VulkanRenderPass::VulkanRenderPass(VulkanContext* context, const RenderPassConfig& config) : RenderPass(config), m_context(context) {}
 
     bool VulkanRenderPass::Create(const RenderPassConfig& config)
     {
@@ -53,8 +51,7 @@ namespace C3D
                 // Determine which load operation to use.
                 if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::DontCare)
                 {
-                    attachmentDescription.loadOp =
-                        doClearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    attachmentDescription.loadOp = doClearColor ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 }
                 else
                 {
@@ -107,16 +104,14 @@ namespace C3D
                 attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 // If loading, that means coming from another pass, meaning the format should be
                 // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL otherwise it's undefined
-                attachmentDescription.initialLayout =
-                    attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load
-                        ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                        : VK_IMAGE_LAYOUT_UNDEFINED;
+                attachmentDescription.initialLayout = attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load
+                                                          ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                                          : VK_IMAGE_LAYOUT_UNDEFINED;
 
                 // If this is the last pass writing to this attachment, present after should be set to true
-                attachmentDescription.finalLayout = attachmentConfig.presentAfter
-                                                        ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-                                                        : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                attachmentDescription.flags       = 0;
+                attachmentDescription.finalLayout =
+                    attachmentConfig.presentAfter ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                attachmentDescription.flags = 0;
 
                 // Add this attachment description to our array
                 colorAttachmentDescriptions.PushBack(attachmentDescription);
@@ -125,22 +120,23 @@ namespace C3D
             {
                 // A depth attachment
                 auto doClearDepth = m_clearFlags & RenderPassClearFlags::ClearDepthBuffer;
+                auto depthFormat  = m_context->device.GetDepthFormat();
+
                 if (attachmentConfig.source == RenderTargetAttachmentSource::Default)
                 {
-                    attachmentDescription.format = m_context->device.depthFormat;
+                    attachmentDescription.format = depthFormat;
                 }
                 else
                 {
                     // TODO: There may be a more optimal format to use when not the default depth target.
-                    attachmentDescription.format = m_context->device.depthFormat;
+                    attachmentDescription.format = depthFormat;
                 }
 
                 attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
                 // Determine which load operation to use
                 if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::DontCare)
                 {
-                    attachmentDescription.loadOp =
-                        doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    attachmentDescription.loadOp = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 }
                 else
                 {
@@ -192,10 +188,9 @@ namespace C3D
                 attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 // If coming from a previous pass, should already be VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL.
                 // Otherwise undefined.
-                attachmentDescription.initialLayout =
-                    attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load
-                        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-                        : VK_IMAGE_LAYOUT_UNDEFINED;
+                attachmentDescription.initialLayout = attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load
+                                                          ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                                                          : VK_IMAGE_LAYOUT_UNDEFINED;
                 // Final layout for depth stencil attachments is always this
                 attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -285,7 +280,7 @@ namespace C3D
         createInfo.pNext                  = nullptr;
         createInfo.flags                  = 0;
 
-        VK_CHECK(vkCreateRenderPass(m_context->device.logicalDevice, &createInfo, m_context->allocator, &handle));
+        VK_CHECK(vkCreateRenderPass(m_context->device.GetLogical(), &createInfo, m_context->allocator, &handle));
 
         if (colorAttachmentReferences)
         {
@@ -307,7 +302,7 @@ namespace C3D
         RenderPass::Destroy();
         if (handle)
         {
-            vkDestroyRenderPass(m_context->device.logicalDevice, handle, m_context->allocator);
+            vkDestroyRenderPass(m_context->device.GetLogical(), handle, m_context->allocator);
             handle = nullptr;
         }
     }

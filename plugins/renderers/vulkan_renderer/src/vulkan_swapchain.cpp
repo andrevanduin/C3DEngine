@@ -12,11 +12,11 @@
 
 namespace C3D
 {
-    VkSurfaceFormatKHR GetSurfaceFormat(const VulkanContext* context)
+    VkSurfaceFormatKHR VulkanSwapChain::GetSurfaceFormat() const
     {
-        for (u32 i = 0; i < context->device.swapChainSupport.formatCount; i++)
+        const auto& formats = m_context->device.GetSurfaceFormats();
+        for (auto& format : formats)
         {
-            const VkSurfaceFormatKHR format = context->device.swapChainSupport.formats[i];
             if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
             {
                 return format;
@@ -26,10 +26,10 @@ namespace C3D
         Logger::Warn(
             "[VULKAN_SWAP_CHAIN] - Could not find Preferred SwapChain ImageFormat. Falling back to first format in the "
             "list");
-        return context->device.swapChainSupport.formats[0];
+        return formats[0];
     }
 
-    VkPresentModeKHR VulkanSwapChain::GetPresentMode(const VulkanContext* context) const
+    VkPresentModeKHR VulkanSwapChain::GetPresentMode() const
     {
         // VSync is enabled
         if (m_flags & FlagVSyncEnabled)
@@ -38,12 +38,12 @@ namespace C3D
             {
                 // If power saving is not enabled we can try to see if Mailbox is supported
                 // this will generate frames as fast as it can (which is less power efficient but it reduces input lag)
-                for (u32 i = 0; i < context->device.swapChainSupport.presentModeCount; i++)
+                const auto& presentModes = m_context->device.GetPresentModes();
+                for (auto presentMode : presentModes)
                 {
-                    if (const VkPresentModeKHR mode = context->device.swapChainSupport.presentModes[i];
-                        mode == VK_PRESENT_MODE_MAILBOX_KHR)
+                    if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
                     {
-                        return mode;
+                        return presentMode;
                     }
                 }
             }
@@ -57,23 +57,25 @@ namespace C3D
         return VK_PRESENT_MODE_IMMEDIATE_KHR;
     }
 
-    void VulkanSwapChain::Create(const SystemManager* pSystemsManager, VulkanContext* context, const u32 width,
-                                 const u32 height, const RendererConfigFlags flags)
+    void VulkanSwapChain::Create(const SystemManager* pSystemsManager, const VulkanContext* context, const u32 width, const u32 height,
+                                 const RendererConfigFlags flags)
     {
-        CreateInternal(pSystemsManager, context, width, height, flags);
+        m_context         = context;
+        m_pSystemsManager = pSystemsManager;
+
+        CreateInternal(width, height, flags);
     }
 
-    void VulkanSwapChain::Recreate(VulkanContext* context, const u32 width, const u32 height,
-                                   const RendererConfigFlags flags)
+    void VulkanSwapChain::Recreate(const u32 width, const u32 height, const RendererConfigFlags flags)
     {
-        DestroyInternal(context);
-        CreateInternal(m_pSystemsManager, context, width, height, flags);
+        DestroyInternal();
+        CreateInternal(width, height, flags);
     }
 
-    void VulkanSwapChain::Destroy(const VulkanContext* context)
+    void VulkanSwapChain::Destroy()
     {
         Logger::Info("[VULKAN_SWAP_CHAIN] - Destroying SwapChain");
-        DestroyInternal(context);
+        DestroyInternal();
 
         // Since we don't destroy our depth and render textures in destroy internal (so we can re-use the textures on a
         // recreate() call) We still need to cleanup our depth textures
@@ -93,14 +95,13 @@ namespace C3D
         renderTextures = nullptr;
     }
 
-    bool VulkanSwapChain::AcquireNextImageIndex(VulkanContext* context, const u64 timeoutNs,
-                                                VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
+    bool VulkanSwapChain::AcquireNextImageIndex(const u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
     {
-        const auto result = vkAcquireNextImageKHR(context->device.logicalDevice, handle, timeoutNs,
-                                                  imageAvailableSemaphore, fence, outImageIndex);
+        const auto result =
+            vkAcquireNextImageKHR(m_context->device.GetLogical(), handle, timeoutNs, imageAvailableSemaphore, fence, outImageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            Recreate(context, context->frameBufferWidth, context->frameBufferHeight, m_flags);
+            Recreate(m_context->frameBufferWidth, m_context->frameBufferHeight, m_flags);
             return false;
         }
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -111,8 +112,7 @@ namespace C3D
         return true;
     }
 
-    void VulkanSwapChain::Present(VulkanContext* context, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore,
-                                  const u32 presentImageIndex)
+    void VulkanSwapChain::Present(VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, const u32 presentImageIndex)
     {
         // Return the image to the SwapChain for presentation
         VkPresentInfoKHR presentInfo   = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
@@ -128,7 +128,7 @@ namespace C3D
         {
             // Our SwapChain is out of date, suboptimal or a FrameBuffer resize has occurred.
             // We trigger a SwapChain recreation.
-            Recreate(context, context->frameBufferWidth, context->frameBufferHeight, m_flags);
+            Recreate(m_context->frameBufferWidth, m_context->frameBufferHeight, m_flags);
             Logger::Debug("[VULKAN_SWAP_CHAIN] - Recreated because SwapChain returned out of date or suboptimal");
         }
         else if (result != VK_SUCCESS)
@@ -136,45 +136,42 @@ namespace C3D
             Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to present SwapChain image");
         }
 
-        context->currentFrame = (context->currentFrame + 1) % maxFramesInFlight;
+        m_context->currentFrame = (m_context->currentFrame + 1) % maxFramesInFlight;
     }
 
-    void VulkanSwapChain::CreateInternal(const SystemManager* pSystemsManager, VulkanContext* context, const u32 width,
-                                         const u32 height, const RendererConfigFlags flags)
+    void VulkanSwapChain::CreateInternal(const u32 width, const u32 height, const RendererConfigFlags flags)
     {
-        m_pSystemsManager = pSystemsManager;
-
         VkExtent2D extent = { width, height };
         m_flags           = flags;
-        imageFormat       = GetSurfaceFormat(context);
-        m_presentMode     = GetPresentMode(context);
+        imageFormat       = GetSurfaceFormat();
+        m_presentMode     = GetPresentMode();
 
         // Query SwapChain support again to see if anything changed since last time (for example different resolution or
         // monitor)
-        context->device.QuerySwapChainSupport(context->surface, &context->device.swapChainSupport);
+        m_context->device.QuerySwapChainSupport();
 
-        if (context->device.swapChainSupport.capabilities.currentExtent.width != UINT32_MAX)
+        const auto& capabilities = m_context->device.GetSurfaceCapabilities();
+        if (capabilities.currentExtent.width != UINT32_MAX)
         {
-            extent = context->device.swapChainSupport.capabilities.currentExtent;
+            extent = capabilities.currentExtent;
         }
 
-        const VkExtent2D min = context->device.swapChainSupport.capabilities.minImageExtent;
-        const VkExtent2D max = context->device.swapChainSupport.capabilities.maxImageExtent;
+        const VkExtent2D min = capabilities.minImageExtent;
+        const VkExtent2D max = capabilities.maxImageExtent;
 
         extent.width  = C3D_CLAMP(extent.width, min.width, max.width);
         extent.height = C3D_CLAMP(extent.height, min.height, max.height);
 
-        u32 imgCount = context->device.swapChainSupport.capabilities.minImageCount + 1;
-        if (context->device.swapChainSupport.capabilities.maxImageCount > 0 &&
-            imgCount > context->device.swapChainSupport.capabilities.maxImageCount)
+        u32 imgCount = capabilities.minImageCount + 1;
+        if (capabilities.maxImageCount > 0 && imgCount > capabilities.maxImageCount)
         {
-            imgCount = context->device.swapChainSupport.capabilities.maxImageCount;
+            imgCount = capabilities.maxImageCount;
         }
 
         maxFramesInFlight = static_cast<u8>(imgCount) - 1;
 
         VkSwapchainCreateInfoKHR swapChainCreateInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
-        swapChainCreateInfo.surface                  = context->surface;
+        swapChainCreateInfo.surface                  = m_context->surface;
         swapChainCreateInfo.minImageCount            = imgCount;
         swapChainCreateInfo.imageFormat              = imageFormat.format;
         swapChainCreateInfo.imageColorSpace          = imageFormat.colorSpace;
@@ -182,9 +179,12 @@ namespace C3D
         swapChainCreateInfo.imageArrayLayers         = 1;
         swapChainCreateInfo.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-        if (context->device.graphicsQueueIndex != context->device.presentQueueIndex)
+        auto graphicsQueueIndex = m_context->device.GetGraphicsQueueIndex();
+        auto presentQueueIndex  = m_context->device.GetPresentQueueIndex();
+
+        if (graphicsQueueIndex != presentQueueIndex)
         {
-            const u32 queueFamilyIndices[] = { context->device.graphicsQueueIndex, context->device.presentQueueIndex };
+            const u32 queueFamilyIndices[] = { graphicsQueueIndex, presentQueueIndex };
 
             swapChainCreateInfo.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
             swapChainCreateInfo.queueFamilyIndexCount = 2;
@@ -197,19 +197,21 @@ namespace C3D
             swapChainCreateInfo.pQueueFamilyIndices   = nullptr;
         }
 
-        swapChainCreateInfo.preTransform   = context->device.swapChainSupport.capabilities.currentTransform;
+        swapChainCreateInfo.preTransform   = capabilities.currentTransform;
         swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapChainCreateInfo.presentMode    = m_presentMode;
         swapChainCreateInfo.clipped        = VK_TRUE;
-        swapChainCreateInfo.oldSwapchain   = nullptr;  // TODO: pass the old SwapChain here for better performance
+        // TODO: pass the old SwapChain here for better performance
+        swapChainCreateInfo.oldSwapchain = nullptr;
 
-        VK_CHECK(
-            vkCreateSwapchainKHR(context->device.logicalDevice, &swapChainCreateInfo, context->allocator, &handle));
+        auto logicalDevice = m_context->device.GetLogical();
 
-        context->currentFrame = 0;
+        VK_CHECK(vkCreateSwapchainKHR(logicalDevice, &swapChainCreateInfo, m_context->allocator, &handle));
+
+        m_context->currentFrame = 0;
 
         imageCount = 0;
-        VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, nullptr));
+        VK_CHECK(vkGetSwapchainImagesKHR(logicalDevice, handle, &imageCount, nullptr));
         if (!renderTextures)
         {
             renderTextures = Memory.Allocate<Texture>(MemoryType::Texture, imageCount);
@@ -221,8 +223,7 @@ namespace C3D
                 char texName[38] = "__internal_vulkan_swapChain_image_0__";
                 texName[34]      = '0' + static_cast<char>(i);
 
-                Textures.WrapInternal(texName, extent.width, extent.height, 4, false, true, false, internalData,
-                                      &renderTextures[i]);
+                Textures.WrapInternal(texName, extent.width, extent.height, 4, false, true, false, internalData, &renderTextures[i]);
 
                 if (!renderTextures[i].internalData)
                 {
@@ -241,7 +242,7 @@ namespace C3D
         }
 
         VkImage swapChainImages[32];
-        VK_CHECK(vkGetSwapchainImagesKHR(context->device.logicalDevice, handle, &imageCount, swapChainImages));
+        VK_CHECK(vkGetSwapchainImagesKHR(logicalDevice, handle, &imageCount, swapChainImages));
         for (u32 i = 0; i < imageCount; i++)
         {
             // Update the internal image for each.
@@ -266,13 +267,12 @@ namespace C3D
             viewInfo.subresourceRange.baseArrayLayer = 0;
             viewInfo.subresourceRange.layerCount     = 1;
 
-            VK_CHECK(vkCreateImageView(context->device.logicalDevice, &viewInfo, context->allocator, &image->view));
+            VK_CHECK(vkCreateImageView(logicalDevice, &viewInfo, m_context->allocator, &image->view));
         }
 
         // Detect depth resources
-        if (!context->device.DetectDepthFormat())
+        if (!m_context->device.DetectDepthFormat())
         {
-            context->device.depthFormat = VK_FORMAT_UNDEFINED;
             Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to find a supported Depth Format");
         }
 
@@ -287,21 +287,21 @@ namespace C3D
             // Create a depth image and it's view
             const auto name  = String::FromFormat("swapchain_image_{}", i);
             const auto image = Memory.Allocate<VulkanImage>(MemoryType::Texture);
-            image->Create(context, name, TextureType::Type2D, extent.width, extent.height, context->device.depthFormat,
-                          VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_DEPTH_BIT);
+            image->Create(m_context, name, TextureType::Type2D, extent.width, extent.height, m_context->device.GetDepthFormat(),
+                          VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true,
+                          VK_IMAGE_ASPECT_DEPTH_BIT);
 
             // Wrap it in a texture
-            Textures.WrapInternal("__C3D_default_depth_texture__", extent.width, extent.height,
-                                  context->device.depthChannelCount, false, true, false, image, &depthTextures[i]);
+            Textures.WrapInternal("__C3D_default_depth_texture__", extent.width, extent.height, m_context->device.GetDepthChannelCount(),
+                                  false, true, false, image, &depthTextures[i]);
         }
 
         Logger::Info("[VULKAN_SWAP_CHAIN] - Successfully created");
     }
 
-    void VulkanSwapChain::DestroyInternal(const VulkanContext* context) const
+    void VulkanSwapChain::DestroyInternal() const
     {
-        vkDeviceWaitIdle(context->device.logicalDevice);
+        m_context->device.WaitIdle();
 
         // Destroy our internal depth textures
         for (u32 i = 0; i < imageCount; i++)
@@ -313,14 +313,16 @@ namespace C3D
             depthTextures[i].internalData = nullptr;
         }
 
+        auto logicalDevice = m_context->device.GetLogical();
+
         // Destroy our views for our render textures
         for (u32 i = 0; i < imageCount; i++)
         {
             // First we destroy the internal vulkan specific data for every render texture
             const auto img = static_cast<VulkanImage*>(renderTextures[i].internalData);
-            vkDestroyImageView(context->device.logicalDevice, img->view, context->allocator);
+            vkDestroyImageView(logicalDevice, img->view, m_context->allocator);
         }
 
-        vkDestroySwapchainKHR(context->device.logicalDevice, handle, context->allocator);
+        vkDestroySwapchainKHR(logicalDevice, handle, m_context->allocator);
     }
 }  // namespace C3D

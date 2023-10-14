@@ -54,8 +54,7 @@ namespace C3D
         template <class System>
         bool RegisterSystem(const u16 systemType)
         {
-            static_assert(std::is_base_of_v<BaseSystem, System>,
-                          "The provided system does not derive from the ISystem class");
+            static_assert(std::is_base_of_v<BaseSystem, System>, "The provided system does not derive from the ISystem class");
 
             if (systemType > MaxKnownSystemType)
             {
@@ -91,7 +90,7 @@ namespace C3D
             auto s = m_allocator.New<System>(MemoryType::CoreSystem, this);
             if (!s->Init(config))
             {
-                m_logger.Fatal("RegisterSystem() - Failed to initialize system");
+                m_logger.Fatal("RegisterSystem() - Failed to initialize system.");
                 return false;
             }
 

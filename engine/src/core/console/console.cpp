@@ -25,9 +25,8 @@ namespace C3D
         m_entry.SetPosition({ 5, 30, 0 });
         m_cursor.SetPosition({ 5, 30, 0 });
 
-        Event.Register(EventCodeKeyDown, [this](const u16 code, void* sender, const EventContext& context) {
-            return OnKeyDownEvent(code, sender, context);
-        });
+        Event.Register(EventCodeKeyDown,
+                       [this](const u16 code, void* sender, const EventContext& context) { return OnKeyDownEvent(code, sender, context); });
         Event.Register(EventCodeMouseScrolled, [this](const u16 code, void* sender, const EventContext& context) {
             return OnMouseScrollEvent(code, sender, context);
         });
@@ -237,7 +236,8 @@ namespace C3D
 
             // Characters
             typedChar = static_cast<char>(keyCode);
-            if (shiftHeld) typedChar -= 32;  // If shift is held we want capital letters
+            // If shift is not held we want don't want capital letters
+            if (!shiftHeld) typedChar += 32;
         }
         else if (keyCode == KeySpace)
         {
@@ -245,21 +245,17 @@ namespace C3D
         }
         else if (keyCode == KeyMinus || keyCode == KeyEquals)
         {
-            typedChar = static_cast<char>(keyCode);
-            if (shiftHeld)
+            switch (keyCode)
             {
-                switch (keyCode)
-                {
-                    case KeyMinus:
-                        typedChar = '_';
-                        break;
-                    case KeyEquals:
-                        typedChar = '+';
-                        break;
-                    default:
-                        m_logger.Fatal("Unknown char found while trying to parse key for console {}", keyCode);
-                        break;
-                }
+                case KeyMinus:
+                    typedChar = shiftHeld ? '_' : '-';
+                    break;
+                case KeyEquals:
+                    typedChar = shiftHeld ? '+' : '=';
+                    break;
+                default:
+                    m_logger.Fatal("Unknown char found while trying to parse key for console {}", keyCode);
+                    break;
             }
         }
         else if (keyCode >= Key0 && keyCode <= Key9)

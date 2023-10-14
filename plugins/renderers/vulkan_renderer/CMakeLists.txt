@@ -11,9 +11,6 @@ target_compile_definitions(C3DVulkanRenderer PUBLIC C3D_EXPORT)
 
 target_link_libraries(C3DVulkanRenderer PUBLIC C3DEngine)
 
-find_package(SDL2 CONFIG REQUIRED)
-target_link_libraries(C3DVulkanRenderer PRIVATE SDL2::SDL2 SDL2::SDL2main)
-
 find_package(Vulkan REQUIRED)
 target_link_libraries(C3DVulkanRenderer PUBLIC Vulkan::Vulkan)
 

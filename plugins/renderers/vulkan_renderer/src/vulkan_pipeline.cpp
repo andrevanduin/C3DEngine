@@ -28,6 +28,8 @@ namespace C3D
 
     bool VulkanPipeline::Create(const VulkanContext* context, const VulkanPipelineConfig& config)
     {
+        m_context = context;
+
         VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
         viewportState.viewportCount                     = 1;
         viewportState.pViewports                        = &config.viewport;
@@ -35,35 +37,29 @@ namespace C3D
         viewportState.pScissors                         = &config.scissor;
 
         // Rasterizer
-        VkPipelineRasterizationStateCreateInfo rasterizerCreateInfo = {
-            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
-        };
-        rasterizerCreateInfo.depthClampEnable        = VK_FALSE;
-        rasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-        rasterizerCreateInfo.polygonMode             = config.isWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
-        rasterizerCreateInfo.lineWidth               = 1.0f;
-        rasterizerCreateInfo.cullMode                = GetVkCullMode(config.cullMode);
-        rasterizerCreateInfo.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterizerCreateInfo.depthBiasEnable         = VK_FALSE;
-        rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
-        rasterizerCreateInfo.depthBiasClamp          = 0.0f;
-        rasterizerCreateInfo.depthBiasSlopeFactor    = 0.0f;
+        VkPipelineRasterizationStateCreateInfo rasterizerCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+        rasterizerCreateInfo.depthClampEnable                       = VK_FALSE;
+        rasterizerCreateInfo.rasterizerDiscardEnable                = VK_FALSE;
+        rasterizerCreateInfo.polygonMode                            = config.isWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+        rasterizerCreateInfo.lineWidth                              = 1.0f;
+        rasterizerCreateInfo.cullMode                               = GetVkCullMode(config.cullMode);
+        rasterizerCreateInfo.frontFace                              = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizerCreateInfo.depthBiasEnable                        = VK_FALSE;
+        rasterizerCreateInfo.depthBiasConstantFactor                = 0.0f;
+        rasterizerCreateInfo.depthBiasClamp                         = 0.0f;
+        rasterizerCreateInfo.depthBiasSlopeFactor                   = 0.0f;
 
         // MultiSampling
-        VkPipelineMultisampleStateCreateInfo multiSampleCreateInfo = {
-            VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
-        };
-        multiSampleCreateInfo.sampleShadingEnable   = VK_FALSE;
-        multiSampleCreateInfo.rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT;
-        multiSampleCreateInfo.minSampleShading      = 1.0f;
-        multiSampleCreateInfo.pSampleMask           = nullptr;
-        multiSampleCreateInfo.alphaToCoverageEnable = VK_FALSE;
-        multiSampleCreateInfo.alphaToOneEnable      = VK_FALSE;
+        VkPipelineMultisampleStateCreateInfo multiSampleCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+        multiSampleCreateInfo.sampleShadingEnable                  = VK_FALSE;
+        multiSampleCreateInfo.rasterizationSamples                 = VK_SAMPLE_COUNT_1_BIT;
+        multiSampleCreateInfo.minSampleShading                     = 1.0f;
+        multiSampleCreateInfo.pSampleMask                          = nullptr;
+        multiSampleCreateInfo.alphaToCoverageEnable                = VK_FALSE;
+        multiSampleCreateInfo.alphaToOneEnable                     = VK_FALSE;
 
         // Depth and stencil testing
-        VkPipelineDepthStencilStateCreateInfo depthStencil = {
-            VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
-        };
+        VkPipelineDepthStencilStateCreateInfo depthStencil = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
         if (config.shaderFlags & ShaderFlagDepthTest)
         {
             depthStencil.depthTestEnable = VK_TRUE;
@@ -88,24 +84,20 @@ namespace C3D
         colorBlendAttachmentState.colorWriteMask =
             VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-        VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
-            VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
-        };
-        colorBlendStateCreateInfo.logicOpEnable   = VK_FALSE;
-        colorBlendStateCreateInfo.logicOp         = VK_LOGIC_OP_COPY;
-        colorBlendStateCreateInfo.attachmentCount = 1;
-        colorBlendStateCreateInfo.pAttachments    = &colorBlendAttachmentState;
+        VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+        colorBlendStateCreateInfo.logicOpEnable                       = VK_FALSE;
+        colorBlendStateCreateInfo.logicOp                             = VK_LOGIC_OP_COPY;
+        colorBlendStateCreateInfo.attachmentCount                     = 1;
+        colorBlendStateCreateInfo.pAttachments                        = &colorBlendAttachmentState;
 
         // Dynamic state
         constexpr u32 dynamicStateCount                 = 3;
         VkDynamicState dynamicStates[dynamicStateCount] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
                                                             VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY };
 
-        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {
-            VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
-        };
-        dynamicStateCreateInfo.dynamicStateCount = dynamicStateCount;
-        dynamicStateCreateInfo.pDynamicStates    = dynamicStates;
+        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+        dynamicStateCreateInfo.dynamicStateCount                = dynamicStateCount;
+        dynamicStateCreateInfo.pDynamicStates                   = dynamicStates;
 
         // Vertex Input
         VkVertexInputBindingDescription bindingDescription;
@@ -114,18 +106,14 @@ namespace C3D
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         // Attributes
-        VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {
-            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-        };
-        vertexInputCreateInfo.vertexBindingDescriptionCount   = 1;
-        vertexInputCreateInfo.pVertexBindingDescriptions      = &bindingDescription;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = config.attributeCount;
-        vertexInputCreateInfo.pVertexAttributeDescriptions    = config.attributes;
+        VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+        vertexInputCreateInfo.vertexBindingDescriptionCount        = 1;
+        vertexInputCreateInfo.pVertexBindingDescriptions           = &bindingDescription;
+        vertexInputCreateInfo.vertexAttributeDescriptionCount      = config.attributeCount;
+        vertexInputCreateInfo.pVertexAttributeDescriptions         = config.attributes;
 
         // Input assembly
-        VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
-            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
-        };
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
         for (u32 i = 1; i < PRIMITIVE_TOPOLOGY_TYPE_MAX; i = i << 1)
         {
             if (m_supportedTopologyTypes & i)
@@ -158,8 +146,7 @@ namespace C3D
                         m_currentTopology      = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
                         break;
                     default:
-                        Logger::Warn("[VULKAN_PIPELINE] - Create() - Unsupported primitive topology: '{}'. Skipping",
-                                     ToUnderlying(ptt));
+                        Logger::Warn("[VULKAN_PIPELINE] - Create() - Unsupported primitive topology: '{}'. Skipping", ToUnderlying(ptt));
                 }
                 break;
             }
@@ -177,9 +164,8 @@ namespace C3D
             // bytes with 4-byte alignment.
             if (config.pushConstantRangeCount > 32)
             {
-                Logger::Error(
-                    "[VULKAN_PIPELINE] - Create() Cannot have more than 32 push constant ranges. Passed count: {}",
-                    config.pushConstantRangeCount);
+                Logger::Error("[VULKAN_PIPELINE] - Create() Cannot have more than 32 push constant ranges. Passed count: {}",
+                              config.pushConstantRangeCount);
                 return false;
             }
 
@@ -204,12 +190,12 @@ namespace C3D
         pipelineLayoutCreateInfo.setLayoutCount = config.descriptorSetLayoutCount;
         pipelineLayoutCreateInfo.pSetLayouts    = config.descriptorSetLayouts;
 
-        // Create our pipeline layout
-        VK_CHECK(vkCreatePipelineLayout(context->device.logicalDevice, &pipelineLayoutCreateInfo, context->allocator,
-                                        &layout));
+        auto logicalDevice = m_context->device.GetLogical();
 
-        VK_SET_DEBUG_OBJECT_NAME(context, VK_OBJECT_TYPE_PIPELINE_LAYOUT, layout,
-                                 "PIPELINE_LAYOUT_" + config.shaderName);
+        // Create our pipeline layout
+        VK_CHECK(vkCreatePipelineLayout(logicalDevice, &pipelineLayoutCreateInfo, context->allocator, &layout));
+
+        VK_SET_DEBUG_OBJECT_NAME(context, VK_OBJECT_TYPE_PIPELINE_LAYOUT, layout, "PIPELINE_LAYOUT_" + config.shaderName);
 
         // Pipeline create info
         VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
@@ -234,8 +220,7 @@ namespace C3D
         pipelineCreateInfo.basePipelineIndex  = -1;
 
         // Create our pipeline
-        VkResult result = vkCreateGraphicsPipelines(context->device.logicalDevice, VK_NULL_HANDLE, 1,
-                                                    &pipelineCreateInfo, context->allocator, &m_handle);
+        VkResult result = vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, context->allocator, &m_handle);
 
         VK_SET_DEBUG_OBJECT_NAME(context, VK_OBJECT_TYPE_PIPELINE, m_handle, "PIPELINE_" + config.shaderName);
 
@@ -245,21 +230,22 @@ namespace C3D
             return true;
         }
 
-        Logger::Error("[VULKAN_PIPELINE] - vkCreateGraphicsPipelines failed with: {}",
-                      VulkanUtils::ResultString(result, true));
+        Logger::Error("[VULKAN_PIPELINE] - vkCreateGraphicsPipelines failed with: {}", VulkanUtils::ResultString(result, true));
         return false;
     }
 
-    void VulkanPipeline::Destroy(const VulkanContext* context)
+    void VulkanPipeline::Destroy()
     {
+        auto logicalDevice = m_context->device.GetLogical();
+
         if (m_handle)
         {
-            vkDestroyPipeline(context->device.logicalDevice, m_handle, context->allocator);
+            vkDestroyPipeline(logicalDevice, m_handle, m_context->allocator);
             m_handle = nullptr;
         }
         if (layout)
         {
-            vkDestroyPipelineLayout(context->device.logicalDevice, layout, context->allocator);
+            vkDestroyPipelineLayout(logicalDevice, layout, m_context->allocator);
             layout = nullptr;
         }
     }
@@ -268,6 +254,13 @@ namespace C3D
     {
         vkCmdBindPipeline(commandBuffer->handle, bindPoint, m_handle);
         // Make sure to use the bound topology type
-        vkCmdSetPrimitiveTopology(commandBuffer->handle, m_currentTopology);
+        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT))
+        {
+            vkCmdSetPrimitiveTopology(commandBuffer->handle, m_currentTopology);
+        }
+        else if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT))
+        {
+            m_context->pfnCmdSetPrimitiveTopologyEXT(commandBuffer->handle, m_currentTopology);
+        }
     }
 }  // namespace C3D

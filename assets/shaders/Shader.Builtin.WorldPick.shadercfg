@@ -3,7 +3,7 @@ version = 1.0
 name = Shader.Builtin.WorldPick
 renderPass = RenderPass.Builtin.Pick
 stages = vertex, fragment
-stageFiles = shaders/Builtin.WorldPickShader.vert.spv, shaders/Builtin.WorldPickShader.frag.spv
+stageFiles = Builtin.WorldPickShader.vert.spv, Builtin.WorldPickShader.frag.spv
 depthTest = true
 depthWrite = true
 

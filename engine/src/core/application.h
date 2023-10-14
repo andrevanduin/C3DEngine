@@ -14,7 +14,7 @@ namespace C3D
         String name;
 
         i32 x, y;
-        u32 width, height;
+        i32 width, height;
 
         RendererPlugin* rendererPlugin;
         FontSystemConfig fontConfig;

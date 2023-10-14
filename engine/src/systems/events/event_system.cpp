@@ -7,9 +7,7 @@
 
 namespace C3D
 {
-    EventSystem::EventSystem(const SystemManager* pSystemsManager)
-        : BaseSystem(pSystemsManager, "EVENT"), m_registered{}
-    {}
+    EventSystem::EventSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager, "EVENT"), m_registered{} {}
 
     bool EventSystem::Init()
     {
@@ -81,6 +79,8 @@ namespace C3D
 
     bool EventSystem::Fire(const u16 code, void* sender, const EventContext& data) const
     {
+        if (!m_initialized) return true;
+
         const auto& events = m_registered[code].events;
         if (events.Empty())
         {
