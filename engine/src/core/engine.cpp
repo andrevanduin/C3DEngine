@@ -1,8 +1,6 @@
 
 #include "engine.h"
 
-#include <SDL2/SDL.h>
-
 #include "application.h"
 #include "clock.h"
 #include "containers/string.h"

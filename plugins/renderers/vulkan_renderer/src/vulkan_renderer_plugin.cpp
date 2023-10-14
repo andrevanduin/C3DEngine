@@ -1,7 +1,6 @@
 
 #include "vulkan_renderer_plugin.h"
 
-#include <SDL2/SDL_vulkan.h>
 #include <core/engine.h>
 #include <core/events/event_context.h>
 #include <core/logger.h>

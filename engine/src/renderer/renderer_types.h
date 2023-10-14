@@ -3,8 +3,6 @@
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
 
-struct SDL_Window;
-
 namespace C3D
 {
     class RendererPlugin;
