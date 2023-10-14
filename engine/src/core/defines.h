@@ -120,17 +120,14 @@ constexpr u64 GibiBytes(const u64 amount) { return amount * 1024 * 1024 * 1024; 
 constexpr u64 MebiBytes(const u64 amount) { return amount * 1024 * 1024; }
 /** @brief Gets the number of bytes from amount of kibibytes (KiB) (amount * 1024) */
 constexpr u64 KibiBytes(const u64 amount) { return amount * 1024; }
-/** @brief Gets the number( of bytes from amount of gigabytes (GB) (amount * 1000 * 1000 * 1000) */
+/** @brief Gets the number of bytes from amount of gigabytes (GB) (amount * 1000 * 1000 * 1000) */
 constexpr u64 GigaBytes(const u64 amount) { return amount * 1000 * 1000 * 1000; }
-/** @brief Gets the number( of bytes from amount of megabytes (MB) (amount * 1000 * 1000) */
+/** @brief Gets the number of bytes from amount of megabytes (MB) (amount * 1000 * 1000) */
 constexpr u64 MegaBytes(const u64 amount) { return amount * 1000 * 1000; }
-/** @brief Gets the number( of bytes from amount of kilobytes (KB) (amount * 1000) */
+/** @brief Gets the number of bytes from amount of kilobytes (KB) (amount * 1000) */
 constexpr u64 KiloBytes(const u64 amount) { return amount * 1000; }
 
-C3D_INLINE u64 GetAligned(const u64 operand, const u64 granularity)
-{
-    return (operand + (granularity - 1)) & ~(granularity - 1);
-}
+C3D_INLINE u64 GetAligned(const u64 operand, const u64 granularity) { return (operand + (granularity - 1)) & ~(granularity - 1); }
 
 C3D_INLINE Range GetAlignedRange(const u64 offset, const u64 size, const u64 granularity)
 {

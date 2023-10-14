@@ -24,8 +24,6 @@ namespace C3D
 
         RendererPlugin* rendererPlugin;
         RendererConfigFlags flags;
-
-        SDL_Window* pWindow;
     };
 
     class C3D_API RenderSystem final : public SystemWithConfig<RenderSystemConfig>
@@ -59,8 +57,8 @@ namespace C3D
 
         void DestroyTexture(Texture* texture) const;
 
-        bool CreateGeometry(Geometry& geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize,
-                            u64 indexCount, const void* indices) const;
+        bool CreateGeometry(Geometry& geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount,
+                            const void* indices) const;
         bool UploadGeometry(Geometry& geometry) const;
         void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) const;
         void DestroyGeometry(Geometry& geometry) const;
@@ -82,8 +80,7 @@ namespace C3D
         bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) const;
         bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) const;
 
-        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps,
-                                            u32* outInstanceId) const;
+        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps, u32* outInstanceId) const;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) const;
 
         bool AcquireTextureMapResources(TextureMap& map) const;
@@ -91,8 +88,8 @@ namespace C3D
 
         bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) const;
 
-        void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width,
-                                u32 height, RenderTarget* outTarget) const;
+        void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height,
+                                RenderTarget* outTarget) const;
         void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) const;
 
         [[nodiscard]] RenderPass* CreateRenderPass(const RenderPassConfig& config) const;
@@ -104,8 +101,7 @@ namespace C3D
         [[nodiscard]] u8 GetWindowAttachmentIndex() const;
         [[nodiscard]] u8 GetWindowAttachmentCount() const;
 
-        [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
-                                                       bool useFreelist) const;
+        [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize, bool useFreelist) const;
         bool DestroyRenderBuffer(RenderBuffer* buffer) const;
 
         [[nodiscard]] bool IsMultiThreaded() const;

@@ -16,20 +16,18 @@ namespace C3D
     public:
         ~VulkanImage();
 
-        void Create(const VulkanContext* context, const String& name, TextureType type, u32 _width, u32 _height,
-                    VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags,
-                    bool createView, VkImageAspectFlags viewAspectFlags);
+        void Create(const VulkanContext* context, const String& name, TextureType type, u32 _width, u32 _height, VkFormat format,
+                    VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags, bool createView,
+                    VkImageAspectFlags viewAspectFlags);
 
-        void CreateView(const VulkanContext* context, TextureType type, VkFormat format,
-                        VkImageAspectFlags aspectFlags);
+        void CreateView(TextureType type, VkFormat format, VkImageAspectFlags aspectFlags);
 
-        void TransitionLayout(const VulkanContext* context, const VulkanCommandBuffer* commandBuffer, TextureType type,
-                              VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) const;
+        void TransitionLayout(const VulkanCommandBuffer* commandBuffer, TextureType type, VkFormat format, VkImageLayout oldLayout,
+                              VkImageLayout newLayout) const;
 
         void CopyFromBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
         void CopyToBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
-        void CopyPixelToBuffer(TextureType type, VkBuffer buffer, u32 x, u32 y,
-                               const VulkanCommandBuffer* commandBuffer) const;
+        void CopyPixelToBuffer(TextureType type, VkBuffer buffer, u32 x, u32 y, const VulkanCommandBuffer* commandBuffer) const;
 
         void Destroy();
 

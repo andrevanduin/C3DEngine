@@ -16,8 +16,8 @@ namespace C3D
 
     struct EngineState
     {
-        bool running = false;
-        bool suspended = false;
+        bool running     = false;
+        bool suspended   = false;
         bool initialized = false;
 
         f64 lastTime = 0;
@@ -39,8 +39,6 @@ namespace C3D
 
         void GetFrameBufferSize(u32* width, u32* height) const;
 
-        [[nodiscard]] SDL_Window* GetWindow() const;
-
         [[nodiscard]] const EngineState* GetState() const;
 
         void OnApplicationLibraryReload(Application* app);
@@ -55,9 +53,8 @@ namespace C3D
 
     private:
         void Shutdown();
-        void HandleSdlEvents();
 
-        bool OnResizeEvent(u16 code, void* sender, const EventContext& context) const;
+        bool OnResizeEvent(u16 code, void* sender, const EventContext& context);
         bool OnQuitEvent(u16 code, void* sender, const EventContext& context);
 
         bool OnMinimizeEvent(u16 code, void* sender, const EventContext& context);
@@ -73,7 +70,5 @@ namespace C3D
         FrameData m_frameData;
         /** @brief A pointer to the systems manager (just used to ensure we can make macro calls in the engine.cpp). */
         const SystemManager* m_pSystemsManager;
-
-        SDL_Window* m_window = nullptr;
     };
 }  // namespace C3D

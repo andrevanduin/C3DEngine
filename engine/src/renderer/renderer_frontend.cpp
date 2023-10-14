@@ -29,7 +29,6 @@ namespace C3D
         rendererPluginConfig.applicationName = m_config.applicationName;
         rendererPluginConfig.pSystemsManager = m_pSystemsManager;
         rendererPluginConfig.flags           = m_config.flags;
-        rendererPluginConfig.pWindow         = m_config.pWindow;
 
         if (!m_backendPlugin->Init(rendererPluginConfig, &m_windowRenderTargetCount))
         {
@@ -93,11 +92,9 @@ namespace C3D
             // Render each view
             for (auto& viewPacket : packet->views)
             {
-                if (!Views.OnRender(frameData, viewPacket.view, &viewPacket, m_backendPlugin->frameNumber,
-                                    attachmentIndex))
+                if (!Views.OnRender(frameData, viewPacket.view, &viewPacket, m_backendPlugin->frameNumber, attachmentIndex))
                 {
-                    m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.",
-                                   viewPacket.view->GetName());
+                    m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.", viewPacket.view->GetName());
                     return false;
                 }
             }
@@ -123,15 +120,9 @@ namespace C3D
 
     void RenderSystem::SetLineWidth(const float lineWidth) const { m_backendPlugin->SetLineWidth(lineWidth); }
 
-    void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const
-    {
-        m_backendPlugin->CreateTexture(pixels, texture);
-    }
+    void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const { m_backendPlugin->CreateTexture(pixels, texture); }
 
-    void RenderSystem::CreateWritableTexture(Texture* texture) const
-    {
-        m_backendPlugin->CreateWritableTexture(texture);
-    }
+    void RenderSystem::CreateWritableTexture(Texture* texture) const { m_backendPlugin->CreateWritableTexture(texture); }
 
     void RenderSystem::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight) const
     {
@@ -155,9 +146,8 @@ namespace C3D
 
     void RenderSystem::DestroyTexture(Texture* texture) const { m_backendPlugin->DestroyTexture(texture); }
 
-    bool RenderSystem::CreateGeometry(Geometry& geometry, const u32 vertexSize, const u64 vertexCount,
-                                      const void* vertices, const u32 indexSize, const u64 indexCount,
-                                      const void* indices) const
+    bool RenderSystem::CreateGeometry(Geometry& geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
+                                      const u32 indexSize, const u64 indexCount, const void* indices) const
     {
         if (!vertexCount || !vertices || !vertexSize)
         {
@@ -197,8 +187,7 @@ namespace C3D
                                                geometry.indexElementSize * geometry.indexCount);
     }
 
-    void RenderSystem::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount,
-                                              const void* vertices) const
+    void RenderSystem::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) const
     {
         m_backendPlugin->UpdateGeometryVertices(geometry, offset, vertexCount, vertices);
     }
@@ -253,24 +242,17 @@ namespace C3D
         return m_backendPlugin->ReleaseShaderInstanceResources(shader, instanceId);
     }
 
-    bool RenderSystem::AcquireTextureMapResources(TextureMap& map) const
-    {
-        return m_backendPlugin->AcquireTextureMapResources(map);
-    }
+    bool RenderSystem::AcquireTextureMapResources(TextureMap& map) const { return m_backendPlugin->AcquireTextureMapResources(map); }
 
-    void RenderSystem::ReleaseTextureMapResources(TextureMap& map) const
-    {
-        m_backendPlugin->ReleaseTextureMapResources(map);
-    }
+    void RenderSystem::ReleaseTextureMapResources(TextureMap& map) const { m_backendPlugin->ReleaseTextureMapResources(map); }
 
     bool RenderSystem::SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) const
     {
         return m_backendPlugin->SetUniform(shader, uniform, value);
     }
 
-    void RenderSystem::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments,
-                                          RenderPass* pass, const u32 width, const u32 height,
-                                          RenderTarget* outTarget) const
+    void RenderSystem::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width,
+                                          const u32 height, RenderTarget* outTarget) const
     {
         m_backendPlugin->CreateRenderTarget(attachmentCount, attachments, pass, width, height, outTarget);
     }
@@ -284,10 +266,7 @@ namespace C3D
         }
     }
 
-    RenderPass* RenderSystem::CreateRenderPass(const RenderPassConfig& config) const
-    {
-        return m_backendPlugin->CreateRenderPass(config);
-    }
+    RenderPass* RenderSystem::CreateRenderPass(const RenderPassConfig& config) const { return m_backendPlugin->CreateRenderPass(config); }
 
     bool RenderSystem::DestroyRenderPass(RenderPass* pass) const
     {
@@ -299,15 +278,9 @@ namespace C3D
         return m_backendPlugin->DestroyRenderPass(pass);
     }
 
-    Texture* RenderSystem::GetWindowAttachment(const u8 index) const
-    {
-        return m_backendPlugin->GetWindowAttachment(index);
-    }
+    Texture* RenderSystem::GetWindowAttachment(const u8 index) const { return m_backendPlugin->GetWindowAttachment(index); }
 
-    Texture* RenderSystem::GetDepthAttachment(const u8 index) const
-    {
-        return m_backendPlugin->GetDepthAttachment(index);
-    }
+    Texture* RenderSystem::GetDepthAttachment(const u8 index) const { return m_backendPlugin->GetDepthAttachment(index); }
 
     u8 RenderSystem::GetWindowAttachmentIndex() const { return m_backendPlugin->GetWindowAttachmentIndex(); }
 
@@ -319,10 +292,7 @@ namespace C3D
         return m_backendPlugin->CreateRenderBuffer(name, type, totalSize, useFreelist);
     }
 
-    bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const
-    {
-        return m_backendPlugin->DestroyRenderBuffer(buffer);
-    }
+    bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const { return m_backendPlugin->DestroyRenderBuffer(buffer); }
 
     bool RenderSystem::IsMultiThreaded() const { return m_backendPlugin->IsMultiThreaded(); }
 
@@ -331,8 +301,5 @@ namespace C3D
         m_backendPlugin->SetFlagEnabled(flag, enabled);
     }
 
-    bool RenderSystem::IsFlagEnabled(const RendererConfigFlagBits flag) const
-    {
-        return m_backendPlugin->IsFlagEnabled(flag);
-    }
+    bool RenderSystem::IsFlagEnabled(const RendererConfigFlagBits flag) const { return m_backendPlugin->IsFlagEnabled(flag); }
 }  // namespace C3D

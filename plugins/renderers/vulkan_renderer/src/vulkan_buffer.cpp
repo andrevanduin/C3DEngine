@@ -12,35 +12,33 @@
 
 namespace C3D
 {
-    VulkanBuffer::VulkanBuffer(const VulkanContext* context, const String& name)
-        : RenderBuffer(name), m_context(context)
-    {}
+    VulkanBuffer::VulkanBuffer(const VulkanContext* context, const String& name) : RenderBuffer(name), m_context(context) {}
 
     bool VulkanBuffer::Create(const RenderBufferType bufferType, const u64 size, const bool useFreelist)
     {
         if (!RenderBuffer::Create(bufferType, size, useFreelist)) return false;
 
-        const u32 deviceLocalBits =
-            m_context->device.supportsDeviceLocalHostVisible ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : 0;
+        u32 deviceLocalBits = 0;
+        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY_BIT))
+        {
+            deviceLocalBits = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        }
+
         switch (bufferType)
         {
             case RenderBufferType::Vertex:
-                m_usage               = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                                                             VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                m_usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                                              VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
                 m_memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 break;
             case RenderBufferType::Index:
-                m_usage               = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                                                             VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                m_usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                                              VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
                 m_memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 break;
             case RenderBufferType::Uniform:
-                m_usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                                                             VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-                m_memoryPropertyFlags =
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | deviceLocalBits;
+                m_usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+                m_memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | deviceLocalBits;
                 break;
             case RenderBufferType::Staging:
                 m_usage               = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -64,11 +62,13 @@ namespace C3D
         // NOTE: we assume this is only used in one queue
         bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        VK_CHECK(vkCreateBuffer(m_context->device.logicalDevice, &bufferCreateInfo, m_context->allocator, &handle));
+        auto logicalDevice = m_context->device.GetLogical();
+
+        VK_CHECK(vkCreateBuffer(logicalDevice, &bufferCreateInfo, m_context->allocator, &handle));
 
         // Gather memory requirements
-        vkGetBufferMemoryRequirements(m_context->device.logicalDevice, handle, &m_memoryRequirements);
-        m_memoryIndex = m_context->FindMemoryIndex(m_memoryRequirements.memoryTypeBits, m_memoryPropertyFlags);
+        vkGetBufferMemoryRequirements(logicalDevice, handle, &m_memoryRequirements);
+        m_memoryIndex = m_context->device.FindMemoryIndex(m_memoryRequirements.memoryTypeBits, m_memoryPropertyFlags);
         if (m_memoryIndex == -1)
         {
             m_logger.Error("Create() - Unable to create because the required memory type index was not found");
@@ -80,22 +80,19 @@ namespace C3D
         allocateInfo.allocationSize       = m_memoryRequirements.size;
         allocateInfo.memoryTypeIndex      = static_cast<u32>(m_memoryIndex);
 
-        const VkResult result =
-            vkAllocateMemory(m_context->device.logicalDevice, &allocateInfo, m_context->allocator, &m_memory);
+        const VkResult result = vkAllocateMemory(logicalDevice, &allocateInfo, m_context->allocator, &m_memory);
 
         // Determine if memory is on device heap.
         const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         const auto memSize        = m_memoryRequirements.size;
         // Report memory as in-use
-        MetricsAllocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, memSize, memSize,
-                        m_memory);
+        MetricsAllocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, memSize, memSize, m_memory);
 
         VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_DEVICE_MEMORY, m_memory, m_name);
 
         if (result != VK_SUCCESS)
         {
-            m_logger.Error("Create() - Unable to create because the required memory allocation failed. Error: {}",
-                           result);
+            m_logger.Error("Create() - Unable to create because the required memory allocation failed. Error: {}", result);
             return false;
         }
 
@@ -111,16 +108,17 @@ namespace C3D
         MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, m_memoryRequirements.size,
                     m_memoryRequirements.size, m_memory);
 
-        vkDeviceWaitIdle(m_context->device.logicalDevice);
+        m_context->device.WaitIdle();
 
+        auto logicalDevice = m_context->device.GetLogical();
         if (m_memory)
         {
-            vkFreeMemory(m_context->device.logicalDevice, m_memory, m_context->allocator);
+            vkFreeMemory(logicalDevice, m_memory, m_context->allocator);
             m_memory = nullptr;
         }
         if (handle)
         {
-            vkDestroyBuffer(m_context->device.logicalDevice, handle, m_context->allocator);
+            vkDestroyBuffer(logicalDevice, handle, m_context->allocator);
             handle = nullptr;
         }
 
@@ -133,21 +131,18 @@ namespace C3D
 
     bool VulkanBuffer::Bind(const u64 offset)
     {
-        VK_CHECK(vkBindBufferMemory(m_context->device.logicalDevice, handle, m_memory, offset));
+        VK_CHECK(vkBindBufferMemory(m_context->device.GetLogical(), handle, m_memory, offset));
         return true;
     }
 
     void* VulkanBuffer::MapMemory(const u64 offset, const u64 size)
     {
         void* data;
-        VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, offset, size, 0, &data));
+        VK_CHECK(vkMapMemory(m_context->device.GetLogical(), m_memory, offset, size, 0, &data));
         return data;
     }
 
-    void VulkanBuffer::UnMapMemory(const u64 offset, u64 size)
-    {
-        vkUnmapMemory(m_context->device.logicalDevice, m_memory);
-    }
+    void VulkanBuffer::UnMapMemory(const u64 offset, u64 size) { vkUnmapMemory(m_context->device.GetLogical(), m_memory); }
 
     bool VulkanBuffer::Flush(const u64 offset, const u64 size)
     {
@@ -157,7 +152,7 @@ namespace C3D
             range.memory              = m_memory;
             range.offset              = offset;
             range.size                = size;
-            VK_CHECK(vkFlushMappedMemoryRanges(m_context->device.logicalDevice, 1, &range));
+            VK_CHECK(vkFlushMappedMemoryRanges(m_context->device.GetLogical(), 1, &range));
         }
         return true;
     }
@@ -169,14 +164,17 @@ namespace C3D
         VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
         bufferCreateInfo.size               = newSize;
         bufferCreateInfo.usage              = m_usage;
-        bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;  // NOTE: We assume this is used only in one queue
+        // NOTE: We assume this is used only in one queue
+        bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        auto logicalDevice = m_context->device.GetLogical();
 
         VkBuffer newBuffer;
-        VK_CHECK(vkCreateBuffer(m_context->device.logicalDevice, &bufferCreateInfo, m_context->allocator, &newBuffer));
+        VK_CHECK(vkCreateBuffer(logicalDevice, &bufferCreateInfo, m_context->allocator, &newBuffer));
 
         // Gather memory requirements
         VkMemoryRequirements requirements;
-        vkGetBufferMemoryRequirements(m_context->device.logicalDevice, newBuffer, &requirements);
+        vkGetBufferMemoryRequirements(logicalDevice, newBuffer, &requirements);
 
         // Allocate memory info
         VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
@@ -185,25 +183,23 @@ namespace C3D
 
         // Allocate the memory
         VkDeviceMemory newMemory;
-        const VkResult result =
-            vkAllocateMemory(m_context->device.logicalDevice, &allocateInfo, m_context->allocator, &newMemory);
+        const VkResult result = vkAllocateMemory(logicalDevice, &allocateInfo, m_context->allocator, &newMemory);
         if (result != VK_SUCCESS)
         {
-            m_logger.Error("Resize() - Unable to resize because the required memory allocation failed. Error: {}",
-                           result);
+            m_logger.Error("Resize() - Unable to resize because the required memory allocation failed. Error: {}", result);
             return false;
         }
 
         VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_DEVICE_MEMORY, newMemory, m_name);
 
         // Bind the new buffer's memory
-        VK_CHECK(vkBindBufferMemory(m_context->device.logicalDevice, newBuffer, newMemory, 0));
+        VK_CHECK(vkBindBufferMemory(logicalDevice, newBuffer, newMemory, 0));
 
         // Copy over the data
         CopyRangeInternal(0, newBuffer, 0, totalSize);
 
         // Make sure anything potentially using these is finished
-        vkDeviceWaitIdle(m_context->device.logicalDevice);
+        m_context->device.WaitIdle();
 
         // Determine if memory is on device heap.
         const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -215,12 +211,12 @@ namespace C3D
         // Destroy the old buffer
         if (m_memory)
         {
-            vkFreeMemory(m_context->device.logicalDevice, m_memory, m_context->allocator);
+            vkFreeMemory(logicalDevice, m_memory, m_context->allocator);
             m_memory = nullptr;
         }
         if (handle)
         {
-            vkDestroyBuffer(m_context->device.logicalDevice, handle, m_context->allocator);
+            vkDestroyBuffer(logicalDevice, handle, m_context->allocator);
             handle = nullptr;
         }
 
@@ -262,12 +258,14 @@ namespace C3D
             // Perform the copy from device local to the read buffer
             CopyRange(offset, &read, 0, size);
 
+            auto logicalDevice = m_context->device.GetLogical();
+
             // Map, copy and unmap
             void* mappedData;
-            VK_CHECK(vkMapMemory(m_context->device.logicalDevice, read.m_memory, 0, size, 0, &mappedData));
+            VK_CHECK(vkMapMemory(logicalDevice, read.m_memory, 0, size, 0, &mappedData));
             std::memcpy(*outMemory, mappedData, size);
 
-            vkUnmapMemory(m_context->device.logicalDevice, read.m_memory);
+            vkUnmapMemory(logicalDevice, read.m_memory);
 
             // Cleanup the read buffer
             read.Unbind();
@@ -276,10 +274,12 @@ namespace C3D
         else
         {
             // We don't need a read buffer can just directly map, copy and unmap
+            auto logicalDevice = m_context->device.GetLogical();
+
             void* mappedData;
-            VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, 0, size, 0, &mappedData));
+            VK_CHECK(vkMapMemory(logicalDevice, m_memory, 0, size, 0, &mappedData));
             std::memcpy(*outMemory, mappedData, size);
-            vkUnmapMemory(m_context->device.logicalDevice, m_memory);
+            vkUnmapMemory(logicalDevice, m_memory);
         }
 
         return true;
@@ -321,10 +321,12 @@ namespace C3D
         else
         {
             // If we don't need a staging buffer we just map, copy and unmap directly
+            auto logicalDevice = m_context->device.GetLogical();
+
             void* mappedData;
-            VK_CHECK(vkMapMemory(m_context->device.logicalDevice, m_memory, offset, size, 0, &mappedData));
+            VK_CHECK(vkMapMemory(logicalDevice, m_memory, offset, size, 0, &mappedData));
             std::memcpy(mappedData, data, size);
-            vkUnmapMemory(m_context->device.logicalDevice, m_memory);
+            vkUnmapMemory(logicalDevice, m_memory);
         }
 
         return true;
@@ -375,15 +377,16 @@ namespace C3D
 
     bool VulkanBuffer::IsHostCoherent() const { return m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; }
 
-    bool VulkanBuffer::CopyRangeInternal(const u64 srcOffset, const VkBuffer dst, const u64 dstOffset,
-                                         const u64 size) const
+    bool VulkanBuffer::CopyRangeInternal(const u64 srcOffset, const VkBuffer dst, const u64 dstOffset, const u64 size) const
     {
         // TODO: Assuming queue and pool usage here. Might want dedicated queue.
-        VkQueue queue = m_context->device.graphicsQueue;
+        auto graphicsCommandPool = m_context->device.GetGraphicsCommandPool();
+        auto queue               = m_context->device.GetGraphicsQueue();
+
         vkQueueWaitIdle(queue);
         // Create a one-time-use command buffer.
         VulkanCommandBuffer tempCommandBuffer;
-        tempCommandBuffer.AllocateAndBeginSingleUse(m_context, m_context->device.graphicsCommandPool);
+        tempCommandBuffer.AllocateAndBeginSingleUse(m_context, graphicsCommandPool);
 
         // Prepare the copy command and add it to the command buffer.
         VkBufferCopy copyRegion;
@@ -393,7 +396,7 @@ namespace C3D
         vkCmdCopyBuffer(tempCommandBuffer.handle, handle, dst, 1, &copyRegion);
 
         // Submit the buffer for execution and wait for it to complete.
-        tempCommandBuffer.EndSingleUse(m_context, m_context->device.graphicsCommandPool, queue);
+        tempCommandBuffer.EndSingleUse(m_context, graphicsCommandPool, queue);
 
         return true;
     }

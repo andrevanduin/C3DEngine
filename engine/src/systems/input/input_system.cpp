@@ -10,11 +10,7 @@
 namespace C3D
 {
     InputSystem::InputSystem(const SystemManager* pSystemsManager)
-        : BaseSystem(pSystemsManager, "INPUT"),
-          m_keyboardCurrent(),
-          m_keyboardPrevious(),
-          m_mouseCurrent(),
-          m_mousePrevious()
+        : BaseSystem(pSystemsManager, "INPUT"), m_keyboardCurrent(), m_keyboardPrevious(), m_mouseCurrent(), m_mousePrevious()
     {}
 
     void InputSystem::Update(const FrameData& frameData)
@@ -25,49 +21,11 @@ namespace C3D
         m_mousePrevious    = m_mouseCurrent;
     }
 
-    void InputSystem::ProcessKey(const SDL_Keycode sdlKey, const InputState state)
+    void InputSystem::ProcessKey(const Keys key, const InputState state)
     {
-        u16 key;
-        switch (sdlKey)
-        {
-            case SDLK_UP:
-                key = KeyArrowUp;
-                break;
-            case SDLK_DOWN:
-                key = KeyArrowDown;
-                break;
-            case SDLK_LEFT:
-                key = KeyArrowLeft;
-                break;
-            case SDLK_RIGHT:
-                key = KeyArrowRight;
-                break;
-            case SDLK_LALT:
-                key = KeyLAlt;
-                break;
-            case SDLK_RALT:
-                key = KeyRAlt;
-                break;
-            case SDLK_LSHIFT:
-                key = KeyLShift;
-                break;
-            case SDLK_RSHIFT:
-                key = KeyRShift;
-                break;
-            case SDLK_LCTRL:
-                key = KeyLControl;
-                break;
-            case SDLK_RCTRL:
-                key = KeyRControl;
-                break;
-            default:
-                key = static_cast<u16>(sdlKey);
-                break;
-        }
-
         if (key >= Keys::MaxKeys)
         {
-            m_logger.Warn("Key{} keycode was larger than expected {}", state == InputState::Down ? "Down" : "Up", key);
+            m_logger.Warn("Key{} keycode was larger than expected '{}'.", state == InputState::Down ? "Down" : "Up", ToUnderlying(key));
             return;
         }
 
@@ -145,10 +103,10 @@ namespace C3D
         }
     }
 
-    void InputSystem::ProcessMouseMove(const i32 sdlX, const i32 sdlY)
+    void InputSystem::ProcessMouseMove(const i32 xPos, const i32 yPos)
     {
-        const auto x = static_cast<i16>(sdlX);
-        const auto y = static_cast<i16>(sdlY);
+        const auto x = static_cast<i16>(xPos);
+        const auto y = static_cast<i16>(yPos);
 
         if (m_mouseCurrent.x != x || m_mouseCurrent.y != y)
         {
@@ -185,8 +143,7 @@ namespace C3D
     bool InputSystem::IsKeyPressed(const u8 key) const
     {
         if (!m_initialized) return false;
-        return m_keyboardCurrent.keys[key].state == InputState::Down &&
-               m_keyboardPrevious.keys[key].state == InputState::Up;
+        return m_keyboardCurrent.keys[key].state == InputState::Down && m_keyboardPrevious.keys[key].state == InputState::Up;
     }
 
     bool InputSystem::WasKeyDown(const u8 key) const
@@ -216,8 +173,7 @@ namespace C3D
     bool InputSystem::IsButtonPressed(const Buttons button) const
     {
         if (!m_initialized) return false;
-        return m_mouseCurrent.buttons[button].state == InputState::Down &&
-               m_mousePrevious.buttons[button].state == InputState::Up;
+        return m_mouseCurrent.buttons[button].state == InputState::Down && m_mousePrevious.buttons[button].state == InputState::Up;
     }
 
     bool InputSystem::WasButtonDown(const Buttons button) const
@@ -235,8 +191,7 @@ namespace C3D
     bool InputSystem::IsShiftHeld() const
     {
         if (!m_initialized) return false;
-        return m_keyboardCurrent.keys[KeyShift].state > InputState::Up ||
-               m_keyboardCurrent.keys[KeyLShift].state > InputState::Up ||
+        return m_keyboardCurrent.keys[KeyShift].state > InputState::Up || m_keyboardCurrent.keys[KeyLShift].state > InputState::Up ||
                m_keyboardCurrent.keys[KeyRShift].state > InputState::Up;
     }
 

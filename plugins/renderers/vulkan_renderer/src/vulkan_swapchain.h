@@ -14,18 +14,15 @@ namespace C3D
     class VulkanSwapChain
     {
     public:
-        void Create(const SystemManager* pSystemsManager, VulkanContext* context, u32 width, u32 height,
-                    RendererConfigFlags flags);
+        void Create(const SystemManager* pSystemsManager, const VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
-        void Recreate(VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
+        void Recreate(u32 width, u32 height, RendererConfigFlags flags);
 
-        void Destroy(const VulkanContext* context);
+        void Destroy();
 
-        bool AcquireNextImageIndex(VulkanContext* context, u64 timeoutNs, VkSemaphore imageAvailableSemaphore,
-                                   VkFence fence, u32* outImageIndex);
+        bool AcquireNextImageIndex(u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex);
 
-        void Present(VulkanContext* context, VkQueue presentQueue, VkSemaphore renderCompleteSemaphore,
-                     u32 presentImageIndex);
+        void Present(VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, u32 presentImageIndex);
 
         VkSwapchainKHR handle = nullptr;
 
@@ -42,16 +39,17 @@ namespace C3D
         RenderTarget renderTargets[3] = {};
 
     private:
-        void CreateInternal(const SystemManager* pSystemsManager, VulkanContext* context, u32 width, u32 height,
-                            RendererConfigFlags flags);
+        void CreateInternal(u32 width, u32 height, RendererConfigFlags flags);
 
-        void DestroyInternal(const VulkanContext* context) const;
+        void DestroyInternal() const;
 
-        VkPresentModeKHR GetPresentMode(const VulkanContext* context) const;
+        VkPresentModeKHR GetPresentMode() const;
+        VkSurfaceFormatKHR GetSurfaceFormat() const;
 
         RendererConfigFlags m_flags = 0;
         VkPresentModeKHR m_presentMode;
 
         const SystemManager* m_pSystemsManager = nullptr;
+        const VulkanContext* m_context         = nullptr;
     };
 }  // namespace C3D

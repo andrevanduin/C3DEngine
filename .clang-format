@@ -16,7 +16,7 @@ NamespaceIndentation: All
 UseTab: Never
 AccessModifierOffset: -4
 Language: Cpp
-ColumnLimit: 120
+ColumnLimit: 140
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: Consecutive
 AllowAllArgumentsOnNextLine: true

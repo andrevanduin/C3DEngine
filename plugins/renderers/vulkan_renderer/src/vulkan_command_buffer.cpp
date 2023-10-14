@@ -9,26 +9,25 @@ namespace C3D
     {
         VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
         allocateInfo.commandPool                 = pool;
-        allocateInfo.level = isPrimary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-        allocateInfo.commandBufferCount = 1;
-        allocateInfo.pNext              = nullptr;
+        allocateInfo.level                       = isPrimary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+        allocateInfo.commandBufferCount          = 1;
+        allocateInfo.pNext                       = nullptr;
 
         state = VulkanCommandBufferState::NotAllocated;
-        VK_CHECK(vkAllocateCommandBuffers(context->device.logicalDevice, &allocateInfo, &handle));
+        VK_CHECK(vkAllocateCommandBuffers(context->device.GetLogical(), &allocateInfo, &handle));
 
         state = VulkanCommandBufferState::Ready;
     }
 
     void VulkanCommandBuffer::Free(const VulkanContext* context, VkCommandPool pool)
     {
-        vkFreeCommandBuffers(context->device.logicalDevice, pool, 1, &handle);
+        vkFreeCommandBuffers(context->device.GetLogical(), pool, 1, &handle);
 
         handle = nullptr;
         state  = VulkanCommandBufferState::NotAllocated;
     }
 
-    void VulkanCommandBuffer::Begin(const bool isSingleUse, const bool isRenderPassContinue,
-                                    const bool isSimultaneousUse)
+    void VulkanCommandBuffer::Begin(const bool isSingleUse, const bool isRenderPassContinue, const bool isSimultaneousUse)
     {
         VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
         beginInfo.flags                    = 0;

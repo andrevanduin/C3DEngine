@@ -14,9 +14,6 @@ target_compile_options(C3DEngine PRIVATE /EHsc /wd4002)
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(C3DEngine PUBLIC spdlog::spdlog spdlog::spdlog_header_only)
 
-find_package(SDL2 CONFIG REQUIRED)
-target_link_libraries(C3DEngine PRIVATE SDL2::SDL2 SDL2::SDL2main)
-
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(C3DEngine PRIVATE glm::glm)
 

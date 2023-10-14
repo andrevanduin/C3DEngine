@@ -1,8 +1,6 @@
 
 #include "vulkan_utils.h"
 
-#include <vendor/VkBootstrap/VkBootstrap.h>
-
 namespace C3D
 {
     bool VulkanUtils::IsSuccess(const VkResult result)
@@ -67,8 +65,7 @@ namespace C3D
             case VK_NOT_READY:
                 return !getExtended ? "VK_NOT_READY" : "VK_NOT_READY A fence or query has not yet completed";
             case VK_TIMEOUT:
-                return !getExtended ? "VK_TIMEOUT"
-                                    : "VK_TIMEOUT A wait operation has not completed in the specified time";
+                return !getExtended ? "VK_TIMEOUT" : "VK_TIMEOUT A wait operation has not completed in the specified time";
             case VK_EVENT_SET:
                 return !getExtended ? "VK_EVENT_SET" : "VK_EVENT_SET An event is signaled";
             case VK_EVENT_RESET:
@@ -96,15 +93,13 @@ namespace C3D
                                     : "VK_OPERATION_NOT_DEFERRED_KHR A deferred operation was requested and no "
                                       "operations were deferred.";
             case VK_PIPELINE_COMPILE_REQUIRED_EXT:
-                return !getExtended
-                           ? "VK_PIPELINE_COMPILE_REQUIRED_EXT"
-                           : "VK_PIPELINE_COMPILE_REQUIRED_EXT A requested pipeline creation would have required "
-                             "compilation, but the application requested compilation to not be performed.";
+                return !getExtended ? "VK_PIPELINE_COMPILE_REQUIRED_EXT"
+                                    : "VK_PIPELINE_COMPILE_REQUIRED_EXT A requested pipeline creation would have required "
+                                      "compilation, but the application requested compilation to not be performed.";
 
                 // Error codes
             case VK_ERROR_OUT_OF_HOST_MEMORY:
-                return !getExtended ? "VK_ERROR_OUT_OF_HOST_MEMORY"
-                                    : "VK_ERROR_OUT_OF_HOST_MEMORY A host memory allocation has failed.";
+                return !getExtended ? "VK_ERROR_OUT_OF_HOST_MEMORY" : "VK_ERROR_OUT_OF_HOST_MEMORY A host memory allocation has failed.";
             case VK_ERROR_OUT_OF_DEVICE_MEMORY:
                 return !getExtended ? "VK_ERROR_OUT_OF_DEVICE_MEMORY"
                                     : "VK_ERROR_OUT_OF_DEVICE_MEMORY A device memory allocation has failed.";
@@ -113,45 +108,37 @@ namespace C3D
                                     : "VK_ERROR_INITIALIZATION_FAILED Initialization of an object could not be "
                                       "completed for implementation-specific reasons.";
             case VK_ERROR_DEVICE_LOST:
-                return !getExtended
-                           ? "VK_ERROR_DEVICE_LOST"
-                           : "VK_ERROR_DEVICE_LOST The logical or physical device has been lost. See Lost Device";
+                return !getExtended ? "VK_ERROR_DEVICE_LOST"
+                                    : "VK_ERROR_DEVICE_LOST The logical or physical device has been lost. See Lost Device";
             case VK_ERROR_MEMORY_MAP_FAILED:
-                return !getExtended ? "VK_ERROR_MEMORY_MAP_FAILED"
-                                    : "VK_ERROR_MEMORY_MAP_FAILED Mapping of a memory object has failed.";
+                return !getExtended ? "VK_ERROR_MEMORY_MAP_FAILED" : "VK_ERROR_MEMORY_MAP_FAILED Mapping of a memory object has failed.";
             case VK_ERROR_LAYER_NOT_PRESENT:
-                return !getExtended
-                           ? "VK_ERROR_LAYER_NOT_PRESENT"
-                           : "VK_ERROR_LAYER_NOT_PRESENT A requested layer is not present or could not be loaded.";
+                return !getExtended ? "VK_ERROR_LAYER_NOT_PRESENT"
+                                    : "VK_ERROR_LAYER_NOT_PRESENT A requested layer is not present or could not be loaded.";
             case VK_ERROR_EXTENSION_NOT_PRESENT:
                 return !getExtended ? "VK_ERROR_EXTENSION_NOT_PRESENT"
                                     : "VK_ERROR_EXTENSION_NOT_PRESENT A requested extension is not supported.";
             case VK_ERROR_FEATURE_NOT_PRESENT:
-                return !getExtended ? "VK_ERROR_FEATURE_NOT_PRESENT"
-                                    : "VK_ERROR_FEATURE_NOT_PRESENT A requested feature is not supported.";
+                return !getExtended ? "VK_ERROR_FEATURE_NOT_PRESENT" : "VK_ERROR_FEATURE_NOT_PRESENT A requested feature is not supported.";
             case VK_ERROR_INCOMPATIBLE_DRIVER:
                 return !getExtended ? "VK_ERROR_INCOMPATIBLE_DRIVER"
                                     : "VK_ERROR_INCOMPATIBLE_DRIVER The requested version of Vulkan is not supported "
                                       "by the driver or is otherwise incompatible for implementation-specific reasons.";
             case VK_ERROR_TOO_MANY_OBJECTS:
-                return !getExtended
-                           ? "VK_ERROR_TOO_MANY_OBJECTS"
-                           : "VK_ERROR_TOO_MANY_OBJECTS Too many objects of the type have already been created.";
+                return !getExtended ? "VK_ERROR_TOO_MANY_OBJECTS"
+                                    : "VK_ERROR_TOO_MANY_OBJECTS Too many objects of the type have already been created.";
             case VK_ERROR_FORMAT_NOT_SUPPORTED:
-                return !getExtended
-                           ? "VK_ERROR_FORMAT_NOT_SUPPORTED"
-                           : "VK_ERROR_FORMAT_NOT_SUPPORTED A requested format is not supported on this device.";
+                return !getExtended ? "VK_ERROR_FORMAT_NOT_SUPPORTED"
+                                    : "VK_ERROR_FORMAT_NOT_SUPPORTED A requested format is not supported on this device.";
             case VK_ERROR_FRAGMENTED_POOL:
-                return !getExtended
-                           ? "VK_ERROR_FRAGMENTED_POOL"
-                           : "VK_ERROR_FRAGMENTED_POOL A pool allocation has failed due to fragmentation of the pool's "
-                             "memory. This must only be returned if no attempt to allocate host or device memory was "
-                             "made to accommodate the new allocation. This should be returned in preference to "
-                             "VK_ERROR_OUT_OF_POOL_MEMORY, but only if the implementation is certain that the pool "
-                             "allocation failure was due to fragmentation.";
+                return !getExtended ? "VK_ERROR_FRAGMENTED_POOL"
+                                    : "VK_ERROR_FRAGMENTED_POOL A pool allocation has failed due to fragmentation of the pool's "
+                                      "memory. This must only be returned if no attempt to allocate host or device memory was "
+                                      "made to accommodate the new allocation. This should be returned in preference to "
+                                      "VK_ERROR_OUT_OF_POOL_MEMORY, but only if the implementation is certain that the pool "
+                                      "allocation failure was due to fragmentation.";
             case VK_ERROR_SURFACE_LOST_KHR:
-                return !getExtended ? "VK_ERROR_SURFACE_LOST_KHR"
-                                    : "VK_ERROR_SURFACE_LOST_KHR A surface is no longer available.";
+                return !getExtended ? "VK_ERROR_SURFACE_LOST_KHR" : "VK_ERROR_SURFACE_LOST_KHR A surface is no longer available.";
             case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
                 return !getExtended ? "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR"
                                     : "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR The requested window is already in use by "
@@ -163,15 +150,13 @@ namespace C3D
                                       "the swapchain will fail. Applications must query the new surface properties and "
                                       "recreate their swapchain if they wish to continue presenting to the surface.";
             case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
-                return !getExtended
-                           ? "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR"
-                           : "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR The display used by a swapchain does not use the same "
-                             "presentable image layout, or is incompatible in a way that prevents sharing an image.";
+                return !getExtended ? "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR"
+                                    : "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR The display used by a swapchain does not use the same "
+                                      "presentable image layout, or is incompatible in a way that prevents sharing an image.";
             case VK_ERROR_INVALID_SHADER_NV:
-                return !getExtended
-                           ? "VK_ERROR_INVALID_SHADER_NV"
-                           : "VK_ERROR_INVALID_SHADER_NV One or more shaders failed to compile or link. More details "
-                             "are reported back to the application via VK_EXT_debug_report if enabled.";
+                return !getExtended ? "VK_ERROR_INVALID_SHADER_NV"
+                                    : "VK_ERROR_INVALID_SHADER_NV One or more shaders failed to compile or link. More details "
+                                      "are reported back to the application via VK_EXT_debug_report if enabled.";
             case VK_ERROR_OUT_OF_POOL_MEMORY:
                 return !getExtended ? "VK_ERROR_OUT_OF_POOL_MEMORY"
                                     : "VK_ERROR_OUT_OF_POOL_MEMORY A pool memory allocation has failed. This must only "
@@ -183,9 +168,8 @@ namespace C3D
                                     : "VK_ERROR_INVALID_EXTERNAL_HANDLE An external handle is not a valid handle of "
                                       "the specified type.";
             case VK_ERROR_FRAGMENTATION:
-                return !getExtended
-                           ? "VK_ERROR_FRAGMENTATION"
-                           : "VK_ERROR_FRAGMENTATION A descriptor pool creation has failed due to fragmentation.";
+                return !getExtended ? "VK_ERROR_FRAGMENTATION"
+                                    : "VK_ERROR_FRAGMENTATION A descriptor pool creation has failed due to fragmentation.";
             case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:
                 return !getExtended ? "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT"
                                     : "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT A buffer creation failed because the "
@@ -211,11 +195,23 @@ namespace C3D
     }
 
 #if defined(_DEBUG)
+    const char* VulkanUtils::VkMessageTypeToString(const VkDebugUtilsMessageTypeFlagsEXT s)
+    {
+        if (s == 7) return "General | Validation | Performance";
+        if (s == 6) return "Validation | Performance";
+        if (s == 5) return "General | Performance";
+        if (s == 4) return "Performance";
+        if (s == 3) return "General | Validation";
+        if (s == 2) return "Validation";
+        if (s == 1) return "General";
+        return "Unknown";
+    }
+
     VkBool32 VulkanUtils::VkDebugLog(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                     const VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                     const VkDebugUtilsMessageTypeFlagsEXT messageTypes,
                                      const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*)
     {
-        auto type = vkb::to_string_message_type(messageType);
+        auto type = VkMessageTypeToString(messageTypes);
         if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
         {
             Logger::Trace("[{}] {}", type, pCallbackData->pMessage);
@@ -236,37 +232,30 @@ namespace C3D
         return VK_FALSE;
     }
 
-    void VulkanUtils::SetDebugObjectName(const VulkanContext* context, VkObjectType type, void* handle,
-                                         const String& name)
+    void VulkanUtils::SetDebugObjectName(const VulkanContext* context, VkObjectType type, void* handle, const String& name)
     {
-        const VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, nullptr,
-                                                         type, reinterpret_cast<uint64_t>(handle), name.Data() };
+        const VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, nullptr, type,
+                                                         reinterpret_cast<uint64_t>(handle), name.Data() };
 
         if (context->pfnSetDebugUtilsObjectNameEXT)
         {
-            VK_CHECK(context->pfnSetDebugUtilsObjectNameEXT(context->device.logicalDevice, &nameInfo));
+            VK_CHECK(context->pfnSetDebugUtilsObjectNameEXT(context->device.GetLogical(), &nameInfo));
         };
     }
 
-    void VulkanUtils::SetDebugObjectTag(const VulkanContext* context, VkObjectType type, void* handle, u64 tagSize,
-                                        const void* tagData)
+    void VulkanUtils::SetDebugObjectTag(const VulkanContext* context, VkObjectType type, void* handle, u64 tagSize, const void* tagData)
     {
-        const VkDebugUtilsObjectTagInfoEXT tagInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT,
-                                                       nullptr,
-                                                       type,
-                                                       reinterpret_cast<uint64_t>(handle),
-                                                       0,
-                                                       tagSize,
-                                                       tagData };
+        const VkDebugUtilsObjectTagInfoEXT tagInfo = {
+            VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT, nullptr, type, reinterpret_cast<uint64_t>(handle), 0, tagSize, tagData
+        };
 
         if (context->pfnSetDebugUtilsObjectTagEXT)
         {
-            VK_CHECK(context->pfnSetDebugUtilsObjectTagEXT(context->device.logicalDevice, &tagInfo));
+            VK_CHECK(context->pfnSetDebugUtilsObjectTagEXT(context->device.GetLogical(), &tagInfo));
         }
     }
 
-    void VulkanUtils::BeginCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer, const String& label,
-                                         const vec4& color)
+    void VulkanUtils::BeginCmdDebugLabel(const VulkanContext* context, VkCommandBuffer buffer, const String& label, const vec4& color)
     {
         VkDebugUtilsLabelEXT labelInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, nullptr, label.Data() };
         std::memcpy(labelInfo.color, &color, sizeof(f32) * 4);

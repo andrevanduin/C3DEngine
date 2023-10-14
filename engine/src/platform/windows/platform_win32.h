@@ -7,7 +7,9 @@
 #undef Resources
 #undef Event
 
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <windowsx.h> // param input extraction
 
 // Undef Windows macros that cause issues with C3D Engine
 #undef CopyFile
@@ -20,7 +22,7 @@
 
 #include "containers/string.h"
 #include "core/defines.h"
-#include "platform_base.h"
+#include "platform/platform_base.h"
 #include "systems/system.h"
 
 namespace C3D
@@ -41,15 +43,22 @@ namespace C3D
         FILETIME lastWriteTime;
     };
 
-    class C3D_API Platform final : public BaseSystem
+    class C3D_API Platform final : public SystemWithConfig<PlatformSystemConfig>
     {
     public:
         Platform();
         explicit Platform(const SystemManager* pSystemsManager);
 
-        bool Init() override;
+        bool Init(const PlatformSystemConfig& config) override;
 
         void Shutdown() override;
+
+        /**
+         * @brief Performs message pumping which is required to handle windowing and other events OS events.
+         *
+         * @return True when successful, otherwise false
+         */
+        bool PumpMessages();
 
         /**
          * @brief Copies a file from source to dest
@@ -89,6 +98,8 @@ namespace C3D
          * @return f64 The system's absolute time
          */
         [[nodiscard]] f64 GetAbsoluteTime() const;
+
+        const Win32HandleInfo& GetHandleInfo() const { return m_handle; }
 
         /**
          * @brief Sleeps the current thread for the provided amount of ms
@@ -145,7 +156,7 @@ namespace C3D
                 return nullptr;
             }
 
-            const auto library = static_cast<HMODULE>(libraryData);
+            const auto library        = static_cast<HMODULE>(libraryData);
             const FARPROC funcAddress = GetProcAddress(library, name);
             if (!funcAddress)
             {
@@ -171,13 +182,21 @@ namespace C3D
          */
         constexpr static DynamicLibraryExtension GetDynamicLibraryExtension() { return ".dll"; }
 
+        static LRESULT CALLBACK StaticProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM lParam);
+        LRESULT CALLBACK ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM lParam);
+
     private:
         static std::string GetLastErrorMsg();
 
-        f64 m_clockFrequency;
-        u64 m_startTime;
+        f64 m_clockFrequency = 0.0;
+        u64 m_startTime      = 0;
 
         DynamicArray<Win32FileWatch> m_fileWatches;
+
+        CONSOLE_SCREEN_BUFFER_INFO m_stdOutputConsoleScreenBufferInfo;
+        CONSOLE_SCREEN_BUFFER_INFO m_stdErrorConsoleScreenBufferInfo;
+
+        Win32HandleInfo m_handle;
     };
 }  // namespace C3D
 #endif

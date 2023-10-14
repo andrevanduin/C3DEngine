@@ -16,7 +16,7 @@ namespace C3D
 
     enum InputState : u8
     {
-        Up = 0,
+        Up   = 0,
         Down = 1,
         Held = 2
     };
@@ -46,9 +46,9 @@ namespace C3D
 
         void Update(const FrameData& frameData) override;
 
-        void ProcessKey(SDL_Keycode sdlKey, InputState state);
+        void ProcessKey(Keys key, InputState state);
         void ProcessButton(u8 button, InputState state);
-        void ProcessMouseMove(i32 sdlX, i32 sdlY);
+        void ProcessMouseMove(i32 xPos, i32 yPos);
         void ProcessMouseWheel(i32 delta) const;
 
         C3D_API [[nodiscard]] bool IsKeyDown(u8 key) const;

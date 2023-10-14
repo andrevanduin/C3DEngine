@@ -12,8 +12,8 @@ namespace C3D
      * @brief Implementation of PFN_vkAllocationFunction
      * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkAllocationFunction.html
      */
-    void* VulkanAllocatorAllocate(void* userData, const size_t size, const size_t alignment,
-                                  const VkSystemAllocationScope allocationScope)
+    void* VulkanAllocator::Allocate(void* userData, const size_t size, const size_t alignment,
+                                    const VkSystemAllocationScope allocationScope)
     {
         // The spec states that we should return nullptr if size == 0
         if (size == 0) return nullptr;
@@ -30,7 +30,7 @@ namespace C3D
      * @brief Implementation of PFN_vkFreeFunction
      * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkFreeFunction.html
      */
-    void VulkanAllocatorFree(void* userData, void* memory)
+    void VulkanAllocator::Free(void* userData, void* memory)
     {
         if (!memory)
         {
@@ -59,13 +59,13 @@ namespace C3D
      * @brief Implementation of PFN_vkReallocationFunction
      * @link https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkReallocationFunction.html
      */
-    void* VulkanAllocatorReallocate(void* userData, void* original, const size_t size, const size_t alignment,
-                                    const VkSystemAllocationScope allocationScope)
+    void* VulkanAllocator::Reallocate(void* userData, void* original, const size_t size, const size_t alignment,
+                                      const VkSystemAllocationScope allocationScope)
     {
         // The spec states that we should do an simple allocation if original is nullptr
         if (!original)
         {
-            return VulkanAllocatorAllocate(userData, size, alignment, allocationScope);
+            return Allocate(userData, size, alignment, allocationScope);
         }
 
         // The spec states that we should return nullptr if size == 0
@@ -75,8 +75,7 @@ namespace C3D
         u16 allocAlignment;
         if (!Memory.GetSizeAlignment(original, &allocSize, &allocAlignment))
         {
-            Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.",
-                          fmt::ptr(original));
+            Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.", fmt::ptr(original));
             return nullptr;
         }
 
@@ -94,7 +93,7 @@ namespace C3D
         Logger::Trace("[VULKAN_REALLOCATE] - Reallocating block: {}", fmt::ptr(original));
 #endif
 
-        void* result = VulkanAllocatorAllocate(userData, size, alignment, allocationScope);
+        void* result = Allocate(userData, size, alignment, allocationScope);
         if (result)
         {
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
@@ -121,8 +120,8 @@ namespace C3D
      * @link
      * https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkInternalAllocationNotification.html
      */
-    void VulkanAllocatorInternalAllocation(void* userData, size_t size, VkInternalAllocationType allocationType,
-                                           VkSystemAllocationScope allocationScope)
+    void VulkanAllocator::InternalAllocation(void* userData, size_t size, VkInternalAllocationType allocationType,
+                                             VkSystemAllocationScope allocationScope)
     {
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
         Logger::Trace("[VULKAN_EXTERNAL_ALLOCATE] - Allocation of size {}.", size);
@@ -135,8 +134,8 @@ namespace C3D
      * @link
      * https://www.khronos.org/registry/vulkan/specs/1.3-extensions/man/html/PFN_vkInternalAllocationNotification.html
      */
-    void VulkanAllocatorInternalFree(void* userData, size_t size, VkInternalAllocationType allocationType,
-                                     VkSystemAllocationScope allocationScope)
+    void VulkanAllocator::InternalFree(void* userData, size_t size, VkInternalAllocationType allocationType,
+                                       VkSystemAllocationScope allocationScope)
     {
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
         Logger::Trace("[VULKAN_EXTERNAL_FREE] - Free of size {}.", size);
@@ -144,15 +143,15 @@ namespace C3D
         Metrics.FreeExternal(size);
     }
 
-    bool CreateVulkanAllocator(VkAllocationCallbacks* callbacks)
+    bool VulkanAllocator::Create(VkAllocationCallbacks* callbacks)
     {
         if (callbacks)
         {
-            callbacks->pfnAllocation         = VulkanAllocatorAllocate;
-            callbacks->pfnReallocation       = VulkanAllocatorReallocate;
-            callbacks->pfnFree               = VulkanAllocatorFree;
-            callbacks->pfnInternalAllocation = VulkanAllocatorInternalAllocation;
-            callbacks->pfnInternalFree       = VulkanAllocatorInternalFree;
+            callbacks->pfnAllocation         = Allocate;
+            callbacks->pfnReallocation       = Reallocate;
+            callbacks->pfnFree               = Free;
+            callbacks->pfnInternalAllocation = InternalAllocation;
+            callbacks->pfnInternalFree       = InternalFree;
             callbacks->pUserData             = nullptr;
             return true;
         }
