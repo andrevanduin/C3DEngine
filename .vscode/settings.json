@@ -87,7 +87,8 @@
         "regex": "cpp",
         "span": "cpp",
         "stack": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "string_view": "cpp"
     },
     "cmake.generator": "Ninja",
     "todohighlight.include": [

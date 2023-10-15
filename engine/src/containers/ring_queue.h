@@ -86,7 +86,7 @@ namespace C3D
 		{
 			if (m_count == m_capacity)
 			{
-				throw std::exception("[RING_QUEUE] - Queue is full.");
+				throw std::out_of_range("[RING_QUEUE] - Queue is full.");
 			}
 
 			// Increment the tail

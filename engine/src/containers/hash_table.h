@@ -11,7 +11,7 @@ namespace C3D
 	constexpr u64 MULTIPLIER = 97;
 
 	template<class T>
-	class __declspec(dllexport) HashTable
+	class C3D_API HashTable
 	{
 	public:
 		HashTable();

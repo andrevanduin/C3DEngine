@@ -1,6 +1,4 @@
 
-// ReSharper disable CppNonExplicitConvertingConstructor
-// ReSharper disable CppInconsistentNaming
 #pragma once
 #include <fmt/format.h>
 
@@ -104,7 +102,7 @@ namespace C3D
             m_data[thisSize + otherSize] = '\0';
         }
 
-        /* @brief Builds a cstring from the format and the provided arguments.
+        /** @brief Builds a cstring from the format and the provided arguments.
          * Internally uses fmt::format to build out the string.
          */
         template <typename... Args>
@@ -117,7 +115,7 @@ namespace C3D
             m_data[size] = '\0';
         }
 
-        /* @brief Removes all starting whitespace characters from the string. */
+        /** @brief Removes all starting whitespace characters from the string. */
         void TrimLeft()
         {
             u64 size     = Size();
@@ -138,7 +136,7 @@ namespace C3D
             m_data[size] = '\0';
         }
 
-        /* @brief Removes all the trailing whitespace characters from the string. */
+        /** @brief Removes all the trailing whitespace characters from the string. */
         void TrimRight()
         {
             u64 size    = Size();
@@ -156,58 +154,65 @@ namespace C3D
             m_data[size] = '\0';
         }
 
-        /* @brief Remove all the starting and trailing whitespace characters from the string. */
+        /** @brief Remove all the starting and trailing whitespace characters from the string. */
         void Trim()
         {
             TrimLeft();
             TrimRight();
         }
 
-        /* @brief Clears the string. Resulting in an empty null-terminated string. */
+        /** @brief Clears the string. Resulting in an empty null-terminated string. */
         void Clear() { m_data[0] = '\0'; }
 
-        /* @brief Converts string to a f32. */
+        /** @brief Converts string to a f32. */
         [[nodiscard]] f32 ToF32() const { return std::strtof(m_data, nullptr); }
 
-        /* @brief Converts string to an i32 in the provided base. */
+        /** @brief Converts string to an i32 in the provided base. */
         [[nodiscard]] i32 ToI32(const i32 base = 10) const { return std::strtol(m_data, nullptr, base); }
 
-        /* @brief Converts string to an u32 in the provided base. */
+        /** @brief Converts string to an u32 in the provided base. */
         [[nodiscard]] u32 ToU32(const i32 base = 10) const { return std::strtoul(m_data, nullptr, base); }
 
-        /* @brief Converts string to an i16 in the provided base. */
+        /** @brief Converts string to an i16 in the provided base. */
         [[nodiscard]] i16 ToI16(const i32 base = 10) const { return static_cast<i16>(std::strtol(m_data, nullptr, base)); }
 
-        /* @brief Converts string to an u16 in the provided base. */
+        /** @brief Converts string to an u16 in the provided base. */
         [[nodiscard]] u16 ToU16(const i32 base = 10) const { return static_cast<u16>(std::strtoul(m_data, nullptr, base)); }
 
-        /* @brief Converts string to an i8 in the provided base. */
+        /** @brief Converts string to an i8 in the provided base. */
         [[nodiscard]] i8 ToI8(const i32 base = 10) const { return static_cast<i8>(std::strtol(m_data, nullptr, base)); }
 
-        /* @brief Converts string to an u8 in the provided base. */
+        /** @brief Converts string to an u8 in the provided base. */
         [[nodiscard]] u8 ToU8(const i32 base = 10) const { return static_cast<u8>(std::strtoul(m_data, nullptr, base)); }
 
-        /* @brief Converts string to a boolean value. */
+        /** @brief Converts string to a boolean value. */
         [[nodiscard]] bool ToBool() const
         {
             if (IEquals("1") || IEquals("true")) return true;
             return false;
         }
 
-        /* @brief Check if const char pointer matches case-sensitive. */
+        /** @brief Check if const char pointer matches case-sensitive. */
         [[nodiscard]] bool Equals(const char* other) const { return std::strcmp(m_data, other) == 0; }
 
-        /* @brief Check if CString matches case-sensitive. */
+        /** @brief Check if CString matches case-sensitive. */
         template <u64 OtherCapacity>
         [[nodiscard]] bool Equals(const CString<OtherCapacity>& other) const
         {
             return std::strcmp(m_data, other.m_data) == 0;
         }
 
-        /* @brief Check if const char pointer matches case-insensitive. */
-        [[nodiscard]] bool IEquals(const char* other) const { return _stricmp(m_data, other) == 0; }
+        /** @brief Check if const char pointer matches case-insensitive. */
+        [[nodiscard]] bool IEquals(const char* other) const 
+        { 
+#ifdef C3D_PLATFORM_WINDOWS
+            return _stricmp(m_data, other) == 0;
+#elif defined(C3D_PLATFORM_LINUX)
+            return strcasecmp(m_data, other) == 0;
+#endif
+        }
 
-        /* @brief Check if CString matches case-insensitive. */
+        /** @brief Check if CString matches case-insensitive. */
         template <u64 OtherCapacity>
         [[nodiscard]] bool IEquals(const CString<OtherCapacity>& other) const
         {

@@ -38,7 +38,9 @@ namespace C3D
 
 		[[nodiscard]] CString<256> ToString() const override
 		{
-			return CString<256>::FromFormat("{} {} = {}", TypeToString(m_value), name, m_value);
+			CString<256> str;
+			str.FromFormat("{} {} = {}", TypeToString(m_value), name, m_value);
+			return str;
 		}
 
 		void SetValue(const T& value)

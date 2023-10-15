@@ -156,5 +156,33 @@ namespace C3D
     }
 
     u64 Platform::GetThreadId() { return static_cast<u64>(pthread_self()); }
+
+    static bool LoadDynamicLibrary(const char* name, void** libraryData, u64& size)
+    {
+        if (!name)
+        {
+            printf("[PLATFORM] - LoadDynamicLibrary() Failed - Please provide a valid name.");
+            return false;
+        }
+
+        CString<256> path;
+        path.FromFormat("{}{}{}", GetDynamicLibraryPrefix(), name, GetDynamicLibraryExtension());
+
+        void* library = dlopen(path.Data(), RTLD_NOW);
+        if (!library)
+        {
+            printf("[PLATFORM] - LoadDynamicLibrary() - Failed.");
+            return false;
+        }
+
+        *libraryData = library;
+        size         = 8;
+        return true;
+    }
+    
+    static bool UnloadDynamicLibrary(void* libraryData)
+    {
+
+    }
 }  // namespace C3D
 #endif

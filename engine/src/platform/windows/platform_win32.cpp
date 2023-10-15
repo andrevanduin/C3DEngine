@@ -293,8 +293,8 @@ namespace C3D
             return false;
         }
 
-        CString<128> path(name);
-        path += ".dll";
+        CString<256> path;
+        path.FromFormat("{}{}{}", GetDynamicLibraryPrefix(), name, GetDynamicLibraryExtension());
 
         HMODULE library = LoadLibraryA(path.Data());
         if (!library)

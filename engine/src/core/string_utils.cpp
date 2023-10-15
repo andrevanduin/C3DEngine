@@ -16,18 +16,18 @@ namespace C3D
 	{
 		if (length == -1)
 		{
-#if defined(__GNUC__)
-			return strcasecmp(a, b) == 0;
-#elif (defined _MSC_VER)
+#ifdef C3D_PLATFORM_WINDOWS
 			return _strcmpi(a, b) == 0;
+#elif defined(C3D_PLATFORM_LINUX)
+			return strcasecmp(a, b) == 0;
 #endif
 		}
 		else
 		{
-#if defined(__GNUC)
+#ifdef C3D_PLATFORM_WINDOWS
+			return _strnicmp(a, b, length) == 0;	
+#elif defined(C3D_PLATFORM_LINUX)
 			return strncasecmp(a, b, length) == 0;
-#elif defined _MSC_VER
-			return _strnicmp(a, b, length) == 0;
 #endif
 		}
 	}

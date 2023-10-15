@@ -50,7 +50,7 @@ namespace C3D::StringUtils
      * @param skipEmpty An optional bool to enable skipping empty strings in the split array
      */
     template <u64 CCapacity, u64 OutputCapacity = CCapacity>
-    C3D_API [[nodiscard]] DynamicArray<CString<OutputCapacity>> Split(const CString<CCapacity>& string, char delimiter,
+    C3D_API DynamicArray<CString<OutputCapacity>> Split(const CString<CCapacity>& string, char delimiter,
                                                                       const bool trimEntries = true, const bool skipEmpty = true)
     {
         DynamicArray<CString<OutputCapacity>> elements;

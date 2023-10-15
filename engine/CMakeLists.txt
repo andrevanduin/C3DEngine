@@ -16,3 +16,5 @@ endif()
 target_link_libraries(C3DEngine PUBLIC fmt::fmt spdlog::spdlog glm::glm)
 
 target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")
+
+include_directories(SYSTEM "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")

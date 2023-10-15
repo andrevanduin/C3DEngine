@@ -63,26 +63,26 @@ namespace C3D
         void ProcessMouseMove(i32 xPos, i32 yPos);
         void ProcessMouseWheel(i32 delta) const;
 
-        C3D_API [[nodiscard]] bool IsKeyDown(u8 key) const;
-        C3D_API [[nodiscard]] bool IsKeyUp(u8 key) const;
-        C3D_API [[nodiscard]] bool IsKeyPressed(u8 key) const;
+        [[nodiscard]] C3D_API bool IsKeyDown(u8 key) const;
+        [[nodiscard]] C3D_API bool IsKeyUp(u8 key) const;
+        [[nodiscard]] C3D_API bool IsKeyPressed(u8 key) const;
 
-        C3D_API [[nodiscard]] bool WasKeyDown(u8 key) const;
-        C3D_API [[nodiscard]] bool WasKeyUp(u8 key) const;
+        [[nodiscard]] C3D_API bool WasKeyDown(u8 key) const;
+        [[nodiscard]] C3D_API bool WasKeyUp(u8 key) const;
 
-        C3D_API [[nodiscard]] bool IsButtonDown(Buttons button) const;
-        C3D_API [[nodiscard]] bool IsButtonUp(Buttons button) const;
-        C3D_API [[nodiscard]] bool IsButtonPressed(Buttons button) const;
+        [[nodiscard]] C3D_API bool IsButtonDown(Buttons button) const;
+        [[nodiscard]] C3D_API bool IsButtonUp(Buttons button) const;
+        [[nodiscard]] C3D_API bool IsButtonPressed(Buttons button) const;
 
-        C3D_API [[nodiscard]] bool WasButtonDown(Buttons button) const;
-        C3D_API [[nodiscard]] bool WasButtonUp(Buttons button) const;
+        [[nodiscard]] C3D_API bool WasButtonDown(Buttons button) const;
+        [[nodiscard]] C3D_API bool WasButtonUp(Buttons button) const;
 
-        C3D_API [[nodiscard]] bool IsShiftDown() const;
-        C3D_API [[nodiscard]] bool IsCtrlDown() const;
-        C3D_API [[nodiscard]] bool IsAltDown() const;
+        [[nodiscard]] C3D_API bool IsShiftDown() const;
+        [[nodiscard]] C3D_API bool IsCtrlDown() const;
+        [[nodiscard]] C3D_API bool IsAltDown() const;
 
-        C3D_API const ivec2& GetMousePosition() const;
-        C3D_API const ivec2& GetPreviousMousePosition() const;
+        [[nodiscard]] C3D_API const ivec2& GetMousePosition() const;
+        [[nodiscard]] C3D_API const ivec2& GetPreviousMousePosition() const;
 
     private:
         KeyBoardState m_keyboardCurrent, m_keyboardPrevious;

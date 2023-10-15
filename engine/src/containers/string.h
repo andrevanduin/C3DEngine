@@ -242,7 +242,7 @@ namespace C3D
         explicit BasicString(const f32 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_data(nullptr), m_size(0), m_allocator(allocator)
         {
-            const auto buffer = fmt::format(format, value);
+            const auto buffer = fmt::vformat(format, fmt::make_format_args(value));
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
@@ -250,7 +250,7 @@ namespace C3D
         explicit BasicString(const f64 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_data(nullptr), m_size(0), m_allocator(allocator)
         {
-            const auto buffer = fmt::format(format, value);
+            const auto buffer = fmt::vformat(format, fmt::make_format_args(value));
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
@@ -739,7 +739,14 @@ namespace C3D
          * @param other The const char* you want to compare against
          * @return True if equal (case-insensitive), false otherwise
          */
-        [[nodiscard]] bool IEquals(const char* other) const { return _stricmp(m_data, other) == 0; }
+        [[nodiscard]] bool IEquals(const char* other) const 
+        {
+#ifdef C3D_PLATFORM_WINDOWS
+            return _stricmp(m_data, other) == 0;
+#elif defined(C3D_PLATFORM_LINUX)
+            return strcasecmp(m_data, other) == 0;
+#endif
+        }
 
         /**
          * @brief Compares the string with the other const char case-insensitive upto n characters
@@ -748,7 +755,14 @@ namespace C3D
          * @param n The amount of characters you want to check upto
          * @return True if equal (case-insensitive), false otherwise
          */
-        [[nodiscard]] bool NIEquals(const char* other, const int n) const { return _strnicmp(m_data, other, n) == 0; }
+        [[nodiscard]] bool NIEquals(const char* other, const int n) const 
+        { 
+#ifdef C3D_PLATFORM_WINDOWS
+            return _strnicmp(m_data, other, n) == 0;
+#elif defined(C3D_PLATFORM_LINUX)
+            return strncasecmp(m_data, other, n) == 0;
+#endif
+        }
 
         /**
          * @brief Check if another string matches case-sensitive
@@ -883,33 +897,54 @@ namespace C3D
         /** @brief Converts string to a vec3. */
         [[nodiscard]] vec2 ToVec2() const
         {
-            vec2 vec{};
+            vec2 vec = {};
+#ifdef C3D_PLATFORM_WINDOWS
             if (sscanf_s(m_data, "%f %f", &vec.x, &vec.y) == -1)
             {
                 throw std::invalid_argument("The string does not contain a valid vec2 representation.");
             }
+#elif defined(C3D_PLATFORM_LINUX)
+            if (scanf(m_data, "%f %f", &vec.x, &vec.y) == -1)
+            {
+                throw std::invalid_argument("The string does not contain a valid vec2 representation.");
+            }
+#endif
             return vec;
         }
 
         /** @brief Converts string to a vec3. */
         [[nodiscard]] vec3 ToVec3() const
         {
-            vec3 vec{};
+            vec3 vec = {};
+#ifdef C3D_PLATFORM_WINDOWS
             if (sscanf_s(m_data, "%f %f %f", &vec.x, &vec.y, &vec.z) == -1)
             {
                 throw std::invalid_argument("The string does not contain a valid vec3 representation.");
             }
+#elif defined(C3D_PLATFORM_LINUX)
+            if (scanf(m_data, "%f %f %f", &vec.x, &vec.y, &vec.z) == -1)
+            {
+                throw std::invalid_argument("The string does not contain a valid vec3 representation.");
+            }
+#endif
             return vec;
         }
 
         /** @brief Converts string to a vec4. */
         [[nodiscard]] vec4 ToVec4() const
         {
-            vec4 vec{};
+            vec4 vec = {};
+#ifdef C3D_PLATFORM_WINDOWS
             if (sscanf_s(m_data, "%f %f %f %f", &vec.x, &vec.y, &vec.z, &vec.w) == -1)
             {
                 throw std::invalid_argument("The string does not contain a valid vec4 representation.");
             }
+#elif defined(C3D_PLATFORM_LINUX)
+            if (scanf(m_data, "%f %f %f %f", &vec.x, &vec.y, &vec.z, &vec.w) == -1)
+            {
+                throw std::invalid_argument("The string does not contain a valid vec4 representation.");
+            }
+#endif
             return vec;
         }
 

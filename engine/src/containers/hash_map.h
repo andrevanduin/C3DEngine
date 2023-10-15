@@ -186,8 +186,6 @@ namespace C3D
             m_nodes[hash].occupied = false;
             // Call the destructor for the element
             m_nodes[hash].element.~Value();
-            // Zero out the memory
-            std::memset(&m_nodes[hash].element, 0, sizeof(Value));
             // Decrement the count to keep track of how many elements we are currently storing
             m_count--;
         }

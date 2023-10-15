@@ -10,7 +10,11 @@ namespace C3D
 
     struct TerrainVertexConfig
     {
-        f32 height;
+        f32 height = 0.0f;
+
+        TerrainVertexConfig() = default;
+
+        TerrainVertexConfig(f32 height) : height(height) {}
     };
 
     struct TerrainConfig final : Resource

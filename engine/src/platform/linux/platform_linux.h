@@ -3,6 +3,12 @@
 #ifdef C3D_PLATFORM_LINUX
 
 #include <xcb/xcb.h>
+#include <X11/Xlib.h>
+#include <dlfcn.h>
+
+// Redefine the C3D Engine macros again for further use
+#undef None
+#undef Success
 
 #include "containers/string.h"
 #include "core/defines.h"
@@ -13,7 +19,7 @@ namespace C3D
 {
     struct LinuxHandleInfo
     {
-        xcb_connection* connection;
+        xcb_connection_t* connection;
         xcb_window_t window;
     };
 
@@ -80,7 +86,7 @@ namespace C3D
          */
         [[nodiscard]] f64 GetAbsoluteTime() const;
 
-        const Win32HandleInfo& GetHandleInfo() const { return m_handle; }
+        const LinuxHandleInfo& GetHandleInfo() const { return m_handle; }
 
         /**
          * @brief Sleeps the current thread for the provided amount of ms
@@ -133,16 +139,14 @@ namespace C3D
         {
             if (!name || !libraryData)
             {
-                printf("[PLATFORM] - LoadDynamicLibraryFunction() Failed - Please provide valid data");
+                printf("[PLATFORM] - LoadDynamicLibraryFunction() - Please provide valid data.");
                 return nullptr;
             }
 
-            const auto library        = static_cast<HMODULE>(libraryData);
-            const FARPROC funcAddress = GetProcAddress(library, name);
+            const auto funcAddress = dlsym(libraryData, name);
             if (!funcAddress)
             {
-                const auto errorMsg = GetLastErrorMsg();
-                printf("[PLATFORM] - LoadDynamicLibraryFunction() Failed - %s", errorMsg.data());
+                printf("[PLATFORM] - LoadDynamicLibraryFunction() - Failed.");
                 return nullptr;
             }
 

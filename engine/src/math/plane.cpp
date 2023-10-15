@@ -1,5 +1,6 @@
 
 #include "plane.h"
+#include "c3d_math.h"
 
 #include <glm/glm.hpp>
 
@@ -29,7 +30,7 @@ namespace C3D
 
 	bool Plane3D::IntersectsWithAABB(const AABB& aabb) const
 	{
-		const f32 r = aabb.extents.x * abs(normal.x) + aabb.extents.y * abs(normal.y) + aabb.extents.z * abs(normal.z);
+		const f32 r = aabb.extents.x * Abs(normal.x) + aabb.extents.y * Abs(normal.y) + aabb.extents.z * Abs(normal.z);
 		return -r <= SignedDistance(aabb.center);
 	}
 }

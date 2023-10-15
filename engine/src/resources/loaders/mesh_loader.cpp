@@ -166,6 +166,7 @@ namespace C3D
                 }
                 case 'o':
                 {
+                    // TODO: Improve this by alot :)
                     char t[3];
                     sscanf(line.Data(), "%s %s", t, &name);
                     break;
