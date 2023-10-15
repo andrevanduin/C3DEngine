@@ -1,10 +1,11 @@
 
-#ifdef C3D_PLATFORM_WINDOWS
-#include "platform_win32.h"
+#include "core/defines.h"
 
+#ifdef C3D_PLATFORM_WINDOWS
 #include "containers/cstring.h"
 #include "core/engine.h"
 #include "core/events/event_context.h"
+#include "platform_win32.h"
 #include "systems/events/event_system.h"
 #include "systems/input/input_system.h"
 

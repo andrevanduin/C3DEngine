@@ -30,7 +30,7 @@ static_assert(sizeof(i16) == 2, "Expected i16 to be 2 bytes");
 static_assert(sizeof(i32) == 4, "Expected i32 to be 4 bytes");
 static_assert(sizeof(i64) == 8, "Expected i64 to be 8 bytes");
 
-constexpr u64 FNV_PRIME = 1099511628211ull;
+constexpr u64 FNV_PRIME = 1099511628211;
 
 template <typename T>
 constexpr const char* TypeToString(T)

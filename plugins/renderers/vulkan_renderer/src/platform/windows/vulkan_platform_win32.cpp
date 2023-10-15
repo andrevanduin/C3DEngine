@@ -1,4 +1,6 @@
 
+#include "core/defines.h"
+
 #ifdef C3D_PLATFORM_WINDOWS
 #include "vulkan_platform_win32.h"
 
