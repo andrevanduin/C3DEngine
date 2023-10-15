@@ -7,15 +7,90 @@
 #include "systems/events/event_system.h"
 #include "systems/system_manager.h"
 
+namespace
+{
+    constexpr ivec2 ZERO_VEC = ivec2(0, 0);
+}
+
 namespace C3D
 {
     InputSystem::InputSystem(const SystemManager* pSystemsManager)
         : BaseSystem(pSystemsManager, "INPUT"), m_keyboardCurrent(), m_keyboardPrevious(), m_mouseCurrent(), m_mousePrevious()
     {}
 
+    bool InputSystem::Init()
+    {
+        m_logger.Info("Init() - Started.");
+
+        m_initialized = true;
+
+        for (auto& key : m_downKeys)
+        {
+            key = INVALID_ID_U8;
+        }
+        for (auto& button : m_downButtons)
+        {
+            button = INVALID_ID_U8;
+        }
+
+        m_logger.Info("Init() - Successful.");
+        return true;
+    }
+
     void InputSystem::Update(const FrameData& frameData)
     {
         if (!m_initialized) return;
+
+        for (auto& index : m_downButtons)
+        {
+            if (index == INVALID_ID_U8) continue;
+
+            auto& button = m_mouseCurrent.buttons[index];
+            if (button.state == InputState::Down)
+            {
+                // If the button is still down we increment the downCount
+                button.downCount++;
+                if (button.downCount >= KEY_HELD_DELAY)
+                {
+                    // If the downCount passes the threshold we switch to held mode
+                    button.state = InputState::Held;
+                    // Reset the downCount for the next time
+                    button.downCount = 0;
+                    // Clear this button since we don't need to check it anymore
+                    index = INVALID_ID_U8;
+
+                    EventContext context = {};
+                    context.data.u16[0]  = index;
+                    context.data.i16[1]  = m_mouseCurrent.pos.x;
+                    context.data.i16[2]  = m_mouseCurrent.pos.y;
+                    Event.Fire(EventCodeButtonHeldStart, this, context);
+                }
+            }
+        }
+        for (auto& index : m_downKeys)
+        {
+            if (index == INVALID_ID_U8) continue;
+
+            auto& key = m_keyboardCurrent.keys[index];
+            if (key.state == InputState::Down)
+            {
+                // If the key is still down we increment the downCount
+                key.downCount++;
+                if (key.downCount >= KEY_HELD_DELAY)
+                {
+                    // If the downCount passes the threshold we switch to held mode
+                    key.state = InputState::Held;
+                    // Reset the downCount for the next time
+                    key.downCount = 0;
+                    // Clear this button since we don't need to check it anymore
+                    index = INVALID_ID_U8;
+
+                    EventContext context = {};
+                    context.data.u16[0]  = index;
+                    Event.Fire(EventCodeKeyHeldStart, this, context);
+                }
+            }
+        }
 
         m_keyboardPrevious = m_keyboardCurrent;
         m_mousePrevious    = m_mouseCurrent;
@@ -29,77 +104,69 @@ namespace C3D
             return;
         }
 
-        auto& currentKeyState = m_keyboardCurrent.keys[key];
+        auto& currentKey = m_keyboardCurrent.keys[key];
+
+        EventContext context = {};
+        context.data.u16[0]  = key;
+
         if (state == InputState::Down)
         {
-            if (currentKeyState.state == InputState::Up)
-            {
-                /* Up -> Down fire a KeyDown event and set to the Down state. */
-                EventContext context{};
-                context.data.u16[0] = key;
-                Event.Fire(EventCodeKeyDown, nullptr, context);
+            Event.Fire(EventCodeKeyDown, this, context);
+            currentKey.state = InputState::Down;
 
-                currentKeyState.state = InputState::Down;
-            }
-            else if (currentKeyState.state == InputState::Down)
+            // Find an empty slot in our down keys array so we can keep track of how long this key has been down
+            for (auto& index : m_downKeys)
             {
-                /* Down -> Down Key is still down meaning we should start counting to change towards Held state. */
-                currentKeyState.downCount++;
-                if (currentKeyState.downCount > KEY_HELD_DELAY)
+                if (index == INVALID_ID_U8)
                 {
-                    currentKeyState.state = InputState::Held;
+                    // We found an empty slot so let's set it and break
+                    index = key;
+                    break;
                 }
             }
-
-            /* Held -> Down means we do nothing. */
         }
-        /* state == InputState::Up */
-        else if (currentKeyState.state == InputState::Down || currentKeyState.state == InputState::Held)
+        else
         {
-            /* Down -> Up fire a KeyUp event and set to the Up state. */
-            EventContext context{};
-            context.data.u16[0] = key;
-            Event.Fire(EventCodeKeyUp, nullptr, context);
-
-            currentKeyState.state = InputState::Up;
+            Event.Fire(EventCodeKeyUp, this, context);
+            currentKey.state = InputState::Up;
         }
     }
 
     void InputSystem::ProcessButton(const u8 button, const InputState state)
     {
-        auto& currentButtonState = m_mouseCurrent.buttons[button];
+        auto& currentButton = m_mouseCurrent.buttons[button];
 
-        EventContext context{};
-        context.data.u16[0] = button;
-        context.data.i16[1] = m_mouseCurrent.x;
-        context.data.i16[2] = m_mouseCurrent.y;
+        EventContext context = {};
+        context.data.u16[0]  = button;
+        context.data.i16[1]  = m_mouseCurrent.pos.x;
+        context.data.i16[2]  = m_mouseCurrent.pos.y;
 
         if (state == InputState::Down)
         {
-            if (currentButtonState.state == InputState::Up)
+            currentButton.state = InputState::Down;
+            Event.Fire(EventCodeButtonDown, this, context);
+
+            // Find an empty slot in our down buttons array so we can keep track of how long this button has been down
+            for (auto& index : m_downButtons)
             {
-                /* Up -> Down fire a ButtonDown event and set to the Down state. */
-                Event.Fire(EventCodeButtonDown, nullptr, context);
-                currentButtonState.state = InputState::Down;
-            }
-            else if (currentButtonState.state == InputState::Down)
-            {
-                /* Down -> Down Key is still down meaning we should start counting to change towards Held state. */
-                currentButtonState.downCount++;
-                if (currentButtonState.downCount > BUTTON_HELD_DELAY)
+                if (index == INVALID_ID_U8)
                 {
-                    currentButtonState.state = InputState::Held;
+                    // We found an empty slot so let's set it and break
+                    index = button;
+                    break;
                 }
             }
-
-            /* Held -> Down means we do nothing. */
         }
-        /* state == InputState::Up */
-        else if (currentButtonState.state == InputState::Down || currentButtonState.state == InputState::Held)
+        else
         {
-            /* Down -> Up fire a ButtonUp event and set to the Up state. */
-            Event.Fire(EventCodeButtonUp, nullptr, context);
-            currentButtonState.state = InputState::Up;
+            if (currentButton.inDrag)
+            {
+                Event.Fire(EventCodeMouseDraggedEnd, this, context);
+                currentButton.inDrag = false;
+            }
+
+            currentButton.state = InputState::Up;
+            Event.Fire(EventCodeButtonUp, this, context);
         }
     }
 
@@ -108,16 +175,43 @@ namespace C3D
         const auto x = static_cast<i16>(xPos);
         const auto y = static_cast<i16>(yPos);
 
-        if (m_mouseCurrent.x != x || m_mouseCurrent.y != y)
+        if (m_mouseCurrent.pos.x != x || m_mouseCurrent.pos.y != y)
         {
-            m_mouseCurrent.x = x;
-            m_mouseCurrent.y = y;
+            m_mouseCurrent.pos = { x, y };
 
-            EventContext context{};
-            context.data.i16[0] = x;
-            context.data.i16[1] = y;
+            EventContext mouseMovedContext = {};
+            mouseMovedContext.data.i16[0]  = x;
+            mouseMovedContext.data.i16[1]  = y;
 
-            Event.Fire(ToUnderlying(EventCodeMouseMoved), nullptr, context);
+            Event.Fire(ToUnderlying(EventCodeMouseMoved), this, mouseMovedContext);
+
+            for (u32 i = 0; i < MaxButtons; i++)
+            {
+                auto& currentButton = m_mouseCurrent.buttons[i];
+
+                if (currentButton.state == InputState::Held)
+                {
+                    if (currentButton.inDrag)
+                    {
+                        // Already in drag
+                        EventContext context = {};
+                        context.data.u16[0]  = i;
+                        context.data.i16[1]  = x;
+                        context.data.i16[2]  = y;
+                        Event.Fire(EventCodeMouseDragged, this, context);
+                    }
+                    else
+                    {
+                        /* Button is held but we have not started dragging yet */
+                        EventContext context = {};
+                        context.data.u16[0]  = i;
+                        context.data.i16[1]  = x;
+                        context.data.i16[2]  = y;
+                        Event.Fire(EventCodeMouseDraggedStart, this, context);
+                        currentButton.inDrag = true;
+                    }
+                }
+            }
         }
     }
 
@@ -188,28 +282,40 @@ namespace C3D
         return m_mousePrevious.buttons[button].state == InputState::Up;
     }
 
-    bool InputSystem::IsShiftHeld() const
+    bool InputSystem::IsShiftDown() const
     {
         if (!m_initialized) return false;
         return m_keyboardCurrent.keys[KeyShift].state > InputState::Up || m_keyboardCurrent.keys[KeyLShift].state > InputState::Up ||
                m_keyboardCurrent.keys[KeyRShift].state > InputState::Up;
     }
 
-    ivec2 InputSystem::GetMousePosition()
+    bool InputSystem::IsCtrlDown() const
     {
-        if (!m_initialized)
-        {
-            return ivec2(0);
-        }
-        return { m_mouseCurrent.x, m_mouseCurrent.y };
+        if (!m_initialized) return false;
+        return m_keyboardCurrent.keys[KeyControl].state > InputState::Up || m_keyboardCurrent.keys[KeyLControl].state > InputState::Up ||
+               m_keyboardCurrent.keys[KeyRControl].state > InputState::Up;
+    }
+    bool InputSystem::IsAltDown() const
+    {
+        if (!m_initialized) return false;
+        return m_keyboardCurrent.keys[KeyLAlt].state > InputState::Up || m_keyboardCurrent.keys[KeyRAlt].state > InputState::Up;
     }
 
-    ivec2 InputSystem::GetPreviousMousePosition()
+    const ivec2& InputSystem::GetMousePosition() const
     {
         if (!m_initialized)
         {
-            return ivec2(0);
+            return ZERO_VEC;
         }
-        return { m_mousePrevious.x, m_mousePrevious.y };
+        return m_mouseCurrent.pos;
+    }
+
+    const ivec2& InputSystem::GetPreviousMousePosition() const
+    {
+        if (!m_initialized)
+        {
+            return ZERO_VEC;
+        }
+        return m_mousePrevious.pos;
     }
 }  // namespace C3D

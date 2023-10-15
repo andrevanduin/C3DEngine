@@ -122,7 +122,7 @@ namespace C3D
             return false;
         }
 
-        Logger::Error("[VULKAN_INSTANCE] - Create() - Vulkan Instance created.");
+        Logger::Info("[VULKAN_INSTANCE] - Create() - Vulkan Instance created.");
         return true;
     }
 

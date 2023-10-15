@@ -92,7 +92,6 @@ struct std::formatter<vec4>
     template <typename FormatContext>
     auto format(vec4 const& vector, FormatContext& ctx)
     {
-        return std::vformat_to(ctx.out(), "({}, {}, {}, {})",
-                               std::make_format_args(vector.x, vector.y, vector.z, vector.w));
+        return std::vformat_to(ctx.out(), "({}, {}, {}, {})", std::make_format_args(vector.x, vector.y, vector.z, vector.w));
     }
 };

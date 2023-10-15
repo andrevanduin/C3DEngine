@@ -2,22 +2,28 @@
 cmake_minimum_required (VERSION 3.13)
 
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_TOOLCHAIN_FILE "E:/Dev/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
-file(GLOB_RECURSE C3DEngine_SRC "*.h" "*.cpp")
+file(GLOB_RECURSE C3DEngine_SRC "src/*.h" "src/*.cpp")
 
 add_library(C3DEngine SHARED ${C3DEngine_SRC})
 
 target_compile_definitions(C3DEngine PUBLIC C3D_EXPORT)
 target_compile_options(C3DEngine PRIVATE /EHsc /wd4002)
 
-find_package(spdlog CONFIG REQUIRED)
-target_link_libraries(C3DEngine PUBLIC spdlog::spdlog spdlog::spdlog_header_only)
+Include(FetchContent)
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.12.0
+)
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 0.9.9.8
+)
+FetchContent_MakeAvailable(spdlog glm)
 
-find_package(glm CONFIG REQUIRED)
-target_link_libraries(C3DEngine PRIVATE glm::glm)
 
-find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
-target_include_directories(C3DEngine PRIVATE ${STB_INCLUDE_DIRS})
+target_link_libraries(C3DEngine PRIVATE spdlog::spdlog spdlog glm::glm)
 
-target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb" "${spdlog_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")

@@ -23,67 +23,70 @@ namespace C3D
         GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &m_stdOutputConsoleScreenBufferInfo);
         GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &m_stdErrorConsoleScreenBufferInfo);
 
-        // Setup and register our window class
-        HICON icon                = LoadIcon(m_handle.hInstance, IDI_APPLICATION);
-        WNDCLASSA windowClass     = {};
-        windowClass.style         = CS_DBLCLKS;  // Make sure to get double-clicks
-        windowClass.lpfnWndProc   = StaticProcessMessage;
-        windowClass.cbClsExtra    = 0;
-        windowClass.cbWndExtra    = sizeof(this);
-        windowClass.hInstance     = m_handle.hInstance;
-        windowClass.hIcon         = icon;
-        windowClass.hCursor       = LoadCursor(nullptr, IDC_ARROW);  // We provide NULL since we want to manage the cursor manually
-        windowClass.hbrBackground = nullptr;                         // Transparent
-        windowClass.lpszClassName = "C3D_ENGINE_WINDOW_CLASS";
-
-        if (!RegisterClass(&windowClass))
+        if (config.makeWindow)
         {
-            m_logger.Error("Init() - Window registration failed.");
-            return false;
+            // Setup and register our window class
+            HICON icon                = LoadIcon(m_handle.hInstance, IDI_APPLICATION);
+            WNDCLASSA windowClass     = {};
+            windowClass.style         = CS_DBLCLKS;  // Make sure to get double-clicks
+            windowClass.lpfnWndProc   = StaticProcessMessage;
+            windowClass.cbClsExtra    = 0;
+            windowClass.cbWndExtra    = sizeof(this);
+            windowClass.hInstance     = m_handle.hInstance;
+            windowClass.hIcon         = icon;
+            windowClass.hCursor       = LoadCursor(nullptr, IDC_ARROW);  // We provide NULL since we want to manage the cursor manually
+            windowClass.hbrBackground = nullptr;                         // Transparent
+            windowClass.lpszClassName = "C3D_ENGINE_WINDOW_CLASS";
+
+            if (!RegisterClass(&windowClass))
+            {
+                m_logger.Error("Init() - Window registration failed.");
+                return false;
+            }
+
+            // Create our window
+            i32 windowX      = config.x;
+            i32 windowY      = config.y;
+            i32 windowWidth  = config.width;
+            i32 windowHeight = config.height;
+
+            u32 windowStyle   = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME;
+            u32 windowExStyle = WS_EX_APPWINDOW;
+
+            // Obtain the size of the border
+            RECT borderRect = { 0, 0, 0, 0 };
+            AdjustWindowRectEx(&borderRect, windowStyle, false, windowExStyle);
+
+            // Adjust the x, y, width and height of the window to account for the border
+            windowX += borderRect.left;
+            windowY += borderRect.top;
+            windowWidth += borderRect.right - borderRect.left;
+            windowHeight += borderRect.bottom - borderRect.top;
+
+            HWND handle = CreateWindowEx(windowExStyle, "C3D_ENGINE_WINDOW_CLASS", config.applicationName, windowStyle, windowX, windowY,
+                                         windowWidth, windowHeight, nullptr, nullptr, m_handle.hInstance, nullptr);
+
+            if (!handle)
+            {
+                m_logger.Error("Init() - Window registration failed.");
+                return false;
+            }
+
+            m_handle.hwnd = handle;
+
+            SetWindowLongPtr(m_handle.hwnd, 0, reinterpret_cast<LONG_PTR>(this));
+
+            m_logger.Info("Init() - Window Creation successful.");
+
+            // Actually show our window
+            // TODO: Make configurable. This should be false when the window should not accept input
+            constexpr bool shouldActivate = true;
+            i32 showWindowCommandFlags    = shouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
+
+            ShowWindow(m_handle.hwnd, showWindowCommandFlags);
+
+            m_logger.Info("Init() - ShowWindow successful.");
         }
-
-        // Create our window
-        i32 windowX      = config.x;
-        i32 windowY      = config.y;
-        i32 windowWidth  = config.width;
-        i32 windowHeight = config.height;
-
-        u32 windowStyle   = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME;
-        u32 windowExStyle = WS_EX_APPWINDOW;
-
-        // Obtain the size of the border
-        RECT borderRect = { 0, 0, 0, 0 };
-        AdjustWindowRectEx(&borderRect, windowStyle, false, windowExStyle);
-
-        // Adjust the x, y, width and height of the window to account for the border
-        windowX += borderRect.left;
-        windowY += borderRect.top;
-        windowWidth += borderRect.right - borderRect.left;
-        windowHeight += borderRect.bottom - borderRect.top;
-
-        HWND handle = CreateWindowEx(windowExStyle, "C3D_ENGINE_WINDOW_CLASS", config.applicationName, windowStyle, windowX, windowY,
-                                     windowWidth, windowHeight, nullptr, nullptr, m_handle.hInstance, nullptr);
-
-        if (!handle)
-        {
-            m_logger.Error("Init() - Window registration failed.");
-            return false;
-        }
-
-        m_handle.hwnd = handle;
-
-        SetWindowLongPtr(m_handle.hwnd, 0, reinterpret_cast<LONG_PTR>(this));
-
-        m_logger.Info("Init() - Window Creation successful.");
-
-        // Actually show our window
-        // TODO: Make configurable. This should be false when the window should not accept input
-        constexpr bool shouldActivate = true;
-        i32 showWindowCommandFlags    = shouldActivate ? SW_SHOW : SW_SHOWNOACTIVATE;
-
-        ShowWindow(m_handle.hwnd, showWindowCommandFlags);
-
-        m_logger.Info("Init() - ShowWindow successful.");
 
         LARGE_INTEGER frequency;
         QueryPerformanceFrequency(&frequency);

@@ -2,8 +2,7 @@
 // ReSharper disable CppInconsistentNaming
 // ReSharper disable CppClangTidyCertDcl58Cpp
 #pragma once
-#include <fmt/core.h>
-
+#include <format>
 #include <iostream>
 
 #include "containers/dynamic_array.h"
@@ -29,8 +28,7 @@ namespace C3D
     template <class Allocator>
     class C3D_API BasicString
     {
-        static_assert(std::is_base_of_v<BaseAllocator<Allocator>, Allocator>,
-                      "Allocator needs to be have a base type of BaseAllocator");
+        static_assert(std::is_base_of_v<BaseAllocator<Allocator>, Allocator>, "Allocator needs to be have a base type of BaseAllocator");
 
     public:
         using value_type      = char;
@@ -72,12 +70,10 @@ namespace C3D
                 if (requiredSize > m_sso.capacity)
                 {
                     // The new capacity is larger than the old so we need to allocate more space
-                    const auto newCapacity =
-                        static_cast<u64>(std::ceil(static_cast<f64>(requiredSize) * STRING_RESIZE_FACTOR));
+                    const auto newCapacity = static_cast<u64>(std::ceil(static_cast<f64>(requiredSize) * STRING_RESIZE_FACTOR));
 
                     // Allocate enough space for the new data
-                    const auto newData =
-                        Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
+                    const auto newData = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
                     // Copy over the old data (including the final '0' byte)
                     std::memcpy(newData, m_data, m_size + 1);
                     // Now we free our current pointer
@@ -94,8 +90,7 @@ namespace C3D
                 if (requiredSize > SSO_THRESHOLD)
                 {
                     // Our new capacity is too large for SSO
-                    const auto newCapacity =
-                        static_cast<u64>(std::ceil(static_cast<f64>(requiredSize) * STRING_RESIZE_FACTOR));
+                    const auto newCapacity = static_cast<u64>(std::ceil(static_cast<f64>(requiredSize) * STRING_RESIZE_FACTOR));
                     // Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
 
                     // Allocate enough space for the new capacity
@@ -238,25 +233,23 @@ namespace C3D
         explicit BasicString(const i64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_data(nullptr), m_size(0), m_allocator(allocator)
         {
-            const auto buffer = fmt::format("{}", value);
+            const auto buffer = std::format("{}", value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        explicit BasicString(const f32 value, const char* format = "{}",
-                             Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
+        explicit BasicString(const f32 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_data(nullptr), m_size(0), m_allocator(allocator)
         {
-            const auto buffer = fmt::format(format, value);
+            const auto buffer = std::format(format, value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        explicit BasicString(const f64 value, const char* format = "{}",
-                             Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
+        explicit BasicString(const f64 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_data(nullptr), m_size(0), m_allocator(allocator)
         {
-            const auto buffer = fmt::format(format, value);
+            const auto buffer = std::format(format, value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
@@ -288,8 +281,7 @@ namespace C3D
             }
         }
 
-        BasicString(BasicString&& other) noexcept
-            : m_data(nullptr), m_size(other.m_size), m_allocator(other.m_allocator)
+        BasicString(BasicString&& other) noexcept : m_data(nullptr), m_size(other.m_size), m_allocator(other.m_allocator)
         {
             // Check 'other' is stack or heap allocated
             if (other.m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP)  // Heap allocated
@@ -400,8 +392,7 @@ namespace C3D
                     // The new capacity is larger than the old so we need to allocate more space
 
                     // Allocate enough space for the new data
-                    const auto newData =
-                        Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
+                    const auto newData = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
                     // Copy over the old data (including the final '0' byte)
                     if (m_size > 0) std::memcpy(newData, m_data, m_size + 1);
                     // Now we free our current pointer
@@ -469,7 +460,7 @@ namespace C3D
         }
 
         /** @brief Builds this string from the format and the provided arguments.
-         * Internally uses fmt::format to build out the string.
+         * Internally uses std::format to build out the string.
          * The formatted output will appended to the back of the string.
          */
         template <typename... Args>
@@ -479,7 +470,7 @@ namespace C3D
         }
 
         /* @brief Builds a string from the format and the provided arguments.
-         * Internally uses fmt::format to build out the string.
+         * Internally uses std::format to build out the string.
          */
         template <typename... Args>
         static BasicString<DynamicAllocator> FromFormat(const char* format, Args&&... args)
@@ -764,10 +755,7 @@ namespace C3D
          * @param other The other string you want to compare against
          * @return True if equal (case-sensitive), false otherwise
          */
-        [[nodiscard]] bool Equals(const BasicString& other) const
-        {
-            return std::equal(begin(), end(), other.begin(), other.end());
-        }
+        [[nodiscard]] bool Equals(const BasicString& other) const { return std::equal(begin(), end(), other.begin(), other.end()); }
 
         /**
          * @brief Check if another string matches case-insensitive
@@ -805,8 +793,7 @@ namespace C3D
             {
                 // Triple-byte character
                 advance = 3;
-                return ((codepoint & 0b00001111) << 12) + ((m_data[index + 1] & 0b00111111) << 6) +
-                       (m_data[index + 2] & 0b00111111);
+                return ((codepoint & 0b00001111) << 12) + ((m_data[index + 1] & 0b00111111) << 6) + (m_data[index + 2] & 0b00111111);
             }
 
             if ((codepoint & 0xF8) == 0xF0)
@@ -874,25 +861,16 @@ namespace C3D
         [[nodiscard]] u32 ToU32(const i32 base = 10) const { return std::strtoul(m_data, nullptr, base); }
 
         /** @brief Converts string to an i16 in the provided base. */
-        [[nodiscard]] i16 ToI16(const i32 base = 10) const
-        {
-            return static_cast<i16>(std::strtol(m_data, nullptr, base));
-        }
+        [[nodiscard]] i16 ToI16(const i32 base = 10) const { return static_cast<i16>(std::strtol(m_data, nullptr, base)); }
 
         /** @brief Converts string to an u16 in the provided base. */
-        [[nodiscard]] u16 ToU16(const i32 base = 10) const
-        {
-            return static_cast<u16>(std::strtoul(m_data, nullptr, base));
-        }
+        [[nodiscard]] u16 ToU16(const i32 base = 10) const { return static_cast<u16>(std::strtoul(m_data, nullptr, base)); }
 
         /** @brief Converts string to an i8 in the provided base. */
         [[nodiscard]] i8 ToI8(const i32 base = 10) const { return static_cast<i8>(std::strtol(m_data, nullptr, base)); }
 
         /** @brief Converts string to an u8 in the provided base. */
-        [[nodiscard]] u8 ToU8(const i32 base = 10) const
-        {
-            return static_cast<u8>(std::strtoul(m_data, nullptr, base));
-        }
+        [[nodiscard]] u8 ToU8(const i32 base = 10) const { return static_cast<u8>(std::strtoul(m_data, nullptr, base)); }
 
         /** @brief Converts string to a boolean value. */
         [[nodiscard]] bool ToBool() const
@@ -1026,19 +1004,13 @@ namespace C3D
         bool operator==(const char* other) const { return std::strcmp(m_data, other) == 0; }
 
         /** @brief Operator overload for comparing with another string. */
-        bool operator==(const BasicString& other) const
-        {
-            return std::equal(begin(), end(), other.begin(), other.end());
-        }
+        bool operator==(const BasicString& other) const { return std::equal(begin(), end(), other.begin(), other.end()); }
 
         /** @brief Operator overload for inequality with a const char pointer. */
         bool operator!=(const char* other) const { return std::strcmp(m_data, other) != 0; }
 
         /** @brief Operator overload for inequality with another string. */
-        bool operator!=(const BasicString& other) const
-        {
-            return !std::equal(begin(), end(), other.begin(), other.end());
-        }
+        bool operator!=(const BasicString& other) const { return !std::equal(begin(), end(), other.begin(), other.end()); }
 
         /** @brief Operator overload for appending another string to this string. */
         BasicString& operator+=(const BasicString& other)

@@ -8,7 +8,7 @@ TestManager::TestManager(const u64 memorySize) : m_logger("TEST_MANAGER")
 {
     C3D::Logger::Init();
     Metrics.Init();
-    C3D::GlobalMemorySystem::Init({memorySize});
+    C3D::GlobalMemorySystem::Init({ memorySize });
 }
 
 TestManager::~TestManager() { C3D::GlobalMemorySystem::Destroy(); }
@@ -18,20 +18,28 @@ void TestManager::StartType(const std::string& type) { m_currentType = type; }
 void TestManager::Register(u8 (*pFnTest)(), const std::string& description)
 {
     TestEntry e;
-    e.func = pFnTest;
+    e.func        = pFnTest;
     e.description = description;
-    e.type = m_currentType;
+    e.type        = m_currentType;
     m_tests.push_back(e);
 }
 
 void TestManager::RunTests()
 {
-    u32 passed = 0;
-    u32 failed = 0;
+    u32 passed  = 0;
+    u32 failed  = 0;
     u32 skipped = 0;
 
+    C3D::PlatformSystemConfig config;
+    config.applicationName = "Tests";
+    config.width           = 1280;
+    config.height          = 720;
+    config.x               = 0;
+    config.y               = 0;
+    config.makeWindow      = false;
+
     C3D::Platform platform;
-    platform.Init();
+    platform.Init(config);
 
     C3D::Clock totalTime(&platform);
     totalTime.Start();
@@ -69,13 +77,12 @@ void TestManager::RunTests()
         totalTime.Update();
 
         auto status = failed ? "*** FAILED ***" : "SUCCESS";
-        m_logger.Info("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total)", i, m_tests.size(), skipped,
-                      status, testTime.GetElapsed(), totalTime.GetElapsed());
+        m_logger.Info("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total)", i, m_tests.size(), skipped, status,
+                      testTime.GetElapsed(), totalTime.GetElapsed());
     }
 
     totalTime.Stop();
-    m_logger.Info("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec", passed, failed, skipped,
-                  totalTime.GetElapsed());
+    m_logger.Info("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec", passed, failed, skipped, totalTime.GetElapsed());
 
     platform.Shutdown();
 }

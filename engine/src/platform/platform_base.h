@@ -29,5 +29,7 @@ namespace C3D
         i32 x = 0, y = 0;
         /** @brief The initial width and height of the main window. */
         i32 width = 0, height = 0;
+        /** @brief Boolean to specify if the engine should create a window. */
+        bool makeWindow = true;
     };
 }  // namespace C3D
