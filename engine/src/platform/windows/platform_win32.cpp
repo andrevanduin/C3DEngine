@@ -154,7 +154,7 @@ namespace C3D
     {
         if (!filePath)
         {
-            m_logger.Error("WatchFile() - Failed due to filePath being invalid");
+            m_logger.Error("WatchFile() - Failed due to filePath being invalid.");
             return INVALID_ID;
         }
 
@@ -162,13 +162,13 @@ namespace C3D
         const auto fileHandle = FindFirstFileA(filePath, &data);
         if (fileHandle == INVALID_HANDLE_VALUE)
         {
-            m_logger.Error("WatchFile() - Could not find file at: '{}'", filePath);
+            m_logger.Error("WatchFile() - Could not find file at: '{}'.", filePath);
             return INVALID_ID;
         }
 
         if (!FindClose(fileHandle))
         {
-            m_logger.Error("WatchFile() - Could not close file at: '{}'", filePath);
+            m_logger.Error("WatchFile() - Could not close file at: '{}'.", filePath);
             return INVALID_ID;
         }
 
@@ -183,7 +183,7 @@ namespace C3D
                 watch.filePath      = filePath;
                 watch.lastWriteTime = data.ftLastWriteTime;
 
-                m_logger.Info("WatchFile() - Registered watch for: '{}'", filePath);
+                m_logger.Info("WatchFile() - Registered watch for: '{}'.", filePath);
                 return i;
             }
         }
@@ -194,7 +194,7 @@ namespace C3D
         const Win32FileWatch watch = { nextIndex, filePath, data.ftLastWriteTime };
         m_fileWatches.PushBack(watch);
 
-        m_logger.Info("WatchFile() - Registered watch for: '{}'", filePath);
+        m_logger.Info("WatchFile() - Registered watch for: '{}'.", filePath);
         return nextIndex;
     }
 
@@ -202,19 +202,19 @@ namespace C3D
     {
         if (watchId == INVALID_ID)
         {
-            m_logger.Error("UnwatchFile() - Failed due to watchId being invalid");
+            m_logger.Error("UnwatchFile() - Failed due to watchId being invalid.");
             return false;
         }
 
         if (m_fileWatches.Empty())
         {
-            m_logger.Error("UnwatchFile() - Failed since there are no files being watched currently");
+            m_logger.Error("UnwatchFile() - Failed since there are no files being watched currently.");
             return false;
         }
 
         if (watchId >= m_fileWatches.Size())
         {
-            m_logger.Error("UnwatchFile() - Failed since there is no watch for the provided id: {}", watchId);
+            m_logger.Error("UnwatchFile() - Failed since there is no watch for the provided id: {}.", watchId);
             return false;
         }
 
@@ -222,7 +222,7 @@ namespace C3D
         // This makes the slot available to be filled by a different FileWatch in the future
         Win32FileWatch& watch = m_fileWatches[watchId];
 
-        m_logger.Info("UnwatchFile() - Stopped watching: '{}'", watch.filePath);
+        m_logger.Info("UnwatchFile() - Stopped watching: '{}'.", watch.filePath);
 
         watch.id = INVALID_ID;
         watch.filePath.Clear();
