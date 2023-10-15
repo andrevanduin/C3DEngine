@@ -4,7 +4,10 @@
 cmake_minimum_required (VERSION 3.20)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd26812")
+
+if (WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd26812")
+endif()
 
 set(CMAKE_BUILD_TYPE Debug)
 set(PDB_VERSION "NONE" CACHE STRING "The version number for the PDB file")
@@ -12,7 +15,6 @@ set(PDB_VERSION "NONE" CACHE STRING "The version number for the PDB file")
 project ("C3DEngine")
 
 # Define our compile definitions that are relevant for all targets
-add_compile_definitions(C3D_PLATFORM_WINDOWS)
 add_compile_definitions(C3D_MEMORY_METRICS)
 # add_compile_definitions(C3D_MEMORY_METRICS_POINTERS)
 add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)

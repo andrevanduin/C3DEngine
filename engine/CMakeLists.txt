@@ -8,7 +8,10 @@ file(GLOB_RECURSE C3DEngine_SRC "src/*.h" "src/*.cpp")
 add_library(C3DEngine SHARED ${C3DEngine_SRC})
 
 target_compile_definitions(C3DEngine PUBLIC C3D_EXPORT)
-target_compile_options(C3DEngine PRIVATE /EHsc /wd4002)
+
+if (WIN32)
+    target_compile_options(C3DEngine PRIVATE /EHsc /wd4002)
+endif()
 
 target_link_libraries(C3DEngine PUBLIC fmt::fmt spdlog::spdlog glm::glm)
 

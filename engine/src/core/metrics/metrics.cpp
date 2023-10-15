@@ -281,11 +281,13 @@ namespace C3D
 #endif
     }
 
+#ifdef C3D_MEMORY_METRICS_STACKTRACE
     void MetricSystem::SetStacktrace()
     {
         const auto trace = std::stacktrace::current();
         m_stacktrace     = std::to_string(trace);
     }
+#endif
 
     void MetricSystem::PrintMemoryUsage(const u8 allocatorId, const bool debugLines)
     {

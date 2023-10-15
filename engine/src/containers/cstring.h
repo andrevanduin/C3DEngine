@@ -11,7 +11,7 @@
 namespace C3D
 {
     template <u64 CCapacity>
-    class __declspec(dllexport) CString
+    class C3D_API CString
     {
     public:
         CString() : m_data{} {}

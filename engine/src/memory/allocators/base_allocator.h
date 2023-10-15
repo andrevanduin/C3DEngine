@@ -10,7 +10,7 @@ namespace C3D
     class C3D_API BaseAllocator
     {
     public:
-        explicit BaseAllocator(const u8 type) : m_id(INVALID_ID_U8), m_type(type), m_memoryBlock(nullptr) {}
+        explicit BaseAllocator(const u8 type) : m_type(type) {}
 
         BaseAllocator(const BaseAllocator&) = delete;
         BaseAllocator(BaseAllocator&&) = delete;
@@ -23,6 +23,7 @@ namespace C3D
         virtual void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) = 0;
         virtual void Free(MemoryType type, void* block) = 0;
 
+#ifdef C3D_MEMORY_METRICS_STACKTRACE
         BaseAllocator& SetStacktraceRef()
         {
             Metrics.SetStacktrace();
@@ -34,6 +35,7 @@ namespace C3D
             Metrics.SetStacktrace();
             return this;
         }
+#endif
 
         template <typename T>
         T* Allocate(const MemoryType type, const u64 count = 1)
@@ -64,9 +66,9 @@ namespace C3D
 
     protected:
         // The id for this allocator
-        u8 m_id;
+        u8 m_id = INVALID_ID_U8;
         u8 m_type;
 
-        char* m_memoryBlock;
+        char* m_memoryBlock = nullptr;
     };
 }  // namespace C3D

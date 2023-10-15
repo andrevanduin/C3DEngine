@@ -2,25 +2,7 @@
 #pragma once
 #include "core/defines.h"
 
-#ifdef C3D_PLATFORM_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-
-// Undef C3D Engine defines that cause issues with Windows.h
-#undef Resources
-#undef Event
-
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <windowsx.h> // param input extraction
-
-// Undef Windows macros that cause issues with C3D Engine
-#undef CopyFile
-#undef max
-#undef min
-
-// Redefine the C3D Engine macros again for further use
-#define Resources m_pSystemsManager->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
-#define Event m_pSystemsManager->GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
+#ifdef C3D_PLATFORM_LINUX
 
 #include "containers/string.h"
 #include "core/defines.h"
@@ -29,23 +11,20 @@
 
 namespace C3D
 {
-    struct DynamicLibraryFunction;
-    class SystemManager;
+	struct LinuxHandleInfo
+	{
+		HINSTANCE hInstance;
+		HWND hwnd;
+	};
 
-    struct Win32HandleInfo
-    {
-        HINSTANCE hInstance;
-        HWND hwnd;
-    };
+	struct LinuxFileWatch
+	{
+		u32 id;
+		String filePath;
+		FILETIME lastWriteTime;
+	};
 
-    struct Win32FileWatch
-    {
-        u32 id;
-        String filePath;
-        FILETIME lastWriteTime;
-    };
-
-    class C3D_API Platform final : public SystemWithConfig<PlatformSystemConfig>
+	class C3D_API Platform final : public SystemWithConfig<PlatformSystemConfig>
     {
     public:
         Platform();
@@ -200,5 +179,5 @@ namespace C3D
 
         Win32HandleInfo m_handle;
     };
-}  // namespace C3D
+}
 #endif
