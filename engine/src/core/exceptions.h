@@ -14,7 +14,7 @@ namespace C3D
         template <typename... Args>
         Exception(const char* format, Args&&... args)
         {
-            std::vformat_to(std::back_inserter(m_what), format, std::make_format_args(args...));
+            fmt::vformat_to(std::back_inserter(m_what), format, fmt::make_format_args(args...));
         }
 
         const char* what() const noexcept override { return m_what.Data(); }

@@ -2,7 +2,8 @@
 // ReSharper disable CppInconsistentNaming
 // ReSharper disable CppClangTidyCertDcl58Cpp
 #pragma once
-#include <format>
+#include <fmt/format.h>
+
 #include <iostream>
 
 #include "containers/dynamic_array.h"
@@ -233,7 +234,7 @@ namespace C3D
         explicit BasicString(const i64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_data(nullptr), m_size(0), m_allocator(allocator)
         {
-            const auto buffer = std::format("{}", value);
+            const auto buffer = fmt::format("{}", value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
@@ -241,7 +242,7 @@ namespace C3D
         explicit BasicString(const f32 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_data(nullptr), m_size(0), m_allocator(allocator)
         {
-            const auto buffer = std::format(format, value);
+            const auto buffer = fmt::format(format, value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
@@ -249,7 +250,7 @@ namespace C3D
         explicit BasicString(const f64 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
             : m_data(nullptr), m_size(0), m_allocator(allocator)
         {
-            const auto buffer = std::format(format, value);
+            const auto buffer = fmt::format(format, value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
@@ -460,23 +461,23 @@ namespace C3D
         }
 
         /** @brief Builds this string from the format and the provided arguments.
-         * Internally uses std::format to build out the string.
+         * Internally uses fmt::format to build out the string.
          * The formatted output will appended to the back of the string.
          */
         template <typename... Args>
         void Format(const char* format, Args&&... args)
         {
-            std::vformat_to(std::back_inserter(*this), format, std::make_format_args(args...));
+            fmt::format_to(std::back_inserter(*this), format, std::forward<Args>(args)...);
         }
 
         /* @brief Builds a string from the format and the provided arguments.
-         * Internally uses std::format to build out the string.
+         * Internally uses fmt::format to build out the string.
          */
         template <typename... Args>
         static BasicString<DynamicAllocator> FromFormat(const char* format, Args&&... args)
         {
             BasicString<DynamicAllocator> buffer;
-            std::vformat_to(std::back_inserter(buffer), format, std::make_format_args(args...));
+            fmt::vformat_to(std::back_inserter(buffer), format, fmt::make_format_args(args...));
             return buffer;
         }
 
@@ -1158,7 +1159,7 @@ namespace C3D
 }  // namespace C3D
 
 template <class Allocator>
-struct std::formatter<C3D::BasicString<Allocator>>
+struct fmt::formatter<C3D::BasicString<Allocator>>
 {
     template <typename ParseContext>
     static auto parse(ParseContext& ctx)
@@ -1169,7 +1170,7 @@ struct std::formatter<C3D::BasicString<Allocator>>
     template <typename FormatContext>
     auto format(const C3D::BasicString<Allocator>& str, FormatContext& ctx)
     {
-        return std::vformat_to(ctx.out(), "{}", std::make_format_args(str.Data()));
+        return fmt::format_to(ctx.out(), "{}", str.Data());
     }
 };
 

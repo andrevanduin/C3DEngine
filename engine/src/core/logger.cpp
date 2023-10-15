@@ -1,10 +1,9 @@
 
 #include "logger.h"
 
+#include <fmt/format.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-
-#include <format>
 
 #include "console/console.h"
 #include "console/console_sink.h"

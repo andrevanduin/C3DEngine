@@ -2,7 +2,8 @@
 // ReSharper disable CppNonExplicitConvertingConstructor
 // ReSharper disable CppInconsistentNaming
 #pragma once
-#include <format>
+#include <fmt/format.h>
+
 #include <string>
 
 #include "core/defines.h"
@@ -104,12 +105,12 @@ namespace C3D
         }
 
         /* @brief Builds a cstring from the format and the provided arguments.
-         * Internally uses std::format to build out the string.
+         * Internally uses fmt::format to build out the string.
          */
         template <typename... Args>
         void FromFormat(const char* format, Args&&... args)
         {
-            auto endIt = std::vformat_to(m_data, format, std::make_format_args(args...));
+            auto endIt = fmt::vformat_to(m_data, format, fmt::make_format_args(args...));
             // Get the size of the newly created string
             auto size = endIt - m_data;
             // Ensure that the string is null terminated
@@ -298,7 +299,7 @@ namespace C3D
 }  // namespace C3D
 
 template <u64 CCapacity>
-struct std::formatter<C3D::CString<CCapacity>>
+struct fmt::formatter<C3D::CString<CCapacity>>
 {
     template <typename ParseContext>
     static auto parse(ParseContext& ctx)
@@ -309,7 +310,7 @@ struct std::formatter<C3D::CString<CCapacity>>
     template <typename FormatContext>
     auto format(const C3D::CString<CCapacity>& str, FormatContext& ctx) const
     {
-        return std::vformat_to(ctx.out(), "{}", std::make_format_args(str.Data()));
+        return fmt::format_to(ctx.out(), "{}", str.Data());
     }
 };
 

@@ -26,7 +26,7 @@ namespace C3D
         static void Debug(const char* format, Args&&... args)
         {
             ASSERT_INIT;
-            const std::string str = std::vformat(format, std::make_format_args(args...));
+            const auto str = fmt::vformat(format, fmt::make_format_args(args...));
             GetCoreLogger()->debug(str);
         }
 
@@ -34,7 +34,7 @@ namespace C3D
         static void Trace(const char* format, Args&&... args)
         {
             ASSERT_INIT;
-            const std::string str = std::vformat(format, std::make_format_args(args...));
+            const auto str = fmt::vformat(format, fmt::make_format_args(args...));
             GetCoreLogger()->trace(str);
         }
 
@@ -42,7 +42,7 @@ namespace C3D
         static void Info(const char* format, Args&&... args)
         {
             ASSERT_INIT;
-            const std::string str = std::vformat(format, std::make_format_args(args...));
+            const auto str = fmt::vformat(format, fmt::make_format_args(args...));
             GetCoreLogger()->info(str);
         }
 
@@ -50,7 +50,7 @@ namespace C3D
         static void Warn(const char* format, Args&&... args)
         {
             ASSERT_INIT;
-            const std::string str = std::vformat(format, std::make_format_args(args...));
+            const auto str = fmt::vformat(format, fmt::make_format_args(args...));
             GetCoreLogger()->warn(str);
         }
 
@@ -58,7 +58,7 @@ namespace C3D
         static void Error(const char* format, Args&&... args)
         {
             ASSERT_INIT;
-            const std::string str = std::vformat(format, std::make_format_args(args...));
+            const auto str = fmt::vformat(format, fmt::make_format_args(args...));
             GetCoreLogger()->error(str);
         }
 
@@ -66,7 +66,7 @@ namespace C3D
         static void Fatal(const char* format, Args&&... args)
         {
             ASSERT_INIT;
-            const std::string str = std::vformat(format, std::make_format_args(args...));
+            const auto str = fmt::vformat(format, fmt::make_format_args(args...));
             GetCoreLogger()->critical(str);
             C3D_ASSERT_MSG(false, "Fatal Exception occured");
         }
@@ -85,42 +85,42 @@ namespace C3D
         template <class... Args>
         void Debug(const char* format, Args&&... args) const
         {
-            const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
+            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
             Logger::Debug(formatStr.data(), std::forward<Args>(args)...);
         }
 
         template <class... Args>
         void Trace(const char* format, Args&&... args) const
         {
-            const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
+            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
             Logger::Trace(formatStr.data(), std::forward<Args>(args)...);
         }
 
         template <class... Args>
         void Info(const char* format, Args&&... args) const
         {
-            const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
+            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
             Logger::Info(formatStr.data(), std::forward<Args>(args)...);
         }
 
         template <class... Args>
         void Warn(const char* format, Args&&... args) const
         {
-            const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
+            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
             Logger::Warn(formatStr.data(), std::forward<Args>(args)...);
         }
 
         template <class... Args>
         void Error(const char* format, Args&&... args) const
         {
-            const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
+            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
             Logger::Error(formatStr.data(), std::forward<Args>(args)...);
         }
 
         template <class... Args>
         void Fatal(const char* format, Args&&... args) const
         {
-            const auto formatStr = std::vformat("[{}] - {}", std::make_format_args(prefix, format));
+            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
             Logger::Fatal(formatStr.data(), std::forward<Args>(args)...);
         }
 

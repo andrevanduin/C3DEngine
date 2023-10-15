@@ -1,6 +1,7 @@
 
 #pragma once
-#include <format>
+#include <fmt/format.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/hash.hpp>
@@ -49,7 +50,7 @@ namespace C3D
 }  // namespace C3D
 
 template <>
-struct std::formatter<vec2>
+struct fmt::formatter<vec2>
 {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx)
@@ -60,12 +61,12 @@ struct std::formatter<vec2>
     template <typename FormatContext>
     auto format(vec2 const& vector, FormatContext& ctx)
     {
-        return std::vformat_to(ctx.out(), "({}, {})", std::make_format_args(vector.x, vector.y));
+        return fmt::format_to(ctx.out(), "({}, {})", vector.x, vector.y);
     }
 };
 
 template <>
-struct std::formatter<vec3>
+struct fmt::formatter<vec3>
 {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx)
@@ -76,12 +77,12 @@ struct std::formatter<vec3>
     template <typename FormatContext>
     auto format(vec3 const& vector, FormatContext& ctx)
     {
-        return std::vformat_to(ctx.out(), "({}, {}, {})", std::make_format_args(vector.x, vector.y, vector.z));
+        return fmt::format_to(ctx.out(), "({}, {}, {})", vector.x, vector.y, vector.z);
     }
 };
 
 template <>
-struct std::formatter<vec4>
+struct fmt::formatter<vec4>
 {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx)
@@ -92,6 +93,6 @@ struct std::formatter<vec4>
     template <typename FormatContext>
     auto format(vec4 const& vector, FormatContext& ctx)
     {
-        return std::vformat_to(ctx.out(), "({}, {}, {}, {})", std::make_format_args(vector.x, vector.y, vector.z, vector.w));
+        return fmt::format_to(ctx.out(), "({}, {}, {}, {})", vector.x, vector.y, vector.z, vector.w);
     }
 };
