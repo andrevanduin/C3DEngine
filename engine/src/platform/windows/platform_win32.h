@@ -1,6 +1,5 @@
 
 #pragma once
-#include "core/defines.h"
 
 #ifdef C3D_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
@@ -11,7 +10,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <windowsx.h> // param input extraction
+#include <windowsx.h>  // param input extraction
 
 // Undef Windows macros that cause issues with C3D Engine
 #undef CopyFile

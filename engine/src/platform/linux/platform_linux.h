@@ -1,8 +1,8 @@
 
 #pragma once
-#include "core/defines.h"
-
 #ifdef C3D_PLATFORM_LINUX
+
+#include <xcb/xcb.h>
 
 #include "containers/string.h"
 #include "core/defines.h"
@@ -11,20 +11,20 @@
 
 namespace C3D
 {
-	struct LinuxHandleInfo
-	{
-		HINSTANCE hInstance;
-		HWND hwnd;
-	};
+    struct LinuxHandleInfo
+    {
+        xcb_connection* connection;
+        xcb_window_t window;
+    };
 
-	struct LinuxFileWatch
-	{
-		u32 id;
-		String filePath;
-		FILETIME lastWriteTime;
-	};
+    struct LinuxFileWatch
+    {
+        u32 id;
+        String filePath;
+        long lastWriteTime;
+    };
 
-	class C3D_API Platform final : public SystemWithConfig<PlatformSystemConfig>
+    class C3D_API Platform final : public SystemWithConfig<PlatformSystemConfig>
     {
     public:
         Platform();
@@ -154,30 +154,28 @@ namespace C3D
          *
          * @return constexpr DynamicLibraryPrefix The prefix for the current platform
          */
-        constexpr static DynamicLibraryPrefix GetDynamicLibraryPrefix() { return ""; }
+        constexpr static DynamicLibraryPrefix GetDynamicLibraryPrefix() { return "./lib"; }
 
         /**
          * @brief Get the extension that is used for dynamic libraries on the current platform
          *
          * @return DynamicLibraryExtension The extension for the current platform
          */
-        constexpr static DynamicLibraryExtension GetDynamicLibraryExtension() { return ".dll"; }
-
-        static LRESULT CALLBACK StaticProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM lParam);
-        LRESULT CALLBACK ProcessMessage(HWND hwnd, u32 msg, WPARAM wParam, LPARAM lParam);
+        constexpr static DynamicLibraryExtension GetDynamicLibraryExtension() { return ".so"; }
 
     private:
-        static std::string GetLastErrorMsg();
+        Display* m_display;
+        xcb_screen_t* m_screen;
+
+        xcb_atom_t m_wmProtocols;
+        xcb_atom_t m_wmDeleteWin;
 
         f64 m_clockFrequency = 0.0;
         u64 m_startTime      = 0;
 
-        DynamicArray<Win32FileWatch> m_fileWatches;
+        DynamicArray<LinuxFileWatch> m_fileWatches;
 
-        CONSOLE_SCREEN_BUFFER_INFO m_stdOutputConsoleScreenBufferInfo;
-        CONSOLE_SCREEN_BUFFER_INFO m_stdErrorConsoleScreenBufferInfo;
-
-        Win32HandleInfo m_handle;
+        LinuxHandleInfo m_handle;
     };
-}
+}  // namespace C3D
 #endif
