@@ -323,7 +323,7 @@ struct std::hash<C3D::CString<CCapacity>>
         for (const auto c : key)
         {
             hash ^= static_cast<size_t>(c);
-            hash *= std::_FNV_prime;
+            hash *= FNV_PRIME;
         }
         return hash;
     }

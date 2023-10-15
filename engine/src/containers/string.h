@@ -1183,7 +1183,7 @@ struct std::hash<C3D::BasicString<Allocator>>
         for (const auto c : key)
         {
             hash ^= static_cast<size_t>(c);
-            hash *= std::_FNV_prime;
+            hash *= FNV_PRIME;
         }
         return hash;
     }
