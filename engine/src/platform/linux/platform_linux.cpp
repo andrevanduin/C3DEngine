@@ -1,14 +1,15 @@
 
-#include "platform/platform.h"
+#include "core/defines.h"
 
 #ifdef C3D_PLATFORM_LINUX
-
 #include <X11/XKBlib.h>    // sudo apt-get install libx11-dev
 #include <X11/Xlib-xcb.h>  // sudo apt-get install libxkbcommon-x11-dev libx11-xcb-dev
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <sys/time.h>
 #include <xcb/xcb.h>
+
+#include "platform_linux.h"
 
 #if _POSIX_C_SOURCE >= 199309L
 #include <time.h>  // nanosleep
@@ -24,6 +25,10 @@
 #include <sys/stat.h>
 #include <sys/sysinfo.h>  // Processor info
 #include <unistd.h>
+
+#include "systems/events/event_system.h"
+#include "systems/input/input_system.h"
+#include "systems/system_manager.h"
 
 namespace C3D
 {
@@ -48,7 +53,7 @@ namespace C3D
         const xcb_setup_t* setup = xcb_get_setup(m_handle.connection);
 
         // Loop through screens
-        xcb_screen_iterator_t it = xcb_setup_roots_iterator(m_handle.connection);
+        xcb_screen_iterator_t it = xcb_setup_roots_iterator(setup);
         for (i32 s = 0; s > 0; s--)
         {
             xcb_screen_next(&it);
@@ -123,7 +128,91 @@ namespace C3D
         }
     }
 
-    bool Platform::PumpMessages() {}
+    bool Platform::PumpMessages()
+    {
+        xcb_generic_event_t* event;
+        xcb_client_message_event_t* clientMsgEvent;
+
+        bool quitFlagged = false;
+
+        while ((event = xcb_poll_for_event(m_handle.connection)))
+        {
+            // Input events
+            switch (event->response_type & ~0x80)
+            {
+                case XCB_KEY_PRESS:
+                case XCB_KEY_RELEASE:
+                {
+                    // Key press event xcb_key_prevent_event_t and xcb_key_release_event_t are the same
+                    const auto keyPressEvent = reinterpret_cast<xcb_key_press_event_t*>(event);
+                    xcb_keycode_t code       = keyPressEvent->detail;
+                    KeySym keySym            = XkbKeycodeToKeysym(m_display, static_cast<KeyCode>(code), 0, 0);
+
+                    Keys key = TranslateKeyCode(keySym);
+
+                    // Pass to the input system for processing
+                    Input.ProcessKey(key, event->response_type == XCB_KEY_PRESS ? InputState::Down : InputState::Up);
+                    break;
+                }
+                case XCB_BUTTON_PRESS:
+                case XCB_BUTTON_RELEASE:
+                {
+                    // Button press event
+                    const auto mouseEvent = reinterpret_cast<xcb_button_press_event_t*>(event);
+                    Buttons button        = Buttons::MaxButtons;
+                    switch (mouseEvent->detail)
+                    {
+                        case XCB_BUTTON_INDEX_1:
+                            button = Buttons::ButtonLeft;
+                            break;
+                        case XCB_BUTTON_INDEX_2:
+                            button = Buttons::ButtonMiddle;
+                            break;
+                        case XCB_BUTTON_INDEX_3:
+                            button = Buttons::ButtonRight;
+                            break;
+                    }
+
+                    if (button != Buttons::MaxButtons)
+                    {
+                        // Pass to the input system for processing
+                        Input.ProcessButton(button, event->response_type == XCB_BUTTON_PRESS ? InputState::Down : InputState::Up);
+                    }
+                    break;
+                }
+                case XCB_MOTION_NOTIFY:
+                {
+                    // Mouse move event
+                    const auto moveEvent = reinterpret_cast<xcb_motion_notify_event_t*>(event);
+                    // Pass to the input system for processing
+                    Input.ProcessMouseMove(moveEvent->event_x, moveEvent->event_y);
+                    break;
+                }
+                case XCB_CONFIGURE_NOTIFY:
+                {
+                    // Resize event (this also triggers on a move window event but our engine will just handle it)
+                    const auto configureEvent = reinterpret_cast<xcb_configure_notify_event_t*>(event);
+                    // Fire a Window resize event
+                    EventContext context = {};
+                    context.data.u16[0]  = static_cast<u16>(configureEvent->width);
+                    context.data.u16[1]  = static_cast<u16>(configureEvent->height);
+                    Event.Fire(EventCodeResized, this, context);
+                    break;
+                }
+                case XCB_CLIENT_MESSAGE:
+                {
+                    EventContext data = {};
+                    Event.Fire(EventCodeApplicationQuit, this, data);
+                    quitFlagged = true;
+                    break;
+                }
+            }
+
+            return !quitFlagged;
+        }
+
+        return true;
+    }
 
     f64 Platform::GetAbsoluteTime() const
     {
@@ -157,21 +246,21 @@ namespace C3D
 
     u64 Platform::GetThreadId() { return static_cast<u64>(pthread_self()); }
 
-    static bool LoadDynamicLibrary(const char* name, void** libraryData, u64& size)
+    bool Platform::LoadDynamicLibrary(const char* name, void** libraryData, u64& size)
     {
         if (!name)
         {
-            printf("[PLATFORM] - LoadDynamicLibrary() Failed - Please provide a valid name.");
+            printf("[PLATFORM] - LoadDynamicLibrary() - Please provide a valid name.");
             return false;
         }
 
         CString<256> path;
-        path.FromFormat("{}{}{}", GetDynamicLibraryPrefix(), name, GetDynamicLibraryExtension());
+        path.FromFormat("{}{}{}", C3D::Platform::GetDynamicLibraryPrefix(), name, C3D::Platform::GetDynamicLibraryExtension());
 
         void* library = dlopen(path.Data(), RTLD_NOW);
         if (!library)
         {
-            printf("[PLATFORM] - LoadDynamicLibrary() - Failed.");
+            printf("[PLATFORM] - LoadDynamicLibrary() - Failed to dlopen.");
             return false;
         }
 
@@ -179,10 +268,27 @@ namespace C3D
         size         = 8;
         return true;
     }
-    
-    static bool UnloadDynamicLibrary(void* libraryData)
-    {
 
+    bool Platform::UnloadDynamicLibrary(void* libraryData)
+    {
+        if (!libraryData)
+        {
+            printf("[PLATFROM] - UnloadDynamicLibrary() - Invalid library data provided.");
+            return false;
+        }
+
+        i32 result = dlclose(libraryData);
+        if (result != 0)
+        {
+            // Opposite of windows, 0 means it was successful
+            printf("[PLATFROM] - UnloadDynamicLibrary() - dlcose failed.");
+            return false;
+        }
+
+        libraryData = nullptr;
+        return true;
     }
+
+    Keys Platform::TranslateKeyCode(KeySym keySym) {}
 }  // namespace C3D
 #endif

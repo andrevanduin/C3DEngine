@@ -10,6 +10,7 @@ if (WIN32)
 endif()
 
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(PDB_VERSION "NONE" CACHE STRING "The version number for the PDB file")
 
 project ("C3DEngine")

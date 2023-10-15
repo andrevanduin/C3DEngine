@@ -86,7 +86,7 @@ namespace C3D
         for (u32 i = 0; i < imageCount; i++)
         {
             // We start with the vulkan internal data
-            const auto img = renderTextures[i].internalData;
+            const auto img = static_cast<VulkanImage*>(renderTextures[i].internalData);
             Memory.Delete(MemoryType::Texture, img);
         }
 

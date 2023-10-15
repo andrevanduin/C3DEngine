@@ -22,8 +22,8 @@ namespace C3D::VulkanPlatform
         const LinuxHandleInfo& handle = pSystemsManager->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType).GetHandleInfo();
 
         VkXcbSurfaceCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-        createInfo.hinstance                 = handle.connection;
-        createInfo.hwnd                      = handle.window;
+        createInfo.connection                = handle.connection;
+        createInfo.window                    = handle.window;
 
         auto result = vkCreateXcbSurfaceKHR(context.instance, &createInfo, context.allocator, &context.surface);
         if (!VulkanUtils::IsSuccess(result))

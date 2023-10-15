@@ -20,6 +20,7 @@ namespace C3D
             {
                 throw std::invalid_argument("Provided size is larger then available capacity");
             }
+
             Create(str, size);
         }
 
@@ -203,8 +204,8 @@ namespace C3D
         }
 
         /** @brief Check if const char pointer matches case-insensitive. */
-        [[nodiscard]] bool IEquals(const char* other) const 
-        { 
+        [[nodiscard]] bool IEquals(const char* other) const
+        {
 #ifdef C3D_PLATFORM_WINDOWS
             return _stricmp(m_data, other) == 0;
 #elif defined(C3D_PLATFORM_LINUX)

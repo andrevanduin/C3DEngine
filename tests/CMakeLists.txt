@@ -21,8 +21,9 @@ add_executable (Tests "src/expect.h" "src/test_manager.h" "src/test_manager.cpp"
 target_link_libraries(Tests PUBLIC C3DEngine)
 
 add_custom_target(CopyDLLTests
-	COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/engine/C3DEngine.dll" "${CMAKE_BINARY_DIR}/tests"
-	DEPENDS C3DEngine
+	COMMAND ${CMAKE_COMMAND} -E copy 
+	"${CMAKE_BINARY_DIR}/engine/${CMAKE_SHARED_LIBRARY_PREFIX}C3DEngine${CMAKE_SHARED_LIBRARY_SUFFIX}" 
+	"${CMAKE_BINARY_DIR}/tests" DEPENDS C3DEngine
 )
 
 add_dependencies(Tests CopyDLLTests)

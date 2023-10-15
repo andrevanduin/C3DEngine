@@ -1,6 +1,7 @@
 
 #include "simple_scene_loader.h"
 
+#include <core/exceptions.h>
 #include <platform/file_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
@@ -8,8 +9,8 @@
 constexpr auto FILE_EXTENSION = "csimplescenecfg";
 
 C3D::ResourceLoader<SimpleSceneConfig>::ResourceLoader(const C3D::SystemManager* pSystemsManager)
-    : C3D::IResourceLoader(pSystemsManager, "SIMPLE_SCENE_LOADER", C3D::MemoryType::Scene,
-                           C3D::ResourceType::SimpleScene, nullptr, "scenes")
+    : C3D::IResourceLoader(pSystemsManager, "SIMPLE_SCENE_LOADER", C3D::MemoryType::Scene, C3D::ResourceType::SimpleScene, nullptr,
+                           "scenes")
 {}
 
 bool C3D::ResourceLoader<SimpleSceneConfig>::Load(const char* name, SimpleSceneConfig& resource) const
@@ -65,8 +66,7 @@ bool C3D::ResourceLoader<SimpleSceneConfig>::Load(const char* name, SimpleSceneC
             type = ParseTag(line, fileName, lineNumber, resource);
             if (type == ParserTagType::Invalid)
             {
-                m_logger.Error("Load() - Failed to load file: '{}'. Unknown tag: '{}' found on line: {}", fileName,
-                               line, lineNumber);
+                m_logger.Error("Load() - Failed to load file: '{}'. Unknown tag: '{}' found on line: {}", fileName, line, lineNumber);
                 return false;
             }
         }
@@ -91,23 +91,20 @@ void C3D::ResourceLoader<SimpleSceneConfig>::Unload(SimpleSceneConfig& resource)
     resource.meshes.Clear();
 }
 
-bool C3D::ResourceLoader<SimpleSceneConfig>::ParseTagContent(const C3D::String& line, const C3D::String& fileName,
-                                                             const u32 lineNumber, u32& version,
-                                                             const ParserTagType type, SimpleSceneConfig& cfg) const
+bool C3D::ResourceLoader<SimpleSceneConfig>::ParseTagContent(const C3D::String& line, const C3D::String& fileName, const u32 lineNumber,
+                                                             u32& version, const ParserTagType type, SimpleSceneConfig& cfg) const
 {
     // Check if we have a '=' symbol
     if (!line.Contains('='))
     {
-        m_logger.Warn("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.", fileName,
-                      lineNumber);
+        m_logger.Warn("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.", fileName, lineNumber);
         return false;
     }
 
     auto parts = line.Split('=');
     if (parts.Size() != 2)
     {
-        m_logger.Warn("Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.",
-                      fileName, lineNumber);
+        m_logger.Warn("Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.", fileName, lineNumber);
         return false;
     }
 
@@ -146,22 +143,20 @@ bool C3D::ResourceLoader<SimpleSceneConfig>::ParseTagContent(const C3D::String& 
                 ParseTerrain(varName, value, cfg);
                 break;
             default:
-                throw std::exception(String::FromFormat("Unknown ParserTageType: '{}'.", ToUnderlying(type)).Data());
+                throw Exception("Unknown ParserTageType: '{}'.", ToUnderlying(type));
                 break;
         }
     }
     catch (const std::exception& exc)
     {
-        m_logger.Error("Load() - Failed to load file: '{}'. Error found on line {}: {}", fileName, lineNumber,
-                       exc.what());
+        m_logger.Error("Load() - Failed to load file: '{}'. Error found on line {}: {}", fileName, lineNumber, exc.what());
         return false;
     }
 
     return true;
 }
 
-void C3D::ResourceLoader<SimpleSceneConfig>::ParseScene(const C3D::String& name, const C3D::String& value,
-                                                        SimpleSceneConfig& cfg) const
+void C3D::ResourceLoader<SimpleSceneConfig>::ParseScene(const C3D::String& name, const C3D::String& value, SimpleSceneConfig& cfg) const
 {
     if (name.IEquals("name"))
     {
@@ -173,12 +168,11 @@ void C3D::ResourceLoader<SimpleSceneConfig>::ParseScene(const C3D::String& name,
     }
     else
     {
-        throw std::exception(String::FromFormat("Unknown element: '{}' specified for Scene", name).Data());
+        throw Exception("Unknown element: '{}' specified for Scene", name);
     }
 }
 
-void C3D::ResourceLoader<SimpleSceneConfig>::ParseSkybox(const C3D::String& name, const C3D::String& value,
-                                                         SimpleSceneConfig& cfg) const
+void C3D::ResourceLoader<SimpleSceneConfig>::ParseSkybox(const C3D::String& name, const C3D::String& value, SimpleSceneConfig& cfg) const
 {
     if (name.IEquals("name"))
     {
@@ -190,7 +184,7 @@ void C3D::ResourceLoader<SimpleSceneConfig>::ParseSkybox(const C3D::String& name
     }
     else
     {
-        throw std::exception(String::FromFormat("Unknown element: '{}' specified for Skybox", name).Data());
+        throw Exception("Unknown element: '{}' specified for Skybox", name);
     }
 }
 
@@ -211,13 +205,11 @@ void C3D::ResourceLoader<SimpleSceneConfig>::ParseDirectionalLight(const C3D::St
     }
     else
     {
-        throw std::exception(
-            C3D::String::FromFormat("Unknown element: '{}' specified for Directional Light", name).Data());
+        throw Exception("Unknown element: '{}' specified for Directional Light", name);
     }
 }
 
-void C3D::ResourceLoader<SimpleSceneConfig>::ParsePointLight(const String& name, const String& value,
-                                                             SimpleSceneConfig& cfg) const
+void C3D::ResourceLoader<SimpleSceneConfig>::ParsePointLight(const String& name, const String& value, SimpleSceneConfig& cfg) const
 {
     auto& pointLight = cfg.pointLights.Back();
 
@@ -247,12 +239,11 @@ void C3D::ResourceLoader<SimpleSceneConfig>::ParsePointLight(const String& name,
     }
     else
     {
-        throw std::exception(String::FromFormat("Unknown element: '{}' specified for Point Light", name).Data());
+        throw Exception("Unknown element: '{}' specified for Point Light", name);
     }
 }
 
-void C3D::ResourceLoader<SimpleSceneConfig>::ParseMesh(const C3D::String& name, const C3D::String& value,
-                                                       SimpleSceneConfig& cfg) const
+void C3D::ResourceLoader<SimpleSceneConfig>::ParseMesh(const C3D::String& name, const C3D::String& value, SimpleSceneConfig& cfg) const
 {
     auto& mesh = cfg.meshes.Back();
 
@@ -274,12 +265,11 @@ void C3D::ResourceLoader<SimpleSceneConfig>::ParseMesh(const C3D::String& name, 
     }
     else
     {
-        throw std::exception(String::FromFormat("Unknown element: '{}' specified for Mesh", name).Data());
+        throw Exception("Unknown element: '{}' specified for Mesh", name);
     }
 }
 
-void C3D::ResourceLoader<SimpleSceneConfig>::ParseTerrain(const C3D::String& name, const C3D::String& value,
-                                                          SimpleSceneConfig& cfg) const
+void C3D::ResourceLoader<SimpleSceneConfig>::ParseTerrain(const C3D::String& name, const C3D::String& value, SimpleSceneConfig& cfg) const
 {
     auto& terrain = cfg.terrains.Back();
 
@@ -297,7 +287,7 @@ void C3D::ResourceLoader<SimpleSceneConfig>::ParseTerrain(const C3D::String& nam
     }
     else
     {
-        throw std::exception(String::FromFormat("Unknown element: '{}' specified for Terrain", name).Data());
+        throw Exception("Unknown element: '{}' specified for Terrain", name);
     }
 }
 
@@ -322,18 +312,18 @@ C3D::Transform C3D::ResourceLoader<SimpleSceneConfig>::ParseTransform(const C3D:
     }
     else
     {
-        throw std::exception(
-            C3D::String::FromFormat(
-                "Transform should have 10 values in the form px py pz qx qy qz qw sx sy sz (quaternion mode) "
-                "or 9 values in the form of px py pz ex ey ez sx sy sz (euler angle mode) but it had {}",
-                values.Size())
-                .Data());
+        throw Exception(
+            "Transform should have 10 values in the form px py pz qx qy qz qw sx sy sz (quaternion mode) "
+            "or 9 values in the form of px py pz ex ey ez sx sy sz (euler angle mode) but it had {}",
+            values.Size());
     }
     return transform;
 }
 
-C3D::ResourceLoader<SimpleSceneConfig>::ParserTagType C3D::ResourceLoader<SimpleSceneConfig>::ParseTag(
-    const C3D::String& line, const C3D::String& fileName, const u32 lineNumber, SimpleSceneConfig& cfg) const
+C3D::ResourceLoader<SimpleSceneConfig>::ParserTagType C3D::ResourceLoader<SimpleSceneConfig>::ParseTag(const C3D::String& line,
+                                                                                                       const C3D::String& fileName,
+                                                                                                       const u32 lineNumber,
+                                                                                                       SimpleSceneConfig& cfg) const
 {
     static bool closeTag = true;
     C3D::String name;
@@ -341,9 +331,8 @@ C3D::ResourceLoader<SimpleSceneConfig>::ParserTagType C3D::ResourceLoader<Simple
     {
         if (line[1] == '/')
         {
-            m_logger.Error(
-                "Load() - Failed to load file: '{}'. Expected an opening tag but found a closing tag at line: {}",
-                fileName, lineNumber);
+            m_logger.Error("Load() - Failed to load file: '{}'. Expected an opening tag but found a closing tag at line: {}", fileName,
+                           lineNumber);
             return ParserTagType::Invalid;
         }
         closeTag = false;
@@ -352,9 +341,8 @@ C3D::ResourceLoader<SimpleSceneConfig>::ParserTagType C3D::ResourceLoader<Simple
     {
         if (line[1] != '/')
         {
-            m_logger.Error(
-                "Load() - Failed to load file: '{}'. Expected a closing tag but found an opening tag at line: {}",
-                fileName, lineNumber);
+            m_logger.Error("Load() - Failed to load file: '{}'. Expected a closing tag but found an opening tag at line: {}", fileName,
+                           lineNumber);
             return ParserTagType::Invalid;
         }
 

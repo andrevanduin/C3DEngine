@@ -3,6 +3,8 @@
 
 #include <core/string_utils.h>
 
+#include <algorithm>
+
 #include "platform/vulkan_platform.h"
 #include "vulkan_types.h"
 #include "vulkan_utils.h"
@@ -52,9 +54,10 @@ namespace C3D
 
         for (auto requiredExtension : requiredExtensions)
         {
-            auto index = std::ranges::find_if(availableExtensions, [requiredExtension](const VkExtensionProperties& props) {
-                return StringUtils::Equals(props.extensionName, requiredExtension);
-            });
+            auto index = std::find_if(availableExtensions.begin(), availableExtensions.end(),
+                                      [requiredExtension](const VkExtensionProperties& props) {
+                                          return StringUtils::Equals(props.extensionName, requiredExtension);
+                                      });
             if (index == availableExtensions.end())
             {
                 Logger::Error("[VULKAN_INSTANCE] - Create() - Required extension: '{}' is not available.", requiredExtension);
@@ -92,9 +95,10 @@ namespace C3D
 
         for (auto requiredValidationLayerName : requiredValidationLayerNames)
         {
-            auto index = std::ranges::find_if(availableLayers, [requiredValidationLayerName](const VkLayerProperties& props) {
-                return StringUtils::Equals(props.layerName, requiredValidationLayerName);
-            });
+            auto index = std::find_if(availableLayers.begin(), availableExtensions.end(),
+                                      [requiredValidationLayerName](const VkLayerProperties& props) {
+                                          return StringUtils::Equals(props.layerName, requiredValidationLayerName);
+                                      });
             if (index == availableLayers.end())
             {
                 Logger::Error("[VULKAN_INSTANCE] - Create() - Required layer: '{}' is not available.", requiredValidationLayerName);

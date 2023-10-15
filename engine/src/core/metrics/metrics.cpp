@@ -191,7 +191,8 @@ namespace C3D
 #ifdef C3D_MEMORY_METRICS_POINTERS
         auto& tagged = stats.taggedAllocations[type];
 
-        const auto allocIt = std::ranges::find_if(tagged.allocations, [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
+        const auto allocIt =
+            std::find_if(tagged.allocations.begin(), tagged.allocations.end(), [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
         if (allocIt != tagged.allocations.end())
         {
             const auto alloc = *allocIt;

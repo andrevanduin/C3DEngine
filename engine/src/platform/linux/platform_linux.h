@@ -2,9 +2,9 @@
 #pragma once
 #ifdef C3D_PLATFORM_LINUX
 
-#include <xcb/xcb.h>
 #include <X11/Xlib.h>
 #include <dlfcn.h>
+#include <xcb/xcb.h>
 
 // Redefine the C3D Engine macros again for further use
 #undef None
@@ -12,6 +12,8 @@
 
 #include "containers/string.h"
 #include "core/defines.h"
+#include "core/input/buttons.h"
+#include "core/input/keys.h"
 #include "platform/platform_base.h"
 #include "systems/system.h"
 
@@ -168,6 +170,8 @@ namespace C3D
         constexpr static DynamicLibraryExtension GetDynamicLibraryExtension() { return ".so"; }
 
     private:
+        Keys TranslateKeyCode(KeySym keySym);
+
         Display* m_display;
         xcb_screen_t* m_screen;
 

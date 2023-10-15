@@ -50,7 +50,7 @@ namespace C3D
             return false;
         }
 
-        const auto it = std::ranges::find_if(events, [&](const EventCallback& e) { return e.id == callbackId; });
+        const auto it = std::find_if(events.begin(), events.end(), [&](const EventCallback& e) { return e.id == callbackId; });
         if (it != events.end())
         {
             events.Erase(it);

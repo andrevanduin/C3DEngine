@@ -1,4 +1,5 @@
 
+#include <core/exceptions.h>
 #include <core/plugin/plugin.h>
 #include <entry.h>
 #include <math/frustum.h>
@@ -92,16 +93,16 @@ C3D::Application* C3D::CreateApplication()
 
     if (!rendererPlugin.Load("C3DVulkanRenderer"))
     {
-        throw std::exception("Failed to load Vulkan Renderer plugin");
+        throw C3D::Exception("Failed to load Vulkan Renderer plugin");
     }
 
     if (!applicationLib.Load(loadedLibPath.Data()))
     {
-        throw std::exception("Failed to load TestEnv library");
+        throw C3D::Exception("Failed to load TestEnv library");
     }
 
     // On the first start we need to create our state
-    applicationState = applicationLib.CreateState();
+    applicationState                 = applicationLib.CreateState();
     applicationState->rendererPlugin = rendererPlugin.Create<RendererPlugin>();
 
     application = applicationLib.Create(applicationState);
@@ -111,14 +112,13 @@ C3D::Application* C3D::CreateApplication()
 // Method that gets called when the engine is fully initialized
 void C3D::InitApplication(Engine* engine)
 {
-    const auto pSystemsManager = engine->GetSystemsManager();
+    const auto m_pSystemsManager = engine->GetSystemsManager();
 
-    pSystemsManager->GetSystem<EventSystem>(EventSystemType)
-        .Register(EventCodeWatchedFileChanged, [engine](const u16 code, void*, const EventContext& context) {
-            return OnWatchedFileChanged(code, engine, context);
-        });
-    applicationLibraryFile = pSystemsManager->GetSystem<Platform>(PlatformSystemType).WatchFile("TestEnvLib.dll");
+    Event.Register(EventCodeWatchedFileChanged,
+                   [engine](const u16 code, void*, const EventContext& context) { return OnWatchedFileChanged(code, engine, context); });
 
+    const auto libraryName = C3D::String::FromFormat("{}{}{}", OS.GetDynamicLibraryPrefix(), "TestEnvLib", OS.GetDynamicLibraryExtension());
+    applicationLibraryFile = OS.WatchFile(libraryName.Data());
     application->OnLibraryLoad();
 }
 

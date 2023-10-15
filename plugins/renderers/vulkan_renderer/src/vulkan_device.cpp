@@ -526,8 +526,8 @@ namespace C3D
 
                 for (auto& extension : requirements.extensionNames)
                 {
-                    auto index = std::ranges::find_if(
-                        availableExtensions, [extension](const VkExtensionProperties& props) { return props.extensionName == extension; });
+                    auto index = std::find_if(availableExtensions.begin(), availableExtensions.end(),
+                                              [extension](const VkExtensionProperties& props) { return props.extensionName == extension; });
                     if (index == availableExtensions.end())
                     {
                         m_logger.Info(
@@ -541,7 +541,7 @@ namespace C3D
                 // Check if the VK_KHR_portability_subset is available, if it is we must enable it to enable portability
                 // to make sure we can run on platforms like Mac OS.
                 // See: https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VK_KHR_portability_subset.html
-                auto index = std::ranges::find_if(availableExtensions, [](const VkExtensionProperties& props) {
+                auto index = std::find_if(availableExtensions.begin(), availableExtensions.end(), [](const VkExtensionProperties& props) {
                     return props.extensionName == VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME;
                 });
 
