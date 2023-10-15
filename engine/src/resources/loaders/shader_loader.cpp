@@ -10,15 +10,14 @@
 namespace C3D
 {
     ResourceLoader<ShaderConfig>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, "SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr,
-                          "shaders")
+        : IResourceLoader(pSystemsManager, "SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
     {}
 
     bool ResourceLoader<ShaderConfig>::Load(const char* name, ShaderConfig& resource) const
     {
         if (std::strlen(name) == 0)
         {
-            m_logger.Error("Load() - Provided name was empty or no outResource pointer provided");
+            m_logger.Error("Load() - Provided name was empty.");
             return false;
         }
 
@@ -55,8 +54,8 @@ namespace C3D
             // Check if we have a '=' symbol
             if (!line.Contains('='))
             {
-                m_logger.Warn("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.",
-                              fullPath, lineNumber);
+                m_logger.Warn("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.", fullPath,
+                              lineNumber);
                 lineNumber++;
                 continue;
             }
@@ -64,9 +63,8 @@ namespace C3D
             auto parts = line.Split('=');
             if (parts.Size() != 2)
             {
-                m_logger.Warn(
-                    "Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.",
-                    fullPath, lineNumber);
+                m_logger.Warn("Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.", fullPath,
+                              lineNumber);
                 lineNumber++;
                 continue;
             }
@@ -167,8 +165,8 @@ namespace C3D
         if (!data.stageFileNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
         {
             // We already found the stage file names and the lengths don't match
-            m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})",
-                           data.stageNames.Size(), data.stageFileNames.Size());
+            m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})", data.stageNames.Size(),
+                           data.stageFileNames.Size());
         }
 
         for (auto& stageName : data.stageNames)
@@ -202,8 +200,8 @@ namespace C3D
         if (!data.stageNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
         {
             // We already found the stage names and the lengths don't match
-            m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})",
-                           data.stageNames.Size(), data.stageFileNames.Size());
+            m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})", data.stageNames.Size(),
+                           data.stageFileNames.Size());
         }
     }
 
@@ -212,8 +210,7 @@ namespace C3D
         const auto fields = value.Split(',');
         if (fields.Size() != 2)
         {
-            m_logger.Error(
-                "ParseAttribute() - Invalid layout. Attribute field must be 'type,name'. Skipping this line.");
+            m_logger.Error("ParseAttribute() - Invalid layout. Attribute field must be 'type,name'. Skipping this line.");
             return;
         }
 

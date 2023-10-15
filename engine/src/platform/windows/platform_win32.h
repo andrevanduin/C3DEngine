@@ -16,6 +16,7 @@
 #undef CopyFile
 #undef max
 #undef min
+#undef RGB
 
 // Redefine the C3D Engine macros again for further use
 #define Resources m_pSystemsManager->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)

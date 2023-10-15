@@ -25,7 +25,7 @@ namespace C3D
     {
         isValid = false;
 
-        std::ios::openmode openMode;
+        std::ios::openmode openMode = static_cast<std::ios::openmode>(0);
 
         if (mode & FileModeRead) openMode |= std::ios::in;
         if (mode & FileModeWrite) openMode |= std::ios::out;

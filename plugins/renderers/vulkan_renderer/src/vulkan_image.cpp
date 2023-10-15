@@ -262,22 +262,25 @@ namespace C3D
         // Report memory as freed
         MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
 
-        auto logicalDevice = m_context->device.GetLogical();
+        if (m_context)
+        {
+            auto logicalDevice = m_context->device.GetLogical();
 
-        if (view)
-        {
-            vkDestroyImageView(logicalDevice, view, m_context->allocator);
-            view = nullptr;
-        }
-        if (m_memory)
-        {
-            vkFreeMemory(logicalDevice, m_memory, m_context->allocator);
-            m_memory = nullptr;
-        }
-        if (handle)
-        {
-            vkDestroyImage(logicalDevice, handle, m_context->allocator);
-            handle = nullptr;
+            if (view)
+            {
+                vkDestroyImageView(logicalDevice, view, m_context->allocator);
+                view = nullptr;
+            }
+            if (m_memory)
+            {
+                vkFreeMemory(logicalDevice, m_memory, m_context->allocator);
+                m_memory = nullptr;
+            }
+            if (handle)
+            {
+                vkDestroyImage(logicalDevice, handle, m_context->allocator);
+                handle = nullptr;
+            }
         }
 
         std::memset(&m_memoryRequirements, 0, sizeof(VkMemoryRequirements));

@@ -20,7 +20,7 @@ namespace C3D
         /** @brief The Pause Key. */
         KeyPause = 0x13,
         /** @brief The Caps Lock Key. */
-        KeyCapital = 0x14,
+        KeyCapslock = 0x14,
 
         /** @brief The Escape Key. */
         KeyEscape = 0x1b,
@@ -31,9 +31,9 @@ namespace C3D
         KeyModeChange = 0x1f,
 
         /** @brief The SpaceBar Key. */
-        KeySpace = 0x20,
-        KeyPrior = 0x21,
-        KeyNext  = 0x22,
+        KeySpace    = 0x20,
+        KeyPageUp   = 0x21,
+        KeyPageDown = 0x22,
         /** @brief The End Key. */
         KeyEnd = 0x23,
         /** @brief The Home Key. */
@@ -50,6 +50,8 @@ namespace C3D
         KeyPrint     = 0x2a,
         KeyExecute   = 0x2b,
         KeySnapshot  = 0x2c,
+        /** @brief The Insert Key. */
+        KeyInsert = 0x2d,
         /** @brief The Delete Key. */
         KeyDelete = 0x2e,
         KeyHelp   = 0x2f,
@@ -127,11 +129,10 @@ namespace C3D
         KeyZ = 'Z',
 
         /** @brief The Left Windows/Super Key. */
-        KeyLWin = 0x5b,
+        KeyLSuper = 0x5b,
         /** @brief The Right Windows/Super Key. */
-        KeyRWin = 0x5c,
-        KeyApps = 0x5d,
-
+        KeyRSuper = 0x5c,
+        KeyApps   = 0x5d,
         /** @brief The Sleep Key. */
         KeySleep = 0x5f,
         /** @brief The NumberPad 0 Key. */

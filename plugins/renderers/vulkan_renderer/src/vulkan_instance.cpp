@@ -95,10 +95,10 @@ namespace C3D
 
         for (auto requiredValidationLayerName : requiredValidationLayerNames)
         {
-            auto index = std::find_if(availableLayers.begin(), availableExtensions.end(),
-                                      [requiredValidationLayerName](const VkLayerProperties& props) {
-                                          return StringUtils::Equals(props.layerName, requiredValidationLayerName);
-                                      });
+            auto index =
+                std::find_if(availableLayers.begin(), availableLayers.end(), [requiredValidationLayerName](const VkLayerProperties& props) {
+                    return StringUtils::Equals(props.layerName, requiredValidationLayerName);
+                });
             if (index == availableLayers.end())
             {
                 Logger::Error("[VULKAN_INSTANCE] - Create() - Required layer: '{}' is not available.", requiredValidationLayerName);

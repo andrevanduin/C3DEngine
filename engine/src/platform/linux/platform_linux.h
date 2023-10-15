@@ -170,7 +170,7 @@ namespace C3D
         constexpr static DynamicLibraryExtension GetDynamicLibraryExtension() { return ".so"; }
 
     private:
-        Keys TranslateKeyCode(KeySym keySym);
+        static Keys TranslateKeyCode(KeySym keySym);
 
         Display* m_display;
         xcb_screen_t* m_screen;
