@@ -243,7 +243,7 @@ namespace C3D
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        BasicString(const BasicString& other) : m_allocator(other.m_allocator)
+        BasicString(const BasicString& other) : m_size(other.m_size), m_allocator(other.m_allocator)
         {
             // Check 'other' is stack or heap allocated
             if (other.m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP)  // Heap allocated
