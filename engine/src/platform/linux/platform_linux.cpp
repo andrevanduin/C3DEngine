@@ -32,6 +32,10 @@
 
 namespace C3D
 {
+    Platform::Platform() : SystemWithConfig(nullptr, "PLATFORM") {}
+
+    Platform::Platform(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager, "PLATFORM") {}
+
     bool Platform::Init(const PlatformSystemConfig& config)
     {
         // Connect to X
@@ -214,6 +218,127 @@ namespace C3D
         return true;
     }
 
+    CopyFileStatus Platform::CopyFile(const char* source, const char* dest, bool overwriteIfExists) { return CopyFileStatus::NotFound; }
+
+    FileWatchId Platform::WatchFile(const char* filePath)
+    {
+        if (!filePath)
+        {
+            m_logger.Error("WatchFile() - Failed due to filePath being invalid.");
+            return INVALID_ID;
+        }
+
+        struct stat info;
+        int result = stat(filePath, &info);
+        if (result != 0)
+        {
+            if (errno == ENOENT)
+            {
+                m_logger.Error("WatchFile() - Could not find file at: '{}'.", filePath);
+                return INVALID_ID;
+            }
+
+            m_logger.Error("WatchFile() - Failed to read file at: '{}' due to unkown error.", filePath);
+            return INVALID_ID;
+        }
+
+        for (u32 i = 0; i < m_fileWatches.Size(); i++)
+        {
+            auto& watch = m_fileWatches[i];
+
+            if (watch.id == INVALID_ID)
+            {
+                // We have found an empty slot so we put the FileWatch in this slot and set the id to it's index
+                watch.id            = i;
+                watch.filePath      = filePath;
+                watch.lastWriteTime = info.st_mtime;
+
+                m_logger.Info("WatchFile() - Registered watch for: '{}'.", filePath);
+                return i;
+            }
+        }
+
+        // We were unable to find an empty slot so let's add a new slot
+        const auto nextIndex = static_cast<u32>(m_fileWatches.Size());
+
+        const LinuxFileWatch watch = { nextIndex, filePath, info.st_mtime };
+        m_fileWatches.PushBack(watch);
+
+        m_logger.Info("WatchFile() - Registered watch for: '{}'.", filePath);
+        return nextIndex;
+    }
+
+    bool Platform::UnwatchFile(FileWatchId watchId)
+    {
+        if (watchId == INVALID_ID)
+        {
+            m_logger.Error("UnwatchFile() - Failed due to watchId being invalid.");
+            return false;
+        }
+
+        if (m_fileWatches.Empty())
+        {
+            m_logger.Error("UnwatchFile() - Failed since there are no files being watched currently.");
+            return false;
+        }
+
+        if (watchId >= m_fileWatches.Size())
+        {
+            m_logger.Error("UnwatchFile() - Failed since there is no watch for the provided id: {}.", watchId);
+            return false;
+        }
+
+        // Set the id to INVALID_ID to indicate that we no longer are interested in this watch
+        // This makes the slot available to be filled by a different FileWatch in the future
+        LinuxFileWatch& watch = m_fileWatches[watchId];
+
+        m_logger.Info("UnwatchFile() - Stopped watching: '{}'.", watch.filePath);
+
+        watch.id = INVALID_ID;
+        watch.filePath.Clear();
+        watch.lastWriteTime = 0;
+
+        return true;
+    }
+
+    void Platform::WatchFiles()
+    {
+        for (auto& watch : m_fileWatches)
+        {
+            if (watch.id != INVALID_ID)
+            {
+                struct stat info;
+                int result = stat(watch.filePath.Data(), &info);
+                if (result != 0)
+                {
+                    if (errno == ENOENT)
+                    {
+                        // File does not exist. This means it must have been deleted, so we remove the watch.
+                        EventContext context = {};
+                        context.data.u32[0]  = watch.id;
+                        Event.Fire(EventCodeWatchedFileRemoved, this, context);
+                        m_logger.Info("WatchFiles() - File with watch id: {} has been removed.", watch.id);
+                        UnwatchFile(watch.id);
+                        continue;
+                    }
+
+                    m_logger.Warn("WatchFiles() - Watching file with watch id: {} has failed due to an unkown error.");
+                    continue;
+                }
+
+                // Check the file time to see if the file has been changed and notify if it has
+                if (info.st_mtime - watch.lastWriteTime != 0)
+                {
+                    watch.lastWriteTime = info.st_mtime;
+                    // Notify listeners of update
+                    EventContext context = {};
+                    context.data.u32[0]  = watch.id;
+                    Event.Fire(EventCodeWatchedFileChanged, this, context);
+                }
+            }
+        }
+    }
+
     f64 Platform::GetAbsoluteTime() const
     {
         timespec now;
@@ -291,7 +416,7 @@ namespace C3D
 
     Keys Platform::TranslateKeyCode(KeySym keySym)
     {
-        switch (x_keycode)
+        switch (keySym)
         {
             case XK_BackSpace:
                 return KeyBackspace;
@@ -299,10 +424,6 @@ namespace C3D
                 return KeyEnter;
             case XK_Tab:
                 return KeyTab;
-            case XK_Shift:
-                return KeyShift;
-            case XK_Control:
-                return KeyControl;
             case XK_Pause:
                 return KeyPause;
             case XK_Caps_Lock:
@@ -315,7 +436,7 @@ namespace C3D
             // case : return KEY_ACCEPT;
             // case XK_Mode_switch: return KEY_MODECHANGE;
             case XK_space:
-                return keySpace;
+                return KeySpace;
             case XK_Prior:
                 return KeyPageUp;
             case XK_Next:
@@ -376,7 +497,7 @@ namespace C3D
             case XK_KP_Add:
                 return KeyAdd;
             case XK_KP_Separator:
-                return KeySeperator;
+                return KeySeparator;
             case XK_KP_Subtract:
                 return KeySubtract;
             case XK_KP_Decimal:
@@ -452,7 +573,7 @@ namespace C3D
             case XK_semicolon:
                 return KeySemicolon;
             case XK_plus:
-                return KeyEqual;
+                return KeyEquals;
             case XK_comma:
                 return KeyComma;
             case XK_minus:
@@ -460,7 +581,7 @@ namespace C3D
             case XK_period:
                 return KeyPeriod;
             case XK_slash:
-                return KeySlah;
+                return KeySlash;
             case XK_grave:
                 return KeyGrave;
             case XK_0:
@@ -562,7 +683,7 @@ namespace C3D
             case XK_Z:
                 return KeyZ;
             default:
-                return 0;
+                return Keys::MaxKeys;
         }
     }
 }  // namespace C3D
