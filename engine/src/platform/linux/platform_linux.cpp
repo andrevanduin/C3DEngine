@@ -218,7 +218,140 @@ namespace C3D
         return true;
     }
 
-    CopyFileStatus Platform::CopyFile(const char* source, const char* dest, bool overwriteIfExists) { return CopyFileStatus::NotFound; }
+    CopyFileStatus CopyFileCleanup(CopyFileStatus status, i32 sourceFd, i32 destFd)
+    {
+        if (sourceFd != -1)
+        {
+            auto result = close(sourceFd);
+            if (result != 0)
+            {
+                Logger::Error("[PLATFORM] - CopyFile() - Closing source file failed.");
+            }
+        }
+
+        if (destFd != -1)
+        {
+            auto result = close(destFd);
+            if (result != 0)
+            {
+                Logger::Error("[PLATFORM] - CopyFile() - Closing dest file failed.");
+            }
+        }
+
+        return status;
+    }
+
+    CopyFileStatus Platform::CopyFile(const char* source, const char* dest, bool overwriteIfExists)
+    {
+        auto status  = CopyFileStatus::Failed;
+        i32 sourceFd = -1, destFd = -1;
+
+        // Obtain a file descriptor for the source file
+        sourceFd = open(source, O_RDONLY);
+        if (sourceFd == -1)
+        {
+            if (errno == ENOENT)
+            {
+                Logger::Error("[PLATFORM] - CopyFile() - Source file: '{}' could not be found.", source);
+                status = CopyFileStatus::NotFound;
+            }
+            return CopyFileCleanup(status, sourceFd, destFd);
+        }
+
+        // Stat the file to obtain it's attributes (like size)
+        struct stat sourceStat;
+        i32 result = fstat(sourceFd, &sourceStat);
+        if (result != 0)
+        {
+            if (errno == ENOENT)
+            {
+                Logger::Error("[PLATFORM] - CopyFile() - Source file: '{}' could not be found.", source);
+                status = CopyFileStatus::NotFound;
+            }
+            return CopyFileCleanup(status, sourceFd, destFd);
+        }
+
+        ssize_t size = static_cast<ssize_t>(sourceStat.st_size);
+
+        // Obtain a file descriptor for the dest file
+        destFd = open(dest, O_WRONLY | O_CREAT);
+        if (destFd == -1)
+        {
+            if (errno == ENOENT)
+            {
+                Logger::Error("[PLATFORM] - CopyFile() - Dest file: '{}' could not be created.", dest);
+                status = CopyFileStatus::NotFound;
+            }
+            else if (errno == EACCES)
+            {
+                Logger::Error("[PLATFORM] - CopyFile() - Dest file: '{}' could not be created due to insufficient permissions.", dest);
+                status = CopyFileStatus::NoPermissions;
+            }
+            else
+            {
+                status = CopyFileStatus::Locked;
+            }
+            return CopyFileCleanup(status, sourceFd, destFd);
+        }
+
+        // Copy the data. We loop since linux has a limit on how much data can be copied at once.
+        while (size > 0)
+        {
+            ssize_t sent = sendfile(destFd, sourceFd, nullptr, (size >= SSIZE_MAX ? SSIZE_MAX : static_cast<ssize_t>(size)));
+            if (sent < 0)
+            {
+                if (errno != EINVAL && errno != ENOSYS)
+                {
+                    return CopyFileCleanup(CopyFileStatus::Unknown, sourceFd, destFd);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            else
+            {
+                assert(sent <= size);
+                size -= sent;
+            }
+        }
+
+        // Copy the file time. We stat again to make sure we are up to date
+        result = fstat(sourceFd, &sourceStat);
+        if (result != 0)
+        {
+            if (errno == ENOENT)
+            {
+                Logger::Error("[PLATFORM] - CopyFile() - Source file: '{}' could not be found when stat'ing second time.", source);
+                status = CopyFileStatus::NotFound;
+            }
+            return CopyFileCleanup(status, sourceFd, destFd);
+        }
+
+        struct timeval destTimes[2];
+        // Update last access time
+        destTimes[0].tv_sec  = sourceStat.st_atime;
+        destTimes[0].tv_usec = sourceStat.st_atim.tv_nsec / 1000;
+        // Update last modified time
+        destTimes[1].tv_sec  = sourceStat.st_mtime;
+        destTimes[1].tv_usec = sourceStat.st_mtim.tv_nsec / 1000;
+        result               = futimes(destFd, destTimes);
+        if (result != 0)
+        {
+            // If we get an access error we assume the file is locked
+            return CopyFileCleanup(CopyFileStatus::Locked, sourceFd, destFd);
+        }
+
+        // Copy over our permissions
+        result = fchmod(destFd, sourceStat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
+        if (result != 0)
+        {
+            // If we get an access error we assume the file is locked
+            return CopyFileCleanup(CopyFileStatus::Locked, sourceFd, destFd);
+        }
+
+        return CopyFileCleanup(CopyFileStatus::Success, sourceFd, destFd);
+    }
 
     FileWatchId Platform::WatchFile(const char* filePath)
     {

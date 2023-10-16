@@ -18,6 +18,8 @@ namespace C3D
         Success,
         NotFound,
         Locked,
+        NoPermissions,
+        Failed,
         Unknown,
     };
 

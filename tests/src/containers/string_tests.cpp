@@ -28,8 +28,7 @@ u8 StringShouldDoIntegerConversion()
 {
     Util util;
 
-    const auto randomIntegers =
-        util.GenerateRandom<i32>(500, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+    const auto randomIntegers = util.GenerateRandom<i32>(500, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
     for (auto& randomInteger : randomIntegers)
     {
         // Generate our string
@@ -39,7 +38,11 @@ u8 StringShouldDoIntegerConversion()
         auto stdString = std::to_string(randomInteger);
 
         // Compare the char* that we can get from both to ensure it's the same
-        ExpectShouldBe(true, std::strcmp(stdString.data(), s.Data()) == 0);
+        if (std::strcmp(stdString.data(), s.Data()) != 0)
+        {
+            return false;
+        }
+        // ExpectToBeTrue();
     }
 
     return true;
@@ -115,9 +118,7 @@ u8 StringShouldAppend()
 
     e.Append(f);
     ExpectToBeTrue(
-        std::strcmp(
-            "Long String That we will add to another very long string to test if it also works when not using SSO",
-            e.Data()) == 0);
+        std::strcmp("Long String That we will add to another very long string to test if it also works when not using SSO", e.Data()) == 0);
     ExpectShouldBe(100, e.Size());
 
     C3D::String ch("Test123");

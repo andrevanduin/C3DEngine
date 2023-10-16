@@ -15,13 +15,13 @@ endif()
 
 if (UNIX)
     find_package(X11 REQUIRED)
-
     message(STATUS "X11_FOUND = ${X11_FOUND}")
     message(STATUS "X11_INCLUDE_DIR = ${X11_INCLUDE_DIR}")
     message(STATUS "X11_LIBRARIES = ${X11_LIBRARIES}")
+    set(OS_SPECIFIC_LIBS xcb X11-xcb "${X11_LIBRARIES}")
 endif()
 
-target_link_libraries(C3DEngine PUBLIC fmt::fmt spdlog::spdlog glm::glm "${X11_LIBRARIES}")
+target_link_libraries(C3DEngine PUBLIC fmt::fmt spdlog::spdlog glm::glm "${OS_SPECIFIC_LIBS}")
 
 target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")
 

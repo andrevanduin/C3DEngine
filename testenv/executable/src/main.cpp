@@ -25,10 +25,10 @@ C3D::CString<32> loadedLibPath("TestEnvLib_loaded");
 
 bool TryCopyLib()
 {
-    C3D::CString source(libPath);
-    C3D::CString dest(loadedLibPath);
-    source += C3D::Platform::GetDynamicLibraryExtension();
-    dest += C3D::Platform::GetDynamicLibraryExtension();
+    auto source =
+        C3D::String::FromFormat("{}{}{}", C3D::Platform::GetDynamicLibraryPrefix(), libPath, C3D::Platform::GetDynamicLibraryExtension());
+    auto dest = C3D::String::FromFormat("{}{}{}", C3D::Platform::GetDynamicLibraryPrefix(), loadedLibPath,
+                                        C3D::Platform::GetDynamicLibraryExtension());
 
     auto errorCode = C3D::CopyFileStatus::Locked;
     while (errorCode == C3D::CopyFileStatus::Locked)

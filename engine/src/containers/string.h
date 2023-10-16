@@ -116,12 +116,12 @@ namespace C3D
             }
         }
 
-        /* @brief
+        /** @brief
          * Private constructor to build a string of given length with given capacity.
          * It is up to the caller to initialize the string with actual data.
          */
         BasicString(const u64 size, const u64 capacity, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(size), m_allocator(allocator)
+            : m_allocator(allocator)
         {
             if (capacity > SSO_THRESHOLD)
             {
@@ -142,8 +142,8 @@ namespace C3D
         }
 
     public:
-        /* @brief Creates empty string with 1 null byte. (Will use SSO) */
-        BasicString(Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
+        /** @brief Creates empty string with 1 null byte. (Will use SSO) */
+        BasicString(Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
             // Point our data pointer to the stack memory
             m_data = m_sso.data;
@@ -152,12 +152,10 @@ namespace C3D
 
             m_sso.data[0]           = '\0';
             m_sso.data[MEMORY_TYPE] = SSO_USE_STACK;
-
-            m_allocator = allocator;
         }
 
-        /* @brief Creates empty string with 1 null byte. (Will use SSO) */
-        explicit BasicString(decltype(nullptr), Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
+        /** @brief Creates empty string with 1 null byte. (Will use SSO) */
+        explicit BasicString(decltype(nullptr), Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
             // Point our data pointer to the stack memory
             m_data = m_sso.data;
@@ -166,12 +164,9 @@ namespace C3D
 
             m_sso.data[0]           = '\0';
             m_sso.data[MEMORY_TYPE] = SSO_USE_STACK;
-
-            m_allocator = allocator;
         }
 
-        BasicString(const char* value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(0), m_allocator(allocator)
+        BasicString(const char* value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
             if (value == nullptr)
             {
@@ -186,14 +181,13 @@ namespace C3D
         }
 
         BasicString(const char* value, const u64 size, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(size), m_allocator(allocator)
+            : m_allocator(allocator)
         {
             Init(size);
             std::memcpy(m_data, value, m_size);
         }
 
-        explicit BasicString(const bool value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(0), m_allocator(allocator)
+        explicit BasicString(const bool value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
             if (value)
             {
@@ -207,55 +201,49 @@ namespace C3D
             }
         }
 
-        explicit BasicString(const u32 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(0), m_allocator(allocator)
+        explicit BasicString(const u32 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
             const auto buffer = std::to_string(value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        explicit BasicString(const i32 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(0), m_allocator(allocator)
+        explicit BasicString(const i32 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
             const auto buffer = std::to_string(value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        explicit BasicString(const u64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(0), m_allocator(allocator)
+        explicit BasicString(const u64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
             const auto buffer = std::to_string(value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        explicit BasicString(const i64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(0), m_allocator(allocator)
+        explicit BasicString(const i64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
-            const auto buffer = fmt::format("{}", value);
+            const auto buffer = std::to_string(value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        explicit BasicString(const f32 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(0), m_allocator(allocator)
+        explicit BasicString(const f32 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
-            const auto buffer = fmt::vformat(format, fmt::make_format_args(value));
+            const auto buffer = std::to_string(value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        explicit BasicString(const f64 value, const char* format = "{}", Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_data(nullptr), m_size(0), m_allocator(allocator)
+        explicit BasicString(const f64 value, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
-            const auto buffer = fmt::vformat(format, fmt::make_format_args(value));
+            const auto buffer = std::to_string(value);
             Init(buffer.size());
             std::memcpy(m_data, buffer.data(), m_size);
         }
 
-        BasicString(const BasicString& other) : m_data(nullptr), m_size(other.m_size), m_allocator(other.m_allocator)
+        BasicString(const BasicString& other) : m_allocator(other.m_allocator)
         {
             // Check 'other' is stack or heap allocated
             if (other.m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP)  // Heap allocated
@@ -282,7 +270,7 @@ namespace C3D
             }
         }
 
-        BasicString(BasicString&& other) noexcept : m_data(nullptr), m_size(other.m_size), m_allocator(other.m_allocator)
+        BasicString(BasicString&& other) noexcept : m_allocator(other.m_allocator)
         {
             // Check 'other' is stack or heap allocated
             if (other.m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP)  // Heap allocated
@@ -684,7 +672,7 @@ namespace C3D
          */
         [[nodiscard]] const_iterator FindLastOf(const char c) const
         {
-            for (u32 i = m_size - 1; i >= 0; i--)
+            for (i32 i = m_size - 1; i >= 0; i--)
             {
                 if (m_data[i] == c)
                 {
@@ -704,7 +692,7 @@ namespace C3D
         template <typename Predicate>
         [[nodiscard]] const_iterator FindLastWhere(Predicate p) const
         {
-            for (u32 i = m_size - 1; i >= 0; i--)
+            for (i32 i = m_size - 1; i >= 0; i--)
             {
                 if (p(m_data[i]))
                 {
@@ -739,7 +727,7 @@ namespace C3D
          * @param other The const char* you want to compare against
          * @return True if equal (case-insensitive), false otherwise
          */
-        [[nodiscard]] bool IEquals(const char* other) const 
+        [[nodiscard]] bool IEquals(const char* other) const
         {
 #ifdef C3D_PLATFORM_WINDOWS
             return _stricmp(m_data, other) == 0;
@@ -755,8 +743,8 @@ namespace C3D
          * @param n The amount of characters you want to check upto
          * @return True if equal (case-insensitive), false otherwise
          */
-        [[nodiscard]] bool NIEquals(const char* other, const int n) const 
-        { 
+        [[nodiscard]] bool NIEquals(const char* other, const int n) const
+        {
 #ifdef C3D_PLATFORM_WINDOWS
             return _strnicmp(m_data, other, n) == 0;
 #elif defined(C3D_PLATFORM_LINUX)
@@ -1168,17 +1156,17 @@ namespace C3D
         }
 
     private:
-        char* m_data;
-        u64 m_size;
+        char* m_data = nullptr;
+        u64 m_size   = 0;
 
-        /* @brief Our internal SSO data to store strings on the stack if they are small enough.
+        /** @brief Our internal SSO data to store strings on the stack if they are small enough.
          * For large strings we store our current capacity in here and a '\1' in data[SSO_SIZE]
          * For small strings we store our string in data and a '\0' in data[SSO_SIZE]
          */
         union {
             u64 capacity;
             char data[SSO_CAPACITY];
-        } m_sso{};
+        } m_sso = {};
 
         Allocator* m_allocator;
     };
