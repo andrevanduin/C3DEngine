@@ -74,7 +74,7 @@ u8 LinearAllocatorMultiAllocationOverAllocate()
         ExpectShouldBe(sizeof(u64) * (i + 1), allocator.GetAllocated());
     }
 
-    ExpectToThrow(typeof(std::bad_alloc), [&] { allocator.AllocateBlock(C3D::MemoryType::Test, sizeof(u64)); });
+    ExpectToThrow(std::bad_alloc, [&] { allocator.AllocateBlock(C3D::MemoryType::Test, sizeof(u64)); });
 
     allocator.Destroy();
     return true;

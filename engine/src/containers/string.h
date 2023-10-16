@@ -121,7 +121,7 @@ namespace C3D
          * It is up to the caller to initialize the string with actual data.
          */
         BasicString(const u64 size, const u64 capacity, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_allocator(allocator)
+            : m_size(size), m_allocator(allocator)
         {
             if (capacity > SSO_THRESHOLD)
             {
@@ -270,7 +270,7 @@ namespace C3D
             }
         }
 
-        BasicString(BasicString&& other) noexcept : m_allocator(other.m_allocator)
+        BasicString(BasicString&& other) noexcept : m_size(other.m_size), m_allocator(other.m_allocator)
         {
             // Check 'other' is stack or heap allocated
             if (other.m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP)  // Heap allocated
