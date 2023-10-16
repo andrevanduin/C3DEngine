@@ -89,7 +89,7 @@ namespace C3D
         constexpr auto maxThreadCount = 15;
         if (threadCount - 1 > maxThreadCount)
         {
-            m_logger.Info("Available threads on this system is greater than {} (). Capping used threads at {}", maxThreadCount,
+            m_logger.Info("Available threads on this system is greater than {}. Capping used threads at {}.", maxThreadCount,
                           (threadCount - 1), maxThreadCount);
             threadCount = maxThreadCount;
         }
@@ -112,7 +112,7 @@ namespace C3D
             jobThreadTypes[1] = JobTypeResourceLoad;
         }
 
-        const JobSystemConfig jobSystemConfig{ threadCount, jobThreadTypes };
+        const JobSystemConfig jobSystemConfig{ static_cast<u8>(threadCount - 1), jobThreadTypes };
         constexpr TextureSystemConfig textureSystemConfig{ 65536 };
         constexpr CameraSystemConfig cameraSystemConfig{ 61 };
         constexpr RenderViewSystemConfig viewSystemConfig{ 251 };

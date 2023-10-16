@@ -19,7 +19,7 @@ namespace C3D
 
         if (config.threadCount > MAX_JOB_THREADS)
         {
-            m_logger.Error("Init() - maxJobThreads must be <= {}.", MAX_JOB_THREADS);
+            m_logger.Error("Init() - maxJobThreads must be <= {}. ", MAX_JOB_THREADS);
             return false;
         }
 
