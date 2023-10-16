@@ -1165,8 +1165,8 @@ namespace C3D
          */
         union {
             u64 capacity;
-            char data[SSO_CAPACITY];
-        } m_sso = {};
+            char data[SSO_CAPACITY] = {};
+        } m_sso;
 
         Allocator* m_allocator;
     };

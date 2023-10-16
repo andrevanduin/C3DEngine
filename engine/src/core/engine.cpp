@@ -112,7 +112,7 @@ namespace C3D
             jobThreadTypes[1] = JobTypeResourceLoad;
         }
 
-        const JobSystemConfig jobSystemConfig{ maxThreadCount, jobThreadTypes };
+        const JobSystemConfig jobSystemConfig{ threadCount, jobThreadTypes };
         constexpr TextureSystemConfig textureSystemConfig{ 65536 };
         constexpr CameraSystemConfig cameraSystemConfig{ 61 };
         constexpr RenderViewSystemConfig viewSystemConfig{ 251 };

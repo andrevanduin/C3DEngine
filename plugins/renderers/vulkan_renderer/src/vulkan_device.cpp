@@ -319,6 +319,7 @@ namespace C3D
             VulkanPhysicalDeviceQueueFamilyInfo queueInfo;
             if (!DoesPhysicalDeviceSupportRequirements(m_physicalDevice, requirements, queueInfo))
             {
+                m_physicalDevice = nullptr;
                 continue;
             }
 
@@ -395,7 +396,7 @@ namespace C3D
         {
             m_logger.Info(
                 "DoesPhysicalDeviceSupportRequirements() - Skipping: '{}' since it's not a discrete GPU which is a "
-                "requirment.",
+                "requirement.",
                 m_properties.deviceName);
             return false;
         }
@@ -526,8 +527,10 @@ namespace C3D
 
                 for (auto& extension : requirements.extensionNames)
                 {
-                    auto index = std::find_if(availableExtensions.begin(), availableExtensions.end(),
-                                              [extension](const VkExtensionProperties& props) { return props.extensionName == extension; });
+                    auto index = std::find_if(
+                        availableExtensions.begin(), availableExtensions.end(),
+                        [extension](const VkExtensionProperties& props) { return std::strcmp(props.extensionName, extension) == 0; });
+
                     if (index == availableExtensions.end())
                     {
                         m_logger.Info(
