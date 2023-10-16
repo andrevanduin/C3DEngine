@@ -9,10 +9,14 @@
 
 namespace C3D
 {
-    /** @brief How many KeyDown events we expect before switching to HELD state. **/
+    /** @brief How many update ticks we expect before switching to HELD state for keys. **/
     constexpr u8 KEY_HELD_DELAY = 10;
-    /** @brief How many ButtonDown events we expect before switching to HELD state. **/
+    /** @brief How many update ticks we expect before switching to HELD state for buttons. **/
     constexpr u8 BUTTON_HELD_DELAY = 10;
+    /** @brief Maximum amount of keys that can be held. */
+    constexpr u8 MAX_HELD_KEYS = 8;
+    /** @brief Maximum amount of buttnos that can be held. */
+    constexpr u8 MAX_HELD_BUTTONS = 3;
 
     enum InputState : u8
     {
@@ -23,10 +27,16 @@ namespace C3D
 
     struct KeyState
     {
-        InputState state;
-        u8 downCount;
+        InputState state = InputState::Up;
+        u8 downCount     = 0;
     };
-    using ButtonState = KeyState;
+
+    struct ButtonState
+    {
+        InputState state = InputState::Up;
+        u8 downCount     = 0;
+        bool inDrag      = false;
+    };
 
     struct KeyBoardState
     {
@@ -35,7 +45,7 @@ namespace C3D
 
     struct MouseState
     {
-        i16 x, y;
+        ivec2 pos;
         ButtonState buttons[static_cast<u8>(Buttons::MaxButtons)];
     };
 
@@ -44,6 +54,8 @@ namespace C3D
     public:
         explicit InputSystem(const SystemManager* pSystemsManager);
 
+        bool Init() override;
+
         void Update(const FrameData& frameData) override;
 
         void ProcessKey(Keys key, InputState state);
@@ -51,27 +63,31 @@ namespace C3D
         void ProcessMouseMove(i32 xPos, i32 yPos);
         void ProcessMouseWheel(i32 delta) const;
 
-        C3D_API [[nodiscard]] bool IsKeyDown(u8 key) const;
-        C3D_API [[nodiscard]] bool IsKeyUp(u8 key) const;
-        C3D_API [[nodiscard]] bool IsKeyPressed(u8 key) const;
+        [[nodiscard]] C3D_API bool IsKeyDown(u8 key) const;
+        [[nodiscard]] C3D_API bool IsKeyUp(u8 key) const;
+        [[nodiscard]] C3D_API bool IsKeyPressed(u8 key) const;
 
-        C3D_API [[nodiscard]] bool WasKeyDown(u8 key) const;
-        C3D_API [[nodiscard]] bool WasKeyUp(u8 key) const;
+        [[nodiscard]] C3D_API bool WasKeyDown(u8 key) const;
+        [[nodiscard]] C3D_API bool WasKeyUp(u8 key) const;
 
-        C3D_API [[nodiscard]] bool IsButtonDown(Buttons button) const;
-        C3D_API [[nodiscard]] bool IsButtonUp(Buttons button) const;
-        C3D_API [[nodiscard]] bool IsButtonPressed(Buttons button) const;
+        [[nodiscard]] C3D_API bool IsButtonDown(Buttons button) const;
+        [[nodiscard]] C3D_API bool IsButtonUp(Buttons button) const;
+        [[nodiscard]] C3D_API bool IsButtonPressed(Buttons button) const;
 
-        C3D_API [[nodiscard]] bool WasButtonDown(Buttons button) const;
-        C3D_API [[nodiscard]] bool WasButtonUp(Buttons button) const;
+        [[nodiscard]] C3D_API bool WasButtonDown(Buttons button) const;
+        [[nodiscard]] C3D_API bool WasButtonUp(Buttons button) const;
 
-        C3D_API [[nodiscard]] bool IsShiftHeld() const;
+        [[nodiscard]] C3D_API bool IsShiftDown() const;
+        [[nodiscard]] C3D_API bool IsCtrlDown() const;
+        [[nodiscard]] C3D_API bool IsAltDown() const;
 
-        C3D_API ivec2 GetMousePosition();
-        C3D_API ivec2 GetPreviousMousePosition();
+        [[nodiscard]] C3D_API const ivec2& GetMousePosition() const;
+        [[nodiscard]] C3D_API const ivec2& GetPreviousMousePosition() const;
 
     private:
         KeyBoardState m_keyboardCurrent, m_keyboardPrevious;
         MouseState m_mouseCurrent, m_mousePrevious;
+
+        u8 m_downKeys[MAX_HELD_KEYS], m_downButtons[MAX_HELD_BUTTONS];
     };
 }  // namespace C3D

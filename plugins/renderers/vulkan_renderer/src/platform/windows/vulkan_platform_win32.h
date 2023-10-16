@@ -1,5 +1,7 @@
 
 #pragma once
+#include "core/defines.h"
+
 #ifdef C3D_PLATFORM_WINDOWS
 #include <containers/dynamic_array.h>
 #include <containers/string.h>

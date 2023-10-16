@@ -1,6 +1,8 @@
 
 #pragma once
-#include <stacktrace>
+#ifdef C3D_MEMORY_METRICS_STACKTRACE
+    #include <stacktrace>
+#endif
 
 #include "containers/array.h"
 #include "core/defines.h"
@@ -72,7 +74,9 @@ namespace C3D
 
         [[nodiscard]] u64 GetRequestedMemoryUsage(MemoryType memoryType, u8 allocatorId = DYNAMIC_ALLOCATOR_ID) const;
 
+#ifdef C3D_MEMORY_METRICS_STACKTRACE
         void SetStacktrace();
+#endif
 
         void PrintMemoryUsage(u8 allocatorId, bool debugLines);
         void PrintMemoryUsage(bool debugLines = false);

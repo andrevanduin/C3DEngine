@@ -989,6 +989,8 @@ namespace C3D
                 case ShaderScope::Local:
                     vulkanShader->localUniformCount++;
                     break;
+                case ShaderScope::None:
+                    break;
             }
         }
 
@@ -1161,7 +1163,7 @@ namespace C3D
 
         // Static lookup table for our types -> Vulkan ones.
         static VkFormat* types = nullptr;
-        static VkFormat t[11];
+        static VkFormat t[12];
         if (!types)
         {
             t[Attribute_Float32]   = VK_FORMAT_R32_SFLOAT;

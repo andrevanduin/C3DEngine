@@ -41,6 +41,10 @@ namespace C3D
         u16 id;
         /** @brief The callback that we need to call (onSuccess or onFailure depending on the result) */
         StackFunction<void(), 24> callback;
+
+        JobResultEntry() = default;
+
+        JobResultEntry(u16 id, const StackFunction<void(), 24>& callback) : id(id), callback(callback) {}
     };
 
     struct JobInfo

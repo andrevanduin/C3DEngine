@@ -2,22 +2,27 @@
 cmake_minimum_required (VERSION 3.13)
 
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_TOOLCHAIN_FILE "E:/Dev/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
-file(GLOB_RECURSE C3DEngine_SRC "*.h" "*.cpp")
+file(GLOB_RECURSE C3DEngine_SRC "src/*.h" "src/*.cpp")
 
 add_library(C3DEngine SHARED ${C3DEngine_SRC})
 
 target_compile_definitions(C3DEngine PUBLIC C3D_EXPORT)
-target_compile_options(C3DEngine PRIVATE /EHsc /wd4002)
 
-find_package(spdlog CONFIG REQUIRED)
-target_link_libraries(C3DEngine PUBLIC spdlog::spdlog spdlog::spdlog_header_only)
+if (WIN32)
+    target_compile_options(C3DEngine PRIVATE /EHsc /wd4002)
+endif()
 
-find_package(glm CONFIG REQUIRED)
-target_link_libraries(C3DEngine PRIVATE glm::glm)
+if (UNIX)
+    find_package(X11 REQUIRED)
+    message(STATUS "X11_FOUND = ${X11_FOUND}")
+    message(STATUS "X11_INCLUDE_DIR = ${X11_INCLUDE_DIR}")
+    message(STATUS "X11_LIBRARIES = ${X11_LIBRARIES}")
+    set(OS_SPECIFIC_LIBS xcb X11-xcb "${X11_LIBRARIES}")
+endif()
 
-find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
-target_include_directories(C3DEngine PRIVATE ${STB_INCLUDE_DIRS})
+target_link_libraries(C3DEngine PUBLIC fmt::fmt spdlog::spdlog glm::glm "${OS_SPECIFIC_LIBS}")
 
-target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")
+
+include_directories(SYSTEM "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")

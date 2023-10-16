@@ -12,7 +12,7 @@ magnifyfilter = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = C3D Logo
+textureName = C3D_logo
 [/map]
 
 [prop]

@@ -38,22 +38,16 @@ namespace C3D
             }
 
         public:
-            using DifferenceType = std::ptrdiff_t;
-            using Pointer = Value*;
-            using Reference = Value&;
+            using DifferenceType    = std::ptrdiff_t;
+            using Pointer           = Value*;
+            using Reference         = Value&;
             using iterator_category = std::forward_iterator_tag;
 
             HashMapIterator() : m_index(0), m_map(nullptr) {}
 
-            explicit HashMapIterator(const HashMap* map) : m_index(INVALID_ID_U64), m_map(map)
-            {
-                FindNextOccupiedIndex();
-            }
+            explicit HashMapIterator(const HashMap* map) : m_index(INVALID_ID_U64), m_map(map) { FindNextOccupiedIndex(); }
 
-            HashMapIterator(const HashMap* map, const u64 currentIndex) : m_index(currentIndex), m_map(map)
-            {
-                FindNextOccupiedIndex();
-            }
+            HashMapIterator(const HashMap* map, const u64 currentIndex) : m_index(currentIndex), m_map(map) { FindNextOccupiedIndex(); }
 
             // Dereference operator
             Reference operator*() const { return m_map->m_nodes[m_index].element; }
@@ -67,15 +61,9 @@ namespace C3D
 
             HashMapIterator operator++(int) { return HashMapIterator(m_map, m_index); }
 
-            bool operator==(const HashMapIterator& other) const
-            {
-                return m_map == other.m_map && m_index == other.m_index;
-            }
+            bool operator==(const HashMapIterator& other) const { return m_map == other.m_map && m_index == other.m_index; }
 
-            bool operator!=(const HashMapIterator& other) const
-            {
-                return m_map != other.m_map || m_index != other.m_index;
-            }
+            bool operator!=(const HashMapIterator& other) const { return m_map != other.m_map || m_index != other.m_index; }
 
         private:
             u64 m_index;
@@ -92,7 +80,7 @@ namespace C3D
         HashMap() : m_nodes(nullptr), m_size(0), m_count(0) {}
 
         HashMap(const HashMap&) = delete;
-        HashMap(HashMap&&) = delete;
+        HashMap(HashMap&&)      = delete;
 
         HashMap& operator=(const HashMap& other)
         {
@@ -101,8 +89,8 @@ namespace C3D
             // Allocate enough space for the same amount of nodes as other has
             m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, other.m_size);
             // Copy over the values from other
-            m_size = other.m_size;
-            m_count = other.m_count;
+            m_size        = other.m_size;
+            m_count       = other.m_count;
             m_hashCompute = other.m_hashCompute;
 
             // Invalidate all nodes in our array except if at this location other has an occupied element
@@ -113,7 +101,7 @@ namespace C3D
                 {
                     // The other node is occupied so we need to copy over this node
                     m_nodes[i].occupied = true;
-                    m_nodes[i].element = otherNode.element;
+                    m_nodes[i].element  = otherNode.element;
                 }
                 else
                 {
@@ -132,7 +120,7 @@ namespace C3D
         {
             // Allocate enough memory for all the elements and indices pointing to them
             m_nodes = Memory.Allocate<HashMapNode>(MemoryType::HashMap, size);
-            m_size = size;
+            m_size  = size;
 
             // Invalidate all entries
             for (u64 i = 0; i < m_size; i++)
@@ -166,7 +154,7 @@ namespace C3D
                 Memory.Free(MemoryType::HashMap, m_nodes);
                 m_nodes = nullptr;
 
-                m_size = 0;
+                m_size  = 0;
                 m_count = 0;
             }
         }
@@ -174,7 +162,7 @@ namespace C3D
         void Set(const Key& key, const Value& value)
         {
             const auto hash = m_hashCompute(key, m_size);
-            auto& node = m_nodes[hash];
+            auto& node      = m_nodes[hash];
 
             // If the slot was not occupied yet we increment the count
             if (!node.occupied)
@@ -183,7 +171,7 @@ namespace C3D
             }
 
             node.occupied = true;
-            node.element = value;
+            node.element  = value;
         }
 
         void Delete(const Key& key)
@@ -198,8 +186,6 @@ namespace C3D
             m_nodes[hash].occupied = false;
             // Call the destructor for the element
             m_nodes[hash].element.~Value();
-            // Zero out the memory
-            std::memset(&m_nodes[hash].element, 0, sizeof(Value));
             // Decrement the count to keep track of how many elements we are currently storing
             m_count--;
         }
@@ -278,13 +264,13 @@ struct std::hash<const char*>
 {
     size_t operator()(const char* key) const noexcept
     {
-        size_t hash = 0;
+        size_t hash         = 0;
         const size_t length = std::strlen(key);
 
         for (size_t i = 0; i < length; i++)
         {
             hash ^= static_cast<size_t>(key[i]);
-            hash *= std::_FNV_prime;
+            hash *= FNV_PRIME;
         }
         return hash;
     }

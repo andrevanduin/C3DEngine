@@ -27,7 +27,7 @@ namespace C3D
 
         ~File();
 
-        static [[nodiscard]] bool Exists(const String& path);
+        [[nodiscard]] static bool Exists(const String& path);
 
         bool Open(const String& path, u8 mode);
 

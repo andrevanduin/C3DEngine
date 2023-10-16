@@ -21,17 +21,23 @@ namespace C3D
 
     struct RGB
     {
-        f32 r;
-        f32 g;
-        f32 b;
+        f32 r = 0.0f;
+        f32 g = 0.0f;
+        f32 b = 0.0f;
+
+        RGB() = default;
+        RGB(f32 r, f32 g, f32 b) : r(r), g(g), b(b) {}
     };
 
     struct RGBA
     {
-        f32 r;
-        f32 g;
-        f32 b;
-        f32 a;
+        f32 r = 0.0f;
+        f32 g = 0.0f;
+        f32 b = 0.0f;
+        f32 a = 0.0f;
+
+        RGBA() = default;
+        RGBA(f32 r, f32 g, f32 b, f32 a) : r(r), g(g), b(b), a(a) {}
     };
 
     struct HSV
@@ -44,10 +50,7 @@ namespace C3D
         f32 v = 0.0f;
     };
 
-    C3D_API C3D_INLINE u32 RgbToU32(const u32 r, const u32 g, const u32 b)
-    {
-        return (r & 0x0FF) << 16 | (g & 0x0FF) << 8 | (b & 0x0FF);
-    }
+    C3D_API C3D_INLINE u32 RgbToU32(const u32 r, const u32 g, const u32 b) { return (r & 0x0FF) << 16 | (g & 0x0FF) << 8 | (b & 0x0FF); }
 
     C3D_API C3D_INLINE void U32ToRgb(const u32 rgb, u32* outR, u32* outG, u32* outB)
     {

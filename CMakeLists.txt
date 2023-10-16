@@ -4,20 +4,44 @@
 cmake_minimum_required (VERSION 3.20)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd26812")
-set(CMAKE_TOOLCHAIN_FILE "E:/Dev/vcpkg/scripts/buildsystems/vcpkg.cmake")
+
+if (WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd26812")
+endif()
 
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(PDB_VERSION "NONE" CACHE STRING "The version number for the PDB file")
 
 project ("C3DEngine")
 
 # Define our compile definitions that are relevant for all targets
-add_compile_definitions(C3D_PLATFORM_WINDOWS)
 add_compile_definitions(C3D_MEMORY_METRICS)
 # add_compile_definitions(C3D_MEMORY_METRICS_POINTERS)
 add_compile_definitions(C3D_MEMORY_METRICS_MALLOC)
 add_compile_definitions(C3D_VULKAN_USE_CUSTOM_ALLOCATOR)
+
+Include(FetchContent)
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG 10.1.1
+)
+
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.12.0
+)
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 0.9.9.8
+)
+FetchContent_MakeAvailable(fmt spdlog glm)
+
+target_compile_definitions(spdlog PUBLIC SPDLOG_FMT_EXTERNAL)
+target_include_directories(spdlog PUBLIC "${fmt_SOURCE_DIR}/include")
 
 # Include sub-projects.
 add_subdirectory ("tools")

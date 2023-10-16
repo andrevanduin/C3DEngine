@@ -20,7 +20,7 @@ namespace C3D
         bool samplerAnisotropy = false;
         bool discreteGpu       = false;
 
-        DynamicArray<String> extensionNames;
+        DynamicArray<const char*> extensionNames;
     };
 
     struct VulkanPhysicalDeviceQueueFamilyInfo

@@ -97,8 +97,7 @@ namespace C3D
             // Get our alignment right after our 4 bytes for our ALLOC_SIZE_MARKER. This way we can always store our u32
             // for the size of the user's allocation right before the user block, while still having our user's data
             // aligned.
-            const u64 alignedBlockOffset =
-                GetAligned(reinterpret_cast<u64>(basePtr + sizeof(AllocSizeMarker)), alignment);
+            const u64 alignedBlockOffset = GetAligned(reinterpret_cast<u64>(basePtr + sizeof(AllocSizeMarker)), alignment);
             // Get the delta between our basePtr and alignedBlockOffset
             const u64 alignDelta = alignedBlockOffset - reinterpret_cast<u64>(basePtr);
             // Get the aligned user data pointer by adding the alignDelta
@@ -112,8 +111,8 @@ namespace C3D
             header->alignment = alignment;
 
 #ifdef C3D_TRACE_ALLOCS
-            m_logger.Trace("Allocated (size: {}, alignment {}, header: {} and marker: {} = {}) bytes at {}", size,
-                           alignment, sizeof(AllocHeader), ALLOC_SIZE_MARKER_SIZE, requiredSize, fmt::ptr(basePtr));
+            m_logger.Trace("Allocated (size: {}, alignment {}, header: {} and marker: {} = {}) bytes at {}", size, alignment,
+                           sizeof(AllocHeader), ALLOC_SIZE_MARKER_SIZE, requiredSize, basePtr);
 #endif
 
             MetricsAllocate(m_id, type, size, requiredSize, userDataPtr);
@@ -147,8 +146,7 @@ namespace C3D
         if (block < m_memory || block > m_memory + m_totalSize)
         {
             void* endOfBlock = m_memory + m_totalSize;
-            m_logger.Fatal("Free() - Called with block ({}) outside of allocator range ({}) - ({}).", fmt::ptr(block),
-                           fmt::ptr(m_memory), fmt::ptr(endOfBlock));
+            m_logger.Fatal("Free() - Called with block ({}) outside of allocator range ({}) - ({}).", block, m_memory, endOfBlock);
         }
 
         // The provided address points to the user's data block
@@ -169,7 +167,7 @@ namespace C3D
         }
 
 #ifdef C3D_TRACE_ALLOCS
-        m_logger.Trace("FreeAligned() - Freed {} bytes at {}.", requiredSize, fmt::ptr(header->start));
+        m_logger.Trace("FreeAligned() - Freed {} bytes at {}.", requiredSize, header->start);
 #endif
 
         MetricsFree(m_id, type, *blockSize, requiredSize, userDataPtr);

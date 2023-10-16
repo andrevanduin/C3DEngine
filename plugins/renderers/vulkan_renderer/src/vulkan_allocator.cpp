@@ -20,7 +20,7 @@ namespace C3D
 
         void* result = Memory.AllocateBlock(MemoryType::Vulkan, size, static_cast<u16>(alignment));
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
-        Logger::Trace("[VULKAN_ALLOCATE] - {} (Size = {}B, Alignment = {}).", fmt::ptr(result), size, alignment);
+        Logger::Trace("[VULKAN_ALLOCATE] - {} (Size = {}B, Alignment = {}).", result, size, alignment);
 #endif
 
         return result;
@@ -46,12 +46,12 @@ namespace C3D
         {
             Memory.Free(MemoryType::Vulkan, memory);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
-            Logger::Trace("[VULKAN_FREE] - Block at: {} was Freed.", fmt::ptr(memory));
+            Logger::Trace("[VULKAN_FREE] - Block at: {} was Freed.", memory);
 #endif
         }
         else
         {
-            Logger::Error("[VULKAN_FREE] - Failed to get alignment lookup for block: {}.", fmt::ptr(memory));
+            Logger::Error("[VULKAN_FREE] - Failed to get alignment lookup for block: {}.", memory);
         }
     }
 
@@ -75,7 +75,7 @@ namespace C3D
         u16 allocAlignment;
         if (!Memory.GetSizeAlignment(original, &allocSize, &allocAlignment))
         {
-            Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.", fmt::ptr(original));
+            Logger::Error("[VULKAN_REALLOCATE] - Tried to do a reallocation of an unaligned block: {}.", original);
             return nullptr;
         }
 
@@ -90,25 +90,25 @@ namespace C3D
         }
 
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
-        Logger::Trace("[VULKAN_REALLOCATE] - Reallocating block: {}", fmt::ptr(original));
+        Logger::Trace("[VULKAN_REALLOCATE] - Reallocating block: {}", original);
 #endif
 
         void* result = Allocate(userData, size, alignment, allocationScope);
         if (result)
         {
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
-            Logger::Trace("[VULKAN_REALLOCATE] - Successfully reallocated to: {}. Copying data.", fmt::ptr(result));
+            Logger::Trace("[VULKAN_REALLOCATE] - Successfully reallocated to: {}. Copying data.", result);
 #endif
             std::memcpy(result, original, allocSize);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
-            Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", fmt::ptr(original));
+            Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", original);
 #endif
             Memory.Free(MemoryType::Vulkan, original);
         }
         else
         {
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
-            Logger::Trace("[VULKAN_REALLOCATE] - Failed to Reallocate: {}.", fmt::ptr(original));
+            Logger::Trace("[VULKAN_REALLOCATE] - Failed to Reallocate: {}.", original);
 #endif
         }
 

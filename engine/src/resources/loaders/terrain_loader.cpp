@@ -61,7 +61,7 @@ namespace C3D
                 auto parts = line.Split('=');
                 if (parts.Size() != 2)
                 {
-                    throw std::exception("Incorrect number of '='");
+                    throw Exception("Incorrect number of '='");
                 }
 
                 auto name  = parts[0];

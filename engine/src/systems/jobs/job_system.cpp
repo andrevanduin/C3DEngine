@@ -19,7 +19,7 @@ namespace C3D
 
         if (config.threadCount > MAX_JOB_THREADS)
         {
-            m_logger.Error("Init() - maxJobThreads must be <= {}", MAX_JOB_THREADS);
+            m_logger.Error("Init() - maxJobThreads must be <= {}. ", MAX_JOB_THREADS);
             return false;
         }
 
@@ -39,9 +39,9 @@ namespace C3D
 
         for (u8 i = 0; i < m_threadCount; i++)
         {
-            m_jobThreads[i].index = i;
+            m_jobThreads[i].index    = i;
             m_jobThreads[i].typeMask = config.typeMasks[i];
-            m_jobThreads[i].thread = std::thread([this, i] { Runner(i); });
+            m_jobThreads[i].thread   = std::thread([this, i] { Runner(i); });
             m_jobThreads[i].ClearInfo();
         }
         return true;
@@ -102,8 +102,7 @@ namespace C3D
                     std::lock_guard threadLock(thread.mutex);
                     if (thread.IsFree())
                     {
-                        m_logger.Trace("Submit() - Job immediately submitted on thread {} since it has HIGH priority.",
-                                       thread.index);
+                        m_logger.Trace("Submit() - Job immediately submitted on thread {} since it has HIGH priority.", thread.index);
                         thread.SetInfo(std::move(jobInfo));
                         return;
                     }
@@ -144,7 +143,7 @@ namespace C3D
     void JobSystem::Runner(const u32 index)
     {
         auto& currentThread = m_jobThreads[index];
-        auto threadId = currentThread.thread.get_id();
+        auto threadId       = currentThread.thread.get_id();
 
         m_logger.Trace("Starting job thread #{} (id={}, type={}).", index, threadId, currentThread.typeMask);
 

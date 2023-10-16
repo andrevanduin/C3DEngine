@@ -99,8 +99,7 @@ namespace C3D
         m_frames++;
     }
 
-    u8 SetMemoryStats(const char* name, MemoryStats& stats, const AllocatorType type, const u64 availableSpace,
-                      const u8 i)
+    u8 SetMemoryStats(const char* name, MemoryStats& stats, const AllocatorType type, const u64 availableSpace, const u8 i)
     {
         stats.type                = type;
         stats.totalAvailableSpace = availableSpace;
@@ -118,8 +117,7 @@ namespace C3D
 
         if (type == AllocatorType::GlobalDynamic)
         {
-            return SetMemoryStats(name, m_memoryStats[DYNAMIC_ALLOCATOR_ID], type, availableSpace,
-                                  DYNAMIC_ALLOCATOR_ID);
+            return SetMemoryStats(name, m_memoryStats[DYNAMIC_ALLOCATOR_ID], type, availableSpace, DYNAMIC_ALLOCATOR_ID);
         }
         if (type == AllocatorType::GpuLocal)
         {
@@ -144,7 +142,7 @@ namespace C3D
     void MetricSystem::DestroyAllocator(const u8 allocatorId, bool printMissedAllocs)
     {
         // Print the memory usage for this allocator
-        if (printMissedAllocs) (allocatorId, true);
+        PrintMemoryUsage(allocatorId, true);
         // Clear out the metrics we have on this allocator
         m_memoryStats[allocatorId] = MemoryStats();
     }
@@ -194,7 +192,7 @@ namespace C3D
         auto& tagged = stats.taggedAllocations[type];
 
         const auto allocIt =
-            std::ranges::find_if(tagged.allocations, [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
+            std::find_if(tagged.allocations.begin(), tagged.allocations.end(), [a](const TrackedAllocation& t) { return t.ptr == a.ptr; });
         if (allocIt != tagged.allocations.end())
         {
             const auto alloc = *allocIt;
@@ -281,11 +279,13 @@ namespace C3D
 #endif
     }
 
+#ifdef C3D_MEMORY_METRICS_STACKTRACE
     void MetricSystem::SetStacktrace()
     {
         const auto trace = std::stacktrace::current();
         m_stacktrace     = std::to_string(trace);
     }
+#endif
 
     void MetricSystem::PrintMemoryUsage(const u8 allocatorId, const bool debugLines)
     {
@@ -295,8 +295,8 @@ namespace C3D
         if (memStats.type != AllocatorType::None)
         {
             auto offset      = 0;
-            i32 bytesWritten = snprintf(buffer + offset, 8192, "%s with id: '%d' and type: '%d'\n",
-                                        memStats.name.Data(), allocatorId, ToUnderlying(memStats.type));
+            i32 bytesWritten = snprintf(buffer + offset, 8192, "%s with id: '%d' and type: '%d'\n", memStats.name.Data(), allocatorId,
+                                        ToUnderlying(memStats.type));
             if (bytesWritten == -1)
             {
                 Logger::Fatal("[METRICS] - Destroy() - Sprintf_s() failed with an error.");
@@ -319,10 +319,9 @@ namespace C3D
             const char* requiredUnit = SizeToText(required, &requiredAmount);
             const char* totalUnit    = SizeToText(total, &totalAmount);
 
-            bytesWritten = snprintf(buffer + offset, 8192,
-                                    "  %d total allocations using: %.2f %-3s of total: %.2f %-3s (%.2f%%)\n",
-                                    static_cast<int>(memStats.allocCount), requiredAmount, requiredUnit, totalAmount,
-                                    totalUnit, percentage);
+            bytesWritten =
+                snprintf(buffer + offset, 8192, "  %d total allocations using: %.2f %-3s of total: %.2f %-3s (%.2f%%)\n",
+                         static_cast<int>(memStats.allocCount), requiredAmount, requiredUnit, totalAmount, totalUnit, percentage);
 
             Logger::Info(buffer);
         }
@@ -372,8 +371,8 @@ namespace C3D
         return "B";
     }
 
-    void MetricSystem::SprintfAllocation(const MemoryAllocations& allocation, const int index, char* buffer,
-                                         int& bytesWritten, const int offset, const bool debugLines)
+    void MetricSystem::SprintfAllocation(const MemoryAllocations& allocation, const int index, char* buffer, int& bytesWritten,
+                                         const int offset, const bool debugLines)
     {
         f64 requestedAmount, requiredAmount;
         const char* requestedUnit;
@@ -414,14 +413,13 @@ namespace C3D
 
         if (!EpsilonEqual(requestedAmount, requiredAmount))
         {
-            bytesWritten = snprintf(buffer + offset, 8192, "  %-20s: %4d using %6.2f %-3s | (%6.2f %-3s)\n",
-                                    MEMORY_TYPE_STRINGS[index], count, requestedAmount, requestedUnit, requiredAmount,
-                                    requiredUnit);
+            bytesWritten = snprintf(buffer + offset, 8192, "  %-20s: %4d using %6.2f %-3s | (%6.2f %-3s)\n", MEMORY_TYPE_STRINGS[index],
+                                    count, requestedAmount, requestedUnit, requiredAmount, requiredUnit);
         }
         else
         {
-            bytesWritten = snprintf(buffer + offset, 8192, "  %-20s: %4d using %6.2f %-3s\n",
-                                    MEMORY_TYPE_STRINGS[index], count, requestedAmount, requestedUnit);
+            bytesWritten = snprintf(buffer + offset, 8192, "  %-20s: %4d using %6.2f %-3s\n", MEMORY_TYPE_STRINGS[index], count,
+                                    requestedAmount, requestedUnit);
         }
 
         if (bytesWritten == -1)

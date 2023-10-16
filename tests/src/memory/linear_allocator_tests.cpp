@@ -1,29 +1,31 @@
 
 #include "linear_allocator_tests.h"
-#include "../expect.h"
 
-#include <memory/allocators/linear_allocator.h>
 #include <core/defines.h>
+#include <memory/allocators/linear_allocator.h>
+
+#include "../expect.h"
 
 u8 LinearAllocatorShouldCreateAndDestroy()
 {
-	C3D::LinearAllocator allocator;
-	allocator.Create("LINEAR_ALLOCATOR_TEST", sizeof(u64), nullptr);
+    C3D::LinearAllocator allocator;
+    allocator.Create("LINEAR_ALLOCATOR_TEST", sizeof(u64), nullptr);
 
-	ExpectShouldNotBe(nullptr, allocator.GetMemory());
-	ExpectShouldBe(sizeof(u64), allocator.GetTotalSize());
-	ExpectShouldBe(0, allocator.GetAllocated());
+    ExpectShouldNotBe(nullptr, allocator.GetMemory());
+    ExpectShouldBe(sizeof(u64), allocator.GetTotalSize());
+    ExpectShouldBe(0, allocator.GetAllocated());
 
-	allocator.Destroy();
+    allocator.Destroy();
 
-	ExpectShouldBe(nullptr, allocator.GetMemory());
-	ExpectShouldBe(0, allocator.GetTotalSize());
-	ExpectShouldBe(0, allocator.GetAllocated());
+    ExpectShouldBe(nullptr, allocator.GetMemory());
+    ExpectShouldBe(0, allocator.GetTotalSize());
+    ExpectShouldBe(0, allocator.GetAllocated());
 
-	return true;
+    return true;
 }
 
-u8 LinearAllocatorSingleAllocationAllSpace() {
+u8 LinearAllocatorSingleAllocationAllSpace()
+{
     C3D::LinearAllocator allocator;
     allocator.Create("LINEAR_ALLOCATOR_TEST", sizeof(u64));
 
@@ -38,10 +40,11 @@ u8 LinearAllocatorSingleAllocationAllSpace() {
     return true;
 }
 
-u8 LinearAllocatorMultiAllocationAllSpace() {
+u8 LinearAllocatorMultiAllocationAllSpace()
+{
     constexpr u64 maxAllocations = 1024;
 
-	C3D::LinearAllocator allocator;
+    C3D::LinearAllocator allocator;
     allocator.Create("LINEAR_ALLOCATOR_TEST", sizeof(u64) * maxAllocations);
 
     for (u64 i = 0; i < maxAllocations; i++)
@@ -71,10 +74,7 @@ u8 LinearAllocatorMultiAllocationOverAllocate()
         ExpectShouldBe(sizeof(u64) * (i + 1), allocator.GetAllocated());
     }
 
-    ExpectToThrow("bad allocation", [&]
-    {
-        allocator.AllocateBlock(C3D::MemoryType::Test, sizeof(u64));
-    });
+    ExpectToThrow(std::bad_alloc, [&] { allocator.AllocateBlock(C3D::MemoryType::Test, sizeof(u64)); });
 
     allocator.Destroy();
     return true;
@@ -106,7 +106,7 @@ u8 LinearAllocatorMultiAllocationAllSpaceThenFree()
 void LinearAllocator::RegisterTests(TestManager& manager)
 {
     manager.StartType("Linear Allocator");
-	manager.Register(LinearAllocatorShouldCreateAndDestroy, "Linear Allocator should create and destroy");
+    manager.Register(LinearAllocatorShouldCreateAndDestroy, "Linear Allocator should create and destroy");
     manager.Register(LinearAllocatorSingleAllocationAllSpace, "Linear Allocator single alloc for all space");
     manager.Register(LinearAllocatorMultiAllocationAllSpace, "Linear Allocator multi alloc for all space");
     manager.Register(LinearAllocatorMultiAllocationOverAllocate, "Linear Allocator try over allocate");

@@ -226,7 +226,7 @@ namespace C3D
             return true;
         }
 
-        const auto shiftHeld = Input.IsShiftHeld();
+        const auto shiftHeld = Input.IsShiftDown();
         char typedChar;
 
         if (keyCode >= KeyA && keyCode <= KeyZ)
