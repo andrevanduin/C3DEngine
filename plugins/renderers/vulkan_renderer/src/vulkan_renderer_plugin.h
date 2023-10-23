@@ -39,8 +39,7 @@ namespace C3D
         void ResetViewport() override;
         void SetScissor(const ivec4& rect) override;
         void ResetScissor() override;
-
-        void SetLineWidth(float lineWidth) override;
+        void SetWinding(RendererWinding winding) override;
 
         bool BeginRenderPass(RenderPass* pass, RenderTarget* target) override;
         bool EndRenderPass(RenderPass* pass) override;
@@ -59,10 +58,8 @@ namespace C3D
         void DestroyTexture(Texture* texture) override;
 
         bool CreateGeometry(Geometry& geometry) override;
-        bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset,
-                            u32 indexSize) override;
-        void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount,
-                                    const void* vertices) override;
+        bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset, u32 indexSize) override;
+        void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) override;
         void DestroyGeometry(Geometry& geometry) override;
 
         bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const override;
@@ -77,8 +74,7 @@ namespace C3D
         bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) override;
         bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) override;
 
-        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps,
-                                            u32* outInstanceId) override;
+        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps, u32* outInstanceId) override;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) override;
 
         bool AcquireTextureMapResources(TextureMap& map) override;
@@ -86,15 +82,14 @@ namespace C3D
 
         bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) override;
 
-        void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width,
-                                u32 height, RenderTarget* outTarget) override;
+        void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height,
+                                RenderTarget* outTarget) override;
         void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) override;
 
         RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
         bool DestroyRenderPass(RenderPass* pass) override;
 
-        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize,
-                                         bool useFreelist) override;
+        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
         bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
         Texture* GetWindowAttachment(u8 index) override;

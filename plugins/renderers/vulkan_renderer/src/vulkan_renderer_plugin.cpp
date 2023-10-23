@@ -290,6 +290,8 @@ namespace C3D
         m_context.scissorRect = { 0, 0, m_context.frameBufferWidth, m_context.frameBufferHeight };
         SetScissor(m_context.scissorRect);
 
+        // Always start each frame with Counter-Clockwise winding
+        SetWinding(RendererWinding::CounterClockwise);
         return true;
     }
 
@@ -384,10 +386,43 @@ namespace C3D
 
     void VulkanRendererPlugin::ResetScissor() { SetScissor(m_context.scissorRect); }
 
-    void VulkanRendererPlugin::SetLineWidth(const float lineWidth)
+    void VulkanRendererPlugin::SetWinding(const RendererWinding winding)
     {
         const auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
-        vkCmdSetLineWidth(commandBuffer.handle, lineWidth);
+
+        VkFrontFace frontFace = winding == RendererWinding::CounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+
+        // Check for Dynamic Winding
+        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT))
+        {
+            // Native support
+            vkCmdSetFrontFace(commandBuffer.handle, frontFace);
+        }
+        else if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT))
+        {
+            // Support by means of extension
+            m_context.pfnCmdSetFrontFaceEXT(commandBuffer.handle, frontFace);
+        }
+        else
+        {
+            // No support (so we fallback to binding a different pipeline)
+            if (m_context.boundShader)
+            {
+                auto vulkanShader = static_cast<VulkanShader*>(m_context.boundShader->apiSpecificData);
+                if (winding == RendererWinding::CounterClockwise)
+                {
+                    vulkanShader->pipelines[vulkanShader->boundPipeline]->Bind(&commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+                }
+                else
+                {
+                    vulkanShader->clockwisePipelines[vulkanShader->boundPipeline]->Bind(&commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+                }
+            }
+            else
+            {
+                m_logger.Error("SetWinding() - Unable to set Winding since there is no currently bound shader.");
+            }
+        }
     }
 
     void VulkanRendererPlugin::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass,
@@ -1248,53 +1283,121 @@ namespace C3D
             stageCreateInfos[i] = vulkanShader->stages[i].shaderStageCreateInfo;
         }
 
-        // Create one pipeline per topology class
-        // Point class
-        if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST)
+        // Create one pipeline per topology class if dynamic topology is supported (either natively or by extension)
+        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT) ||
+            m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT))
         {
-            vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_POINT] =
-                Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST);
-        }
+            // Total of 3 topology classes
+            vulkanShader->pipelines.Resize(3);
 
-        // Line class
-        if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST ||
-            vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP)
-        {
-            vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_LINE] =
-                Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST | PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP);
-        }
+            // Point class
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST)
+            {
+                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_POINT] =
+                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST);
+            }
 
-        // Triangle class
-        if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST ||
-            vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP ||
-            vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN)
+            // Line class
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST ||
+                vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP)
+            {
+                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_LINE] =
+                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST | PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP);
+            }
+
+            // Triangle class
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST ||
+                vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP ||
+                vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN)
+            {
+                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_TRIANGLE] = Memory.New<VulkanPipeline>(
+                    MemoryType::Vulkan,
+                    PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN);
+            }
+        }
+        else
         {
-            vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_TRIANGLE] = Memory.New<VulkanPipeline>(
-                MemoryType::Vulkan,
-                PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN);
+            // We have no support for dynamic topology so we need to create a pipeline per topology type (6 in total)
+            // We also need to create seperate pipelines for clockwise and counter-clockwise since this is also not supported without
+            // extended dynamic state
+            vulkanShader->pipelines.Resize(6);
+            vulkanShader->clockwisePipelines.Resize(6);
+
+            // Point list
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST)
+            {
+                // Counter-clockwise
+                vulkanShader->pipelines[0] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST);
+                // Clockwise
+                vulkanShader->clockwisePipelines[0] =
+                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST, RendererWinding::Clockwise);
+            }
+
+            // Line list
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST)
+            {
+                // Counter-clockwise
+                vulkanShader->pipelines[1] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST);
+                // Clockwise
+                vulkanShader->clockwisePipelines[1] =
+                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST, RendererWinding::Clockwise);
+            }
+            // Line strip
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP)
+            {
+                // Counter-clockwise
+                vulkanShader->pipelines[2] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP);
+                // Clockwise
+                vulkanShader->clockwisePipelines[2] =
+                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP, RendererWinding::Clockwise);
+            }
+
+            // Triangle list
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST)
+            {
+                // Counter-clockwise
+                vulkanShader->pipelines[3] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST);
+                // Clockwise
+                vulkanShader->clockwisePipelines[3] =
+                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST, RendererWinding::Clockwise);
+            }
+            // Triangle strip
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP)
+            {
+                // Counter-clockwise
+                vulkanShader->pipelines[4] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP);
+                // Clockwise
+                vulkanShader->clockwisePipelines[4] =
+                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP, RendererWinding::Clockwise);
+            }
+            // Triangle fan
+            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN)
+            {
+                // Counter-clockwise
+                vulkanShader->pipelines[5] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN);
+                // Clockwise
+                vulkanShader->clockwisePipelines[5] =
+                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN, RendererWinding::Clockwise);
+            }
         }
 
         for (u32 i = 0; i < VULKAN_TOPOLOGY_CLASS_MAX; i++)
         {
             if (!vulkanShader->pipelines[i]) continue;
 
-            VulkanPipelineConfig config     = {};
-            config.renderPass               = vulkanShader->renderPass;
-            config.stride                   = shader.attributeStride;
-            config.attributeCount           = static_cast<u32>(shader.attributes.Size());
-            config.attributes               = vulkanShader->config.attributes;
-            config.descriptorSetLayoutCount = vulkanShader->config.descriptorSetCount;
-            config.descriptorSetLayouts     = vulkanShader->descriptorSetLayouts;
-            config.stageCount               = vulkanShader->config.stageCount;
-            config.stages                   = stageCreateInfos;
-            config.viewport                 = viewport;
-            config.scissor                  = scissor;
-            config.cullMode                 = vulkanShader->config.cullMode;
-            config.isWireFrame              = false;
-            config.shaderFlags              = shader.flags;
-            config.pushConstantRangeCount   = shader.pushConstantRangeCount;
-            config.pushConstantRanges       = shader.pushConstantRanges;
-            config.shaderName               = shader.name;
+            VulkanPipelineConfig config = {};
+            config.attributes.Copy(vulkanShader->config.attributes, shader.attributes.Size());
+            config.pushConstantRanges.Copy(shader.pushConstantRanges, shader.pushConstantRangeCount);
+            config.descriptorSetLayouts.Copy(vulkanShader->descriptorSetLayouts, vulkanShader->config.descriptorSetCount);
+            config.stages.Copy(stageCreateInfos, vulkanShader->config.stageCount);
+            config.renderPass  = vulkanShader->renderPass;
+            config.stride      = shader.attributeStride;
+            config.viewport    = viewport;
+            config.scissor     = scissor;
+            config.cullMode    = vulkanShader->config.cullMode;
+            config.isWireFrame = false;
+            config.shaderFlags = shader.flags;
+            config.shaderName  = shader.name;
 
             if (vulkanShader->boundPipeline == INVALID_ID_U8)
             {

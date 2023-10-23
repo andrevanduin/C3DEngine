@@ -87,6 +87,13 @@ u8 DynamicArrayShouldCreateAndDestroy()
     return true;
 }
 
+u8 DynamicArrayShouldCreateFromFixedSizeArray()
+{
+    C3D::DynamicArray<int> array;
+
+    return true;
+}
+
 u8 DynamicArrayShouldReserve()
 {
     C3D::DynamicArray<int> array;

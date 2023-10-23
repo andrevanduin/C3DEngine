@@ -2,6 +2,7 @@
 #include "simple_scene.h"
 
 #include <core/frame_data.h>
+#include <math/frustum.h>
 #include <math/ray.h>
 #include <renderer/renderer_types.h>
 #include <resources/debug/debug_box_3d.h>
@@ -324,7 +325,7 @@ bool SimpleScene::Update(C3D::FrameData& frameData)
     return true;
 }
 
-bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, C3D::RenderPacket& packet)
+bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, const C3D::Camera* camera, f32 aspect, C3D::RenderPacket& packet)
 {
     if (m_state != SceneState::Loaded) return true;
 
@@ -346,11 +347,18 @@ bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, C3D::RenderPac
     m_worldData.terrainGeometries.Clear();
     m_worldData.debugGeometries.Clear();
 
+    vec3 forward = camera->GetForward();
+    vec3 right   = camera->GetRight();
+    vec3 up      = camera->GetUp();
+
+    C3D::Frustum frustum = C3D::Frustum(camera->GetPosition(), forward, right, up, aspect, C3D::DegToRad(45.0f), 0.1f, 1000.0f);
+
     for (const auto& mesh : m_meshes)
     {
         if (mesh.generation != INVALID_ID_U8)
         {
-            mat4 model = mesh.transform.GetWorld();
+            mat4 model           = mesh.transform.GetWorld();
+            bool windingInverted = mesh.transform.GetDeterminant() < 0;
 
             if (mesh.HasDebugBox())
             {
@@ -360,45 +368,21 @@ bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, C3D::RenderPac
 
             for (const auto geometry : mesh.geometries)
             {
-                m_worldData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
-                frameData.drawnMeshCount++;
-
-                /*
-                // Bounding sphere calculations
-                vec3 extentsMin = vec4(geometry->extents.min, 1.0f) * model;
-                vec3 extentsMax = vec4(geometry->extents.max, 1.0f) * model;
-
-                f32 min = C3D::Min(extentsMin.x, extentsMin.y, extentsMin.z);
-                f32 max = C3D::Max(extentsMax.x, extentsMax.y, extentsMax.z);
-                f32 diff = C3D::Abs(max - min);
-                f32 radius = diff * 0.5f;
-
-                // Translate / Scale the center
-                const vec3 center = vec4(geometry->center, 1.0f) * model;
-
-                if (m_cameraFrustum.IntersectsWithSphere({ center, radius }))
-                {
-                        m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
-                        drawCount++;
-                }
-
                 // AABB Calculation
-                const vec3 extentsMin = vec4(geometry->extents.min, 1.0f);
-                const vec3 extentsMax = vec4(geometry->extents.max, 1.0f);
-                const vec3 center = vec4(geometry->center, 1.0f);
+                const vec3 extentsMax = model * vec4(geometry->extents.max, 1.0f);
+                const vec3 center     = model * vec4(geometry->center, 1.0f);
 
-                const vec3 halfExtents =
-                {
-                        C3D::Abs(extentsMax.x - center.x),
-                        C3D::Abs(extentsMax.y - center.y),
-                        C3D::Abs(extentsMax.z - center.z),
+                const vec3 halfExtents = {
+                    C3D::Abs(extentsMax.x - center.x),
+                    C3D::Abs(extentsMax.y - center.y),
+                    C3D::Abs(extentsMax.z - center.z),
                 };
 
-                if (m_cameraFrustum.IntersectsWithAABB({ geometry->center, halfExtents }))
+                if (frustum.IntersectsWithAABB({ center, halfExtents }))
                 {
-                        m_frameData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId);
-                        drawCount++;
-                }*/
+                    m_worldData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId, windingInverted);
+                    frameData.drawnMeshCount++;
+                }
             }
         }
     }
@@ -427,8 +411,7 @@ bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, C3D::RenderPac
 
         if (debug && debug->box.IsValid())
         {
-            m_worldData.debugGeometries.EmplaceBack(debug->box.GetModel(), debug->box.GetGeometry(),
-                                                    debug->box.GetUniqueId());
+            m_worldData.debugGeometries.EmplaceBack(debug->box.GetModel(), debug->box.GetGeometry(), debug->box.GetUniqueId());
         }
     }
 
@@ -738,6 +721,14 @@ bool SimpleScene::RemoveSkybox(const C3D::String& name)
 
     if (m_skybox)
     {
+        if (!m_skybox->Unload())
+        {
+            m_logger.Error("RemoveSkybox() - Failed to unload skybox.");
+        }
+
+        m_skybox->Destroy();
+
+        Memory.Delete(C3D::MemoryType::Scene, m_skybox);
         m_skybox = nullptr;
         return true;
     }
@@ -770,16 +761,32 @@ bool SimpleScene::RayCast(const C3D::Ray& ray, C3D::RayCastResult& result)
     return !result.hits.Empty();
 }
 
+C3D::Transform* SimpleScene::GetTransformById(u32 uniqueId)
+{
+    for (auto& mesh : m_meshes)
+    {
+        if (mesh.uniqueId == uniqueId)
+        {
+            return &mesh.transform;
+        }
+    }
+
+    for (auto& terrain : m_terrains)
+    {
+        if (terrain.uniqueId == uniqueId)
+        {
+            return terrain.GetTransform();
+        }
+    }
+
+    return nullptr;
+}
+
 void SimpleScene::UnloadInternal()
 {
     if (m_skybox)
     {
-        if (!m_skybox->Unload())
-        {
-            m_logger.Error("Unload() - Failed to unload skybox.");
-        }
-
-        m_skybox->Destroy();
+        RemoveSkybox("SKYBOX");
     }
 
     for (auto& mesh : m_meshes)

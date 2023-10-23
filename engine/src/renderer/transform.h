@@ -8,7 +8,8 @@ namespace C3D
     class C3D_API Transform
     {
     public:
-        Transform();
+        Transform() = default;
+
         explicit Transform(const vec3& position);
         explicit Transform(const quat& rotation);
         Transform(const vec3& position, const quat& rotation);
@@ -45,15 +46,17 @@ namespace C3D
 
         mat4 GetLocal() const;
         mat4 GetWorld() const;
+        f32 GetDeterminant() const { return m_determinant; }
 
     private:
         Transform* m_parent = nullptr;
 
-        vec3 m_position;
-        vec3 m_scale;
-        quat m_rotation;
-        mutable mat4 m_local;
+        vec3 m_position = vec3(0);
+        vec3 m_scale    = vec3(1.0f);
+        quat m_rotation = quat(1.0f, 0, 0, 0);
 
+        mutable f32 m_determinant  = 0.0f;
+        mutable mat4 m_local       = mat4(1.0f);
         mutable bool m_needsUpdate = true;
     };
 }  // namespace C3D

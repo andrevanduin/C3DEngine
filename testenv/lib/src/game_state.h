@@ -2,7 +2,6 @@
 #pragma once
 #include <core/application.h>
 #include <core/frame_data.h>
-#include <math/frustum.h>
 #include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
 #include <resources/ui_text.h>
@@ -15,6 +14,7 @@ namespace C3D
 {
     class Camera;
     class PointLight;
+    class Transform;
 }  // namespace C3D
 
 enum class ReloadState
@@ -25,11 +25,15 @@ enum class ReloadState
     Loading
 };
 
+struct SelectedObject
+{
+    u32 uniqueId              = INVALID_ID;
+    C3D::Transform* transform = nullptr;
+};
+
 struct GameState final : C3D::ApplicationState
 {
     C3D::Camera* camera = nullptr;
-
-    C3D::Frustum cameraFrustum;
 
     ReloadState reloadState = ReloadState::Done;
 
@@ -39,6 +43,8 @@ struct GameState final : C3D::ApplicationState
 
     C3D::DynamicArray<C3D::DebugLine3D> testLines;
     C3D::DynamicArray<C3D::DebugBox3D> testBoxes;
+
+    SelectedObject selectedObject;
 
     C3D::PointLight* pLights[4];
 

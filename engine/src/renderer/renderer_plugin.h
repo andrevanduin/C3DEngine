@@ -47,10 +47,12 @@ namespace C3D
 
         virtual void SetViewport(const vec4& rect) = 0;
         virtual void ResetViewport()               = 0;
+        /** @brief Sets the Renderer's scissor to the provided rectangle. */
         virtual void SetScissor(const ivec4& rect) = 0;
-        virtual void ResetScissor()                = 0;
-
-        virtual void SetLineWidth(float lineWidth) = 0;
+        /** @brief Resets the Renderer's scissor to the default. */
+        virtual void ResetScissor() = 0;
+        /** @brief Sets the Renderer's vertex winding direction. */
+        virtual void SetWinding(RendererWinding winding) = 0;
 
         virtual bool BeginRenderPass(RenderPass* pass, RenderTarget* target) = 0;
         virtual bool EndRenderPass(RenderPass* pass)                         = 0;
@@ -66,12 +68,10 @@ namespace C3D
 
         virtual void DestroyTexture(Texture* texture) = 0;
 
-        virtual bool CreateGeometry(Geometry& geometry)           = 0;
-        virtual bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset,
-                                    u32 indexRange)               = 0;
-        virtual void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount,
-                                            const void* vertices) = 0;
-        virtual void DestroyGeometry(Geometry& geometry)          = 0;
+        virtual bool CreateGeometry(Geometry& geometry)                                                                    = 0;
+        virtual bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset, u32 indexRange) = 0;
+        virtual void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices)   = 0;
+        virtual void DestroyGeometry(Geometry& geometry)                                                                   = 0;
 
         virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
         virtual void DestroyShader(Shader& shader)                                                    = 0;
@@ -85,25 +85,23 @@ namespace C3D
         virtual bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate)  = 0;
         virtual bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) = 0;
 
-        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, TextureMap** maps,
-                                                    u32* outInstanceId)            = 0;
-        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId) = 0;
+        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, TextureMap** maps, u32* outInstanceId) = 0;
+        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId)                                             = 0;
 
         virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
         virtual void ReleaseTextureMapResources(TextureMap& map) = 0;
 
         virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) = 0;
 
-        virtual void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass,
-                                        u32 width, u32 height, RenderTarget* outTarget) = 0;
+        virtual void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height,
+                                        RenderTarget* outTarget)                        = 0;
         virtual void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) = 0;
 
         virtual RenderPass* CreateRenderPass(const RenderPassConfig& config) = 0;
         virtual bool DestroyRenderPass(RenderPass* pass)                     = 0;
 
-        virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
-                                                 bool useFreelist) = 0;
-        virtual bool DestroyRenderBuffer(RenderBuffer* buffer)     = 0;
+        virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize, bool useFreelist) = 0;
+        virtual bool DestroyRenderBuffer(RenderBuffer* buffer)                                                               = 0;
 
         virtual Texture* GetWindowAttachment(u8 index) = 0;
         virtual Texture* GetDepthAttachment(u8 index)  = 0;

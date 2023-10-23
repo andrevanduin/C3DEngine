@@ -3,6 +3,7 @@
 #include <containers/dynamic_array.h>
 #include <containers/hash_map.h>
 #include <core/defines.h>
+#include <renderer/camera.h>
 #include <renderer/render_view.h>
 #include <renderer/render_view_types.h>
 #include <renderer/transform.h>
@@ -23,6 +24,7 @@ namespace C3D
     struct Skybox;
 
     class Ray;
+    class Transform;
     struct RayCastResult;
 
 }  // namespace C3D
@@ -97,7 +99,7 @@ public:
      * @param packet The packet that needs to be filled with render data
      * @return True if successful, false otherwise
      */
-    bool PopulateRenderPacket(C3D::FrameData& frameData, C3D::RenderPacket& packet);
+    bool PopulateRenderPacket(C3D::FrameData& frameData, const C3D::Camera* camera, f32 aspect, C3D::RenderPacket& packet);
 
     bool AddDirectionalLight(const C3D::String& name, C3D::DirectionalLight& light);
     bool RemoveDirectionalLight(const C3D::String& name);
@@ -118,6 +120,8 @@ public:
     bool RemoveSkybox(const C3D::String& name);
 
     bool RayCast(const C3D::Ray& ray, C3D::RayCastResult& result);
+
+    C3D::Transform* GetTransformById(u32 uniqueId);
 
     [[nodiscard]] u32 GetId() const { return m_id; }
     [[nodiscard]] SceneState GetState() const { return m_state; }

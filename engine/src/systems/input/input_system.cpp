@@ -270,6 +270,12 @@ namespace C3D
         return m_mouseCurrent.buttons[button].state == InputState::Down && m_mousePrevious.buttons[button].state == InputState::Up;
     }
 
+    bool InputSystem::IsButtonDragging(Buttons button) const
+    {
+        if (!m_initialized) return false;
+        return m_mouseCurrent.buttons[button].inDrag;
+    }
+
     bool InputSystem::WasButtonDown(const Buttons button) const
     {
         if (!m_initialized) return false;

@@ -44,7 +44,7 @@ namespace C3D
         void SetScissor(const vec4& rect) const;
         void ResetScissor() const;
 
-        void SetLineWidth(float lineWidth) const;
+        void SetWinding(RendererWinding winding) const;
 
         void CreateTexture(const u8* pixels, Texture* texture) const;
         void CreateWritableTexture(Texture* texture) const;

@@ -19,13 +19,14 @@ namespace C3D
     {
         explicit GeometryRenderData(Geometry* geometry) : geometry(geometry) {}
 
-        GeometryRenderData(const mat4& model, Geometry* geometry, const u32 uniqueId = INVALID_ID)
-            : model(model), geometry(geometry), uniqueId(uniqueId)
+        GeometryRenderData(const mat4& model, Geometry* geometry, const u32 uniqueId = INVALID_ID, bool windingInverted = false)
+            : model(model), geometry(geometry), uniqueId(uniqueId), windingInverted(windingInverted)
         {}
 
         mat4 model;
-        Geometry* geometry;
-        u32 uniqueId = INVALID_ID;
+        Geometry* geometry   = nullptr;
+        u32 uniqueId         = INVALID_ID;
+        bool windingInverted = false;
     };
 
     struct RenderViewWorldData

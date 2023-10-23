@@ -126,10 +126,9 @@ bool RenderViewWorld::OnCreate()
     m_ambientColor = vec4(0.25f, 0.25f, 0.25f, 1.0f);
 
     // Register our render mode change event listener
-    m_onEventCallback = Event.Register(C3D::EventCodeSetRenderMode,
-                                       [this](const u16 code, void* sender, const C3D::EventContext& context) {
-                                           return OnEvent(code, sender, context);
-                                       });
+    m_onEventCallback = Event.Register(C3D::EventCodeSetRenderMode, [this](const u16 code, void* sender, const C3D::EventContext& context) {
+        return OnEvent(code, sender, context);
+    });
     return true;
 }
 
@@ -173,8 +172,7 @@ bool RenderViewWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* 
         if (gData.geometry->material->type == C3D::MaterialType::Phong)
         {
             // NOTE: Since this is a Phong material we know that the first map will be the diffuse
-            hasTransparency =
-                (gData.geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency) == 0;
+            hasTransparency = (gData.geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency) == 0;
         }
 
         if (hasTransparency)
@@ -192,8 +190,7 @@ bool RenderViewWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* 
         }
     }
 
-    std::ranges::sort(m_distances,
-                      [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance < b.distance; });
+    std::ranges::sort(m_distances, [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance < b.distance; });
 
     for (auto& [g, distance] : m_distances)
     {
@@ -214,8 +211,8 @@ bool RenderViewWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* 
     return true;
 }
 
-bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet,
-                               const u64 frameNumber, const u64 renderTargetIndex)
+bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, const u64 frameNumber,
+                               const u64 renderTargetIndex)
 {
     for (const auto pass : m_passes)
     {
@@ -243,8 +240,7 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
 
             for (auto& terrain : packet->terrainGeometries)
             {
-                C3D::Material* mat =
-                    terrain.geometry->material ? terrain.geometry->material : Materials.GetDefaultTerrain();
+                C3D::Material* mat = terrain.geometry->material ? terrain.geometry->material : Materials.GetDefaultTerrain();
 
                 // Check if this material has already been updated this frame to avoid unnecessary updates.
                 // This means we always bind the shader but we skip updating the internal shader bindings if it has
@@ -259,7 +255,9 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 // Sync the frame number with the current
                 mat->renderFrameNumber = frameNumber;
 
+                // Apply the locals for this geometry
                 Materials.ApplyLocal(mat, &terrain.model);
+                // Actually draw our geometry
                 Renderer.DrawGeometry(terrain);
             }
         }
@@ -274,8 +272,8 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
             }
 
             // TODO: Generic way to request data such as ambient color (which should come from a scene)
-            if (!Materials.ApplyGlobal(m_materialShader->id, frameNumber, &packet->projectionMatrix,
-                                       &packet->viewMatrix, &packet->ambientColor, &packet->viewPosition, m_renderMode))
+            if (!Materials.ApplyGlobal(m_materialShader->id, frameNumber, &packet->projectionMatrix, &packet->viewMatrix,
+                                       &packet->ambientColor, &packet->viewPosition, m_renderMode))
             {
                 m_logger.Error("OnRender() - Failed to apply globals for shader: '{}'", m_materialShader->name);
                 return false;
@@ -294,8 +292,23 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 // Sync the frame number with the current
                 mat->renderFrameNumber = static_cast<u32>(frameNumber);
 
+                // Apply the locals for this geometry
                 Materials.ApplyLocal(mat, &geometry.model);
+
+                // If the winding is inverted make sure we change the Renderer's winding
+                if (geometry.windingInverted)
+                {
+                    Renderer.SetWinding(C3D::RendererWinding::Clockwise);
+                }
+
+                // Actually draw our geometry
                 Renderer.DrawGeometry(geometry);
+
+                // If we just inverted the winding we should make sure to put it back to the default
+                if (geometry.windingInverted)
+                {
+                    Renderer.SetWinding(C3D::RendererWinding::CounterClockwise);
+                }
             }
         }
 

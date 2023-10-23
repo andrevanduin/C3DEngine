@@ -24,7 +24,26 @@ namespace C3D
         return VK_CULL_MODE_BACK_BIT;
     }
 
-    VulkanPipeline::VulkanPipeline(u32 supportedTopologyTypes) : m_supportedTopologyTypes(supportedTopologyTypes) {}
+    VkFrontFace GetVkFrontFace(const RendererWinding winding)
+    {
+        if (winding == RendererWinding::CounterClockwise)
+        {
+            return VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        }
+        else if (winding == RendererWinding::Clockwise)
+        {
+            return VK_FRONT_FACE_CLOCKWISE;
+        }
+        else
+        {
+            Logger::Warn("GetVkFrontFace() - Invalid RenderWinding provided. Defaulting to Counter Clockwise");
+            return VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        }
+    }
+
+    VulkanPipeline::VulkanPipeline(const PrimitiveTopologyTypeBits topologyTypeBits, const RendererWinding winding)
+        : m_supportedTopologyTypes(topologyTypeBits), m_rendererWinding(winding)
+    {}
 
     bool VulkanPipeline::Create(const VulkanContext* context, const VulkanPipelineConfig& config)
     {
@@ -43,7 +62,7 @@ namespace C3D
         rasterizerCreateInfo.polygonMode                            = config.isWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
         rasterizerCreateInfo.lineWidth                              = 1.0f;
         rasterizerCreateInfo.cullMode                               = GetVkCullMode(config.cullMode);
-        rasterizerCreateInfo.frontFace                              = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizerCreateInfo.frontFace                              = GetVkFrontFace(m_rendererWinding);
         rasterizerCreateInfo.depthBiasEnable                        = VK_FALSE;
         rasterizerCreateInfo.depthBiasConstantFactor                = 0.0f;
         rasterizerCreateInfo.depthBiasClamp                         = 0.0f;
@@ -91,13 +110,26 @@ namespace C3D
         colorBlendStateCreateInfo.pAttachments                        = &colorBlendAttachmentState;
 
         // Dynamic state
-        constexpr u32 dynamicStateCount                 = 3;
-        VkDynamicState dynamicStates[dynamicStateCount] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
-                                                            VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY };
+        DynamicArray<VkDynamicState> dynamicStates(4);
+        // By default we always use viewport and scissor since they are natively supported always
+        dynamicStates.PushBack(VK_DYNAMIC_STATE_VIEWPORT);
+        dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR);
+        // We add primitive topology when it's supported (either natively or by extension)
+        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT) ||
+            m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT))
+        {
+            dynamicStates.PushBack(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
+        }
+        // We add front face when it's supported (either natively or by extension)
+        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT) ||
+            m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT))
+        {
+            dynamicStates.PushBack(VK_DYNAMIC_STATE_FRONT_FACE);
+        }
 
         VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-        dynamicStateCreateInfo.dynamicStateCount                = dynamicStateCount;
-        dynamicStateCreateInfo.pDynamicStates                   = dynamicStates;
+        dynamicStateCreateInfo.dynamicStateCount                = dynamicStates.Size();
+        dynamicStateCreateInfo.pDynamicStates                   = dynamicStates.GetData();
 
         // Vertex Input
         VkVertexInputBindingDescription bindingDescription;
@@ -109,8 +141,8 @@ namespace C3D
         VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
         vertexInputCreateInfo.vertexBindingDescriptionCount        = 1;
         vertexInputCreateInfo.pVertexBindingDescriptions           = &bindingDescription;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount      = config.attributeCount;
-        vertexInputCreateInfo.pVertexAttributeDescriptions         = config.attributes;
+        vertexInputCreateInfo.vertexAttributeDescriptionCount      = config.attributes.Size();
+        vertexInputCreateInfo.pVertexAttributeDescriptions         = config.attributes.GetData();
 
         // Input assembly
         VkPipelineInputAssemblyStateCreateInfo inputAssembly = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
@@ -158,26 +190,26 @@ namespace C3D
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 
         // Push constants
-        if (config.pushConstantRangeCount > 0)
+        if (!config.pushConstantRanges.Empty())
         {
             // Note: 32 is the max push constant ranges we can ever have because the Vulkan spec only guarantees 128
             // bytes with 4-byte alignment.
-            if (config.pushConstantRangeCount > 32)
+            if (config.pushConstantRanges.Size() > 32)
             {
                 Logger::Error("[VULKAN_PIPELINE] - Create() Cannot have more than 32 push constant ranges. Passed count: {}",
-                              config.pushConstantRangeCount);
+                              config.pushConstantRanges.Size());
                 return false;
             }
 
             VkPushConstantRange ranges[32] = {};
-            for (u32 i = 0; i < config.pushConstantRangeCount; i++)
+            for (u32 i = 0; i < config.pushConstantRanges.Size(); i++)
             {
                 ranges[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
                 ranges[i].offset     = static_cast<u32>(config.pushConstantRanges[i].offset);
                 ranges[i].size       = static_cast<u32>(config.pushConstantRanges[i].size);
             }
 
-            pipelineLayoutCreateInfo.pushConstantRangeCount = config.pushConstantRangeCount;
+            pipelineLayoutCreateInfo.pushConstantRangeCount = config.pushConstantRanges.Size();
             pipelineLayoutCreateInfo.pPushConstantRanges    = ranges;
         }
         else
@@ -187,8 +219,8 @@ namespace C3D
         }
 
         // Descriptor set layouts
-        pipelineLayoutCreateInfo.setLayoutCount = config.descriptorSetLayoutCount;
-        pipelineLayoutCreateInfo.pSetLayouts    = config.descriptorSetLayouts;
+        pipelineLayoutCreateInfo.setLayoutCount = config.descriptorSetLayouts.Size();
+        pipelineLayoutCreateInfo.pSetLayouts    = config.descriptorSetLayouts.GetData();
 
         auto logicalDevice = m_context->device.GetLogical();
 
@@ -199,8 +231,8 @@ namespace C3D
 
         // Pipeline create info
         VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-        pipelineCreateInfo.stageCount                   = config.stageCount;
-        pipelineCreateInfo.pStages                      = config.stages;
+        pipelineCreateInfo.stageCount                   = config.stages.Size();
+        pipelineCreateInfo.pStages                      = config.stages.GetData();
         pipelineCreateInfo.pVertexInputState            = &vertexInputCreateInfo;
         pipelineCreateInfo.pInputAssemblyState          = &inputAssembly;
 

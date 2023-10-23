@@ -2,7 +2,9 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
+#include "disc.h"
 #include "math_types.h"
+#include "plane.h"
 
 namespace C3D
 {
@@ -18,7 +20,10 @@ namespace C3D
 
         Ray(const vec3& position, const vec3& direction);
 
-        bool TestAgainstExtents(const Extents3D& extents, const mat4& model, f32& distance) const;
+        bool TestAgainstAABB(const Extents3D& extents, vec3& outPoint) const;
+        bool TestAgainstExtents(const Extents3D& extents, const mat4& model, f32& outDistance) const;
+        bool TestAgainstPlane3D(const Plane3D& plane, vec3& outPoint, f32& outDistance) const;
+        bool TestAgainstDisc3D(const Disc3D& disc, vec3& outPoint, f32& outDistance) const;
 
         static Ray FromScreen(const vec2& screenPos, const vec2& viewportSize, const vec3& origin, const mat4& view,
                               const mat4& projection);

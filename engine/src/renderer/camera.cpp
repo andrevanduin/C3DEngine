@@ -33,7 +33,7 @@ namespace C3D
 
     void Camera::SetViewMatrix(const mat4& viewMatrix) { m_viewMatrix = viewMatrix; }
 
-    mat4 Camera::GetViewMatrix()
+    mat4 Camera::GetViewMatrix() const
     {
         if (m_needsUpdate)
         {
@@ -41,8 +41,7 @@ namespace C3D
             const mat4 ry = glm::eulerAngleY(m_eulerRotation.y);
             const mat4 rz = glm::eulerAngleZ(m_eulerRotation.z);
 
-            const mat4 rotation =
-                rz * ry * rx;  // glm::eulerAngleXYZ(m_eulerRotation.x, m_eulerRotation.y, m_eulerRotation.z);
+            const mat4 rotation = rz * ry * rx;  // glm::eulerAngleXYZ(m_eulerRotation.x, m_eulerRotation.y, m_eulerRotation.z);
 
             m_viewMatrix = translate(m_position) * rotation;
             m_viewMatrix = inverse(m_viewMatrix);
@@ -52,37 +51,37 @@ namespace C3D
         return m_viewMatrix;
     }
 
-    vec3 Camera::GetForward()
+    vec3 Camera::GetForward() const
     {
         const mat4 view = GetViewMatrix();
         return normalize(vec3(-view[0][2], -view[1][2], -view[2][2]));
     }
 
-    vec3 Camera::GetBackward()
+    vec3 Camera::GetBackward() const
     {
         const mat4 view = GetViewMatrix();
         return normalize(vec3(view[0][2], view[1][2], view[2][2]));
     }
 
-    vec3 Camera::GetLeft()
+    vec3 Camera::GetLeft() const
     {
         const mat4 view = GetViewMatrix();
         return normalize(vec3(-view[0][0], -view[1][0], -view[2][0]));
     }
 
-    vec3 Camera::GetRight()
+    vec3 Camera::GetRight() const
     {
         const mat4 view = GetViewMatrix();
         return normalize(vec3(view[0][0], view[1][0], view[2][0]));
     }
 
-    vec3 Camera::GetUp()
+    vec3 Camera::GetUp() const
     {
         const mat4 view = GetViewMatrix();
         return normalize(vec3(view[0][1], view[1][1], view[2][1]));
     }
 
-    vec3 Camera::GetDown()
+    vec3 Camera::GetDown() const
     {
         const mat4 view = GetViewMatrix();
         return normalize(vec3(-view[0][1], -view[1][1], -view[2][1]));
