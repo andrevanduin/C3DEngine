@@ -642,6 +642,11 @@ bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext& con
 bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& context)
 {
     u16 button = context.data.u16[0];
+    if (m_state->dragging)
+    {
+        return false;
+    }
+
     switch (button)
     {
         case C3D::ButtonLeft:
@@ -807,6 +812,7 @@ bool TestEnv::OnMouseDragged(u16 code, void* sender, const C3D::EventContext& co
         {
             // Drag start so we start our "dragging" interaction
             m_state->gizmo.BeginInteraction(EditorGizmoInteractionType::MouseDrag, m_state->camera, ray);
+            m_state->dragging = true;
         }
         else if (code == C3D::EventCodeMouseDragged)
         {
@@ -815,6 +821,7 @@ bool TestEnv::OnMouseDragged(u16 code, void* sender, const C3D::EventContext& co
         else if (code == C3D::EventCodeMouseDraggedEnd)
         {
             m_state->gizmo.EndInteraction();
+            m_state->dragging = false;
         }
     }
     return false;

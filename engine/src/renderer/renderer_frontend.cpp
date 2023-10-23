@@ -194,7 +194,18 @@ namespace C3D
 
     void RenderSystem::DestroyGeometry(Geometry& geometry) const { m_backendPlugin->DestroyGeometry(geometry); }
 
-    void RenderSystem::DrawGeometry(const GeometryRenderData& data) const { m_backendPlugin->DrawGeometry(data); }
+    void RenderSystem::DrawGeometry(const GeometryRenderData& data) const
+    {
+        static bool currentWindingInverted = data.windingInverted;
+
+        if (currentWindingInverted != data.windingInverted)
+        {
+            currentWindingInverted = data.windingInverted;
+            m_backendPlugin->SetWinding(currentWindingInverted ? RendererWinding::Clockwise : RendererWinding::CounterClockwise);
+        }
+
+        m_backendPlugin->DrawGeometry(data);
+    }
 
     bool RenderSystem::BeginRenderPass(RenderPass* pass, RenderTarget* target) const
     {

@@ -295,20 +295,8 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 // Apply the locals for this geometry
                 Materials.ApplyLocal(mat, &geometry.model);
 
-                // If the winding is inverted make sure we change the Renderer's winding
-                if (geometry.windingInverted)
-                {
-                    Renderer.SetWinding(C3D::RendererWinding::Clockwise);
-                }
-
                 // Actually draw our geometry
                 Renderer.DrawGeometry(geometry);
-
-                // If we just inverted the winding we should make sure to put it back to the default
-                if (geometry.windingInverted)
-                {
-                    Renderer.SetWinding(C3D::RendererWinding::CounterClockwise);
-                }
             }
         }
 

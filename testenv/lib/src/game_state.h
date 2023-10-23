@@ -40,6 +40,7 @@ struct GameState final : C3D::ApplicationState
     // TEMP
     SimpleScene simpleScene;
     EditorGizmo gizmo;
+    bool dragging = false;
 
     C3D::DynamicArray<C3D::DebugLine3D> testLines;
     C3D::DynamicArray<C3D::DebugBox3D> testBoxes;

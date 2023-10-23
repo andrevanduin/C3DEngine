@@ -159,14 +159,14 @@ namespace C3D
         }
         else
         {
+            currentButton.state = InputState::Up;
+            Event.Fire(EventCodeButtonUp, this, context);
+
             if (currentButton.inDrag)
             {
                 Event.Fire(EventCodeMouseDraggedEnd, this, context);
                 currentButton.inDrag = false;
             }
-
-            currentButton.state = InputState::Up;
-            Event.Fire(EventCodeButtonUp, this, context);
         }
     }
 
