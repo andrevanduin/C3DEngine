@@ -96,12 +96,11 @@ bool RenderViewPick::OnCreate()
     m_uiShaderInfo.viewLocation       = Shaders.GetUniformIndex(m_uiShaderInfo.shader, "view");
 
     // Default UI properties
-    m_uiShaderInfo.nearClip = -100.0f;
-    m_uiShaderInfo.farClip  = 100.0f;
-    m_uiShaderInfo.fov      = 0;
-    m_uiShaderInfo.projection =
-        glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
-    m_uiShaderInfo.view = mat4(1.0f);
+    m_uiShaderInfo.nearClip   = -100.0f;
+    m_uiShaderInfo.farClip    = 100.0f;
+    m_uiShaderInfo.fov        = 0;
+    m_uiShaderInfo.projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
+    m_uiShaderInfo.view       = mat4(1.0f);
 
     // World Shader
     constexpr auto worldShaderName = "Shader.Builtin.WorldPick";
@@ -158,22 +157,21 @@ bool RenderViewPick::OnCreate()
     m_terrainShaderInfo.viewLocation       = Shaders.GetUniformIndex(m_terrainShaderInfo.shader, "view");
 
     // Default world properties
-    m_terrainShaderInfo.nearClip   = 0.1f;
-    m_terrainShaderInfo.farClip    = 4000.0f;
-    m_terrainShaderInfo.fov        = C3D::DegToRad(45.0f);
-    m_terrainShaderInfo.projection = glm::perspective(m_terrainShaderInfo.fov, 1280 / 720.0f,
-                                                      m_terrainShaderInfo.nearClip, m_terrainShaderInfo.farClip);
-    m_terrainShaderInfo.view       = mat4(1.0f);
+    m_terrainShaderInfo.nearClip = 0.1f;
+    m_terrainShaderInfo.farClip  = 4000.0f;
+    m_terrainShaderInfo.fov      = C3D::DegToRad(45.0f);
+    m_terrainShaderInfo.projection =
+        glm::perspective(m_terrainShaderInfo.fov, 1280 / 720.0f, m_terrainShaderInfo.nearClip, m_terrainShaderInfo.farClip);
+    m_terrainShaderInfo.view = mat4(1.0f);
 
     m_instanceCount = 0;
 
     std::memset(&m_colorTargetAttachmentTexture, 0, sizeof(C3D::Texture));
     std::memset(&m_depthTargetAttachmentTexture, 0, sizeof(C3D::Texture));
 
-    m_onEventCallback = Event.Register(C3D::EventCodeMouseMoved,
-                                       [this](const u16 code, void* sender, const C3D::EventContext& context) {
-                                           return OnMouseMovedEvent(code, sender, context);
-                                       });
+    m_onEventCallback = Event.Register(C3D::EventCodeMouseMoved, [this](const u16 code, void* sender, const C3D::EventContext& context) {
+        return OnMouseMovedEvent(code, sender, context);
+    });
     return true;
 }
 
@@ -194,10 +192,8 @@ void RenderViewPick::OnResize()
     const auto fHeight = static_cast<f32>(m_height);
     const auto aspect  = fWidth / fHeight;
 
-    m_uiShaderInfo.projection =
-        glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
-    m_worldShaderInfo.projection =
-        glm::perspective(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
+    m_uiShaderInfo.projection    = glm::ortho(0.0f, fWidth, fHeight, 0.0f, m_uiShaderInfo.nearClip, m_uiShaderInfo.farClip);
+    m_worldShaderInfo.projection = glm::perspective(m_worldShaderInfo.fov, aspect, m_worldShaderInfo.nearClip, m_worldShaderInfo.farClip);
     m_terrainShaderInfo.projection =
         glm::perspective(m_terrainShaderInfo.fov, aspect, m_terrainShaderInfo.nearClip, m_terrainShaderInfo.farClip);
 }
@@ -290,8 +286,7 @@ bool RenderViewPick::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* d
     return true;
 }
 
-bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, u64 frameNumber,
-                              u64 renderTargetIndex)
+bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex)
 {
     // We start at the 0-th pass (world)
     auto pass = m_passes[0];
@@ -646,9 +641,9 @@ bool RenderViewPick::OnMouseMovedEvent(const u16 code, void*, const C3D::EventCo
     {
         m_mouseX = context.data.i16[0];
         m_mouseY = context.data.i16[1];
-        return true;
     }
 
+    // Allow other handlers to also pickup this event
     return false;
 }
 

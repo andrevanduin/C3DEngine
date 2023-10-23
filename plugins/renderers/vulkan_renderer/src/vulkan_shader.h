@@ -71,7 +71,7 @@ namespace C3D
     {
         /** @brief The number of stages in this shader. */
         u8 stageCount;
-        /* @brief The configuration for every stage. */
+        /** @brief The configuration for every stage. */
         VulkanShaderStageConfig stages[VULKAN_SHADER_MAX_STAGES];
         /* @brief An array of the descriptor pool sizes. */
         VkDescriptorPoolSize poolSizes[2];
@@ -92,7 +92,7 @@ namespace C3D
         /** @brief Face culling mode, provided by the front end. */
         FaceCullMode cullMode;
         /** @brief Topology types used by the shader. */
-        u32 topologyTypes;
+        PrimitiveTopologyTypeBits topologyTypes;
     };
 
     struct VulkanDescriptorState
@@ -152,8 +152,13 @@ namespace C3D
 
         VulkanBuffer uniformBuffer;
 
-        VulkanPipeline* pipelines[VULKAN_TOPOLOGY_CLASS_MAX] = { nullptr, nullptr, nullptr };
-        u8 boundPipeline                                     = INVALID_ID_U8;
+        /** @brief An array of pipelines used by this shader. */
+        DynamicArray<VulkanPipeline*> pipelines;
+        /** @brief An array of pipelines used by this shader for clockwise topology.
+         * (Only used when system does not support dynamic winding natively or by extension)*/
+        DynamicArray<VulkanPipeline*> clockwisePipelines;
+
+        u8 boundPipeline = INVALID_ID_U8;
 
         u32 instanceCount = 0;
         VulkanShaderInstanceState instanceStates[VULKAN_MAX_MATERIAL_COUNT];

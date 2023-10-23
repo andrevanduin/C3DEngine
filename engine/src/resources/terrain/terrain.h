@@ -4,9 +4,9 @@
 #include "containers/string.h"
 #include "core/frame_data.h"
 #include "math/math_types.h"
+#include "renderer/geometry.h"
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
-#include "renderer/geometry.h"
 #include "terrain_config.h"
 
 namespace C3D
@@ -36,6 +36,8 @@ namespace C3D
         mat4 GetModel() const { return m_transform.GetWorld(); }
 
         Geometry* GetGeometry() { return &m_geometry; }
+
+        Transform* GetTransform() { return &m_transform; }
 
         void SetTransform(const Transform& t) { m_transform = t; }
 

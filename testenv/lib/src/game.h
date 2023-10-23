@@ -31,6 +31,8 @@ private:
     bool OnEvent(u16 code, void* sender, const C3D::EventContext& context);
     bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context);
     bool OnButtonUp(u16 code, void* sender, const C3D::EventContext& context);
+    bool OnMouseMoved(u16 code, void* sender, const C3D::EventContext& context);
+    bool OnMouseDragged(u16 code, void* sender, const C3D::EventContext& context);
 
     bool LoadTestScene();
     void UnloadTestScene();

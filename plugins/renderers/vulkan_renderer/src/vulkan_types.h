@@ -18,6 +18,7 @@ namespace C3D
     constexpr auto VULKAN_MAX_GEOMETRY_COUNT = 4096;
 
     class VulkanImage;
+    struct Shader;
 
     struct VulkanTextureData
     {
@@ -59,7 +60,7 @@ namespace C3D
         DynamicArray<VkSemaphore> imageAvailableSemaphores;
         DynamicArray<VkSemaphore> queueCompleteSemaphores;
 
-        u32 inFlightFenceCount;
+        u32 inFlightFenceCount = 0;
         VkFence inFlightFences[2];
 
         /** @brief Holds pointers to fences which exist and are owned elsewhere, one per frame */
@@ -101,5 +102,9 @@ namespace C3D
 #endif
 
         PFN_vkCmdSetPrimitiveTopologyEXT pfnCmdSetPrimitiveTopologyEXT;
+        PFN_vkCmdSetFrontFaceEXT pfnCmdSetFrontFaceEXT;
+
+        /** @brief A pointer to the currently bound shader. */
+        Shader* boundShader;
     };
 }  // namespace C3D

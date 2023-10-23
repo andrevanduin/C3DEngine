@@ -188,6 +188,19 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             C3D::Logger::Debug("Position({:.2f}, {:.2f}, {:.2f})", pos.x, pos.y, pos.z);
         }
 
+        if (Input.IsKeyPressed(C3D::KeyG))
+        {
+            EditorGizmoOrientation orientation = m_state->gizmo.GetOrientation();
+            if (orientation == EditorGizmoOrientation::Global)
+            {
+                m_state->gizmo.SetOrientation(EditorGizmoOrientation::Local);
+            }
+            else
+            {
+                m_state->gizmo.SetOrientation(EditorGizmoOrientation::Global);
+            }
+        }
+
         // Renderer Debug functions
         if (Input.IsKeyPressed(C3D::KeyF1))
         {
@@ -302,6 +315,8 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         m_logger.Error("Update() - Failed to update main scene");
     }
 
+    m_state->gizmo.Update();
+
     if (m_state->simpleScene.GetState() == SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
     {
         m_state->reloadState = ReloadState::Loading;
@@ -410,7 +425,7 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     packet.views[TEST_ENV_VIEW_PICK].geometries.SetAllocator(frameData.frameAllocator);
 
     // This method generate the skybox and world packet for us
-    if (!m_state->simpleScene.PopulateRenderPacket(frameData, packet))
+    if (!m_state->simpleScene.PopulateRenderPacket(frameData, m_state->camera, static_cast<f32>(m_state->width) / m_state->height, packet))
     {
         m_logger.Error("OnRender() - Failed to populate render packet for simple scene");
         return false;
@@ -532,6 +547,26 @@ void TestEnv::OnLibraryLoad()
     });
     m_state->registeredCallbacks.PushBack(cb);
 
+    cb = Event.Register(C3D::EventCodeMouseMoved, [this](const u16 code, void* sender, const C3D::EventContext& context) {
+        return OnMouseMoved(code, sender, context);
+    });
+    m_state->registeredCallbacks.PushBack(cb);
+
+    cb = Event.Register(C3D::EventCodeMouseDragged, [this](const u16 code, void* sender, const C3D::EventContext& context) {
+        return OnMouseDragged(code, sender, context);
+    });
+    m_state->registeredCallbacks.PushBack(cb);
+
+    cb = Event.Register(C3D::EventCodeMouseDraggedStart, [this](const u16 code, void* sender, const C3D::EventContext& context) {
+        return OnMouseDragged(code, sender, context);
+    });
+    m_state->registeredCallbacks.PushBack(cb);
+
+    cb = Event.Register(C3D::EventCodeMouseDraggedEnd, [this](const u16 code, void* sender, const C3D::EventContext& context) {
+        return OnMouseDragged(code, sender, context);
+    });
+    m_state->registeredCallbacks.PushBack(cb);
+
     m_pConsole->RegisterCommand("load_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         Event.Fire(C3D::EventCodeDebug1, this, {});
         return true;
@@ -599,9 +634,6 @@ bool TestEnv::OnEvent(const u16 code, void* sender, const C3D::EventContext& con
         case C3D::EventCodeObjectHoverIdChanged:
             m_state->hoveredObjectId = context.data.u32[0];
             return true;
-        case C3D::EventCodeButtonUp:
-            OnButtonUp(code, sender, context);
-            return false;
         default:
             return false;
     }
@@ -621,11 +653,11 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                 return false;
             }
 
-            mat4 view   = m_state->camera->GetViewMatrix();
-            vec3 origin = m_state->camera->GetPosition();
-            // TODO: Get this from the viewport
+            mat4 view         = m_state->camera->GetViewMatrix();
+            vec3 origin       = m_state->camera->GetPosition();
             vec2 viewPortSize = vec2(static_cast<f32>(m_state->width), static_cast<f32>(m_state->height));
 
+            // TODO: Get this from the viewport
             mat4 projection = glm::perspective(C3D::DegToRad(45.0f), viewPortSize.x / viewPortSize.y, 0.1f, 4000.0f);
 
             C3D::Ray ray = C3D::Ray::FromScreen(vec2(x, y), viewPortSize, origin, view, projection);
@@ -633,6 +665,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
             C3D::RayCastResult result;
             if (m_state->simpleScene.RayCast(ray, result))
             {
+                f32 closestDistance = C3D::F32_MAX;
                 for (auto& hit : result.hits)
                 {
                     // Create a debug line
@@ -678,12 +711,29 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
 
                     m_state->testBoxes.PushBack(box);
 
-                    m_logger.Info("OnButtonUp() - Ray HIT on id: {}.", hit.uniqueId);
+                    // Keep track of the hit that is closest
+                    if (hit.distance < closestDistance)
+                    {
+                        closestDistance                  = hit.distance;
+                        m_state->selectedObject.uniqueId = hit.uniqueId;
+                    }
+                }
+
+                const auto id = m_state->selectedObject.uniqueId;
+                if (id != INVALID_ID)
+                {
+                    m_state->selectedObject.transform = m_state->simpleScene.GetTransformById(id);
+                    m_logger.Info("OnButtonUp() - Selected object id = {}.", id);
+                    m_state->gizmo.SetSelectedObjectTransform(m_state->selectedObject.transform);
                 }
             }
             else
             {
                 m_logger.Info("OnButtonUp() - Ray MISSED!");
+
+                m_state->selectedObject.transform = nullptr;
+                m_state->selectedObject.uniqueId  = INVALID_ID;
+                m_state->gizmo.SetSelectedObjectTransform(nullptr);
 
                 // Create a debug line
                 C3D::DebugLine3D line;
@@ -711,6 +761,62 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
             break;
     }
 
+    return false;
+}
+
+bool TestEnv::OnMouseMoved(u16 code, void* sender, const C3D::EventContext& context)
+{
+    if (code == C3D::EventCodeMouseMoved && !Input.IsButtonDragging(C3D::ButtonLeft))
+    {
+        // Mouse is being moved but we are not dragging left mouse buttn
+        i16 x = context.data.i16[0];
+        i16 y = context.data.i16[1];
+
+        vec2 viewPortSize = vec2(static_cast<f32>(m_state->width), static_cast<f32>(m_state->height));
+        vec3 origin       = m_state->camera->GetPosition();
+        mat4 view         = m_state->camera->GetViewMatrix();
+        // TODO: Get this from the viewport
+        mat4 projectionMatrix = glm::perspective(C3D::DegToRad(45.0f), viewPortSize.x / viewPortSize.y, 0.1f, 4000.0f);
+
+        const auto ray = C3D::Ray::FromScreen(vec2(x, y), viewPortSize, origin, view, projectionMatrix);
+        m_state->gizmo.BeginInteraction(EditorGizmoInteractionType::MouseHover, m_state->camera, ray);
+        m_state->gizmo.HandleInteraction(ray);
+    }
+    // Allow other event handlers to handle this event
+    return false;
+}
+
+bool TestEnv::OnMouseDragged(u16 code, void* sender, const C3D::EventContext& context)
+{
+    u16 button = context.data.u16[0];
+    i16 x      = context.data.i16[1];
+    i16 y      = context.data.i16[2];
+
+    if (button == C3D::ButtonLeft)
+    {
+        // Only do this when we are dragging with our left mouse button
+        vec2 viewPortSize = vec2(static_cast<f32>(m_state->width), static_cast<f32>(m_state->height));
+        vec3 origin       = m_state->camera->GetPosition();
+        mat4 view         = m_state->camera->GetViewMatrix();
+        // TODO: Get this from the viewport
+        mat4 projectionMatrix = glm::perspective(C3D::DegToRad(45.0f), viewPortSize.x / viewPortSize.y, 0.1f, 4000.0f);
+
+        const auto ray = C3D::Ray::FromScreen(vec2(x, y), viewPortSize, origin, view, projectionMatrix);
+
+        if (code == C3D::EventCodeMouseDraggedStart)
+        {
+            // Drag start so we start our "dragging" interaction
+            m_state->gizmo.BeginInteraction(EditorGizmoInteractionType::MouseDrag, m_state->camera, ray);
+        }
+        else if (code == C3D::EventCodeMouseDragged)
+        {
+            m_state->gizmo.HandleInteraction(ray);
+        }
+        else if (code == C3D::EventCodeMouseDraggedEnd)
+        {
+            m_state->gizmo.EndInteraction();
+        }
+    }
     return false;
 }
 

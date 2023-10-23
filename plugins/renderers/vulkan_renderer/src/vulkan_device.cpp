@@ -65,40 +65,36 @@ namespace C3D
         VkPhysicalDeviceFeatures deviceFeatures = {};
         deviceFeatures.samplerAnisotropy        = VK_TRUE;  // Request Anisotropy
 
-        const char* extensionNames[4];
-        extensionNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
-
-        u32 extensionIndex = 1;
+        DynamicArray<const char*> requestedExtensions(4);
+        // We always require the swapchain extension
+        requestedExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
         // If we require portability (on Mac OS for example) we add the extension for it
         if (m_requiresPortability)
         {
-            extensionNames[extensionIndex] = VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME;
-            extensionIndex++;
+            requestedExtensions.PushBack(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
         }
 
-        if (HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT))
-        {
-            m_logger.Info("Create() - We have native support for dynamic topology.");
-        }
-        else if (HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT))
-        {
-            // If we do not support dynamic topology natively we can check if it is support by extension,
-            // and if it is we add the extension to our array
+        auto dynamicTopologyResult = CheckForSupportAndAddExtensionIfNeeded(
+            "Dynamic Topology", VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT, VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME, requestedExtensions);
 
-            extensionNames[extensionIndex] = VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME;
-            extensionIndex++;
-            m_logger.Info(
-                "Create() - No support for native dynamic topology but there is support for dynamic state through the: '{}' extension."
-                "We are enabling it!",
-                VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
-
+        if (dynamicTopologyResult == VulkanDeviceSupportResult::Extension)
+        {
+            // We need to use an extension to get the functionality so let's get the function pointer for it
             m_context->pfnCmdSetPrimitiveTopologyEXT =
                 VulkanUtils::LoadExtensionFunction<PFN_vkCmdSetPrimitiveTopologyEXT>(m_context->instance, "vkCmdSetPrimitiveTopologyEXT");
         }
-        else
+
+        auto frontFaceResult = CheckForSupportAndAddExtensionIfNeeded(
+            "Dynamic Front Face Swapping", VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT,
+            VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME, requestedExtensions);
+
+        if (frontFaceResult == VulkanDeviceSupportResult::Extension)
         {
-            m_logger.Warn("Create() - No support for dynamic topology.");
+            // We need to use an extension to get the functionality so let's get the function pointer for it
+            m_context->pfnCmdSetFrontFaceEXT =
+                VulkanUtils::LoadExtensionFunction<PFN_vkCmdSetFrontFaceEXT>(m_context->instance, "vkCmdSetFrontFaceEXT");
         }
 
         // If we support smooth rasterization of lines we load the extension
@@ -107,16 +103,15 @@ namespace C3D
             m_logger.Info("Create() - We have support for smooth line rasterization through the: '{}' extension. We are enabling it!",
                           VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
 
-            extensionNames[extensionIndex] = VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME;
-            extensionIndex++;
+            requestedExtensions.PushBack(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
         }
 
         VkDeviceCreateInfo deviceCreateInfo      = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
         deviceCreateInfo.queueCreateInfoCount    = indexCount;
         deviceCreateInfo.pQueueCreateInfos       = queueCreateInfos;
         deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
-        deviceCreateInfo.enabledExtensionCount   = extensionIndex;
-        deviceCreateInfo.ppEnabledExtensionNames = extensionNames;
+        deviceCreateInfo.enabledExtensionCount   = requestedExtensions.Size();
+        deviceCreateInfo.ppEnabledExtensionNames = requestedExtensions.GetData();
 
         // These are deprecated and ignored so we null them
         deviceCreateInfo.enabledLayerCount   = 0;
@@ -362,11 +357,15 @@ namespace C3D
             }
             if (dynamicStateNext.extendedDynamicState)
             {
+                // Both of these are part of the extended dynamic state extension
                 m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT;
+                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT;
             }
-            if (m_apiVersionMajor == 1 && m_apiVersionMinor > 2)
+            if (m_apiVersionMajor == 1 && m_apiVersionMinor >= 3)
             {
+                // If we are using Vulkan API >= 1.3 we have native support for both of these
                 m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT;
+                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT;
             }
             if (smoothLineNext.smoothLines)
             {
@@ -568,6 +567,50 @@ namespace C3D
         }
 
         return true;
+    }
+
+    VulkanDeviceSupportResult VulkanDevice::CheckForSupportAndAddExtensionIfNeeded(const char* feature,
+                                                                                   VulkanDeviceSupportFlagBits nativeBit,
+                                                                                   VulkanDeviceSupportFlagBits extensionBit,
+                                                                                   const char* extensionName,
+                                                                                   DynamicArray<const char*>& requestedExtensions)
+    {
+        if (HasSupportFor(nativeBit))
+        {
+            // We natively support the feature
+            m_logger.Info("CheckForSupportAndAddExtensionIfNeeded() - We have native support for: '{}'.", feature);
+            return VulkanDeviceSupportResult::Native;
+        }
+
+        if (HasSupportFor(extensionBit))
+        {
+            // We do not support the feature natively but we do support it by extension
+
+            // Check if this extension is already requested and only add it if it's not
+            auto it = std::find_if(requestedExtensions.begin(), requestedExtensions.end(),
+                                   [extensionName](const char* ext) { return std::strcmp(ext, extensionName); });
+            if (it == requestedExtensions.end())
+            {
+                requestedExtensions.PushBack(extensionName);
+                m_logger.Info(
+                    "CheckForSupportAndAddExtensionIfNeeded() - No native support for: '{}' but there is support through the: '{}' "
+                    "extension. We are enabling it!",
+                    feature, extensionName);
+            }
+            else
+            {
+                m_logger.Info(
+                    "CheckForSupportAndAddExtensionIfNeeded() - No native support for: '{}' but there is support through the: '{}' "
+                    "extension. We already have that extension enabled so we are good.",
+                    feature, extensionName);
+            }
+
+            return VulkanDeviceSupportResult::Extension;
+        }
+
+        // We do not support the feature natively or by extension
+        m_logger.Warn("CheckForSupportAndAddExtensionIfNeeded() - No support for: '{}'.", feature);
+        return VulkanDeviceSupportResult::None;
     }
 
     void VulkanDevice::QuerySwapChainSupport() const

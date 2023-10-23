@@ -118,7 +118,7 @@ namespace C3D
 
     void RenderSystem::ResetScissor() const { m_backendPlugin->ResetScissor(); }
 
-    void RenderSystem::SetLineWidth(const float lineWidth) const { m_backendPlugin->SetLineWidth(lineWidth); }
+    void RenderSystem::SetWinding(const RendererWinding winding) const { m_backendPlugin->SetWinding(winding); }
 
     void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const { m_backendPlugin->CreateTexture(pixels, texture); }
 

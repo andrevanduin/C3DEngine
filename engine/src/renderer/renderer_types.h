@@ -43,6 +43,15 @@ namespace C3D
         const SystemManager* pSystemsManager;
     };
 
+    /** @brief The windinig order of the vertices, used to determine what the front-face of a triangle is. */
+    enum class RendererWinding : u8
+    {
+        /** @brief The default counter-clockwise direction. */
+        CounterClockwise,
+        /** @brief The clockwise direction. */
+        Clockwise,
+    };
+
     enum class ShaderStage
     {
         Vertex,
@@ -51,7 +60,7 @@ namespace C3D
         Compute
     };
 
-    enum PrimitiveTopologyType : u32
+    enum PrimitiveTopologyType : u16
     {
         PRIMITIVE_TOPOLOGY_TYPE_NONE           = 0,
         PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST  = 1,
@@ -62,4 +71,6 @@ namespace C3D
         PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST     = 32,
         PRIMITIVE_TOPOLOGY_TYPE_MAX            = 64
     };
+
+    using PrimitiveTopologyTypeBits = u16;
 }  // namespace C3D

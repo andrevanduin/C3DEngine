@@ -70,8 +70,7 @@ void RenderViewEditorWorld::OnResize()
     m_projectionMatrix     = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
 }
 
-bool RenderViewEditorWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* data,
-                                          C3D::RenderViewPacket* outPacket)
+bool RenderViewEditorWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* data, C3D::RenderViewPacket* outPacket)
 {
     if (!data || !outPacket)
     {
@@ -99,7 +98,10 @@ bool RenderViewEditorWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, 
         mat4 model = packetData.gizmo->GetModel();
         // TODO: Make this configurable
         constexpr f32 fixedSize = 0.1f;
-        const f32 scaleScalar   = ((2.0f * C3D::Tan(m_fov * 0.5f)) * dist) * fixedSize;
+        const f32 scaleScalar   = 1.0f;  // ((2.0f * C3D::Tan(m_fov * 0.5f)) * dist) * fixedSize;
+
+        // Keep a copy of the scale for use with hit-detection
+        packetData.gizmo->SetScale(scaleScalar);
 
         mat4 scale = glm::scale(vec3(scaleScalar));
         model *= scale;
@@ -110,8 +112,8 @@ bool RenderViewEditorWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, 
     return true;
 }
 
-bool RenderViewEditorWorld::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet,
-                                     u64 frameNumber, u64 renderTargetIndex)
+bool RenderViewEditorWorld::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, u64 frameNumber,
+                                     u64 renderTargetIndex)
 {
     for (const auto pass : m_passes)
     {

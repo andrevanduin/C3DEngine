@@ -18,16 +18,16 @@ namespace C3D
         void SetEulerRotation(const vec3& eulerRotation);
 
         void SetViewMatrix(const mat4& viewMatrix);
-        mat4 GetViewMatrix();
+        mat4 GetViewMatrix() const;
 
-        vec3 GetForward();
-        vec3 GetBackward();
+        vec3 GetForward() const;
+        vec3 GetBackward() const;
 
-        vec3 GetLeft();
-        vec3 GetRight();
+        vec3 GetLeft() const;
+        vec3 GetRight() const;
 
-        vec3 GetUp();
-        vec3 GetDown();
+        vec3 GetUp() const;
+        vec3 GetDown() const;
 
         void MoveForward(f32 amount);
         void MoveForward(f64 amount);
@@ -55,11 +55,11 @@ namespace C3D
 
     private:
         /** @brief flag that indicates if camera view needs an update */
-        bool m_needsUpdate = false;
+        mutable bool m_needsUpdate = false;
 
-        vec3 m_position      = vec3(0);
-        vec3 m_eulerRotation = vec3(0);
+        vec3 m_position;
+        vec3 m_eulerRotation;
 
-        mat4 m_viewMatrix = mat4(1);
+        mutable mat4 m_viewMatrix = mat4(1);
     };
 }  // namespace C3D

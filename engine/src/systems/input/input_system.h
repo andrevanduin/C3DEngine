@@ -40,13 +40,13 @@ namespace C3D
 
     struct KeyBoardState
     {
-        KeyState keys[static_cast<u8>(Keys::MaxKeys)];
+        KeyState keys[ToUnderlying(Keys::MaxKeys)];
     };
 
     struct MouseState
     {
         ivec2 pos;
-        ButtonState buttons[static_cast<u8>(Buttons::MaxButtons)];
+        ButtonState buttons[ToUnderlying(Buttons::MaxButtons)];
     };
 
     class InputSystem final : public BaseSystem
@@ -73,6 +73,7 @@ namespace C3D
         [[nodiscard]] C3D_API bool IsButtonDown(Buttons button) const;
         [[nodiscard]] C3D_API bool IsButtonUp(Buttons button) const;
         [[nodiscard]] C3D_API bool IsButtonPressed(Buttons button) const;
+        [[nodiscard]] C3D_API bool IsButtonDragging(Buttons button) const;
 
         [[nodiscard]] C3D_API bool WasButtonDown(Buttons button) const;
         [[nodiscard]] C3D_API bool WasButtonUp(Buttons button) const;

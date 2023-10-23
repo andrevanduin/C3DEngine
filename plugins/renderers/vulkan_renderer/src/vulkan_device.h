@@ -38,7 +38,7 @@ namespace C3D
         DynamicArray<VkPresentModeKHR> presentModes;
     };
 
-    enum VulkanDeviceSupportFlagBits
+    enum VulkanDeviceSupportFlagBits : u8
     {
         VULKAN_DEVICE_SUPPORT_FLAG_NONE_BIT = 0,
         /** @brief Indicates if the device supports native dynamic topology (Must be using Vulkan API >= V1.3). */
@@ -48,10 +48,25 @@ namespace C3D
         /** @brief Indicates if the device supports smooth line rasterization. */
         VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION_BIT = 4,
         /** @brief Indicates if the device supports device local host visible memory. */
-        VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY_BIT = 8
+        VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY_BIT = 8,
+        /** @brief Indicates if the device supports native dynamic front face swapping (Must be using Vulkan API >= 1.3). */
+        VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT = 16,
+        /** @brief Indicates if the device supports dynamic front face swapping by means of extension. */
+        VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT = 32,
     };
 
-    using VulkanDeviceSupportFlags = u32;
+    /** @brief An enum that represents the result of the device support check. */
+    enum class VulkanDeviceSupportResult
+    {
+        /** @brief Feature is natively supported by the device. */
+        Native,
+        /** @brief Feature is supported by means of extension. */
+        Extension,
+        /** @brief Feature is not supported. */
+        None,
+    };
+
+    using VulkanDeviceSupportFlags = u8;
 
     class VulkanDevice
     {
@@ -101,6 +116,11 @@ namespace C3D
         bool DoesPhysicalDeviceSupportRequirements(VkPhysicalDevice device, const VulkanPhysicalDeviceRequirements& requirements,
                                                    VulkanPhysicalDeviceQueueFamilyInfo& outQueueFamilyInfo);
 
+        VulkanDeviceSupportResult CheckForSupportAndAddExtensionIfNeeded(const char* feature, VulkanDeviceSupportFlagBits nativeBit,
+                                                                         VulkanDeviceSupportFlagBits extensionBit,
+                                                                         const char* extensionName,
+                                                                         DynamicArray<const char*>& requestedExtensions);
+
         LoggerInstance<16> m_logger;
 
         VkPhysicalDevice m_physicalDevice = nullptr;
@@ -131,10 +151,10 @@ namespace C3D
         VkQueue m_computeQueue  = nullptr;
 
         /** @brief Indices for the different types of queues. */
-        u32 m_graphicsQueueIndex = 0;
-        u32 m_presentQueueIndex  = 0;
-        u32 m_transferQueueIndex = 0;
-        u32 m_computeQueueIndex  = 0;
+        i16 m_graphicsQueueIndex = -1;
+        i16 m_presentQueueIndex  = -1;
+        i16 m_transferQueueIndex = -1;
+        i16 m_computeQueueIndex  = -1;
 
         /** @brief The Vulkan API version supported by this device. */
         u32 m_apiVersionMajor = 0;

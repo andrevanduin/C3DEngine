@@ -26,9 +26,31 @@ namespace C3D
 
     constexpr auto INF = 1e30f;
 
-    // Smallest positive number where 1.0 + FLOAT_EPSILON != 0
+    /** @brief A vec3 pointing up. */
+    constexpr auto VEC3_UP = vec3(0.0f, 1.0f, 0.0f);
+    /** @brief A vec3 pointing down. */
+    constexpr auto VEC3_DOWN = vec3(0.0f, -1.0f, 0.0f);
+    /** @brief A vec3 pointing left. */
+    constexpr auto VEC3_LEFT = vec3(-1.0f, 0.0f, 0.0f);
+    /** @brief A vec3 pointing right. */
+    constexpr auto VEC3_RIGHT = vec3(1.0f, 0.0f, 0.0f);
+    /** @brief A vec3 pointing forward. */
+    constexpr auto VEC3_FORWARD = vec3(0.0f, 0.0f, -1.0f);
+    /** @brief A vec3 pointing backward. */
+    constexpr auto VEC3_BACKWARD = vec3(0.0f, 0.0f, 1.0f);
+
+    /** @brief Smallest positive f32 that is > 0 */
     constexpr auto F32_EPSILON = std::numeric_limits<f32>::epsilon();
+    /** @brief Smallest possible f32 */
+    constexpr auto F32_MIN = std::numeric_limits<f32>::min();
+    /** @brief Largest possible f32 */
+    constexpr auto F32_MAX = std::numeric_limits<f32>::max();
+    /** @brief Smallest positive f64 that is > 0 */
     constexpr auto F64_EPSILON = std::numeric_limits<f64>::epsilon();
+    /** @brief Smallest possible f64 */
+    constexpr auto F64_MIN = std::numeric_limits<f64>::min();
+    /** @brief Largest possible f64 */
+    constexpr auto F64_MAX = std::numeric_limits<f64>::max();
 
     C3D_INLINE bool IsPowerOf2(const u64 value) { return (value != 0) && ((value & (value - 1)) == 1); }
 
@@ -82,29 +104,65 @@ namespace C3D
         return std::fmod(x, y);
     }
 
+    /**
+     * @brief A method that returns the smallest number that was provided as an argument.
+     *
+     * @param a The first number
+     * @param b The second number
+     * @return The number that is smallest
+     */
     template <typename T>
-    C3D_API T Min(T a, T b)
+    C3D_API C3D_INLINE T Min(T a, T b)
     {
         return std::min(a, b);
     }
 
+    /**
+     * @brief A method that returns the smallest number that was provided as an argument.
+     *
+     * @param a The first number
+     * @param b The second number
+     * @param c The third number
+     * @return The number that is smallest
+     */
     template <typename T>
-    C3D_API T Min(T a, T b, T c)
+    C3D_API C3D_INLINE T Min(T a, T b, T c)
     {
         return std::min(std::min(a, b), c);
     }
 
+    /**
+     * @brief A method that returns the largest number that was provided as an argument.
+     *
+     * @param a The first number
+     * @param b The second number
+     * @return The number that is largest
+     */
     template <typename T>
-    C3D_API T Max(T a, T b)
+    C3D_API C3D_INLINE T Max(T a, T b)
     {
         return std::max(a, b);
     }
 
+    /**
+     * @brief A method that returns the largest number that was provided as an argument.
+     *
+     * @param a The first number
+     * @param b The second number
+     * @param c The third number
+     * @return The number that is largest
+     */
     template <typename T>
-    C3D_API T Max(T a, T b, T c)
+    C3D_API C3D_INLINE T Max(T a, T b, T c)
     {
         return std::max(std::max(a, b), c);
     }
+
+    /** @brief Checks if the provided f32 value x is not a number. */
+    C3D_API C3D_INLINE bool IsNaN(f32 x) { return std::isnan(x); }
+
+    /** @brief Checks if the provided f64 value x is not a number. */
+    C3D_API C3D_INLINE bool IsNaN(f64 x) { return std::isnan(x); }
 
     C3D_API C3D_INLINE bool EpsilonEqual(const f32 a, const f32 b, const f32 tolerance = F32_EPSILON)
     {
@@ -144,8 +202,7 @@ namespace C3D
         return true;
     }
 
-    C3D_API C3D_INLINE f32 RangeConvert(const f32 value, const f32 oldMin, const f32 oldMax, const f32 newMin,
-                                        const f32 newMax)
+    C3D_API C3D_INLINE f32 RangeConvert(const f32 value, const f32 oldMin, const f32 oldMax, const f32 newMin, const f32 newMax)
     {
         return (value - oldMin) * (newMax - newMin) / (oldMax - oldMin) + newMin;
     }
@@ -165,36 +222,35 @@ namespace C3D
         return t * t * (3.0 - 2.0 * t);
     }
 
+    /** @brief Compares x with edge. Returns 0.0f if x < edge otherwise returns 1.0f. */
+    C3D_API C3D_INLINE f32 Step(const f32 edge, const f32 x) { return x < edge ? 0.0f : 1.0f; }
+
     /** @brief Extract the position from the provided model matrix. */
-    C3D_API C3D_INLINE vec3 GetPositionFromModel(const mat4& model)
+    C3D_API C3D_INLINE vec3 GetPositionFromModel(const mat4& model) { return vec3(model[3][0], model[3][1], model[3][2]); }
+
+    /** @brief Extract the forward axis from the provided matrix. */
+    C3D_API C3D_INLINE vec3 GetForward(const mat4& mat) { return normalize(vec3(-mat[0][2], -mat[1][2], -mat[2][2])); }
+
+    /** @brief Extract the backward axis from the provided matrix. */
+    C3D_API C3D_INLINE vec3 GetBackward(const mat4& mat) { return normalize(vec3(mat[0][2], mat[1][2], mat[2][2])); }
+
+    /** @brief Extract the left axis from the provided matrix. */
+    C3D_API C3D_INLINE vec3 GetLeft(const mat4& mat) { return normalize(vec3(-mat[0][0], -mat[1][0], -mat[2][0])); }
+
+    /** @brief Extract the right axis from the provided matrix. */
+    C3D_API C3D_INLINE vec3 GetRight(const mat4& mat) { return normalize(vec3(mat[0][0], mat[1][0], mat[2][0])); }
+
+    /** @brief Extract the up axis from the provided matrix. */
+    C3D_API C3D_INLINE vec3 GetUp(const mat4& mat) { return normalize(vec3(mat[0][1], mat[1][1], mat[2][1])); }
+
+    /** @brief Extract the down axis from the provided matrix. */
+    C3D_API C3D_INLINE vec3 GetDown(const mat4& mat) { return normalize(vec3(-mat[0][1], -mat[1][1], -mat[2][1])); }
+
+    /** @brief Returns 0.0f if x == 0.0, 1.0f if x > 0.0f and -1.0f if x < 0.0f. */
+    C3D_API C3D_INLINE f32 Sign(const f32 x)
     {
-        return vec3(model[3][0], model[3][1], model[3][2]);
+        if (x == 0.0f) return 0.0f;
+        return x < 0.0f ? -1.0f : 1.0f;
     }
 
-    C3D_API C3D_INLINE vec3 GetForward(const mat4& model)
-    {
-        return normalize(vec3(-model[0][2], -model[1][2], -model[2][2]));
-    }
-
-    C3D_API C3D_INLINE vec3 GetBackward(const mat4& model)
-    {
-        return normalize(vec3(model[0][2], model[1][2], model[2][2]));
-    }
-
-    C3D_API C3D_INLINE vec3 GetLeft(const mat4& model)
-    {
-        return normalize(vec3(-model[0][0], -model[1][0], -model[2][0]));
-    }
-
-    C3D_API C3D_INLINE vec3 GetRight(const mat4& model)
-    {
-        return normalize(vec3(model[0][0], model[1][0], model[2][0]));
-    }
-
-    C3D_API C3D_INLINE vec3 GetUp(const mat4& model) { return normalize(vec3(model[0][1], model[1][1], model[2][1])); }
-
-    C3D_API C3D_INLINE vec3 GetDown(const mat4& model)
-    {
-        return normalize(vec3(-model[0][1], -model[1][1], -model[2][1]));
-    }
 }  // namespace C3D
