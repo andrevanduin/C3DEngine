@@ -1,6 +1,8 @@
 
 #include "frustum.h"
 
+#include "renderer/viewport.h"
+
 namespace C3D
 {
     enum FrustumPlane
@@ -16,20 +18,18 @@ namespace C3D
 
 namespace C3D
 {
-    Frustum::Frustum(const vec3& position, const vec3& forward, const vec3& right, const vec3& up, const f32 aspect, const f32 fov,
-                     const f32 near, const f32 far)
+    Frustum::Frustum(const vec3& position, const vec3& forward, const vec3& right, const vec3& up, const Viewport& viewport)
     {
-        Create(position, forward, right, up, aspect, fov, near, far);
+        Create(position, forward, right, up, viewport);
     }
 
-    void Frustum::Create(const vec3& position, const vec3& forward, const vec3& right, const vec3& up, const f32 aspect, const f32 fov,
-                         const f32 near, const f32 far)
+    void Frustum::Create(const vec3& position, const vec3& forward, const vec3& right, const vec3& up, const Viewport& viewport)
     {
-        const f32 halfV       = far * tanf(fov * 0.5f);
-        const f32 halfH       = halfV * aspect;
-        const vec3 forwardFar = forward * far;
+        const f32 halfV       = viewport.GetFarClip() * tanf(viewport.GetFov() * 0.5f);
+        const f32 halfH       = halfV * viewport.GetAspectRatio();
+        const vec3 forwardFar = forward * viewport.GetFarClip();
 
-        sides[FrustumPlaneTop]    = Plane3D((forward * near) + position, forward);
+        sides[FrustumPlaneTop]    = Plane3D((forward * viewport.GetNearClip()) + position, forward);
         sides[FrustumPlaneBottom] = Plane3D(position + forwardFar, -1.0f * forward);
         sides[FrustumPlaneRight]  = Plane3D(position, glm::cross(up, forwardFar + (right * halfH)));
         sides[FrustumPlaneLeft]   = Plane3D(position, glm::cross(forwardFar - (right * halfH), up));

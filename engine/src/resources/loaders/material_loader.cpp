@@ -10,11 +10,11 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME         = "MATERIAL_LOADER";
     constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
 
     ResourceLoader<MaterialConfig>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, "MATERIAL_LOADER", MemoryType::MaterialInstance, ResourceType::Material,
-                          nullptr, "materials"),
+        : IResourceLoader(pSystemsManager, MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials"),
           BaseTextLoader<MaterialConfig>(pSystemsManager)
     {}
 
@@ -38,8 +38,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseNameValuePair(const String& name, const String& value,
-                                                            MaterialConfig& resource) const
+    void ResourceLoader<MaterialConfig>::ParseNameValuePair(const String& name, const String& value, MaterialConfig& resource) const
     {
         if (resource.version == 1)
         {
@@ -64,8 +63,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseGlobal(const String& name, const String& value,
-                                                     MaterialConfig& resource) const
+    void ResourceLoader<MaterialConfig>::ParseGlobal(const String& name, const String& value, MaterialConfig& resource) const
     {
         if (name.IEquals("type"))
         {
@@ -124,8 +122,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseGlobalV2(const String& name, const String& value,
-                                                       MaterialConfig& resource) const
+    void ResourceLoader<MaterialConfig>::ParseGlobalV2(const String& name, const String& value, MaterialConfig& resource) const
     {
         if (name.IEquals("type"))
         {
@@ -250,8 +247,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseMap(const String& name, const String& value,
-                                                  MaterialConfig& resource) const
+    void ResourceLoader<MaterialConfig>::ParseMap(const String& name, const String& value, MaterialConfig& resource) const
     {
         auto& map = resource.maps.Back();
 
@@ -297,8 +293,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseProp(const String& name, const String& value,
-                                                   MaterialConfig& resource) const
+    void ResourceLoader<MaterialConfig>::ParseProp(const String& name, const String& value, MaterialConfig& resource) const
     {
         auto& prop = resource.props.Back();
 

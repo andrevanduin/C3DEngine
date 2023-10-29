@@ -10,12 +10,13 @@
 
 namespace C3D
 {
-    GeometrySystem::GeometrySystem(const SystemManager* pSystemsManager)
-        : SystemWithConfig(pSystemsManager, "GEOMETRY_SYSTEM")
-    {}
+    constexpr const char* INSTANCE_NAME = "GEOMETRY_SYSTEM";
 
-    bool GeometrySystem::Init(const GeometrySystemConfig& config)
+    GeometrySystem::GeometrySystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
+
+    bool GeometrySystem::OnInit(const GeometrySystemConfig& config)
     {
+        INFO_LOG("Initializing.");
         m_config = config;
 
         m_registeredGeometries = Memory.Allocate<GeometryReference>(MemoryType::Geometry, m_config.maxGeometryCount);
@@ -30,7 +31,7 @@ namespace C3D
 
         if (!CreateDefaultGeometries())
         {
-            m_logger.Error("Failed to create default geometries");
+            ERROR_LOG("Failed to create default geometries.");
             return false;
         }
 
@@ -38,7 +39,17 @@ namespace C3D
         return true;
     }
 
-    void GeometrySystem::Shutdown() { Memory.Free(MemoryType::Geometry, m_registeredGeometries); }
+    void GeometrySystem::OnShutdown()
+    {
+        INFO_LOG("Shutting down.");
+
+        // Cleanup the default geometry
+        DestroyGeometry(&m_defaultGeometry);
+        DestroyGeometry(&m_default2DGeometry);
+
+        Memory.Free(MemoryType::Geometry, m_registeredGeometries);
+        m_registeredGeometries = nullptr;
+    }
 
     Geometry* GeometrySystem::AcquireById(const u32 id) const
     {
@@ -48,8 +59,8 @@ namespace C3D
             return &m_registeredGeometries[id].geometry;
         }
 
-        // NOTE: possible should return the default geometry instead
-        m_logger.Error("AcquireById() cannot load invalid geometry id. Returning nullptr");
+        // NOTE: possibly should return the default geometry instead
+        ERROR_LOG("Cannot load invalid geometry id. Returning nullptr.");
         return nullptr;
     }
 
@@ -72,19 +83,19 @@ namespace C3D
             }
             else
             {
-                m_logger.Fatal("Geometry id mismatch. Check registration logic as this should never occur!");
+                FATAL_LOG("Geometry id mismatch. Check registration logic as this should never occur!");
             }
             return;
         }
 
-        m_logger.Warn("Release() called with invalid geometry id. Noting was done");
+        WARN_LOG("Called with invalid geometry id. Noting was done.");
     }
 
     Geometry* GeometrySystem::GetDefault()
     {
         if (!m_initialized)
         {
-            m_logger.Fatal("GetDefault() called before system was initialized");
+            FATAL_LOG("Called before system was initialized.");
             return nullptr;
         }
 
@@ -95,16 +106,15 @@ namespace C3D
     {
         if (!m_initialized)
         {
-            m_logger.Fatal("GetDefault2D() called before system was initialized");
+            FATAL_LOG("Called before system was initialized.");
             return nullptr;
         }
 
         return &m_default2DGeometry;
     }
 
-    GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount,
-                                                       f32 tileX, f32 tileY, const String& name,
-                                                       const String& materialName)
+    GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY,
+                                                       const String& name, const String& materialName)
     {
         if (width == 0.f) width = 1.0f;
         if (height == 0.f) height = 1.0f;
@@ -201,8 +211,8 @@ namespace C3D
         return config;
     }
 
-    GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY,
-                                                      const String& name, const String& materialName)
+    GeometryConfig GeometrySystem::GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const String& name,
+                                                      const String& materialName)
     {
         if (width == 0.f) width = 1.0f;
         if (height == 0.f) height = 1.0f;
@@ -399,16 +409,15 @@ namespace C3D
         const u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
 
         m_defaultGeometry.internalId = INVALID_ID;
-        if (!Renderer.CreateGeometry(m_defaultGeometry, sizeof(Vertex3D), vertexCount, vertices, sizeof(u32),
-                                     indexCount, indices))
+        if (!Renderer.CreateGeometry(m_defaultGeometry, sizeof(Vertex3D), vertexCount, vertices, sizeof(u32), indexCount, indices))
         {
-            m_logger.Fatal("CreateDefaultGeometries() - Failed to create default geometry.");
+            FATAL_LOG("Failed to create default geometry.");
             return false;
         }
 
         if (!Renderer.UploadGeometry(m_defaultGeometry))
         {
-            m_logger.Fatal("CreateDefaultGeometries() - Failed to upload default geometry.");
+            FATAL_LOG("Failed to upload default geometry.");
             return false;
         }
 
@@ -442,16 +451,15 @@ namespace C3D
         const u32 indices2d[indexCount] = { 2, 1, 0, 3, 0, 1 };
 
         m_default2DGeometry.internalId = INVALID_ID;
-        if (!Renderer.CreateGeometry(m_default2DGeometry, sizeof(Vertex2D), vertexCount, vertices2d, sizeof(u32),
-                                     indexCount, indices2d))
+        if (!Renderer.CreateGeometry(m_default2DGeometry, sizeof(Vertex2D), vertexCount, vertices2d, sizeof(u32), indexCount, indices2d))
         {
-            m_logger.Fatal("CreateDefaultGeometries() - Failed to create default 2d geometry.");
+            FATAL_LOG("Failed to create default 2d geometry.");
             return false;
         }
 
         if (!Renderer.UploadGeometry(m_default2DGeometry))
         {
-            m_logger.Fatal("CreateDefaultGeometries() - Failed to upload default 2d geometry.");
+            FATAL_LOG("Failed to upload default 2d geometry.");
             return false;
         }
 

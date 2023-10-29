@@ -38,7 +38,6 @@ namespace C3D
     protected:
         bool CopyRangeInternal(u64 srcOffset, VkBuffer dst, u64 dstOffset, u64 size) const;
 
-        const VulkanContext* m_context;
         VkBufferUsageFlagBits m_usage;
 
         VkDeviceMemory m_memory;
@@ -48,5 +47,7 @@ namespace C3D
         u32 m_memoryPropertyFlags = 0;
 
         bool m_isLocked = true;
+
+        const VulkanContext* m_context = nullptr;
     };
 }  // namespace C3D

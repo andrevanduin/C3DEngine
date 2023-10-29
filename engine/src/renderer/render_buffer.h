@@ -61,7 +61,6 @@ namespace C3D
         u64 totalSize = 0;
 
     protected:
-        LoggerInstance<64> m_logger;
         String m_name;
 
         u64 m_freeListMemoryRequirement = 0;

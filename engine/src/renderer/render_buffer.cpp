@@ -6,10 +6,12 @@
 
 namespace C3D
 {
-    // TODO: Setting smallestPossibleAllocation here to 8 could cause problems potentially.
+    // TODO: Setting SMALLEST_POSSIBLE_FREELIST_ALLOCATION here to 8 could cause problems potentially.
     constexpr static auto SMALLEST_POSSIBLE_FREELIST_ALLOCATION = 8;
 
-    RenderBuffer::RenderBuffer(const String& name) : m_logger(name.Data()), m_name(name) {}
+    constexpr const char* INSTANCE_NAME = "RENDER_BUFFER";
+
+    RenderBuffer::RenderBuffer(const String& name) : m_name(name) {}
 
     bool RenderBuffer::Create(const RenderBufferType bufferType, const u64 size, const bool useFreelist)
     {
@@ -19,13 +21,11 @@ namespace C3D
         if (useFreelist)
         {
             // Get the memory requirements for our freelist
-            m_freeListMemoryRequirement =
-                FreeList::GetMemoryRequirement(totalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
+            m_freeListMemoryRequirement = FreeList::GetMemoryRequirement(totalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
             // Allocate enough space for our freelist
             m_freeListBlock = Memory.AllocateBlock(MemoryType::RenderSystem, m_freeListMemoryRequirement);
             // Create the freelist
-            m_freeList.Create(m_freeListBlock, m_freeListMemoryRequirement, SMALLEST_POSSIBLE_FREELIST_ALLOCATION,
-                              totalSize);
+            m_freeList.Create(m_freeListBlock, m_freeListMemoryRequirement, SMALLEST_POSSIBLE_FREELIST_ALLOCATION, totalSize);
         }
         return true;
     }
@@ -55,17 +55,14 @@ namespace C3D
     {
         if (newTotalSize <= totalSize)
         {
-            m_logger.Error(
-                "Resize() - Requires that a new size is larger than the old. No doing this could lead to possible data "
-                "loss.");
+            ERROR_LOG("Requires that a new size is larger than the old. Not doing this could lead to possible data loss.");
             return false;
         }
 
         if (m_freeListMemoryRequirement > 0)
         {
             // We are using a freelist so we should resize it first.
-            const u64 newMemoryRequirement =
-                FreeList::GetMemoryRequirement(newTotalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
+            const u64 newMemoryRequirement = FreeList::GetMemoryRequirement(newTotalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
             // Allocate enough space for our freelist
             void* newMemory = Memory.AllocateBlock(MemoryType::RenderSystem, newMemoryRequirement);
             // A pointer to our old memory block (which will get populated by the resize method)
@@ -74,7 +71,7 @@ namespace C3D
             if (!m_freeList.Resize(newMemory, newMemoryRequirement, &oldMemory))
             {
                 // Our resize failed
-                m_logger.Error("Resize() - Failed to resize internal freelist.");
+                ERROR_LOG("Failed to resize internal freelist.");
                 Memory.Free(MemoryType::RenderSystem, newMemory);
                 return false;
             }
@@ -92,15 +89,13 @@ namespace C3D
     {
         if (size == 0 || !outOffset)
         {
-            m_logger.Error("Allocate() - Requires a nonzero size and a valid pointer to hold the offset.");
+            ERROR_LOG("Requires a nonzero size and a valid pointer to hold the offset.");
             return false;
         }
 
         if (m_freeListMemoryRequirement == 0)
         {
-            m_logger.Warn(
-                "Allocate() - Called on a buffer that is not using Freelists. Offset will not be valid! Call "
-                "LoadRange() instead.");
+            WARN_LOG("Called on a buffer that is not using Freelists. Offset will not be valid! Call LoadRange() instead.");
             *outOffset = 0;
             return true;
         }
@@ -112,13 +107,13 @@ namespace C3D
     {
         if (size == 0)
         {
-            m_logger.Error("Free() - Requires a nonzero size.");
+            ERROR_LOG("Requires a nonzero size.");
             return false;
         }
 
         if (m_freeListMemoryRequirement == 0)
         {
-            m_logger.Warn("Free() - Called on a buffer that is not using Freelists. Nothing was done");
+            WARN_LOG("Called on a buffer that is not using Freelists. Nothing was done.");
             return true;
         }
 

@@ -64,7 +64,7 @@ namespace C3D
         VkFence inFlightFences[2];
 
         /** @brief Holds pointers to fences which exist and are owned elsewhere, one per frame */
-        VkFence* imagesInFlight[3];
+        VkFence imagesInFlight[3];
 
         u32 imageIndex           = 0;
         mutable u32 currentFrame = 0;
@@ -105,6 +105,6 @@ namespace C3D
         PFN_vkCmdSetFrontFaceEXT pfnCmdSetFrontFaceEXT;
 
         /** @brief A pointer to the currently bound shader. */
-        Shader* boundShader;
+        const Shader* boundShader;
     };
 }  // namespace C3D

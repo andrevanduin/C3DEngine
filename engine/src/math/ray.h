@@ -25,7 +25,7 @@ namespace C3D
         bool TestAgainstPlane3D(const Plane3D& plane, vec3& outPoint, f32& outDistance) const;
         bool TestAgainstDisc3D(const Disc3D& disc, vec3& outPoint, f32& outDistance) const;
 
-        static Ray FromScreen(const vec2& screenPos, const vec2& viewportSize, const vec3& origin, const mat4& view,
+        static Ray FromScreen(const vec2& screenPos, const Rect2D& viewportRect, const vec3& origin, const mat4& view,
                               const mat4& projection);
     };
 

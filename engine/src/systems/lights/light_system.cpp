@@ -4,30 +4,34 @@
 
 namespace C3D
 {
-    LightSystem::LightSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager, "LIGHT_SYSTEM") {}
+    constexpr const char* INSTANCE_NAME = "LIGHT_SYSTEM";
 
-    bool LightSystem::Init()
+    LightSystem::LightSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager) {}
+
+    bool LightSystem::OnInit()
     {
+        INFO_LOG("Initializing.");
+
         // NOTE: Perform some kind of config/init here?
         m_pointLights.Create(128);
         m_initialized = true;
-        m_logger.Info("Init() - Successful");
         return true;
     }
 
-    void LightSystem::Shutdown()
+    void LightSystem::OnShutdown()
     {
+        INFO_LOG("Shutting down.");
+
         // NOTE: Perform some kind of cleanup here?
         m_pointLights.Destroy();
         m_initialized = false;
-        m_logger.Info("Shutdown() - Successful");
     }
 
     bool LightSystem::AddDirectionalLight(const DirectionalLight& light)
     {
         if (light.name.Empty())
         {
-            m_logger.Error("AddDirectionalLight() - Failed to add DirectionalLight since the name is invalid");
+            ERROR_LOG("Failed to add DirectionalLight since the name is invalid.");
             return false;
         }
         m_directionalLight = light;
@@ -38,13 +42,13 @@ namespace C3D
     {
         if (name.Empty())
         {
-            m_logger.Error("RemoveDirectionalLight() - Failed to remove DirectionalLight since the name is invalid");
+            ERROR_LOG("Failed to remove DirectionalLight since the name is invalid.");
             return false;
         }
 
         if (m_directionalLight.name.Empty())
         {
-            m_logger.Warn("RemoveDirectionalLight() - Tried removing Directional Light that is not present");
+            WARN_LOG("Tried removing Directional Light that is not present.");
             return true;
         }
 
@@ -54,9 +58,7 @@ namespace C3D
             return true;
         }
 
-        m_logger.Error(
-            "RemoveDirectionalLight() - Tried to remove Directional Light named: '{}' but current light is named: '{}'",
-            name, m_directionalLight.name);
+        ERROR_LOG("Tried to remove Directional Light named: '{}' but current light is named: '{}'.", name, m_directionalLight.name);
         return false;
     }
 
@@ -64,21 +66,19 @@ namespace C3D
     {
         if (pLight.name.Empty())
         {
-            m_logger.Error("AddPointLight() - Failed to add Point Light since the name is not valid");
+            ERROR_LOG("Failed to add Point Light since the name is not valid.");
             return false;
         }
 
         if (m_pointLights.Has(pLight.name))
         {
-            m_logger.Error("AddPointLight() - Failed to add Point Light since the there is already a light named: '{}'",
-                           pLight.name);
+            ERROR_LOG("Failed to add Point Light since the there is already a light named: '{}'.", pLight.name);
             return false;
         }
 
         if (m_pointLights.Count() >= MAX_POINT_LIGHTS)
         {
-            m_logger.Error("AddPointLight() - Failed to add Point Light: no more room for Point Lights (MAX = {})",
-                           MAX_POINT_LIGHTS);
+            ERROR_LOG("Failed to add Point Light: no more room for Point Lights (MAX = {}).", MAX_POINT_LIGHTS);
             return false;
         }
 
@@ -91,14 +91,13 @@ namespace C3D
     {
         if (name.Empty())
         {
-            m_logger.Error("RemovePointLight() - Failed to remove Point Light since the name is not valid");
+            ERROR_LOG("Failed to remove Point Light since the name is not valid.");
             return false;
         }
 
         if (!m_pointLights.Has(name))
         {
-            m_logger.Error("RemovePointLight() - Failed to remove Point Light since none exist with the name: '{}'",
-                           name);
+            ERROR_LOG("Failed to remove Point Light since none exist with the name: '{}'.", name);
             return false;
         }
 
@@ -116,7 +115,7 @@ namespace C3D
             return &m_pointLights.Get(name);
         }
 
-        m_logger.Error("GetPointLight() - No Point Light exists with the name: '{}'", name);
+        ERROR_LOG("No Point Light exists with the name: '{}'.", name);
         return nullptr;
     }
 

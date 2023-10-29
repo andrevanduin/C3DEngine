@@ -9,7 +9,7 @@
 
 namespace C3D
 {
-    Skybox::Skybox() : m_logger("SKYBOX") {}
+    constexpr const char* INSTANCE_NAME = "SKYBOX";
 
     bool Skybox::Create(const SystemManager* pSystemsManager, const SkyboxConfig& config)
     {
@@ -25,8 +25,7 @@ namespace C3D
 
         // Generate a config for some cube geometry
         // TODO: Make these settings more configurable
-        m_skyboxGeometryConfig =
-            Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, m_config.cubeMapName, "");
+        m_skyboxGeometryConfig = Geometric.GenerateCubeConfig(10.0f, 10.0f, 10.0f, 1.0f, 1.0f, m_config.cubeMapName, "");
         // Clear out the material name
         m_skyboxGeometryConfig.materialName.Clear();
         // Invalidate our id so it's clear that this skybox still needs to be loaded
@@ -43,7 +42,7 @@ namespace C3D
         // Acquire resources for our cube map
         if (!Renderer.AcquireTextureMapResources(cubeMap))
         {
-            m_logger.Error("Load() - Unable to acquire resources for cube map texture.");
+            ERROR_LOG("Unable to acquire resources for cube map texture.");
             return false;
         }
 
@@ -59,7 +58,7 @@ namespace C3D
         // Acquire our shader instance resources
         if (!Renderer.AcquireShaderInstanceResources(*shader, 1, maps, &instanceId))
         {
-            m_logger.Error("Load() - Unable to acquire shader resources for skybox texture.");
+            ERROR_LOG("Unable to acquire shader resources for skybox texture.");
             return false;
         }
 
@@ -96,7 +95,7 @@ namespace C3D
             // The skybox is loaded so we should unload first
             if (!Unload())
             {
-                m_logger.Error("Destroy() - Failed to unload the skybox before destroying");
+                ERROR_LOG("Failed to unload the skybox before destroying.");
                 return;
             }
         }

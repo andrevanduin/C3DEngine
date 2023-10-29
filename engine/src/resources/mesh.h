@@ -32,7 +32,7 @@ namespace C3D
     class C3D_API Mesh
     {
     public:
-        Mesh();
+        Mesh() = default;
 
         bool Create(const SystemManager* pSystemsManager, const MeshConfig& cfg);
 
@@ -67,7 +67,6 @@ namespace C3D
 
         void LoadJobFailure();
 
-        LoggerInstance<8> m_logger;
         MeshResource m_resource;
         Extents3D m_extents;
         DebugBox3D* m_debugBox = nullptr;
@@ -78,7 +77,7 @@ namespace C3D
     class C3D_API UIMesh
     {
     public:
-        UIMesh();
+        UIMesh() = default;
 
         bool LoadFromConfig(const SystemManager* pSystemsManager, const UIGeometryConfig& config);
 
@@ -92,7 +91,6 @@ namespace C3D
         Transform transform;
 
     private:
-        LoggerInstance<8> m_logger;
         const SystemManager* m_pSystemsManager = nullptr;
     };
 

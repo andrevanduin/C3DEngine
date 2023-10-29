@@ -8,6 +8,7 @@
 namespace C3D
 {
     struct RenderTarget;
+    class SystemManager;
 
     struct RenderPassConfig
     {
@@ -15,7 +16,6 @@ namespace C3D
         f32 depth;
         u32 stencil;
 
-        vec4 renderArea;
         vec4 clearColor;
 
         u8 clearFlags;
@@ -35,8 +35,8 @@ namespace C3D
     class C3D_API RenderPass
     {
     public:
-        RenderPass();
-        explicit RenderPass(const RenderPassConfig& config);
+        RenderPass() = default;
+        explicit RenderPass(const SystemManager* pSystemsManager, const RenderPassConfig& config);
 
         RenderPass(const RenderPass&) = delete;
         RenderPass(RenderPass&&)      = delete;
@@ -51,15 +51,16 @@ namespace C3D
 
         const String& GetName() const { return m_name; }
 
-        u16 id;
+        u16 id = INVALID_ID_U16;
 
-        ivec4 renderArea;
-        u8 renderTargetCount;
-        RenderTarget* targets;
+        u8 renderTargetCount  = 0;
+        RenderTarget* targets = nullptr;
 
     protected:
-        String m_name;		
-		u8 m_clearFlags;
-        vec4 m_clearColor;
+        String m_name;
+        u8 m_clearFlags   = 0;
+        vec4 m_clearColor = vec4(0);
+
+        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

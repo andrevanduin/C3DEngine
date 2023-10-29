@@ -32,8 +32,10 @@ namespace C3D
 
         void OnResize(u32 width, u32 height) override;
 
-        bool BeginFrame(const FrameData& frameData) override;
-        bool EndFrame(const FrameData& frameData) override;
+        bool PrepareFrame(const FrameData& frameData) override;
+        bool Begin(const FrameData& frameData) override;
+        bool End(const FrameData& frameData) override;
+        bool Present(const FrameData& frameData) override;
 
         void SetViewport(const vec4& rect) override;
         void ResetViewport() override;

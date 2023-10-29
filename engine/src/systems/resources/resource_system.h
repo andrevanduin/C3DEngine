@@ -17,12 +17,14 @@ namespace C3D
 
     class ResourceSystem final : public SystemWithConfig<ResourceSystemConfig>
     {
+        const char* INSTANCE_NAME = "RESOURCE_SYSTEM";
+
     public:
         explicit ResourceSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const ResourceSystemConfig& config) override;
+        bool OnInit(const ResourceSystemConfig& config) override;
 
-        void Shutdown() override;
+        void OnShutdown() override;
 
         C3D_API bool RegisterLoader(IResourceLoader* newLoader);
 
@@ -46,8 +48,7 @@ namespace C3D
         static bool LoadInternal(const char* name, ResourceLoader<Type>* loader, Type& resource);
 
         template <typename Type, typename Params>
-        static bool LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type& resource,
-                                       const Params& params);
+        static bool LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type& resource, const Params& params);
 
         DynamicArray<IResourceLoader*> m_registeredLoaders;
 
@@ -63,8 +64,7 @@ namespace C3D
             const u32 count = m_config.maxLoaderCount;
             for (u32 i = 0; i < count; i++)
             {
-                if (auto loader = m_registeredLoaders[i];
-                    loader->id != INVALID_ID && typeid(*loader) == typeid(ResourceLoader<Type>))
+                if (auto loader = m_registeredLoaders[i]; loader->id != INVALID_ID && typeid(*loader) == typeid(ResourceLoader<Type>))
                 {
                     auto resLoader = dynamic_cast<ResourceLoader<Type>*>(loader);
                     return LoadInternal(name, resLoader, resource);
@@ -73,7 +73,7 @@ namespace C3D
         }
 
         resource.loaderId = INVALID_ID;
-        m_logger.Error("Load() No loader for type of resource at '{}' was found", name);
+        ERROR_LOG("No loader for type of resource at '{}' was found.", name);
         return false;
     }
 
@@ -92,8 +92,7 @@ namespace C3D
             const u32 count = m_config.maxLoaderCount;
             for (u32 i = 0; i < count; i++)
             {
-                if (auto loader = m_registeredLoaders[i];
-                    loader->id != INVALID_ID && typeid(*loader) == typeid(ResourceLoader<Type>))
+                if (auto loader = m_registeredLoaders[i]; loader->id != INVALID_ID && typeid(*loader) == typeid(ResourceLoader<Type>))
                 {
                     auto resLoader = dynamic_cast<ResourceLoader<Type>*>(loader);
                     return LoadInternalParams(name, resLoader, resource, params);
@@ -102,7 +101,7 @@ namespace C3D
         }
 
         resource.loaderId = INVALID_ID;
-        m_logger.Error("Load() No loader for type of resource at '{}' was found", name);
+        ERROR_LOG("No loader for type of resource at '{}' was found.", name);
         return false;
     }
 
@@ -143,8 +142,7 @@ namespace C3D
     }
 
     template <typename Type, typename Params>
-    bool ResourceSystem::LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type& resource,
-                                            const Params& params)
+    bool ResourceSystem::LoadInternalParams(const char* name, ResourceLoader<Type>* loader, Type& resource, const Params& params)
     {
         if (std::strlen(name) == 0) return false;
         if (!loader)

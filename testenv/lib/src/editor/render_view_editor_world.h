@@ -25,24 +25,15 @@ public:
 
     bool OnCreate() override;
 
-    void OnResize() override;
+    bool OnBuildPacket(const C3D::FrameData& frameData, const C3D::Viewport& viewport, C3D::Camera* camera, void* data,
+                       C3D::RenderViewPacket* outPacket) override;
 
-    bool OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* data, C3D::RenderViewPacket* outPacket) override;
-
-    bool OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, u64 frameNumber,
-                  u64 renderTargetIndex) override;
+    bool OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet) override;
 
 private:
     void OnSetupPasses() override;
 
     C3D::Shader* m_shader = nullptr;
 
-    f32 m_fov      = C3D::DegToRad(45.0f);
-    f32 m_nearClip = 0.1f;
-    f32 m_farClip  = 4000.0f;
-
     DebugColorShaderLocations m_debugShaderLocations;
-
-    mat4 m_projectionMatrix;
-    C3D::Camera* m_camera = nullptr;
 };

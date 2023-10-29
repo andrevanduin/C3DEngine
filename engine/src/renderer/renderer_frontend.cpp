@@ -10,18 +10,21 @@
 #include "systems/cvars/cvar_system.h"
 #include "systems/render_views/render_view_system.h"
 #include "systems/system_manager.h"
+#include "viewport.h"
 
 namespace C3D
 {
-    RenderSystem::RenderSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager, "RENDERER") {}
+    constexpr const char* INSTANCE_NAME = "RENDERER";
 
-    bool RenderSystem::Init(const RenderSystemConfig& config)
+    RenderSystem::RenderSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
+
+    bool RenderSystem::OnInit(const RenderSystemConfig& config)
     {
         m_config        = config;
         m_backendPlugin = config.rendererPlugin;
         if (!m_backendPlugin)
         {
-            m_logger.Fatal("Init() - No valid renderer plugin provided");
+            FATAL_LOG("No valid renderer plugin provided.");
             return false;
         }
 
@@ -32,20 +35,20 @@ namespace C3D
 
         if (!m_backendPlugin->Init(rendererPluginConfig, &m_windowRenderTargetCount))
         {
-            m_logger.Fatal("Init() - Failed to Initialize Renderer Backend.");
+            FATAL_LOG("Failed to Initialize Renderer Backend.");
             return false;
         }
 
         auto& vSync = CVars.Get<bool>("vsync");
         vSync.AddOnChangedCallback([this](const bool& b) { SetFlagEnabled(FlagVSyncEnabled, b); });
 
-        m_logger.Info("Init() - Successfully initialized Rendering System");
+        INFO_LOG("Successfully initialized Rendering System.");
         return true;
     }
 
-    void RenderSystem::Shutdown()
+    void RenderSystem::OnShutdown()
     {
-        m_logger.Info("Shutting Down");
+        INFO_LOG("Shutting down.");
 
         m_backendPlugin->Shutdown();
         Memory.Delete(MemoryType::RenderSystem, m_backendPlugin);
@@ -59,9 +62,13 @@ namespace C3D
         m_framesSinceResize = 0;
     }
 
-    bool RenderSystem::DrawFrame(RenderPacket* packet, const FrameData& frameData)
+    bool RenderSystem::PrepareFrame(FrameData& frameData)
     {
+        // Increment our frame number
         m_backendPlugin->frameNumber++;
+
+        // Reset the draw index for this frame
+        m_backendPlugin->drawIndex = 0;
 
         if (m_resizing)
         {
@@ -81,33 +88,40 @@ namespace C3D
                 // Simulate a 60FPS frame
                 Platform::SleepMs(16);
                 // Skip rendering this frame
-                return true;
-            }
-        }
-
-        if (m_backendPlugin->BeginFrame(frameData))
-        {
-            const u8 attachmentIndex = m_backendPlugin->GetWindowAttachmentIndex();
-
-            // Render each view
-            for (auto& viewPacket : packet->views)
-            {
-                if (!Views.OnRender(frameData, viewPacket.view, &viewPacket, m_backendPlugin->frameNumber, attachmentIndex))
-                {
-                    m_logger.Error("DrawFrame() - Failed on calling OnRender() for view: '{}'.", viewPacket.view->GetName());
-                    return false;
-                }
-            }
-
-            // End frame
-            if (!m_backendPlugin->EndFrame(frameData))
-            {
-                m_logger.Error("DrawFrame() - EndFrame() failed");
                 return false;
             }
         }
 
-        return true;
+        bool result = m_backendPlugin->PrepareFrame(frameData);
+
+        // Update the frame data with the renderer info
+        frameData.frameNumber       = m_backendPlugin->frameNumber;
+        frameData.drawIndex         = m_backendPlugin->drawIndex;
+        frameData.renderTargetIndex = m_backendPlugin->GetWindowAttachmentIndex();
+
+        return result;
+    }
+
+    bool RenderSystem::Begin(const FrameData& frameData) const { return m_backendPlugin->Begin(frameData); }
+
+    bool RenderSystem::End(FrameData& frameData) const
+    {
+        bool result = m_backendPlugin->End(frameData);
+        // Increment the draw index for this frame
+        m_backendPlugin->drawIndex++;
+        // Sync the frame data to it
+        frameData.drawIndex = m_backendPlugin->drawIndex;
+        return result;
+    }
+
+    bool RenderSystem::Present(const RenderPacket& packet, const FrameData& frameData) const
+    {
+        bool result = m_backendPlugin->Present(frameData);
+        if (!result)
+        {
+            ERROR_LOG("Failed to present. Application is shutting down.");
+        }
+        return result;
     }
 
     void RenderSystem::SetViewport(const vec4& rect) const { m_backendPlugin->SetViewport(rect); }
@@ -151,7 +165,7 @@ namespace C3D
     {
         if (!vertexCount || !vertices || !vertexSize)
         {
-            m_logger.Error("CreateGeometry() - Invalid vertex data was supplied.");
+            ERROR_LOG("Invalid vertex data was supplied.");
             return false;
         }
 
@@ -192,7 +206,26 @@ namespace C3D
         m_backendPlugin->UpdateGeometryVertices(geometry, offset, vertexCount, vertices);
     }
 
-    void RenderSystem::DestroyGeometry(Geometry& geometry) const { m_backendPlugin->DestroyGeometry(geometry); }
+    void RenderSystem::DestroyGeometry(Geometry& geometry) const
+    {
+        // Call the backend to cleanup our internal API specific geometry data
+        m_backendPlugin->DestroyGeometry(geometry);
+
+        // Free the memory that we've allocated for the vertices in the CreateGeometry method
+        Memory.Free(MemoryType::RenderSystem, geometry.vertices);
+        geometry.vertexCount       = 0;
+        geometry.vertexElementSize = 0;
+        geometry.vertices          = nullptr;
+
+        if (geometry.indices)
+        {
+            // Free the memory that we've allocated for the indices in the CreateGeometry method
+            Memory.Free(MemoryType::RenderSystem, geometry.indices);
+            geometry.indexCount       = 0;
+            geometry.indexElementSize = 0;
+            geometry.indices          = nullptr;
+        }
+    }
 
     void RenderSystem::DrawGeometry(const GeometryRenderData& data) const
     {
@@ -304,6 +337,21 @@ namespace C3D
     }
 
     bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const { return m_backendPlugin->DestroyRenderBuffer(buffer); }
+
+    const Viewport* RenderSystem::GetActiveViewport() const { return m_activeViewport; }
+
+    void RenderSystem::SetActiveViewport(const Viewport* viewport)
+    {
+        m_activeViewport = viewport;
+
+        const auto& rect2D = viewport->GetRect2D();
+
+        const vec4 vp = { rect2D.x, rect2D.y + rect2D.height, rect2D.width, -rect2D.height };
+        m_backendPlugin->SetViewport(vp);
+
+        const vec4 sc = { rect2D.x, rect2D.y, rect2D.width, rect2D.height };
+        m_backendPlugin->SetScissor(sc);
+    }
 
     bool RenderSystem::IsMultiThreaded() const { return m_backendPlugin->IsMultiThreaded(); }
 

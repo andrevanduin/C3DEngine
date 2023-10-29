@@ -2,7 +2,6 @@
 #pragma once
 #include "base_allocator.h"
 #include "core/defines.h"
-#include "core/logger.h"
 
 namespace C3D
 {
@@ -27,11 +26,9 @@ namespace C3D
         static LinearAllocator* GetDefault();
 
     private:
-        LoggerInstance<32> m_logger;
+        u64 m_totalSize = 0;
+        u64 m_allocated = 0;
 
-        u64 m_totalSize;
-        u64 m_allocated;
-
-        bool m_ownsMemory;
+        bool m_ownsMemory = false;
     };
 }  // namespace C3D

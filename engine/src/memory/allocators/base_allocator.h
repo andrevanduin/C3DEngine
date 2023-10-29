@@ -23,6 +23,11 @@ namespace C3D
         virtual void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) = 0;
         virtual void Free(MemoryType type, void* block)                           = 0;
 
+        virtual bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment) { return true; }
+
+        virtual bool GetAlignment(void* block, u16* outAlignment) { return true; }
+        virtual bool GetAlignment(const void* block, u16* outAlignment) { return true; }
+
 #ifdef C3D_MEMORY_METRICS_STACKTRACE
         BaseAllocator& SetStacktraceRef()
         {

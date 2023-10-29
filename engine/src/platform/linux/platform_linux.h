@@ -38,9 +38,9 @@ namespace C3D
         Platform();
         explicit Platform(const SystemManager* pSystemsManager);
 
-        bool Init(const PlatformSystemConfig& config) override;
+        bool OnInit(const PlatformSystemConfig& config) override;
 
-        void Shutdown() override;
+        void OnShutdown() override;
 
         /**
          * @brief Performs message pumping which is required to handle windowing and other events OS events.

@@ -7,6 +7,7 @@ namespace C3D
 {
     class RendererPlugin;
     class SystemManager;
+    class Skybox;
 
     enum class RendererPluginType
     {
@@ -16,7 +17,7 @@ namespace C3D
         DirectX,
     };
 
-    enum RendererViewMode : i32
+    enum RendererViewMode : u8
     {
         Default  = 0,
         Lighting = 1,
@@ -52,6 +53,13 @@ namespace C3D
         Clockwise,
     };
 
+    /** @brief The type of projection matrix used. */
+    enum class RendererProjectionMatrixType : u8
+    {
+        Perspective,
+        Orthographic,
+    };
+
     enum class ShaderStage
     {
         Vertex,
@@ -71,6 +79,10 @@ namespace C3D
         PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST     = 32,
         PRIMITIVE_TOPOLOGY_TYPE_MAX            = 64
     };
-
     using PrimitiveTopologyTypeBits = u16;
+
+    struct SkyboxPacketData
+    {
+        Skybox* box;
+    };
 }  // namespace C3D

@@ -16,8 +16,8 @@ namespace C3D
     public:
         explicit RenderViewSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const RenderViewSystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const RenderViewSystemConfig& config) override;
+        void OnShutdown() override;
 
         bool Register(RenderView* view);
 
@@ -25,7 +25,7 @@ namespace C3D
 
         RenderView* Get(const String& name);
 
-        bool BuildPacket(RenderView* view, LinearAllocator* pFrameAllocator, void* data,
+        bool BuildPacket(RenderView* view, const FrameData& frameData, const Viewport& viewport, C3D::Camera* camera, void* data,
                          RenderViewPacket* outPacket) const;
         void DestroyPacket(RenderView* view, RenderViewPacket& packet) const;
 

@@ -13,16 +13,18 @@ namespace C3D
     {
         String name;
 
-        i32 x, y;
-        i32 width, height;
+        i32 x      = 0;
+        i32 y      = 0;
+        i32 width  = 0;
+        i32 height = 0;
 
-        RendererPlugin* rendererPlugin;
+        RendererPlugin* rendererPlugin = nullptr;
         FontSystemConfig fontConfig;
 
         DynamicArray<RenderView*> renderViews;
 
         /** @brief The size that should be allocated for the per-frame allocator. */
-        u64 frameAllocatorSize;
+        u64 frameAllocatorSize = 0;
         /** @brief The size required from the application-specific frame data. */
         u64 appFrameDataSize = 0;
     };
@@ -30,7 +32,7 @@ namespace C3D
     class Application
     {
     public:
-        explicit Application(ApplicationState* appState) : m_logger(appState->name.Data()), m_appState(appState) {}
+        explicit Application(ApplicationState* appState) : m_appState(appState) {}
 
         Application(const Application&) = delete;
         Application(Application&&)      = delete;
@@ -43,8 +45,9 @@ namespace C3D
         virtual bool OnBoot()                    = 0;
         virtual bool OnRun(FrameData& frameData) = 0;
 
-        virtual void OnUpdate(FrameData& frameData)                       = 0;
-        virtual bool OnRender(RenderPacket& packet, FrameData& frameData) = 0;
+        virtual void OnUpdate(FrameData& frameData)                                    = 0;
+        virtual bool OnPrepareRenderPacket(RenderPacket& packet, FrameData& frameData) = 0;
+        virtual bool OnRender(RenderPacket& packet, FrameData& frameData)              = 0;
 
         virtual void OnResize() = 0;
 
@@ -56,9 +59,7 @@ namespace C3D
         friend Engine;
 
     protected:
-        LoggerInstance<64> m_logger;
-
-        ApplicationState* m_appState;
+        ApplicationState* m_appState           = nullptr;
         UIConsole* m_pConsole                  = nullptr;
         const SystemManager* m_pSystemsManager = nullptr;
     };

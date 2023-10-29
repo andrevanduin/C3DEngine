@@ -5,18 +5,12 @@
 
 namespace C3D
 {
-    RenderPass::RenderPass()
-        : id(INVALID_ID_U16), renderArea(0), renderTargetCount(0), targets(nullptr), m_clearFlags(0), m_clearColor(0)
-    {}
-
-    RenderPass::RenderPass(const RenderPassConfig& config)
-        : id(INVALID_ID_U16),
-          renderArea(config.renderArea),
-          renderTargetCount(config.renderTargetCount),
-          targets(nullptr),
+    RenderPass::RenderPass(const SystemManager* pSystemsManager, const RenderPassConfig& config)
+        : renderTargetCount(config.renderTargetCount),
           m_name(config.name),
           m_clearFlags(config.clearFlags),
-          m_clearColor(config.clearColor)
+          m_clearColor(config.clearColor),
+          m_pSystemsManager(pSystemsManager)
     {
         targets = Memory.Allocate<RenderTarget>(MemoryType::Array, config.renderTargetCount);
 

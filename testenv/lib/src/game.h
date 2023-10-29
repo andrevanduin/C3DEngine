@@ -16,6 +16,7 @@ public:
     bool OnRun(C3D::FrameData& frameData) override;
 
     void OnUpdate(C3D::FrameData& frameData) override;
+    bool OnPrepareRenderPacket(C3D::RenderPacket& packet, C3D::FrameData& frameData) override;
     bool OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData) override;
 
     void OnResize() override;
@@ -37,5 +38,5 @@ private:
     bool LoadTestScene();
     void UnloadTestScene();
 
-    GameState* m_state;
+    GameState* m_state = nullptr;
 };

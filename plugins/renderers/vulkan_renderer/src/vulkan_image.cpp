@@ -256,12 +256,6 @@ namespace C3D
 
     void VulkanImage::Destroy()
     {
-        // Determine if memory is device-local (on the GPU)
-        const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        const auto size           = m_memoryRequirements.size;
-        // Report memory as freed
-        MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
-
         if (m_context)
         {
             auto logicalDevice = m_context->device.GetLogical();
@@ -273,6 +267,12 @@ namespace C3D
             }
             if (m_memory)
             {
+                // Determine if memory is device-local (on the GPU)
+                const bool isDeviceMemory = m_memoryFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                const auto size           = m_memoryRequirements.size;
+                // Report memory as freed
+                MetricsFree(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, size, size, m_memory);
+
                 vkFreeMemory(logicalDevice, m_memory, m_context->allocator);
                 m_memory = nullptr;
             }

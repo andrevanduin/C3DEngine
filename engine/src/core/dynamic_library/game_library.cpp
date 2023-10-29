@@ -3,36 +3,38 @@
 
 namespace C3D
 {
-	GameLibrary::GameLibrary() : DynamicLibrary("GAME_LIB") {}
+    constexpr const char* INSTANCE_NAME = "GAME_LIBRARY";
 
-	ApplicationState* GameLibrary::CreateState()
-	{
-		const auto createStateFunc = LoadFunction<ApplicationState * (*)()>("CreateApplicationState");
-		if (!createStateFunc)
-		{
-			m_logger.Error("Create() - Failed to load CreateState function for: '{}'", m_name);
-			return nullptr;
-		}
+    GameLibrary::GameLibrary() : DynamicLibrary("GAME_LIB") {}
 
-		const auto state = createStateFunc();
-		if (!state)
-		{
-			m_logger.Error("Create() - Failed to create state for: '{}'", m_name);
-			return nullptr;
-		}
+    ApplicationState* GameLibrary::CreateState()
+    {
+        const auto createStateFunc = LoadFunction<ApplicationState* (*)()>("CreateApplicationState");
+        if (!createStateFunc)
+        {
+            ERROR_LOG("Failed to load CreateState function for: '{}'.", m_name);
+            return nullptr;
+        }
 
-		return state;
-	}
+        const auto state = createStateFunc();
+        if (!state)
+        {
+            ERROR_LOG("Failed to create state for: '{}'.", m_name);
+            return nullptr;
+        }
 
+        return state;
+    }
 
-	Application* GameLibrary::Create(ApplicationState* state)
-	{
-		const auto createApplicationFunc = LoadFunction<Application* (*)(ApplicationState*)>("CreateApplication");
-		if (!createApplicationFunc) {
-			m_logger.Error("Create() - Failed to load CreateApplication function for: '{}'", m_name);
-			return nullptr;
-		}
-		
-		return createApplicationFunc(state);
-	}
-}
+    Application* GameLibrary::Create(ApplicationState* state)
+    {
+        const auto createApplicationFunc = LoadFunction<Application* (*)(ApplicationState*)>("CreateApplication");
+        if (!createApplicationFunc)
+        {
+            ERROR_LOG("Failed to load CreateApplication function for: '{}'.", m_name);
+            return nullptr;
+        }
+
+        return createApplicationFunc(state);
+    }
+}  // namespace C3D

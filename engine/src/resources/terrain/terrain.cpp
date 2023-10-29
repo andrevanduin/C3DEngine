@@ -13,7 +13,7 @@
 
 namespace C3D
 {
-    Terrain::Terrain() : m_logger("TERRAIN") {}
+    constexpr const char* INSTANCE_NAME = "TERRAIN";
 
     bool Terrain::Create(const SystemManager* pSystemsManager, const TerrainConfig& config)
     {
@@ -116,25 +116,25 @@ namespace C3D
 
             if (m_config.tileCountX == 0)
             {
-                m_logger.Error("TileCountX must > 0.");
+                ERROR_LOG("TileCountX must > 0.");
                 return;
             }
 
             if (m_config.tileCountZ == 0)
             {
-                m_logger.Error("TileCountZ must be > 0.");
+                ERROR_LOG("TileCountZ must be > 0.");
                 return;
             }
 
             if (m_config.tileScaleX <= 0.0f)
             {
-                m_logger.Error("TileScaleX must be > 0.");
+                ERROR_LOG("TileScaleX must be > 0.");
                 return;
             }
 
             if (m_config.tileScaleZ <= 0.0f)
             {
-                m_logger.Error("TileScaleZ must be > 0.");
+                ERROR_LOG("TileScaleZ must be > 0.");
                 return;
             }
 
@@ -156,8 +156,7 @@ namespace C3D
                 {
                     TerrainVertex vert = {};
 
-                    vert.position = { x * m_tileScaleX, m_config.vertexConfigs[i].height * m_tileScaleY,
-                                      z * m_tileScaleZ };
+                    vert.position = { x * m_tileScaleX, m_config.vertexConfigs[i].height * m_tileScaleY, z * m_tileScaleZ };
                     vert.color    = vec4(1.0f);
                     vert.normal   = { 0, 1, 0 };
                     vert.texture  = { x, z };
@@ -209,10 +208,10 @@ namespace C3D
         {
             auto timer = ScopedTimer("Creating Terrain Geometry", m_pSystemsManager);
 
-            if (!Renderer.CreateGeometry(m_geometry, sizeof(TerrainVertex), m_vertices.Size(), m_vertices.GetData(),
-                                         sizeof(u32), m_indices.Size(), m_indices.GetData()))
+            if (!Renderer.CreateGeometry(m_geometry, sizeof(TerrainVertex), m_vertices.Size(), m_vertices.GetData(), sizeof(u32),
+                                         m_indices.Size(), m_indices.GetData()))
             {
-                m_logger.Error("LoadJobSuccess() - Failed to create geometry.");
+                ERROR_LOG("Failed to create geometry.");
                 return;
             }
         }
@@ -222,7 +221,7 @@ namespace C3D
 
             if (!Renderer.UploadGeometry(m_geometry))
             {
-                m_logger.Error("LoadJobSuccess() - Failed to upload geometry.");
+                ERROR_LOG("Failed to upload geometry.");
                 return;
             }
         }
@@ -241,7 +240,7 @@ namespace C3D
             m_geometry.material        = Materials.AcquireTerrain(terrainMaterialName, m_config.materials, true);
             if (!m_geometry.material)
             {
-                m_logger.Warn("LoadJobSuccess() - Failed to acquire terrain material. Using default instead.");
+                WARN_LOG("Failed to acquire terrain material. Using default instead.");
                 m_geometry.material = Materials.GetDefaultTerrain();
             }
         }
@@ -255,7 +254,7 @@ namespace C3D
 
     void Terrain::LoadJobFailure()
     {
-        m_logger.Error("LoadJobFailure() - Failed to load: '{}'", m_config.resourceName);
+        ERROR_LOG("Failed to load: '{}'.", m_config.resourceName);
 
         Resources.Unload(m_config);
     }

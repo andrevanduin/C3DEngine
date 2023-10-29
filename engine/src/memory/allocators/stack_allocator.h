@@ -2,7 +2,6 @@
 #pragma once
 #include "base_allocator.h"
 #include "core/defines.h"
-#include "core/logger.h"
 #include "core/metrics/metrics.h"
 
 namespace C3D
@@ -11,11 +10,7 @@ namespace C3D
     class C3D_API StackAllocator final : public BaseAllocator<StackAllocator<Size>>
     {
     public:
-        StackAllocator()
-            : BaseAllocator<StackAllocator>(ToUnderlying(AllocatorType::Stack)),
-              m_logger("STACK_ALLOCATOR"),
-              m_allocated(0)
-        {}
+        StackAllocator() : BaseAllocator<StackAllocator>(ToUnderlying(AllocatorType::Stack)) {}
 
         void Create(const char* name)
         {
@@ -66,9 +61,7 @@ namespace C3D
         }
 
     private:
-        LoggerInstance<32> m_logger;
-
         Array<char, Size> m_memory;
-        u64 m_allocated;
+        u64 m_allocated = 0;
     };
 }  // namespace C3D

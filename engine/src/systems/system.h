@@ -13,15 +13,15 @@ namespace C3D
         explicit ISystem(const SystemManager* pSystemsManager) : m_pSystemsManager(pSystemsManager) {}
 
         ISystem(const ISystem&) = delete;
-        ISystem(ISystem&&) = delete;
+        ISystem(ISystem&&)      = delete;
 
         ISystem& operator=(const ISystem&) = delete;
-        ISystem& operator=(ISystem&&) = delete;
+        ISystem& operator=(ISystem&&)      = delete;
 
         virtual ~ISystem() = default;
 
-        virtual void Shutdown() = 0;
-        virtual void Update(const FrameData& frameData) = 0;
+        virtual void OnShutdown()                         = 0;
+        virtual void OnUpdate(const FrameData& frameData) = 0;
 
     protected:
         bool m_initialized = false;
@@ -32,55 +32,47 @@ namespace C3D
     class BaseSystem : public ISystem
     {
     public:
-        explicit BaseSystem(const SystemManager* pSystemsManager, const CString<32>& name)
-            : ISystem(pSystemsManager), m_logger(name)
-        {}
+        explicit BaseSystem(const SystemManager* pSystemsManager) : ISystem(pSystemsManager) {}
 
-        virtual bool Init()
+        virtual bool OnInit()
         {
-            m_logger.Info("Init()");
+            INSTANCE_INFO_LOG("SYSTEM", "Initializing.");
             m_initialized = true;
             return true;
         }
 
-        void Shutdown() override
+        void OnShutdown() override
         {
-            m_logger.Info("Shutdown()");
+            INSTANCE_INFO_LOG("SYSTEM", "Shutting down.");
             m_initialized = false;
         }
 
-        void Update(const FrameData& frameData) override {}
-
-    protected:
-        LoggerInstance<32> m_logger;
+        void OnUpdate(const FrameData& frameData) override {}
     };
 
     template <typename T>
     class SystemWithConfig : public ISystem
     {
     public:
-        explicit SystemWithConfig(const SystemManager* pSystemsManager, const CString<32>& name)
-            : ISystem(pSystemsManager), m_logger(name), m_config{}
-        {}
+        explicit SystemWithConfig(const SystemManager* pSystemsManager) : ISystem(pSystemsManager) {}
 
-        virtual bool Init(const T& config = {})
+        virtual bool OnInit(const T& config = {})
         {
-            m_logger.Info("Init()");
+            INSTANCE_INFO_LOG("SYSTEM", "Initializing.");
             m_initialized = true;
-            m_config = config;
+            m_config      = config;
             return true;
         }
 
-        void Shutdown() override
+        void OnShutdown() override
         {
-            m_logger.Info("Shutdown()");
+            INSTANCE_INFO_LOG("SYSTEM", "Shutting down.");
             m_initialized = false;
         }
 
-        void Update(const FrameData& frameData) override {}
+        void OnUpdate(const FrameData& frameData) override {}
 
     protected:
-        LoggerInstance<32> m_logger;
         T m_config;
     };
 }  // namespace C3D

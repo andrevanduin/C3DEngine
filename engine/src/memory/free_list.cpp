@@ -5,23 +5,14 @@
 
 namespace C3D
 {
-    FreeList::FreeList()
-        : m_logger("FREE_LIST"),
-          m_nodes(nullptr),
-          m_head(nullptr),
-          m_totalNodes(0),
-          m_nodesSize(0),
-          m_smallestPossibleAllocation(0),
-          m_totalManagedSize(0)
-    {}
+    constexpr const char* INSTANCE_NAME = "FREE_LIST";
 
-    bool FreeList::Create(void* memory, const u64 memorySizeForNodes, const u64 smallestPossibleAllocation,
-                          const u64 managedSize)
+    bool FreeList::Create(void* memory, const u64 memorySizeForNodes, const u64 smallestPossibleAllocation, const u64 managedSize)
     {
         m_smallestPossibleAllocation = smallestPossibleAllocation;
-        m_totalNodes = memorySizeForNodes / sizeof(Node);
-        m_nodesSize = memorySizeForNodes;
-        m_totalManagedSize = managedSize;
+        m_totalNodes                 = memorySizeForNodes / sizeof(Node);
+        m_nodesSize                  = memorySizeForNodes;
+        m_totalManagedSize           = managedSize;
 
         m_nodes = static_cast<Node*>(memory);
         std::memset(m_nodes, 0, m_nodesSize);
@@ -29,18 +20,17 @@ namespace C3D
         // Set all our nodes to invalid
         for (u64 i = 0; i < m_totalNodes; i++)
         {
-            m_nodes[i].size = 0;
-            m_nodes[i].next = nullptr;
+            m_nodes[i].size   = 0;
+            m_nodes[i].next   = nullptr;
             m_nodes[i].offset = INVALID_ID_U64;
         }
 
         // Set our head as the first node with all the memory available
-        m_head = &m_nodes[0];
-        m_head->size = m_totalManagedSize;
+        m_head         = &m_nodes[0];
+        m_head->size   = m_totalManagedSize;
         m_head->offset = 0;
 
-        m_logger.Trace("Create() - Created FreeList with {} nodes to manage {} bytes of memory.", m_totalNodes,
-                       m_totalManagedSize);
+        TRACE("Created FreeList with: {} nodes to manage: {} bytes of memory.", m_totalNodes, m_totalManagedSize);
         return true;
     }
 
@@ -56,30 +46,28 @@ namespace C3D
     {
         if (m_totalManagedSize > newSize) return false;
 
-        // NOTE: This is quite overkill
-
-        *outOldMemory = m_nodes;
+        *outOldMemory             = m_nodes;
         const auto sizeDifference = newSize - m_totalManagedSize;
-        const auto oldSize = m_totalManagedSize;
-        const auto oldHead = m_head;
+        const auto oldSize        = m_totalManagedSize;
+        const auto oldHead        = m_head;
 
         m_nodes = static_cast<Node*>(newMemory);
 
-        m_totalNodes = newSize / m_smallestPossibleAllocation;
+        m_totalNodes       = newSize / m_smallestPossibleAllocation;
         m_totalManagedSize = newSize;
 
         // Invalidate the size and offset for all nodes (except for the head)
         for (u64 i = 1; i < m_totalNodes; i++)
         {
             m_nodes[i].offset = INVALID_ID_U64;
-            m_nodes[i].size = INVALID_ID_U64;
+            m_nodes[i].size   = INVALID_ID_U64;
         }
 
         // Store our new head
         m_head = &m_nodes[0];
 
         // Copy over the nodes
-        Node* newListNode = m_head;
+        Node* newListNode   = m_head;
         const Node* oldNode = oldHead;
         if (!oldHead)
         {
@@ -87,8 +75,8 @@ namespace C3D
             // We set the head to be the at the start of new memory
             // and size equal to the difference in size between the new and the old block
             m_head->offset = oldSize;
-            m_head->size = sizeDifference;
-            m_head->next = nullptr;
+            m_head->size   = sizeDifference;
+            m_head->next   = nullptr;
         }
         else
         {
@@ -96,10 +84,10 @@ namespace C3D
             while (oldNode)
             {
                 // Get a new node, copy the offset/size, and set next to it
-                Node* newNode = GetNode();
-                newNode->offset = oldNode->offset;
-                newNode->size = oldNode->size;
-                newNode->next = nullptr;
+                Node* newNode     = GetNode();
+                newNode->offset   = oldNode->offset;
+                newNode->size     = oldNode->size;
+                newNode->next     = nullptr;
                 newListNode->next = newNode;
 
                 if (oldNode->next)
@@ -119,11 +107,11 @@ namespace C3D
                     else
                     {
                         // The last node
-                        Node* newNodeEnd = GetNode();
+                        Node* newNodeEnd   = GetNode();
                         newNodeEnd->offset = oldSize;
-                        newNodeEnd->size = sizeDifference;
-                        newNodeEnd->next = nullptr;
-                        newNode->next = newNodeEnd;
+                        newNodeEnd->size   = sizeDifference;
+                        newNodeEnd->next   = nullptr;
+                        newNode->next      = newNodeEnd;
                     }
 
                     break;
@@ -174,11 +162,11 @@ namespace C3D
                 return true;
             }
 
-            prev = current;
+            prev    = current;
             current = current->next;
         }
 
-        m_logger.Error("AllocateBlock() - Failed to find a node with enough space for the allocation.");
+        ERROR_LOG("Failed to find a node with enough space for the allocation.");
         throw std::bad_alloc();
     }
 
@@ -187,12 +175,12 @@ namespace C3D
 #ifdef _DEBUG
         if (size == 0)
         {
-            m_logger.Error("FreeBlock() - Called with size = 0.");
+            ERROR_LOG("Called with size = 0.");
             return false;
         }
 #endif
 
-        Node* prev = nullptr;
+        Node* prev    = nullptr;
         Node* current = m_head;
 
         // Check the case where the entire freelist is allocated (which means we have no head node)
@@ -200,10 +188,10 @@ namespace C3D
         {
             // In this case a new node is needed at the head
             const auto newHead = GetNode();
-            newHead->offset = offset;
-            newHead->size = size;
-            newHead->next = nullptr;
-            m_head = newHead;
+            newHead->offset    = offset;
+            newHead->size      = size;
+            newHead->next      = nullptr;
+            m_head             = newHead;
             return true;
         }
 
@@ -233,9 +221,9 @@ namespace C3D
             {
                 // Our current node's offset is further into the memory block than where we want to free
                 const auto newNode = GetNode();
-                newNode->next = current;
-                newNode->offset = offset;
-                newNode->size = size;
+                newNode->next      = current;
+                newNode->offset    = offset;
+                newNode->size      = size;
 
                 if (prev)
                 {
@@ -276,17 +264,17 @@ namespace C3D
             }
 
             // If our current node's offset is smaller then the provided offset we simply move to the next node
-            prev = current;
+            prev    = current;
             current = current->next;
         }
 
-        m_logger.Fatal("FreeBlock() - Failed. No node was found");
+        FATAL_LOG("Failed. No node was found.");
         return false;
     }
 
     u64 FreeList::FreeSpace() const
     {
-        u64 free = 0;
+        u64 free            = 0;
         const Node* current = m_head;
         while (current)
         {
@@ -296,10 +284,7 @@ namespace C3D
         return free;
     }
 
-    bool FreeList::AreExactlyAdjacent(const Node* first, const Node* second)
-    {
-        return first->offset + first->size == second->offset;
-    }
+    bool FreeList::AreExactlyAdjacent(const Node* first, const Node* second) { return first->offset + first->size == second->offset; }
 
     FreeList::Node* FreeList::GetNode() const
     {
@@ -310,7 +295,7 @@ namespace C3D
                 return &m_nodes[i];
             }
         }
-        m_logger.Fatal("GetNode() - Unable to get a valid node");
+        FATAL_LOG("Unable to get a valid node.");
         return nullptr;
     }
 }  // namespace C3D

@@ -1,6 +1,4 @@
 
-// ReSharper disable CppInconsistentNaming
-// ReSharper disable CppClangTidyCertDcl58Cpp
 #pragma once
 #include <fmt/format.h>
 
@@ -8,6 +6,7 @@
 
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
+#include "core/logger.h"
 #include "math/math_types.h"
 #include "memory/global_memory_system.h"
 
@@ -53,7 +52,6 @@ namespace C3D
                 m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
 
                 m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, capacity);
-                // Logger::Trace("[STRING] - Init() with capacity = {}", capacity);
             }
             else
             {
@@ -92,8 +90,6 @@ namespace C3D
                 {
                     // Our new capacity is too large for SSO
                     const auto newCapacity = static_cast<u64>(std::ceil(static_cast<f64>(requiredSize) * STRING_RESIZE_FACTOR));
-                    // Logger::Trace("[STRING] - Resize() with capacity = {}", newCapacity);
-
                     // Allocate enough space for the new capacity
                     m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
                     // Copy over the old data from the stack to the heap (including the final '0' byte)
@@ -807,7 +803,7 @@ namespace C3D
                        ((m_data[index + 2] & 0b00111111) << 6) + (m_data[index + 3] & 0b00111111);
             }
 
-            Logger::Error("[STRING] - ToCodepoint() - Invalid 5 or 6-byte character in string.");
+            INSTANCE_ERROR_LOG("STRING", "Invalid 5 or 6-byte character in String.");
             advance = 1;
             return -1;
         }
@@ -959,7 +955,7 @@ namespace C3D
                     i += 4;  // 4-byte character
                 else
                 {
-                    Logger::Error("[STRING] - SizeUtf8() - Invalid 5 or 6-byte character in string.");
+                    INSTANCE_ERROR_LOG("STRING", "Invalid 5 or 6-byte character in String.");
                     return 0;
                 }
             }

@@ -11,15 +11,17 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "MESH_LOADER";
+
     ResourceLoader<MeshResource>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, "MESH_LOADER", MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
+        : IResourceLoader(pSystemsManager, MemoryType::Geometry, ResourceType::Mesh, nullptr, "models")
     {}
 
     bool ResourceLoader<MeshResource>::Load(const char* name, MeshResource& resource) const
     {
         if (std::strlen(name) == 0)
         {
-            m_logger.Error("Load() - Failed because provided name is empty.");
+            ERROR_LOG("Failed because provided name is empty.");
             return false;
         }
 
@@ -56,7 +58,7 @@ namespace C3D
         if (type == MeshFileType::NotFound)
         {
             // We could not find any file
-            m_logger.Error("Load() - Unable to find a mesh file of supported type called: '{}'", name);
+            ERROR_LOG("Unable to find a mesh file of supported type called: '{}'.", name);
             return false;
         }
 
@@ -71,15 +73,14 @@ namespace C3D
         switch (type)
         {
             case MeshFileType::Obj:
-                result =
-                    ImportObjFile(file, String::FromFormat("{}/{}/{}.csm", Resources.GetBasePath(), typePath, name),
-                                  resource.geometryConfigs);
+                result = ImportObjFile(file, String::FromFormat("{}/{}/{}.csm", Resources.GetBasePath(), typePath, name),
+                                       resource.geometryConfigs);
                 break;
             case MeshFileType::Csm:
                 result = LoadCsmFile(file, resource.geometryConfigs);
                 break;
             case MeshFileType::NotFound:
-                m_logger.Error("Load() - Unsupported mesh type for file '{}'", name);
+                ERROR_LOG("Unsupported mesh type for file '{}'.", name);
                 result = false;
                 break;
         }
@@ -87,7 +88,7 @@ namespace C3D
         file.Close();
         if (!result)
         {
-            m_logger.Error("Load() - Failed to process mesh file: '{}'", fullPath);
+            ERROR_LOG("Failed to process mesh file: '{}'.", fullPath);
             return false;
         }
 
@@ -198,7 +199,7 @@ namespace C3D
                     sscanf(line.Data(), "%s %s", t, name);
                     break;
                 default:
-                    m_logger.Warn("ImportObjFile() - Unknown character found: '{}' in line: '{}'", line[0], line);
+                    WARN_LOG("Unknown character found: '{}' in line: '{}'.", line[0], line);
                     break;
             }
         }
@@ -228,14 +229,14 @@ namespace C3D
 
             if (!ImportObjMaterialLibraryFile(fullMtlPath))
             {
-                m_logger.Error("ImportObjFile() - Error reading obj mtl file: {}", fullMtlPath);
+                ERROR_LOG("Error reading obj mtl file: '{}'.", fullMtlPath);
             }
         }
 
         // De-duplicate geometry
         for (auto& geometry : outGeometries)
         {
-            m_logger.Info("Geometry de-duplication started on geometry object: '{}'", geometry.name);
+            INFO_LOG("Geometry de-duplication started on geometry object: '{}'.", geometry.name);
             GeometryUtils::DeduplicateVertices(geometry);
             GeometryUtils::GenerateTangents(geometry.vertices, geometry.indices);
         }
@@ -243,8 +244,7 @@ namespace C3D
         return WriteCsmFile(outCsmFileName, name, outGeometries);
     }
 
-    void ResourceLoader<MeshResource>::ObjParseVertexLine(const String& line, DynamicArray<vec3>& positions,
-                                                          DynamicArray<vec3>& normals,
+    void ResourceLoader<MeshResource>::ObjParseVertexLine(const String& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals,
                                                           DynamicArray<vec2>& texCoords) const
     {
         switch (line[1])
@@ -274,13 +274,12 @@ namespace C3D
                 break;
             }
             default:
-                m_logger.Warn("ObjParseVertexLine() - Unexpected character after 'v' found: '{}'", line[1]);
+                WARN_LOG("Unexpected character after 'v' found: '{}'.", line[1]);
                 break;
         }
     }
 
-    void ResourceLoader<MeshResource>::ObjParseFaceLine(const String& line, const u64 normalCount,
-                                                        const u64 texCoordinateCount,
+    void ResourceLoader<MeshResource>::ObjParseFaceLine(const String& line, const u64 normalCount, const u64 texCoordinateCount,
                                                         DynamicArray<MeshGroupData>& groups)
     {
         MeshFaceData face{};
@@ -293,10 +292,10 @@ namespace C3D
         }
         else
         {
-            sscanf(line.Data(), "%s %d/%d/%d %d/%d/%d %d/%d/%d", t, &face.vertices[0].positionIndex,
-                   &face.vertices[0].texCoordinateIndex, &face.vertices[0].normalIndex, &face.vertices[1].positionIndex,
-                   &face.vertices[1].texCoordinateIndex, &face.vertices[1].normalIndex, &face.vertices[2].positionIndex,
-                   &face.vertices[2].texCoordinateIndex, &face.vertices[2].normalIndex);
+            sscanf(line.Data(), "%s %d/%d/%d %d/%d/%d %d/%d/%d", t, &face.vertices[0].positionIndex, &face.vertices[0].texCoordinateIndex,
+                   &face.vertices[0].normalIndex, &face.vertices[1].positionIndex, &face.vertices[1].texCoordinateIndex,
+                   &face.vertices[1].normalIndex, &face.vertices[2].positionIndex, &face.vertices[2].texCoordinateIndex,
+                   &face.vertices[2].normalIndex);
         }
 
         const u64 groupIndex = groups.Size() - 1;
@@ -304,8 +303,7 @@ namespace C3D
     }
 
     void ResourceLoader<MeshResource>::ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals,
-                                                        DynamicArray<vec2>& texCoords,
-                                                        DynamicArray<MeshFaceData>& faces,
+                                                        DynamicArray<vec2>& texCoords, DynamicArray<MeshFaceData>& faces,
                                                         GeometryConfig* outData) const
     {
         auto indices  = DynamicArray<u32>(32768);
@@ -324,13 +322,13 @@ namespace C3D
 
         if (normalCount == 0)
         {
-            m_logger.Warn("ProcessSubObject() - No normals are present in this model.");
+            WARN_LOG("No normals are present in this model.");
             skipNormals = true;
         }
 
         if (texCoordinateCount == 0)
         {
-            m_logger.Warn("ProcessSubObject() - No texture coordinates are present in this model.");
+            WARN_LOG("No texture coordinates are present in this model.");
             skipTextureCoordinates = true;
         }
 
@@ -416,13 +414,11 @@ namespace C3D
 
     bool ResourceLoader<MeshResource>::ImportObjMaterialLibraryFile(const String& mtlFilePath) const
     {
-        m_logger.Debug("Importing .mtl file: '{}'", mtlFilePath);
-
         // Grab the .mtl file, if it exists, and read the material information.
         File mtlFile;
         if (!mtlFile.Open(mtlFilePath, FileModeRead))
         {
-            m_logger.Error("Unable to open .mtl file: '{}'", mtlFilePath);
+            ERROR_LOG("Unable to open .mtl file: '{}'.", mtlFilePath);
             return false;
         }
 
@@ -453,8 +449,7 @@ namespace C3D
                     if (line[1] == 's')
                     {
                         auto parts = line.Split(' ');
-                        auto prop =
-                            MaterialConfigProp("shininess", ShaderUniformType::Uniform_Float32, parts[1].ToF32());
+                        auto prop  = MaterialConfigProp("shininess", ShaderUniformType::Uniform_Float32, parts[1].ToF32());
                         if (std::get<f32>(prop.value) <= 0.0f)
                         {
                             // Set a minimal shininess value to reduce rendering artifacts
@@ -471,8 +466,7 @@ namespace C3D
                     auto parts = line.Split(' ');
                     if (parts[0].IEquals("bump"))
                     {
-                        currentConfig.maps.EmplaceBack(
-                            MaterialConfigMap("bump", FileSystem::FileNameFromPath(parts[1])));
+                        currentConfig.maps.EmplaceBack(MaterialConfigMap("bump", FileSystem::FileNameFromPath(parts[1])));
                     }
                     break;
                 }
@@ -480,8 +474,7 @@ namespace C3D
                     ObjMaterialParseNewMtlLine(line, currentConfig, hitName, mtlFilePath);
                     break;
                 default:
-                    m_logger.Error("ImportObjMaterialLibraryFile() - Unknown starting character found: '{}' in line {}",
-                                   line[0], line);
+                    ERROR_LOG("Unknown starting character found: '{}' on line {}.", line[0], line);
                     break;
             }
         }
@@ -490,7 +483,7 @@ namespace C3D
 
         if (!WriteMtFile(mtlFilePath, currentConfig))
         {
-            m_logger.Error("ImportObjMaterialLibraryFile() Unable to write .mt file: '{}'.", mtlFilePath);
+            ERROR_LOG("Unable to write .mt file: '{}'.", mtlFilePath);
             return false;
         }
 
@@ -506,9 +499,8 @@ namespace C3D
             case 'd':
             {
                 auto parts = line.Split(' ');
-                config.props.EmplaceBack(
-                    MaterialConfigProp("diffuseColor", ShaderUniformType::Uniform_Float32_4,
-                                       vec4(parts[1].ToF32(), parts[2].ToF32(), parts[3].ToF32(), 1.0f)));
+                config.props.EmplaceBack(MaterialConfigProp("diffuseColor", ShaderUniformType::Uniform_Float32_4,
+                                                            vec4(parts[1].ToF32(), parts[2].ToF32(), parts[3].ToF32(), 1.0f)));
                 break;
             }
             case 's':  // Specular color
@@ -520,8 +512,7 @@ namespace C3D
                 break;
             }
             default:
-                m_logger.Warn("ObjMaterialParseColorLine() - Unknown second character found: '{}' on line: '{}'.",
-                              line[1], line);
+                WARN_LOG("Unknown second character found: '{}' on line: '{}'.", line[1], line);
                 break;
         }
     }
@@ -555,8 +546,8 @@ namespace C3D
         config.maps.PushBack(map);
     }
 
-    void ResourceLoader<MeshResource>::ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config,
-                                                                  bool& hitName, const String& mtlFilePath) const
+    void ResourceLoader<MeshResource>::ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName,
+                                                                  const String& mtlFilePath) const
     {
         auto parts = line.Split(' ');
 
@@ -577,7 +568,7 @@ namespace C3D
                 // Write out a mt file and move on.
                 if (!WriteMtFile(mtlFilePath, config))
                 {
-                    m_logger.Error("Unable to write mt file: '{}'.", mtlFilePath);
+                    ERROR_LOG("Unable to write mt file: '{}'.", mtlFilePath);
                     return;
                 }
 
@@ -599,11 +590,11 @@ namespace C3D
         auto fullPath = String::FromFormat("%s../materials/%s.%s", directory, config.name, "mt");
         if (!file.Open(fullPath, FileModeWrite))
         {
-            m_logger.Error("WriteMtFile() - Failed to open material file for writing: '{}'.", fullPath);
+            ERROR_LOG("Failed to open material file for writing: '{}'.", fullPath);
             return false;
         }
 
-        m_logger.Info("WriteMtFile() - Started writing .mt file to: '{}'.", fullPath);
+        INFO_LOG("Started writing .mt file to: '{}'.", fullPath);
 
         CString<512> lineBuffer;
         file.WriteLine("#material file");

@@ -6,28 +6,27 @@
 
 namespace C3D
 {
-    SystemManager::SystemManager() : m_logger("SYSTEM_MANAGER") {}
+    constexpr const char* INSTANCE_NAME = "SYSTEM_MANAGER";
 
-    void SystemManager::Init()
+    void SystemManager::OnInit()
     {
-        m_logger.Info("Init()");
+        INFO_LOG("Initializing Systems Manager.");
 
         // 8 mb of total space for all our systems
         constexpr u64 systemsAllocatorTotalSize = MebiBytes(8);
         m_allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
     }
 
-    void SystemManager::Shutdown()
+    void SystemManager::OnShutdown()
     {
-        m_logger.Info("Shutdown() - Started.");
+        INFO_LOG("Shutting down all Systems.");
 
         for (const auto system : m_systems)
         {
-            system->Shutdown();
+            system->OnShutdown();
             m_allocator.Delete(MemoryType::CoreSystem, system);
         }
 
         m_allocator.Destroy();
-        m_logger.Info("Shutdown() - Finished.");
     }
 }  // namespace C3D

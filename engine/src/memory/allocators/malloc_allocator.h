@@ -2,7 +2,6 @@
 #pragma once
 #include "base_allocator.h"
 #include "core/defines.h"
-#include "core/logger.h"
 
 namespace C3D
 {
@@ -18,10 +17,10 @@ namespace C3D
         MallocAllocator();
 
         MallocAllocator(const MallocAllocator&) = delete;
-        MallocAllocator(MallocAllocator&&) = delete;
+        MallocAllocator(MallocAllocator&&)      = delete;
 
         MallocAllocator& operator=(const MallocAllocator&) = delete;
-        MallocAllocator& operator=(MallocAllocator&&) = delete;
+        MallocAllocator& operator=(MallocAllocator&&)      = delete;
 
         ~MallocAllocator() override;
 
@@ -29,8 +28,5 @@ namespace C3D
         void Free(MemoryType type, void* block) override;
 
         static MallocAllocator* GetDefault();
-
-    private:
-        LoggerInstance<32> m_logger;
     };
 }  // namespace C3D

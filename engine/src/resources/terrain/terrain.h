@@ -17,7 +17,7 @@ namespace C3D
     class C3D_API Terrain
     {
     public:
-        Terrain();
+        Terrain() = default;
 
         bool Create(const SystemManager* pSystemsManager, const TerrainConfig& config);
 
@@ -68,8 +68,7 @@ namespace C3D
         Geometry m_geometry;
 
         TerrainConfig m_config;
-        LoggerInstance<16> m_logger;
 
-        const SystemManager* m_pSystemsManager;
+        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

@@ -61,8 +61,8 @@ namespace C3D
     public:
         explicit LightSystem(const SystemManager* pSystemsManager);
 
-        bool Init() override;
-        void Shutdown() override;
+        bool OnInit() override;
+        void OnShutdown() override;
 
         /**
          * @brief Adds a Directional Light to the scene

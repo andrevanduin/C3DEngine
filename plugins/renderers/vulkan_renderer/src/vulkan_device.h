@@ -71,7 +71,7 @@ namespace C3D
     class VulkanDevice
     {
     public:
-        VulkanDevice();
+        VulkanDevice() = default;
 
         bool Create(VulkanContext* context);
 
@@ -120,8 +120,6 @@ namespace C3D
                                                                          VulkanDeviceSupportFlagBits extensionBit,
                                                                          const char* extensionName,
                                                                          DynamicArray<const char*>& requestedExtensions);
-
-        LoggerInstance<16> m_logger;
 
         VkPhysicalDevice m_physicalDevice = nullptr;
         VkDevice m_logicalDevice          = nullptr;

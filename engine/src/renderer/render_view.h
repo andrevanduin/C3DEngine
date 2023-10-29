@@ -17,6 +17,8 @@ namespace C3D
     class Mesh;
     class UIMesh;
     class SystemManager;
+    class Viewport;
+    class Camera;
 
     struct RenderViewPacket;
 
@@ -45,11 +47,10 @@ namespace C3D
          */
         virtual void OnBaseResize(u32 width, u32 height);
 
-        virtual bool OnBuildPacket(LinearAllocator* frameAllocator, void* data, RenderViewPacket* outPacket) = 0;
+        virtual bool OnBuildPacket(const FrameData& frameData, const Viewport& viewport, Camera* camera, void* data, RenderViewPacket* outPacket) = 0;
         virtual void OnDestroyPacket(RenderViewPacket& packet);
 
-        virtual bool OnRender(const FrameData& frameData, const RenderViewPacket* packet, u64 frameNumber,
-                              u64 renderTargetIndex) = 0;
+        virtual bool OnRender(const FrameData& frameData, const RenderViewPacket* packet) = 0;
 
         virtual bool RegenerateAttachmentTarget(u32 passIndex, RenderTargetAttachment* attachment);
 
@@ -79,8 +80,6 @@ namespace C3D
 
         String m_customShaderName;
 
-        LoggerInstance<64> m_logger;
-
-        const SystemManager* m_pSystemsManager;
+        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

@@ -39,14 +39,13 @@ namespace C3D
     public:
         explicit GeometrySystem(const SystemManager* pSystemsManager);
 
-        bool Init(const GeometrySystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const GeometrySystemConfig& config) override;
+        void OnShutdown() override;
 
         [[nodiscard]] Geometry* AcquireById(u32 id) const;
 
         template <typename VertexType, typename IndexType>
-        [[nodiscard]] Geometry* AcquireFromConfig(const IGeometryConfig<VertexType, IndexType>& config,
-                                                  bool autoRelease) const;
+        [[nodiscard]] Geometry* AcquireFromConfig(const IGeometryConfig<VertexType, IndexType>& config, bool autoRelease) const;
 
         template <typename VertexType, typename IndexType>
         static void DisposeConfig(IGeometryConfig<VertexType, IndexType>& config)
@@ -61,12 +60,11 @@ namespace C3D
         Geometry* GetDefault2D();
 
         // NOTE: Vertex and index arrays are dynamically allocated so they should be freed by the user
-        [[nodiscard]] static GeometryConfig GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount,
-                                                                u32 ySegmentCount, f32 tileX, f32 tileY,
-                                                                const String& name, const String& materialName);
+        [[nodiscard]] static GeometryConfig GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX,
+                                                                f32 tileY, const String& name, const String& materialName);
 
-        [[nodiscard]] static GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY,
-                                                               const String& name, const String& materialName);
+        [[nodiscard]] static GeometryConfig GenerateCubeConfig(f32 width, f32 height, f32 depth, f32 tileX, f32 tileY, const String& name,
+                                                               const String& materialName);
 
     private:
         template <typename VertexType, typename IndexType>
@@ -83,8 +81,7 @@ namespace C3D
     };
 
     template <typename VertexType, typename IndexType>
-    Geometry* GeometrySystem::AcquireFromConfig(const IGeometryConfig<VertexType, IndexType>& config,
-                                                const bool autoRelease) const
+    Geometry* GeometrySystem::AcquireFromConfig(const IGeometryConfig<VertexType, IndexType>& config, const bool autoRelease) const
     {
         Geometry* g = nullptr;
         for (u32 i = 0; i < m_config.maxGeometryCount; i++)
@@ -103,14 +100,14 @@ namespace C3D
 
         if (!g)
         {
-            m_logger.Error(
-                "Unable to obtain free slot for geometry. Adjust config to allow for more space. Returning nullptr");
+            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM",
+                               "Unable to obtain free slot for geometry. Adjust config to allow for more space. Returning nullptr.");
             return nullptr;
         }
 
         if (!CreateGeometry(config, g))
         {
-            m_logger.Error("Failed to create geometry. Returning nullptr");
+            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM", "Failed to create geometry. Returning nullptr.");
             return nullptr;
         }
 
@@ -122,15 +119,15 @@ namespace C3D
     {
         if (!g)
         {
-            m_logger.Error("CreateGeometry() - Requires a valid pointer to geometry.");
+            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM", "Requires a valid pointer to geometry.");
             return false;
         }
 
         // Send the geometry off to the renderer to be uploaded to the gpu
-        if (!Renderer.CreateGeometry(*g, sizeof(VertexType), config.vertices.Size(), config.vertices.GetData(),
-                                     sizeof(IndexType), config.indices.Size(), config.indices.GetData()))
+        if (!Renderer.CreateGeometry(*g, sizeof(VertexType), config.vertices.Size(), config.vertices.GetData(), sizeof(IndexType),
+                                     config.indices.Size(), config.indices.GetData()))
         {
-            m_logger.Error("CreateGeometry() - Creating geometry failed during the Renderer's CreateGeometry.");
+            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM", "Creating geometry failed during the Renderer's CreateGeometry.");
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;
@@ -142,7 +139,7 @@ namespace C3D
 
         if (!Renderer.UploadGeometry(*g))
         {
-            m_logger.Error("CreateGeometry() - Creating geometry failed during the Renderer's UploadGeometry.");
+            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM", "Creating geometry failed during the Renderer's UploadGeometry.");
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;

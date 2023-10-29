@@ -13,15 +13,17 @@
 
 namespace C3D
 {
-    TextureSystem::TextureSystem(const SystemManager* pSystemsManager)
-        : SystemWithConfig(pSystemsManager, "TEXTURE_SYSTEM"), m_initialized(false)
-    {}
+    constexpr const char* INSTANCE_NAME = "TEXTURE_SYSTEM";
 
-    bool TextureSystem::Init(const TextureSystemConfig& config)
+    TextureSystem::TextureSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
+
+    bool TextureSystem::OnInit(const TextureSystemConfig& config)
     {
+        INFO_LOG("Initializing.");
+
         if (config.maxTextureCount == 0)
         {
-            m_logger.Error("config.maxTextureCount must be > 0");
+            ERROR_LOG("config.maxTextureCount must be > 0.");
             return false;
         }
 
@@ -36,9 +38,9 @@ namespace C3D
         return true;
     }
 
-    void TextureSystem::Shutdown()
+    void TextureSystem::OnShutdown()
     {
-        m_logger.Info("Destroying all loaded textures");
+        INFO_LOG("Destroying all loaded textures.");
         for (auto& ref : m_registeredTextures)
         {
             if (ref.texture.generation != INVALID_ID)
@@ -50,7 +52,7 @@ namespace C3D
         // Free the memory that was storing all the textures
         m_registeredTextures.Destroy();
 
-        m_logger.Info("Destroying default textures");
+        INFO_LOG("Destroying default textures.");
         DestroyDefaultTextures();
     }
 
@@ -58,35 +60,32 @@ namespace C3D
     {
         if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
         {
-            m_logger.Warn("Acquire() - Called for '{}' texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
+            WARN_LOG("Called for '{}' texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
             return &m_defaultTexture;
         }
 
         if (StringUtils::IEquals(name, DEFAULT_DIFFUSE_TEXTURE_NAME))
         {
-            m_logger.Warn("Acquire() - Called for '{}' texture. Use GetDefault() for this.",
-                          DEFAULT_DIFFUSE_TEXTURE_NAME);
+            WARN_LOG("Called for '{}' texture. Use GetDefault() for this.", DEFAULT_DIFFUSE_TEXTURE_NAME);
             return &m_defaultDiffuseTexture;
         }
 
         if (StringUtils::IEquals(name, DEFAULT_SPECULAR_TEXTURE_NAME))
         {
-            m_logger.Warn("Acquire() - Called for '{}' texture. Use GetDefault() for this.",
-                          DEFAULT_SPECULAR_TEXTURE_NAME);
+            WARN_LOG("Called for '{}' texture. Use GetDefault() for this.", DEFAULT_SPECULAR_TEXTURE_NAME);
             return &m_defaultSpecularTexture;
         }
 
         if (StringUtils::IEquals(name, DEFAULT_NORMAL_TEXTURE_NAME))
         {
-            m_logger.Warn("Acquire() - Called for '{}' texture. Use GetDefault() for this.",
-                          DEFAULT_NORMAL_TEXTURE_NAME);
+            WARN_LOG("Called for '{}' texture. Use GetDefault() for this.", DEFAULT_NORMAL_TEXTURE_NAME);
             return &m_defaultNormalTexture;
         }
 
         Texture* texture = ProcessTextureReference(name, TextureType::Type2D, 1, autoRelease, false);
         if (!texture)
         {
-            m_logger.Error("Acquire() - Failed to obtain a new texture id.");
+            ERROR_LOG("Failed to obtain a new texture id.");
             return nullptr;
         }
         return texture;
@@ -98,14 +97,14 @@ namespace C3D
         // retrieved with GetDefault()
         if (StringUtils::IEquals(name, DEFAULT_TEXTURE_NAME))
         {
-            m_logger.Warn("AcquireCube() - Called for {} texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
+            WARN_LOG("Called for '{}' texture. Use GetDefault() for this.", DEFAULT_TEXTURE_NAME);
             return &m_defaultTexture;
         }
 
         Texture* texture = ProcessTextureReference(name, TextureType::TypeCube, 1, autoRelease, false);
         if (!texture)
         {
-            m_logger.Error("AcquireCube() - Failed to obtain a new texture id.");
+            ERROR_LOG("Failed to obtain a new texture id.");
             return nullptr;
         }
         return texture;
@@ -119,7 +118,7 @@ namespace C3D
         Texture* t = ProcessTextureReference(name, TextureType::Type2D, 1, false, true);
         if (!t)
         {
-            m_logger.Error("AcquireWritable() - Failed to obtain a new texture id.");
+            ERROR_LOG("Failed to obtain a new texture id.");
             return nullptr;
         }
 
@@ -135,17 +134,15 @@ namespace C3D
     {
         if (name == DEFAULT_TEXTURE_NAME)
         {
-            m_logger.Warn("Release() - Tried to release '{}'. This happens on shutdown automatically.",
-                          DEFAULT_TEXTURE_NAME);
+            WARN_LOG("Tried to release '{}'. This happens on shutdown automatically.", DEFAULT_TEXTURE_NAME);
             return;
         }
 
         ProcessTextureReference(name.Data(), TextureType::Type2D, -1, false, false);
     }
 
-    void TextureSystem::WrapInternal(const char* name, const u32 width, const u32 height, const u8 channelCount,
-                                     const bool hasTransparency, const bool isWritable, const bool registerTexture,
-                                     void* internalData, Texture* outTexture)
+    void TextureSystem::WrapInternal(const char* name, const u32 width, const u32 height, const u8 channelCount, const bool hasTransparency,
+                                     const bool isWritable, const bool registerTexture, void* internalData, Texture* outTexture)
     {
         Texture* t;
         if (registerTexture)
@@ -155,7 +152,7 @@ namespace C3D
             t = ProcessTextureReference(name, TextureType::Type2D, 1, false, true);
             if (!t)
             {
-                m_logger.Error("WrapInternal() - Failed to obtain a new texture id.");
+                ERROR_LOG("Failed to obtain a new texture id.");
                 return;
             }
         }
@@ -195,7 +192,7 @@ namespace C3D
         {
             if (!t->IsWritable())
             {
-                m_logger.Warn("Resize() - Should not be called on textures that are not writable.");
+                WARN_LOG("Should not be called on textures that are not writable.");
                 return false;
             }
 
@@ -228,7 +225,7 @@ namespace C3D
     {
         if (!m_initialized)
         {
-            m_logger.Error("GetDefault() was called before initialization. Returned nullptr");
+            ERROR_LOG("Was called before initialization. Returning nullptr.");
             return nullptr;
         }
         return &m_defaultTexture;
@@ -238,7 +235,7 @@ namespace C3D
     {
         if (!m_initialized)
         {
-            m_logger.Error("GetDefaultDiffuse() was called before initialization. Returned nullptr");
+            ERROR_LOG("Was called before initialization. Returning nullptr.");
             return nullptr;
         }
         return &m_defaultDiffuseTexture;
@@ -248,7 +245,7 @@ namespace C3D
     {
         if (!m_initialized)
         {
-            m_logger.Error("GetDefaultSpecular() was called before initialization. Returned nullptr");
+            ERROR_LOG("Was called before initialization. Returning nullptr.");
             return nullptr;
         }
         return &m_defaultSpecularTexture;
@@ -258,7 +255,7 @@ namespace C3D
     {
         if (!m_initialized)
         {
-            m_logger.Error("GetDefaultNormal() was called before initialization. Returned nullptr");
+            ERROR_LOG("Was called before initialization. Returning nullptr.");
             return nullptr;
         }
         return &m_defaultNormalTexture;
@@ -268,7 +265,7 @@ namespace C3D
     {
         // NOTE: Create a default texture, a 256x256 blue/white checkerboard pattern
         // this is done in code to eliminate dependencies
-        m_logger.Trace("Create default texture...");
+        TRACE("Create default texture...");
         constexpr u32 textureDimensions = 256;
         constexpr u32 channels          = 4;
         constexpr u32 pixelCount        = textureDimensions * textureDimensions;
@@ -301,14 +298,13 @@ namespace C3D
             }
         }
 
-        m_defaultTexture =
-            Texture(DEFAULT_TEXTURE_NAME, TextureType::Type2D, textureDimensions, textureDimensions, channels);
+        m_defaultTexture = Texture(DEFAULT_TEXTURE_NAME, TextureType::Type2D, textureDimensions, textureDimensions, channels);
         Renderer.CreateTexture(pixels, &m_defaultTexture);
         // Manually set the texture generation to invalid since this is the default texture
         m_defaultTexture.generation = INVALID_ID;
 
         // Diffuse texture
-        m_logger.Trace("Create default diffuse texture...");
+        TRACE("Create default diffuse texture...");
         const auto diffusePixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
         // Default diffuse texture is all white
         std::memset(diffusePixels, 255, sizeof(u8) * 16 * 16 * 4);  // Default diffuse map is all white
@@ -319,7 +315,7 @@ namespace C3D
         m_defaultDiffuseTexture.generation = INVALID_ID;
 
         // Specular texture.
-        m_logger.Trace("Create default specular texture...");
+        TRACE("Create default specular texture...");
         const auto specPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
         std::memset(specPixels, 0, sizeof(u8) * 16 * 16 * 4);  // Default specular map is black (no specular)
 
@@ -329,7 +325,7 @@ namespace C3D
         m_defaultSpecularTexture.generation = INVALID_ID;
 
         // Normal texture.
-        m_logger.Trace("Create default normal texture...");
+        TRACE("Create default normal texture...");
         const auto normalPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
         std::memset(normalPixels, 0, sizeof(u8) * 16 * 16 * 4);
 
@@ -394,9 +390,7 @@ namespace C3D
 
         if (loadingTextureIndex == INVALID_ID)
         {
-            m_logger.Error(
-                "LoadTexture() - Failed to queue texture for loading since there is no space in the loading texture "
-                "queue");
+            ERROR_LOG("Failed to queue texture for loading since there is no space in the loading texture queue.");
             return false;
         }
 
@@ -406,18 +400,17 @@ namespace C3D
         info.onFailure  = [this, loadingTextureIndex]() {
             const auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
 
-            m_logger.Error("LoadJobFailure() - Failed to load texture '{}'.", loadingTexture.resourceName);
+            ERROR_LOG("Failed to load texture '{}'.", loadingTexture.resourceName);
             CleanupLoadingTexture(loadingTextureIndex);
         };
 
         Jobs.Submit(std::move(info));
-        m_logger.Trace("LoadTexture() - Loading job submitted for: '{}'.", name);
+        TRACE("Loading job submitted for: '{}'.", name);
 
         return true;
     }
 
-    bool TextureSystem::LoadCubeTextures(const char* name,
-                                         const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames,
+    bool TextureSystem::LoadCubeTextures(const char* name, const std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6>& textureNames,
                                          Texture* texture) const
     {
         constexpr ImageLoadParams params{ false };
@@ -432,13 +425,13 @@ namespace C3D
             Image res{};
             if (!Resources.Load(textureName.Data(), res, params))
             {
-                m_logger.Error("LoadCubeTextures() - Failed to load image resource for texture '{}'", textureName);
+                ERROR_LOG("Failed to load image resource for texture '{}'.", textureName);
                 return false;
             }
 
             if (!res.pixels)
             {
-                m_logger.Error("LoadCubeTextures() - Failed to load image data for texture '{}'", name);
+                ERROR_LOG("Failed to load image data for texture '{}'.", name);
                 return false;
             }
 
@@ -452,16 +445,13 @@ namespace C3D
                 texture->name         = name;
 
                 imageSize = static_cast<u64>(texture->width) * texture->height * texture->channelCount;
-                pixels =
-                    Memory.Allocate<u8>(MemoryType::Array, imageSize * 6);  // 6 textures one for every side of the cube
+                pixels    = Memory.Allocate<u8>(MemoryType::Array, imageSize * 6);  // 6 textures one for every side of the cube
             }
             else
             {
-                if (texture->width != res.width || texture->height != res.height ||
-                    texture->channelCount != res.channelCount)
+                if (texture->width != res.width || texture->height != res.height || texture->channelCount != res.channelCount)
                 {
-                    m_logger.Error(
-                        "LoadCubeTextures() - Failed to load. All textures must be the same resolution and bit depth.");
+                    ERROR_LOG("Failed to load. All textures must be the same resolution and bit depth.");
                     Memory.Free(MemoryType::Array, pixels);
                     pixels = nullptr;
                     return false;
@@ -489,7 +479,7 @@ namespace C3D
         Renderer.DestroyTexture(texture);
 
         // Zero out the memory for the texture
-        texture->name.Clear();
+        texture->name.Destroy();
 
         // Invalidate the id and generation
         texture->id         = INVALID_ID;
@@ -504,7 +494,7 @@ namespace C3D
             // We have no reference to this texture yet
             if (referenceDiff < 0)
             {
-                m_logger.Warn("ProcessTextureReference() - Tried to release a texture that has referenceCount = 0");
+                WARN_LOG("Tried to release a texture that has referenceCount = 0.");
                 return nullptr;
             }
 
@@ -531,18 +521,13 @@ namespace C3D
                 DestroyTexture(&ref.texture);
                 // Delete the reference
                 m_registeredTextures.Delete(nameCopy);
-                m_logger.Trace(
-                    "ProcessTextureReference() - Released texture '{}'. Texture unloaded because refCount = 0 and "
-                    "autoRelease = true",
-                    nameCopy);
+                TRACE("Released texture '{}'. Texture unloaded because refCount = 0 and autoRelease = true.", nameCopy);
             }
             else
             {
                 // Otherwise we simply do nothing
-                m_logger.Trace(
-                    "ProcessTextureReference() - Released texture '{}'. Texture now has refCount = {} (autoRelease = "
-                    "{})",
-                    nameCopy, ref.referenceCount, ref.autoRelease);
+                TRACE("Released texture '{}'. Texture now has refCount = {} (autoRelease = {}).", nameCopy, ref.referenceCount,
+                      ref.autoRelease);
             }
 
             return nullptr;
@@ -558,8 +543,7 @@ namespace C3D
                 // Create a new texture
                 if (skipLoad)
                 {
-                    m_logger.Trace("ProcessTextureReference() - Loading skipped for texture '{}' as requested.",
-                                   nameCopy);
+                    TRACE("Loading skipped for texture '{}' as requested.", nameCopy);
                 }
                 else
                 {
@@ -575,7 +559,7 @@ namespace C3D
 
                         if (!LoadCubeTextures(name, textureNames, &ref.texture))
                         {
-                            m_logger.Error("ProcessTextureReference() - Failed to load cube textures '{}'.", name);
+                            ERROR_LOG("Failed to load cube textures '{}'.", name);
                             return nullptr;
                         }
                     }
@@ -583,7 +567,7 @@ namespace C3D
                     {
                         if (!LoadTexture(name, &ref.texture))
                         {
-                            m_logger.Error("ProcessTextureReference() - Failed to load texture '{}.'", name);
+                            ERROR_LOG("Failed to load texture '{}.'", name);
                             return nullptr;
                         }
                     }
@@ -591,17 +575,14 @@ namespace C3D
                     // Set the texture's id equal to the index into the registered textures hashmap to ensure it is
                     // unique (except for when collisions happen but this can be prevented by making the hashmap larger)
                     ref.texture.id = m_registeredTextures.GetIndex(name);
-                    m_logger.Trace(
-                        "ProcessTextureReference() - Texture '{}' did not exist yet. Created and refCount is now {}.",
-                        name, ref.referenceCount);
+                    TRACE("Texture '{}' did not exist yet. Created and refCount is now {}.", name, ref.referenceCount);
                 }
 
                 ref.texture.name = name;
             }
             else
             {
-                m_logger.Trace("ProcessTextureReference() - Texture '{}' already exists. RefCount is now {}.", name,
-                               ref.referenceCount);
+                TRACE("Texture '{}' already exists. RefCount is now {}.", name, ref.referenceCount);
             }
         }
 
@@ -613,8 +594,7 @@ namespace C3D
         constexpr ImageLoadParams resourceParams{ true };
 
         auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
-        const auto result =
-            Resources.Load(loadingTexture.resourceName.Data(), loadingTexture.imageResource, resourceParams);
+        const auto result    = Resources.Load(loadingTexture.resourceName.Data(), loadingTexture.imageResource, resourceParams);
         if (result)
         {
             const auto& resourceData = loadingTexture.imageResource;
@@ -627,8 +607,8 @@ namespace C3D
             loadingTexture.currentGeneration      = loadingTexture.outTexture->generation;
             loadingTexture.outTexture->generation = INVALID_ID;
 
-            const u64 totalSize = static_cast<u64>(loadingTexture.tempTexture.width) *
-                                  loadingTexture.tempTexture.height * loadingTexture.tempTexture.channelCount;
+            const u64 totalSize = static_cast<u64>(loadingTexture.tempTexture.width) * loadingTexture.tempTexture.height *
+                                  loadingTexture.tempTexture.channelCount;
             // Check for transparency
             bool hasTransparency = false;
             for (u64 i = 0; i < totalSize; i += loadingTexture.tempTexture.channelCount)
@@ -674,7 +654,7 @@ namespace C3D
             loadingTexture.outTexture->generation++;
         }
 
-        m_logger.Trace("LoadJobSuccess() - Successfully loaded texture '{}'.", loadingTexture.resourceName);
+        TRACE("Successfully loaded texture '{}'.", loadingTexture.resourceName);
         CleanupLoadingTexture(loadingTextureIndex);
     }
 

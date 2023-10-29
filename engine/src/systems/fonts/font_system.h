@@ -46,8 +46,8 @@ namespace C3D
     public:
         explicit FontSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const FontSystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const FontSystemConfig& config) override;
+        void OnShutdown() override;
 
         [[nodiscard]] bool LoadSystemFont(const FontSystemConfig& config) const;
         bool LoadBitmapFont(const BitmapFontConfig& config);

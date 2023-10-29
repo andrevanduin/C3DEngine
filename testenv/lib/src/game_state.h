@@ -2,6 +2,7 @@
 #pragma once
 #include <core/application.h>
 #include <core/frame_data.h>
+#include <renderer/viewport.h>
 #include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
 #include <resources/ui_text.h>
@@ -33,7 +34,8 @@ struct SelectedObject
 
 struct GameState final : C3D::ApplicationState
 {
-    C3D::Camera* camera = nullptr;
+    C3D::Camera* camera  = nullptr;
+    C3D::Camera* camera2 = nullptr;
 
     ReloadState reloadState = ReloadState::Done;
 
@@ -44,6 +46,9 @@ struct GameState final : C3D::ApplicationState
 
     C3D::DynamicArray<C3D::DebugLine3D> testLines;
     C3D::DynamicArray<C3D::DebugBox3D> testBoxes;
+
+    C3D::Viewport worldViewport, worldViewport2;
+    C3D::Viewport uiViewport;
 
     SelectedObject selectedObject;
 

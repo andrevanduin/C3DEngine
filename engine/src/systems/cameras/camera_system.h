@@ -1,6 +1,6 @@
 
 #pragma once
-#include "containers/hash_table.h"
+#include "containers/hash_map.h"
 #include "renderer/camera.h"
 #include "systems/system.h"
 
@@ -13,10 +13,9 @@ namespace C3D
         u16 maxCameraCount;
     };
 
-    struct CameraLookup
+    struct CameraReference
     {
-        u16 id;
-        u16 referenceCount;
+        u16 referenceCount = 1;
         Camera camera;
     };
 
@@ -25,8 +24,8 @@ namespace C3D
     public:
         explicit CameraSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const CameraSystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const CameraSystemConfig& config) override;
+        void OnShutdown() override;
 
         Camera* Acquire(const char* name);
         void Release(const char* name);
@@ -34,8 +33,7 @@ namespace C3D
         Camera* GetDefault();
 
     private:
-        HashTable<u16> m_cameraLookupTable;
-        CameraLookup* m_cameras;
+        HashMap<String, CameraReference> m_cameraMap;
 
         Camera m_defaultCamera;
     };

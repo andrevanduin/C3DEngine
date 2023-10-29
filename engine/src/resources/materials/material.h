@@ -29,6 +29,7 @@ namespace C3D
         /** @brief The properties associated with this Material. */
         void* properties;
         /** @brief Synced to the renderer current frame number when the material has been applied that frame. */
-        u32 renderFrameNumber = INVALID_ID;
+        u64 renderFrameNumber = INVALID_ID_U64;
+        u64 renderDrawIndex   = INVALID_ID_U64;
     };
 }  // namespace C3D

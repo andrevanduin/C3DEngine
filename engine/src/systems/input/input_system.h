@@ -54,9 +54,9 @@ namespace C3D
     public:
         explicit InputSystem(const SystemManager* pSystemsManager);
 
-        bool Init() override;
+        bool OnInit() override;
 
-        void Update(const FrameData& frameData) override;
+        void OnUpdate(const FrameData& frameData) override;
 
         void ProcessKey(Keys key, InputState state);
         void ProcessButton(u8 button, InputState state);
@@ -86,9 +86,13 @@ namespace C3D
         [[nodiscard]] C3D_API const ivec2& GetPreviousMousePosition() const;
 
     private:
-        KeyBoardState m_keyboardCurrent, m_keyboardPrevious;
-        MouseState m_mouseCurrent, m_mousePrevious;
+        KeyBoardState m_keyboardCurrent  = {};
+        KeyBoardState m_keyboardPrevious = {};
 
-        u8 m_downKeys[MAX_HELD_KEYS], m_downButtons[MAX_HELD_BUTTONS];
+        MouseState m_mouseCurrent  = {};
+        MouseState m_mousePrevious = {};
+
+        u8 m_downKeys[MAX_HELD_KEYS] = {};
+        u8 m_downButtons[MAX_HELD_BUTTONS] = {};
     };
 }  // namespace C3D

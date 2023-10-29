@@ -1,14 +1,9 @@
 
 #pragma once
 
-#pragma warning(push, 0)
-#undef SPDLOG_ACTIVE_LEVEL
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 #include <spdlog/spdlog.h>
-#pragma warning(pop)
 
 #include "asserts.h"
-#include "containers/cstring.h"
 #include "defines.h"
 
 namespace C3D
@@ -76,54 +71,100 @@ namespace C3D
         static std::shared_ptr<spdlog::logger>& GetCoreLogger();
     };
 
-    template <u64 PrefixSize>
-    class LoggerInstance
-    {
-    public:
-        explicit LoggerInstance(CString<PrefixSize> prefix) : prefix(std::move(prefix)) {}
+#ifdef C3D_LOG_DEBUG
+#define INSTANCE_DEBUG_LOG(instance, format, ...)                                                                   \
+    {                                                                                                               \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(instance, __func__, format)); \
+        C3D::Logger::Debug(formatStr.data(), __VA_ARGS__);                                                          \
+    }
 
-        template <class... Args>
-        void Debug(const char* format, Args&&... args) const
-        {
-            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
-            Logger::Debug(formatStr.data(), std::forward<Args>(args)...);
-        }
+#define DEBUG_LOG(format, ...)                                                                                           \
+    {                                                                                                                    \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(INSTANCE_NAME, __func__, format)); \
+        C3D::Logger::Debug(formatStr.data(), __VA_ARGS__);                                                               \
+    }
+#else
+#define INSTANCE_TRACE(instance, format, ...)
+#define DEBUG_LOG(format, ...)
+#endif
 
-        template <class... Args>
-        void Trace(const char* format, Args&&... args) const
-        {
-            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
-            Logger::Trace(formatStr.data(), std::forward<Args>(args)...);
-        }
+#ifdef C3D_LOG_TRACE
+#define INSTANCE_TRACE(instance, format, ...)                                                                       \
+    {                                                                                                               \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(instance, __func__, format)); \
+        C3D::Logger::Trace(formatStr.data(), __VA_ARGS__);                                                          \
+    }
 
-        template <class... Args>
-        void Info(const char* format, Args&&... args) const
-        {
-            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
-            Logger::Info(formatStr.data(), std::forward<Args>(args)...);
-        }
+#define TRACE(format, ...)                                                                                               \
+    {                                                                                                                    \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(INSTANCE_NAME, __func__, format)); \
+        C3D::Logger::Trace(formatStr.data(), __VA_ARGS__);                                                               \
+    }
+#else
+#define INSTANCE_TRACE(instance, format, ...)
+#define TRACE(format, ...)
+#endif
 
-        template <class... Args>
-        void Warn(const char* format, Args&&... args) const
-        {
-            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
-            Logger::Warn(formatStr.data(), std::forward<Args>(args)...);
-        }
+#ifdef C3D_LOG_ERROR
+#define INSTANCE_ERROR_LOG(instance, format, ...)                                                                   \
+    {                                                                                                               \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(instance, __func__, format)); \
+        C3D::Logger::Error(formatStr.data(), __VA_ARGS__);                                                          \
+    }
 
-        template <class... Args>
-        void Error(const char* format, Args&&... args) const
-        {
-            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
-            Logger::Error(formatStr.data(), std::forward<Args>(args)...);
-        }
+#define ERROR_LOG(format, ...)                                                                                           \
+    {                                                                                                                    \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(INSTANCE_NAME, __func__, format)); \
+        C3D::Logger::Error(formatStr.data(), ##__VA_ARGS__);                                                             \
+    }
+#else
+#define INSTANCE_ERROR_LOG(instance, format, ...)
+#define ERROR_LOG(format, ...)
+#endif
 
-        template <class... Args>
-        void Fatal(const char* format, Args&&... args) const
-        {
-            const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(prefix, format));
-            Logger::Fatal(formatStr.data(), std::forward<Args>(args)...);
-        }
+#ifdef C3D_LOG_WARN
+#define INSTANCE_WARN_LOG(instance, format, ...)                                                                    \
+    {                                                                                                               \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(instance, __func__, format)); \
+        C3D::Logger::Warn(formatStr.data(), __VA_ARGS__);                                                           \
+    }
 
-        CString<PrefixSize> prefix;
-    };
+#define WARN_LOG(format, ...)                                                                                            \
+    {                                                                                                                    \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(INSTANCE_NAME, __func__, format)); \
+        C3D::Logger::Warn(formatStr.data(), __VA_ARGS__);                                                                \
+    }
+#else
+#define INSTANCE_WARN_LOG(instance, format, ...)
+#define WARN_LOG(format, ...)
+#endif
+
+#ifdef C3D_LOG_INFO
+#define INSTANCE_INFO_LOG(instance, format, ...)                                                                    \
+    {                                                                                                               \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(instance, __func__, format)); \
+        C3D::Logger::Info(formatStr.data(), __VA_ARGS__);                                                           \
+    }
+
+#define INFO_LOG(format, ...)                                                                                            \
+    {                                                                                                                    \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(INSTANCE_NAME, __func__, format)); \
+        C3D::Logger::Info(formatStr.data(), __VA_ARGS__);                                                                \
+    }
+#else
+#define INSTANCE_INFO_LOG(instance, format, ...)
+#define INFO_LOG(format, ...)
+#endif
+
+#define INSTANCE_FATAL_LOG(instance, format, ...)                                                                   \
+    {                                                                                                               \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(instance, __func__, format)); \
+        C3D::Logger::Fatal(formatStr.data(), __VA_ARGS__);                                                          \
+    }
+
+#define FATAL_LOG(format, ...)                                                                                           \
+    {                                                                                                                    \
+        const auto formatStr = fmt::vformat("[{}] - {}() - {}", fmt::make_format_args(INSTANCE_NAME, __func__, format)); \
+        C3D::Logger::Fatal(formatStr.data(), __VA_ARGS__);                                                               \
+    }
 }  // namespace C3D

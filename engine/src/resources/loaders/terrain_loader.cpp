@@ -9,18 +9,18 @@
 
 namespace C3D
 {
-    constexpr auto FILE_EXTENSION = "cterrain";
+    constexpr const char* INSTANCE_NAME = "TERRAIN_LOADER";
+    constexpr auto FILE_EXTENSION       = "cterrain";
 
     ResourceLoader<TerrainConfig>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, "TERRAIN_LOADER", MemoryType::Terrain, ResourceType::Terrain, nullptr,
-                          "terrains")
+        : IResourceLoader(pSystemsManager, MemoryType::Terrain, ResourceType::Terrain, nullptr, "terrains")
     {}
 
     bool ResourceLoader<TerrainConfig>::Load(const char* name, TerrainConfig& resource) const
     {
         if (std::strlen(name) == 0)
         {
-            m_logger.Error("Load() - Failed because provided name is empty.");
+            ERROR_LOG("Failed because provided name is empty.");
             return false;
         }
 
@@ -31,7 +31,7 @@ namespace C3D
         File file;
         if (!file.Open(fullPath, FileModeRead))
         {
-            m_logger.Error("Load() - Failed to open Terrain config file for reading: '{}'.", fullPath);
+            ERROR_LOG("Failed to open Terrain config file for reading: '{}'.", fullPath);
             return false;
         }
 
@@ -98,8 +98,7 @@ namespace C3D
                 {
                     if (resource.materials.Size() >= TERRAIN_MAX_MATERIAL_COUNT)
                     {
-                        throw Exception("Maximum amount of materials exceeded must be <= {}.",
-                                        TERRAIN_MAX_MATERIAL_COUNT);
+                        throw Exception("Maximum amount of materials exceeded must be <= {}.", TERRAIN_MAX_MATERIAL_COUNT);
                     }
 
                     resource.materials.PushBack(value);
@@ -114,12 +113,12 @@ namespace C3D
         }
         catch (const std::exception& exc)
         {
-            m_logger.Error("Load() - Failed to load file: '{}'. {} on line: '{}'", fullPath, exc.what(), lineNumber);
+            ERROR_LOG("Failed to load file: '{}'. {} on line: '{}'.", fullPath, exc.what(), lineNumber);
         }
 
         if (!file.Close())
         {
-            m_logger.Error("Load() - Failed to close Terrain config file: '{}'", fullPath);
+            ERROR_LOG("Failed to close Terrain config file: '{}'.", fullPath);
             return false;
         }
 
@@ -130,8 +129,7 @@ namespace C3D
             ImageLoadParams params = { false };
             if (!Resources.Load(heightmapFile, heightmap, params))
             {
-                m_logger.Error("Load() - Failed to load HeightmapFile: '{}' for Terrain: '{}'. Setting defaults.",
-                               heightmapFile, name);
+                ERROR_LOG("Failed to load HeightmapFile: '{}' for Terrain: '{}'. Setting defaults.", heightmapFile, name);
 
                 resource.tileCountX = 100;
                 resource.tileCountZ = 100;

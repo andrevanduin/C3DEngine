@@ -41,8 +41,7 @@ namespace C3D
     public:
         explicit EventSystem(const SystemManager* pSystemsManager);
 
-        bool Init() override;
-        void Shutdown() override;
+        void OnShutdown() override;
 
         RegisteredEventCallback Register(u16 code, const EventCallbackFunc& callback);
         bool Unregister(u16 code, EventCallbackId& callbackId);
@@ -53,6 +52,6 @@ namespace C3D
         bool Fire(u16 code, void* sender, const EventContext& data) const;
 
     private:
-        EventCodeEntry m_registered[MAX_MESSAGE_CODES];
+        EventCodeEntry m_registered[MAX_MESSAGE_CODES] = {};
     };
 }  // namespace C3D

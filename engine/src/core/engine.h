@@ -46,8 +46,6 @@ namespace C3D
         const SystemManager* GetSystemsManager() { return &m_systemsManager; }
 
     protected:
-        LoggerInstance<16> m_logger;
-
         Application* m_application;
         UIConsole* m_pConsole;
 

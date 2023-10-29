@@ -5,8 +5,7 @@
 
 namespace C3D
 {
-    MallocAllocator::MallocAllocator()
-        : BaseAllocator(ToUnderlying(AllocatorType::Malloc)), m_logger("MALLOC_ALLOCATOR")
+    MallocAllocator::MallocAllocator() : BaseAllocator(ToUnderlying(AllocatorType::Malloc))
     {
         m_id = Metrics.CreateAllocator("MALLOC_ALLOCATOR", AllocatorType::Malloc, 0);
     }
