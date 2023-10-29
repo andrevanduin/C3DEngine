@@ -54,10 +54,10 @@ public:
 
     void OnResize() override;
 
-    bool OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* data, C3D::RenderViewPacket* outPacket) override;
+    bool OnBuildPacket(const C3D::FrameData& frameData, const C3D::Viewport& viewport, C3D::Camera* camera, void* data,
+                       C3D::RenderViewPacket* outPacket) override;
 
-    bool OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, u64 frameNumber,
-                  u64 renderTargetIndex) override;
+    bool OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet) override;
 
     void GetMatrices(mat4* outView, mat4* outProjection);
 

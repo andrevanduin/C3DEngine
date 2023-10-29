@@ -1,6 +1,7 @@
 
 #pragma once
 #include <core/defines.h>
+
 #include <string>
 #include <vector>
 
@@ -14,27 +15,25 @@ typedef u8 (*pFnTest)();
 
 struct TestEntry
 {
-	pFnTest func;
-	std::string description;
-	std::string type;
+    pFnTest func;
+    std::string description;
+    std::string type;
 };
 
 class TestManager
 {
 public:
-	TestManager(u64 memorySize);
-	~TestManager();
+    TestManager(u64 memorySize);
+    ~TestManager();
 
-	void StartType(const std::string& type);
-	void Register(pFnTest, const std::string& description);
+    void StartType(const std::string& type);
+    void Register(pFnTest, const std::string& description);
 
-	void RunTests();
+    void RunTests();
 
 private:
-	C3D::LoggerInstance<16> m_logger;
+    std::string m_currentType;
+    std::string m_prevType;
 
-	std::string m_currentType;
-	std::string m_prevType;
-
-	std::vector<TestEntry> m_tests;
+    std::vector<TestEntry> m_tests;
 };

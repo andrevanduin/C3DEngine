@@ -26,7 +26,7 @@ namespace C3D
     class C3D_API UIText
     {
     public:
-        UIText();
+        UIText() = default;
 
         UIText(const UIText&) = delete;
         UIText(UIText&&)      = delete;
@@ -36,8 +36,8 @@ namespace C3D
 
         ~UIText();
 
-        bool Create(const String& name, const SystemManager* pSystemsManager, UITextType fontType, const char* fontName,
-                    u16 fontSize, const char* textContent);
+        bool Create(const String& name, const SystemManager* pSystemsManager, UITextType fontType, const char* fontName, u16 fontSize,
+                    const char* textContent);
         void Destroy();
 
         void SetPosition(const vec3& pos);
@@ -55,6 +55,8 @@ namespace C3D
 
         u32 instanceId  = INVALID_ID;
         u64 frameNumber = INVALID_ID_U64;
+        /** @brief Synced to the renderer's current draw index when the material has been applied that frame.*/
+        u8 drawIndex = INVALID_ID_U8;
 
         Transform transform;
 
@@ -62,8 +64,6 @@ namespace C3D
         void RegenerateGeometry();
         [[nodiscard]] FontGlyph* GetFontGlyph(i32 codepoint) const;
         [[nodiscard]] f32 GetFontKerningAmount(i32 codepoint, u32 offset, u64 utf8Size) const;
-
-        LoggerInstance<16> m_logger;
 
         RenderBuffer* m_vertexBuffer = nullptr;
         RenderBuffer* m_indexBuffer  = nullptr;

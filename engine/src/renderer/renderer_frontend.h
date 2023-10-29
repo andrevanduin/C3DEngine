@@ -17,6 +17,7 @@ namespace C3D
     struct FrameData;
 
     class Camera;
+    class Viewport;
 
     struct RenderSystemConfig
     {
@@ -31,12 +32,49 @@ namespace C3D
     public:
         explicit RenderSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const RenderSystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const RenderSystemConfig& config) override;
+        void OnShutdown() override;
 
         void OnResize(u32 width, u32 height);
 
-        bool DrawFrame(RenderPacket* packet, const FrameData& frameData);
+        /**
+         * @brief Performs all the setup routines which are required at the start of a frame.
+         * @note If this method returns false it does not necessarily indicate a failure
+         * it can also mean that the backend is simply currently not in a state capable of drawing a frame.
+         * If this method returns false you should not call EndFrame!
+         *
+         * @param frameData The frame data associated with this frame.
+         * @return True if successful, false otherwise.
+         */
+        bool PrepareFrame(FrameData& frameData);
+
+        /**
+         * @brief Begins the actual render. There must be atleast one of these calls per frame.
+         * @note There should be a matching end call for every begin call.
+         *
+         * @param frameData The frame data associated with this frame.
+         * @return True if successful, false otherwise.
+         */
+        bool Begin(const FrameData& frameData) const;
+
+        /**
+         * @brief Ends the actual render. There must be atleast one of these calls per frame.
+         *
+         * @param frameData The frame data associated with this frame.
+         * @return True if successful, false otherwise.
+         */
+        bool End(FrameData& frameData) const;
+
+        /**
+         * @brief Performs routines required to draw the frame, such as presentation.
+         * @note This method should only be called if BeginFrame returned true
+         *
+         * @param packet
+         * @param frameData
+         * @return true
+         * @return false
+         */
+        bool Present(const RenderPacket& packet, const FrameData& frameData) const;
 
         void SetViewport(const vec4& rect) const;
         void ResetViewport() const;
@@ -104,6 +142,9 @@ namespace C3D
         [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize, bool useFreelist) const;
         bool DestroyRenderBuffer(RenderBuffer* buffer) const;
 
+        const Viewport* GetActiveViewport() const;
+        void SetActiveViewport(const Viewport* viewport);
+
         [[nodiscard]] bool IsMultiThreaded() const;
 
         void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) const;
@@ -116,6 +157,7 @@ namespace C3D
         bool m_resizing        = false;
         u8 m_framesSinceResize = 0;
 
-        RendererPlugin* m_backendPlugin = nullptr;
+        RendererPlugin* m_backendPlugin  = nullptr;
+        const Viewport* m_activeViewport = nullptr;
     };
 }  // namespace C3D

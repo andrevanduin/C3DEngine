@@ -24,7 +24,7 @@ namespace C3D
     class RendererPlugin
     {
     public:
-        explicit RendererPlugin(const CString<32>& loggerName) : m_logger(loggerName) {}
+        RendererPlugin() = default;
 
         RendererPlugin(const RendererPlugin&) = delete;
         RendererPlugin(RendererPlugin&&)      = delete;
@@ -39,11 +39,13 @@ namespace C3D
 
         virtual void OnResize(u32 width, u32 height) = 0;
 
-        virtual bool BeginFrame(const FrameData& frameData) = 0;
+        virtual bool PrepareFrame(const FrameData& frameData) = 0;
+        virtual bool Begin(const FrameData& frameData)        = 0;
+        virtual bool End(const FrameData& frameData)          = 0;
 
         virtual void DrawGeometry(const GeometryRenderData& data) = 0;
 
-        virtual bool EndFrame(const FrameData& frameData) = 0;
+        virtual bool Present(const FrameData& frameData) = 0;
 
         virtual void SetViewport(const vec4& rect) = 0;
         virtual void ResetViewport()               = 0;
@@ -116,9 +118,9 @@ namespace C3D
 
         RendererPluginType type = RendererPluginType::Unknown;
         u64 frameNumber         = INVALID_ID_U64;
+        u8 drawIndex            = INVALID_ID_U8;
 
     protected:
         RendererPluginConfig m_config;
-        LoggerInstance<32> m_logger;
     };
 }  // namespace C3D

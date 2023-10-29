@@ -5,6 +5,7 @@
 #include <math/frustum.h>
 #include <math/ray.h>
 #include <renderer/renderer_types.h>
+#include <renderer/viewport.h>
 #include <resources/debug/debug_box_3d.h>
 #include <resources/mesh.h>
 #include <systems/lights/light_system.h>
@@ -21,7 +22,9 @@ struct LightDebugData
 
 static u32 global_scene_id = 0;
 
-SimpleScene::SimpleScene() : m_logger("SIMPLE_SCENE"), m_name("NO_NAME"), m_description("NO_DESCRIPTION") {}
+constexpr const char* INSTANCE_NAME = "SIMPLE_SCENE";
+
+SimpleScene::SimpleScene() : m_name("NO_NAME"), m_description("NO_DESCRIPTION") {}
 
 bool SimpleScene::Create(const C3D::SystemManager* pSystemsManager) { return Create(pSystemsManager, {}); }
 
@@ -53,7 +56,7 @@ bool SimpleScene::Create(const C3D::SystemManager* pSystemsManager, const Simple
 
     if (!m_grid.Create(m_pSystemsManager, gridConfig))
     {
-        m_logger.Error("Create() - Failed to create debug grid.");
+        ERROR_LOG("Failed to create debug grid.");
         return false;
     }
 
@@ -78,7 +81,7 @@ bool SimpleScene::Initialize()
         m_skybox                 = Memory.New<C3D::Skybox>(C3D::MemoryType::Scene);
         if (!m_skybox->Create(m_pSystemsManager, config))
         {
-            m_logger.Error("Create() - Failed to create skybox from config");
+            ERROR_LOG("Failed to create skybox from config.");
             Memory.Delete(C3D::MemoryType::Scene, m_skybox);
             return false;
         }
@@ -100,7 +103,7 @@ bool SimpleScene::Initialize()
 
         if (!Lights.AddDirectionalLight(dirLight))
         {
-            m_logger.Error("Create() - Failed to add directional light from config");
+            ERROR_LOG("Failed to add directional light from config.");
             return false;
         }
 
@@ -126,7 +129,7 @@ bool SimpleScene::Initialize()
     {
         if (meshConfig.name.Empty() || meshConfig.resourceName.Empty())
         {
-            m_logger.Warn("Initialize() - Mesh with empty name or empty resource name provided. Skipping");
+            WARN_LOG("Mesh with empty name or empty resource name provided. Skipping.");
             continue;
         }
 
@@ -139,7 +142,7 @@ bool SimpleScene::Initialize()
         C3D::Mesh mesh;
         if (!mesh.Create(m_pSystemsManager, config))
         {
-            m_logger.Error("Initialize() - Failed to create Mesh: '{}'. Skipping", meshConfig.name);
+            ERROR_LOG("Failed to create Mesh: '{}'. Skipping.", meshConfig.name);
             continue;
         }
         mesh.transform = meshConfig.transform;
@@ -150,7 +153,7 @@ bool SimpleScene::Initialize()
     {
         if (terrainConfig.name.Empty() || terrainConfig.resourceName.Empty())
         {
-            m_logger.Warn("Initialize() - Terrain with empty name or empty resource name provided. Skipping");
+            WARN_LOG("Terrain with empty name or empty resource name provided. Skipping.");
             continue;
         }
 
@@ -161,7 +164,7 @@ bool SimpleScene::Initialize()
         C3D::Terrain terrain;
         if (!terrain.Create(m_pSystemsManager, config))
         {
-            m_logger.Error("Initialize() - Failed to create Terrain: '{}'. Skipping.", terrainConfig.name);
+            ERROR_LOG("Failed to create Terrain: '{}'. Skipping.", terrainConfig.name);
             continue;
         }
 
@@ -172,7 +175,7 @@ bool SimpleScene::Initialize()
 
     if (!m_grid.Initialize())
     {
-        m_logger.Error("Initialize() - Failed to initialize Grid.");
+        ERROR_LOG("Failed to initialize Grid.");
         return false;
     }
 
@@ -182,7 +185,7 @@ bool SimpleScene::Initialize()
         auto debug = static_cast<LightDebugData*>(light->debugData);
         if (!debug->box.Initialize())
         {
-            m_logger.Error("AddPointLight() - Failed to initialize debug box for point light: '{}'.", light->name);
+            ERROR_LOG("Failed to initialize debug box for point light: '{}'.", light->name);
             return false;
         }
     }
@@ -201,10 +204,8 @@ bool SimpleScene::Initialize()
             }
             catch (const std::invalid_argument& exc)
             {
-                m_logger.Warn(
-                    "Initialize() - Mesh: '{}' was configured to have mesh named: '{}' as a parent. But the parent "
-                    "does not exist in this scene.",
-                    mesh.config.name, mesh.config.parentName);
+                WARN_LOG("Mesh: '{}' was configured to have mesh named: '{}' as a parent. But the parent does not exist in this scene.",
+                         mesh.config.name, mesh.config.parentName);
             }
         }
     }
@@ -213,7 +214,7 @@ bool SimpleScene::Initialize()
     {
         if (!m_skybox->Initialize())
         {
-            m_logger.Error("Initialize() - Failed to initialize Skybox.");
+            ERROR_LOG("Failed to initialize Skybox.");
             m_skybox = nullptr;
         }
     }
@@ -222,7 +223,7 @@ bool SimpleScene::Initialize()
     {
         if (!mesh.Initialize())
         {
-            m_logger.Error("Initialize() - Failed to initialize Mesh: '{}'.", mesh.GetName());
+            ERROR_LOG("Failed to initialize Mesh: '{}'.", mesh.GetName());
         }
     }
 
@@ -230,7 +231,7 @@ bool SimpleScene::Initialize()
     {
         if (!terrain.Initialize())
         {
-            m_logger.Error("Initialize() - Failed to inialize Terrain: '{}'.", terrain.GetName());
+            ERROR_LOG("Failed to inialize Terrain: '{}'.", terrain.GetName());
         }
     }
 
@@ -247,7 +248,7 @@ bool SimpleScene::Load()
         // Skybox exists but is not loaded yet
         if (!m_skybox->Load())
         {
-            m_logger.Error("Load() - Failed to load skybox");
+            ERROR_LOG("Failed to load skybox.");
             m_skybox = nullptr;
         }
     }
@@ -256,7 +257,7 @@ bool SimpleScene::Load()
     {
         if (!mesh.Load())
         {
-            m_logger.Error("Load() - Failed to load Mesh: '{}'.", mesh.GetName());
+            ERROR_LOG("Failed to load Mesh: '{}'.", mesh.GetName());
         }
     }
 
@@ -264,13 +265,13 @@ bool SimpleScene::Load()
     {
         if (!terrain.Load())
         {
-            m_logger.Error("Load() - Failed to load Terrain: '{}'.", terrain.GetName());
+            ERROR_LOG("Failed to load Terrain: '{}'.", terrain.GetName());
         }
     }
 
     if (!m_grid.Load())
     {
-        m_logger.Error("Load() - Failed to load grid.");
+        ERROR_LOG("Failed to load grid.");
         return false;
     }
 
@@ -280,7 +281,7 @@ bool SimpleScene::Load()
         auto debug = static_cast<LightDebugData*>(light->debugData);
         if (!debug->box.Load())
         {
-            m_logger.Error("Load() - Failed to load debug box for point light: '{}'.", name);
+            ERROR_LOG("Failed to load debug box for point light: '{}'.", name);
         }
     }
 
@@ -325,33 +326,30 @@ bool SimpleScene::Update(C3D::FrameData& frameData)
     return true;
 }
 
-bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, const C3D::Camera* camera, f32 aspect, C3D::RenderPacket& packet)
+bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, C3D::Camera* camera, const C3D::Viewport& viewport,
+                                       C3D::RenderPacket& packet)
 {
     if (m_state != SceneState::Loaded) return true;
 
-    if (m_skybox)
-    {
-        auto& skyboxViewPacket = packet.views[TEST_ENV_VIEW_SKYBOX];
-
-        C3D::SkyboxPacketData skyboxData = { m_skybox };
-        if (!Views.BuildPacket(skyboxViewPacket.view, frameData.frameAllocator, &skyboxData, &skyboxViewPacket))
-        {
-            m_logger.Error("PopulateRenderPacket() - Failed to populate render packet with skybox data");
-            return false;
-        }
-    }
-
+    // World
     auto& worldViewPacket = packet.views[TEST_ENV_VIEW_WORLD];
+
     // Clear our world geometries
     m_worldData.worldGeometries.Clear();
     m_worldData.terrainGeometries.Clear();
     m_worldData.debugGeometries.Clear();
 
+    // Skybox
+    m_worldData.skyboxData.box = m_skybox;
+
+    // Update the frustum
     vec3 forward = camera->GetForward();
     vec3 right   = camera->GetRight();
     vec3 up      = camera->GetUp();
 
-    C3D::Frustum frustum = C3D::Frustum(camera->GetPosition(), forward, right, up, aspect, C3D::DegToRad(45.0f), 0.1f, 1000.0f);
+    const auto viewportRect = viewport.GetRect2D();
+
+    C3D::Frustum frustum = C3D::Frustum(camera->GetPosition(), forward, right, up, viewport);
 
     for (const auto& mesh : m_meshes)
     {
@@ -416,9 +414,9 @@ bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, const C3D::Cam
     }
 
     // World
-    if (!Views.BuildPacket(worldViewPacket.view, frameData.frameAllocator, &m_worldData, &worldViewPacket))
+    if (!Views.BuildPacket(worldViewPacket.view, frameData, viewport, camera, &m_worldData, &worldViewPacket))
     {
-        m_logger.Error("PopulateRenderPacket() - Failed to populate render packet with world data.");
+        ERROR_LOG("Failed to populate render packet with world data.");
         return false;
     }
 
@@ -429,7 +427,7 @@ bool SimpleScene::AddDirectionalLight(const C3D::String& name, C3D::DirectionalL
 {
     if (name.Empty())
     {
-        m_logger.Error("AddDirectionalLight() - Empty name provided.");
+        ERROR_LOG("Empty name provided.");
         return false;
     }
 
@@ -438,7 +436,7 @@ bool SimpleScene::AddDirectionalLight(const C3D::String& name, C3D::DirectionalL
         // TODO: Do resource unloading when required
         if (!Lights.RemoveDirectionalLight(m_directionalLight))
         {
-            m_logger.Error("AddDirectionalLight() - Failed to remove current directional light.");
+            ERROR_LOG("Failed to remove current directional light.");
             return false;
         }
         if (light.debugData)
@@ -457,7 +455,7 @@ bool SimpleScene::RemoveDirectionalLight(const C3D::String& name)
 {
     if (name.Empty())
     {
-        m_logger.Error("RemoveDirectionalLight() - Empty name provided.");
+        ERROR_LOG("Empty name provided.");
         return false;
     }
 
@@ -470,7 +468,7 @@ bool SimpleScene::RemoveDirectionalLight(const C3D::String& name)
         return result;
     }
 
-    m_logger.Warn("RemoveDirectionalLight() - Could not remove since provided light is not part of this scene.");
+    WARN_LOG("Could not remove since provided light is not part of this scene.");
     return false;
 }
 
@@ -478,7 +476,7 @@ bool SimpleScene::AddPointLight(const C3D::PointLight& light)
 {
     if (!Lights.AddPointLight(light))
     {
-        m_logger.Error("AddPointLight() - Failed to add point light to lighting system.");
+        ERROR_LOG("Failed to add point light to lighting system.");
         return false;
     }
 
@@ -488,7 +486,7 @@ bool SimpleScene::AddPointLight(const C3D::PointLight& light)
 
     if (!debug->box.Create(m_pSystemsManager, vec3(0.2f, 0.2f, 0.2f), nullptr))
     {
-        m_logger.Error("AddPointLight() - Failed to add debug box to point light: '{}'", light.name);
+        ERROR_LOG("Failed to add debug box to point light: '{}'.", light.name);
         return false;
     }
 
@@ -498,7 +496,7 @@ bool SimpleScene::AddPointLight(const C3D::PointLight& light)
     {
         if (!debug->box.Initialize())
         {
-            m_logger.Error("AddPointLight() - Failed to initialize debug box for point light: '{}'.", light.name);
+            ERROR_LOG("Failed to initialize debug box for point light: '{}'.", light.name);
             return false;
         }
     }
@@ -507,7 +505,7 @@ bool SimpleScene::AddPointLight(const C3D::PointLight& light)
     {
         if (!debug->box.Load())
         {
-            m_logger.Error("AddPointLight() - Failed to load debug box for point light: '{}'.", light.name);
+            ERROR_LOG("Failed to load debug box for point light: '{}'.", light.name);
             return false;
         }
     }
@@ -534,7 +532,7 @@ bool SimpleScene::RemovePointLight(const C3D::String& name)
         return true;
     }
 
-    m_logger.Error("RemovePointLight() - Failed to remove Point Light.");
+    ERROR_LOG("Failed to remove Point Light.");
     return false;
 }
 
@@ -544,13 +542,13 @@ bool SimpleScene::AddMesh(const C3D::String& name, C3D::Mesh& mesh)
 {
     if (name.Empty())
     {
-        m_logger.Error("AddMesh() - Empty name provided.");
+        ERROR_LOG("Empty name provided.");
         return false;
     }
 
     if (m_meshes.Has(name))
     {
-        m_logger.Error("AddMesh() - A mesh with the name '{}' already exists.", name);
+        ERROR_LOG("A mesh with the name '{}' already exists.", name);
         return false;
     }
 
@@ -559,7 +557,7 @@ bool SimpleScene::AddMesh(const C3D::String& name, C3D::Mesh& mesh)
         // The scene has already been initialized so we need to initialize the mesh now
         if (!mesh.Initialize())
         {
-            m_logger.Error("AddMesh() - Failed to initialize mesh: '{}'.", name);
+            ERROR_LOG("Failed to initialize mesh: '{}'.", name);
             return false;
         }
     }
@@ -569,7 +567,7 @@ bool SimpleScene::AddMesh(const C3D::String& name, C3D::Mesh& mesh)
         // The scene has already been loaded (or is loading currently) so we need to load the mesh now
         if (!mesh.Load())
         {
-            m_logger.Error("AddMesh() - Failed to load mesh: '{}'", name);
+            ERROR_LOG("Failed to load mesh: '{}'.", name);
             return false;
         }
     }
@@ -582,20 +580,20 @@ bool SimpleScene::RemoveMesh(const C3D::String& name)
 {
     if (name.Empty())
     {
-        m_logger.Error("RemoveMesh() - Empty name provided");
+        ERROR_LOG("Empty name provided.");
         return false;
     }
 
     if (!m_meshes.Has(name))
     {
-        m_logger.Error("RemoveMesh() - Unknown name provided");
+        ERROR_LOG("Unknown name provided.");
         return false;
     }
 
     auto& mesh = m_meshes.Get(name);
     if (!mesh.Unload())
     {
-        m_logger.Error("RemoveMesh() - Failed to unload mesh");
+        ERROR_LOG("Failed to unload mesh.");
         return false;
     }
 
@@ -609,13 +607,13 @@ bool SimpleScene::AddTerrain(const C3D::String& name, C3D::Terrain& terrain)
 {
     if (name.Empty())
     {
-        m_logger.Error("AddTerrain() - Empty name provided");
+        ERROR_LOG("Empty name provided.");
         return false;
     }
 
     if (m_terrains.Has(name))
     {
-        m_logger.Error("AddTerrain() - A terrain with the name '{}' already exists", name);
+        ERROR_LOG("A terrain with the name: '{}' already exists.", name);
         return false;
     }
 
@@ -624,7 +622,7 @@ bool SimpleScene::AddTerrain(const C3D::String& name, C3D::Terrain& terrain)
         // The scene has already been initialized so we need to initialize the terrain now
         if (!terrain.Initialize())
         {
-            m_logger.Error("AddTerrain() - Failed to initialize terrain: '{}'", name);
+            ERROR_LOG("Failed to initialize terrain: '{}'.", name);
             return false;
         }
     }
@@ -634,7 +632,7 @@ bool SimpleScene::AddTerrain(const C3D::String& name, C3D::Terrain& terrain)
         // The scene has already been loaded (or is loading currently) so we need to load the terrain now
         if (!terrain.Load())
         {
-            m_logger.Error("AddTerrain() - Failed to load terrain: '{}'", name);
+            ERROR_LOG("Failed to load terrain: '{}'.", name);
             return false;
         }
     }
@@ -647,20 +645,20 @@ bool SimpleScene::RemoveTerrain(const C3D::String& name)
 {
     if (name.Empty())
     {
-        m_logger.Error("RemoveTerrain() - Empty name provided");
+        ERROR_LOG("Empty name provided.");
         return false;
     }
 
     if (!m_terrains.Has(name))
     {
-        m_logger.Error("RemoveTerrain() - Unknown name provided: '{}'", name);
+        ERROR_LOG("Unknown name provided: '{}'.", name);
         return false;
     }
 
     auto& terrain = m_terrains.Get(name);
     if (!terrain.Unload())
     {
-        m_logger.Error("RemoveTerrain() - Failed to unload terrain: '{}'", name);
+        ERROR_LOG("Failed to unload terrain: '{}'.", name);
         return false;
     }
 
@@ -674,13 +672,13 @@ bool SimpleScene::AddSkybox(const C3D::String& name, C3D::Skybox* skybox)
 {
     if (name.Empty())
     {
-        m_logger.Error("AddSkybox() - Empty name provided");
+        ERROR_LOG("Empty name provided.");
         return false;
     }
 
     if (!skybox)
     {
-        m_logger.Error("AddSkybox() - Invalid skybox provided");
+        ERROR_LOG("Invalid skybox provided.");
         return false;
     }
 
@@ -692,7 +690,7 @@ bool SimpleScene::AddSkybox(const C3D::String& name, C3D::Skybox* skybox)
         // The scene has already been initialized so we need to initialize the skybox now
         if (!m_skybox->Initialize())
         {
-            m_logger.Error("AddSkybox() - Failed to initialize skybox");
+            ERROR_LOG("Failed to initialize Skybox.");
             m_skybox = nullptr;
             return false;
         }
@@ -702,7 +700,7 @@ bool SimpleScene::AddSkybox(const C3D::String& name, C3D::Skybox* skybox)
     {
         if (!m_skybox->Load())
         {
-            m_logger.Error("AddSkybox() - Failed to load skybox");
+            ERROR_LOG("Failed to load Skybox.");
             m_skybox = nullptr;
             return false;
         }
@@ -715,7 +713,7 @@ bool SimpleScene::RemoveSkybox(const C3D::String& name)
 {
     if (name.Empty())
     {
-        m_logger.Error("RemoveSkybox() - Empty name provided.");
+        ERROR_LOG("Empty name provided.");
         return false;
     }
 
@@ -723,7 +721,7 @@ bool SimpleScene::RemoveSkybox(const C3D::String& name)
     {
         if (!m_skybox->Unload())
         {
-            m_logger.Error("RemoveSkybox() - Failed to unload skybox.");
+            ERROR_LOG("Failed to unload Skybox.");
         }
 
         m_skybox->Destroy();
@@ -733,7 +731,7 @@ bool SimpleScene::RemoveSkybox(const C3D::String& name)
         return true;
     }
 
-    m_logger.Warn("RemoveSkybox() - Could not remove since scene does not have a skybox.");
+    WARN_LOG("Could not remove since scene does not have a Skybox.");
     return false;
 }
 
@@ -795,7 +793,7 @@ void SimpleScene::UnloadInternal()
 
         if (!mesh.Unload())
         {
-            m_logger.Error("Unload() - Failed to unload Mesh: '{}'.", mesh.GetName());
+            ERROR_LOG("Failed to unload Mesh: '{}'.", mesh.GetName());
         }
 
         mesh.Destroy();
@@ -805,7 +803,7 @@ void SimpleScene::UnloadInternal()
     {
         if (!terrain.Unload())
         {
-            m_logger.Error("Unload() - Failed to unload Terrain: '{}'.", terrain.GetName());
+            ERROR_LOG("Failed to unload Terrain: '{}'.", terrain.GetName());
         }
 
         terrain.Destroy();
@@ -813,7 +811,7 @@ void SimpleScene::UnloadInternal()
 
     if (!m_grid.Unload())
     {
-        m_logger.Error("Unload() - Failed to unload Grid.");
+        ERROR_LOG("Failed to unload Grid.");
     }
 
     if (m_directionalLight)
@@ -843,9 +841,9 @@ void SimpleScene::UnloadInternal()
     m_worldData.terrainGeometries.Destroy();
     m_worldData.debugGeometries.Destroy();
 
-    m_directionalLight = "";
-    m_skybox           = nullptr;
-    m_enabled          = false;
+    m_directionalLight.Destroy();
+    m_skybox  = nullptr;
+    m_enabled = false;
 
     m_state = SceneState::Uninitialized;
 }

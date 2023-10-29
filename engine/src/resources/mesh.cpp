@@ -10,7 +10,7 @@
 
 namespace C3D
 {
-    Mesh::Mesh() : m_logger("MESH") {}
+    constexpr const char* INSTANCE_NAME = "MESH";
 
     bool Mesh::Create(const SystemManager* pSystemsManager, const MeshConfig& cfg)
     {
@@ -33,7 +33,7 @@ namespace C3D
         {
             if (!m_debugBox->Initialize())
             {
-                m_logger.Warn("Initialize() - Failed to initialize Debug Box.");
+                WARN_LOG("Failed to initialize Debug Box.");
                 Memory.Delete(MemoryType::Resource, m_debugBox);
                 m_debugBox = nullptr;
             }
@@ -70,7 +70,7 @@ namespace C3D
         {
             if (!m_debugBox->Load())
             {
-                m_logger.Warn("Load() - Failed to load Debug Box.");
+                WARN_LOG("Failed to load Debug Box.");
                 m_debugBox->Destroy();
 
                 Memory.Delete(MemoryType::Resource, m_debugBox);
@@ -94,7 +94,7 @@ namespace C3D
         {
             if (!m_debugBox->Unload())
             {
-                m_logger.Warn("Unload() - Failed to unload Debug Box.");
+                WARN_LOG("Failed to unload Debug Box.");
                 m_debugBox->Destroy();
 
                 Memory.Delete(MemoryType::Resource, m_debugBox);
@@ -110,7 +110,7 @@ namespace C3D
         {
             if (!Unload())
             {
-                m_logger.Error("Destroy() - failed to unload");
+                ERROR_LOG("Failed to unload.");
                 return false;
             }
         }
@@ -226,7 +226,7 @@ namespace C3D
 
                 if (!m_debugBox->Load())
                 {
-                    m_logger.Warn("Load() - Failed to load Debug Box.");
+                    WARN_LOG("Failed to load Debug Box.");
                     m_debugBox->Destroy();
 
                     Memory.Delete(MemoryType::Resource, m_debugBox);
@@ -248,12 +248,10 @@ namespace C3D
 
     void Mesh::LoadJobFailure()
     {
-        m_logger.Error("LoadJobFailure() - Failed to load: '{}'", config.resourceName);
+        ERROR_LOG("Failed to load: '{}'.", config.resourceName);
 
         Resources.Unload(m_resource);
     }
-
-    UIMesh::UIMesh() : m_logger("UI_MESH") {}
 
     bool UIMesh::LoadFromConfig(const SystemManager* pSystemsManager, const UIGeometryConfig& config)
     {

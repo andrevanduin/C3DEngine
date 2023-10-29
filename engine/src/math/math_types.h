@@ -47,6 +47,51 @@ namespace C3D
         vec3 center;
         vec3 extents;
     };
+
+    struct Rect2D
+    {
+        /** @brief The X coordinate of the rectangle. */
+        f32 x;
+        /** @brief The Y coordinate of the rectangle. */
+        f32 y;
+        /** @brief The width of the rectangle. */
+        f32 width;
+        /** @brief The height of the rectangle. */
+        f32 height;
+
+        /**
+         * @brief Checks if the provided point is inside of this rectangle
+         *
+         * @param point The point we want to check against
+         * @return true if point is inside, false otherwise
+         */
+        bool PointIsInside(const vec2& point) const
+        {
+            return point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height;
+        }
+    };
+
+    struct Circle2D
+    {
+        /** @brief The center point of the circle. */
+        vec2 center;
+        /** @brief The radius of the circle. */
+        f32 radius;
+
+        /**
+         * @brief Checks if the provided point is inside of this circle
+         *
+         * @param point The point we want to check against
+         * @return true if point is inside, false otherwise
+         */
+        bool PointIsInside(const vec2& point)
+        {
+            f32 rSquared      = radius * radius;
+            vec2 distance     = point - center;
+            f32 lengthSquared = distance.x * distance.x + distance.y * distance.y;
+            return lengthSquared <= rSquared;
+        }
+    };
 }  // namespace C3D
 
 template <>

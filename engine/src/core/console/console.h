@@ -9,12 +9,12 @@
 
 namespace C3D
 {
-    constexpr auto MAX_LINES = 512;
-    constexpr i8 MAX_HISTORY = 64;
+    constexpr auto MAX_LINES   = 512;
+    constexpr i8 MAX_HISTORY   = 64;
     constexpr auto SHOWN_LINES = 10;
 
-    using CommandName = CString<128>;
-    using ArgName = CString<128>;
+    using CommandName     = CString<128>;
+    using ArgName         = CString<128>;
     using CommandCallback = StackFunction<bool(const DynamicArray<ArgName>&, String&), 16>;
 
     class SystemManager;
@@ -28,7 +28,7 @@ namespace C3D
         };
 
     public:
-        UIConsole();
+        UIConsole() = default;
 
         void OnInit(const SystemManager* pSystemsManager);
         void OnShutDown();
@@ -59,11 +59,15 @@ namespace C3D
         void PrintCommandMessage(const LogType type, const char* format, Args&&... args)
         {
             if (type == LogType::Info)
-                m_logger.Info(format, args...);
+            {
+                INSTANCE_INFO_LOG("UI_CONSOLE", format, args...);
+            }
             else
-                m_logger.Error(format, args...);
+            {
+                INSTANCE_ERROR_LOG("UI_CONSOLE", format, args...);
+            }
 
-            m_current = "";
+            m_current      = "";
             m_isEntryDirty = true;
         }
 
@@ -82,8 +86,6 @@ namespace C3D
 
         UIText m_text, m_entry, m_cursor;
         CString<256> m_current;
-
-        LoggerInstance<16> m_logger;
 
         HashMap<CommandName, CommandCallback> m_commands;
 

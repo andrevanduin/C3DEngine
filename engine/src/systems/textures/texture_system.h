@@ -48,8 +48,8 @@ namespace C3D
     public:
         TextureSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const TextureSystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const TextureSystemConfig& config) override;
+        void OnShutdown() override;
 
         Texture* Acquire(const char* name, bool autoRelease);
         Texture* AcquireCube(const char* name, bool autoRelease);
@@ -57,8 +57,8 @@ namespace C3D
 
         void Release(const String& name);
 
-        void WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency,
-                          bool isWritable, bool registerTexture, void* internalData, Texture* outTexture);
+        void WrapInternal(const char* name, u32 width, u32 height, u8 channelCount, bool hasTransparency, bool isWritable,
+                          bool registerTexture, void* internalData, Texture* outTexture);
 
         static bool SetInternal(Texture* t, void* internalData);
 
@@ -81,15 +81,12 @@ namespace C3D
 
         void DestroyTexture(Texture* texture) const;
 
-        Texture* ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease,
-                                         bool skipLoad);
+        Texture* ProcessTextureReference(const char* name, TextureType type, i8 referenceDiff, bool autoRelease, bool skipLoad);
 
         bool LoadJobEntryPoint(u32 loadingTextureIndex);
         void LoadJobSuccess(u32 loadingTextureIndex);
 
         void CleanupLoadingTexture(u32 loadingTextureIndex);
-
-        bool m_initialized;
 
         Texture m_defaultTexture;
         Texture m_defaultDiffuseTexture;

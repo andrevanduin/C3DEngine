@@ -11,7 +11,7 @@
 
 namespace C3D
 {
-    UIConsole::UIConsole() : m_logger("CONSOLE") {}
+    constexpr const char* INSTANCE_NAME = "UI_CONSOLE";
 
     void UIConsole::OnInit(const SystemManager* pSystemsManager)
     {
@@ -56,7 +56,7 @@ namespace C3D
         if (Input.IsKeyPressed(KeyGrave))
         {
             m_isOpen ^= true;
-            m_logger.Info(m_isOpen ? "Opened" : "Closed");
+            INFO_LOG(m_isOpen ? "Opened" : "Closed");
         }
 
         if (m_isOpen)
@@ -108,7 +108,7 @@ namespace C3D
     void UIConsole::RegisterCommand(const CommandName& name, const CommandCallback& func)
     {
         m_commands.Set(name, func);
-        m_logger.Info("Registered command: \'{}\'", name);
+        INFO_LOG("Registered command: '{}'.", name);
     }
 
     void UIConsole::UnregisterCommand(const CommandName& name)
@@ -118,11 +118,11 @@ namespace C3D
             if (m_commands.Has(name))
             {
                 m_commands.Delete(name);
-                m_logger.Info("UnRegistered command: \'{}\'", name);
+                INFO_LOG("UnRegistered command: '{}'.", name);
             }
             else
             {
-                m_logger.Warn("No command with name \'{}\' is registered", name);
+                WARN_LOG("No command with name '{}' is registered.", name);
             }
         }
     }
@@ -254,7 +254,7 @@ namespace C3D
                     typedChar = shiftHeld ? '+' : '=';
                     break;
                 default:
-                    m_logger.Fatal("Unknown char found while trying to parse key for console {}", keyCode);
+                    FATAL_LOG("Unknown char found while trying to parse key for console '{}'.", keyCode);
                     break;
             }
         }
@@ -297,7 +297,7 @@ namespace C3D
                         typedChar = '(';
                         break;
                     default:
-                        m_logger.Fatal("Unknown char found while trying to parse numbers for console {}", keyCode);
+                        FATAL_LOG("Unknown char found while trying to parse numbers for console '{}'.", keyCode);
                         break;
                 }
             }
@@ -368,7 +368,7 @@ namespace C3D
         if (!m_commands.Has(commandName))
         {
             // Not a command let's warn the user
-            PrintCommandMessage(LogType::Error, "The command: \'{}\' does not exist!", commandName);
+            PrintCommandMessage(LogType::Error, "The command: '{}' does not exist!", commandName);
             return false;
         }
 
@@ -376,13 +376,21 @@ namespace C3D
         const CommandCallback& command = m_commands[commandName];
         if (String output = ""; !command.operator()(args, output))
         {
-            PrintCommandMessage(LogType::Error, "The command \'{}\' failed to execute:", commandName);
-            if (!output.Empty()) m_logger.Error(output.Data());
+            PrintCommandMessage(LogType::Error, "The command '{}' failed to execute:", commandName);
+            if (!output.Empty())
+            {
+                const char* msg = output.Data();
+                ERROR_LOG(msg);
+            }
         }
         else
         {
-            PrintCommandMessage(LogType::Info, "The command \'{}\' executed successfully:", commandName);
-            if (!output.Empty()) m_logger.Info(output.Data());
+            PrintCommandMessage(LogType::Info, "The command '{}' executed successfully:", commandName);
+            if (!output.Empty())
+            {
+                const char* msg = output.Data();
+                INFO_LOG(msg);
+            }
         }
 
         m_current      = "";

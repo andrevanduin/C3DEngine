@@ -51,8 +51,10 @@ namespace C3D
 
         ShaderState state = ShaderState::Uninitialized;
 
-        // @brief used to ensure the shaders globals are only updated once per frame.
+        /** @brief Used to sync to the renderer's frame number. To ensure we only update once per frame. */
         u64 frameNumber = INVALID_ID_U64;
+        /** @brief Used to sync to the renderer's draw index. To ensure we only update once per draw. */
+        u8 drawIndex = INVALID_ID_U8;
 
         // A pointer to the Renderer API specific data
         // This memory needs to be managed separately by the current rendering API backend

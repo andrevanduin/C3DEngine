@@ -62,7 +62,7 @@ namespace C3D
 class EditorGizmo
 {
 public:
-    EditorGizmo();
+    EditorGizmo() = default;
 
     bool Create(const C3D::SystemManager* pSystemsManager);
     void Destroy();
@@ -97,13 +97,11 @@ private:
     void CreateScaleMode();
     void CreateRotateMode();
 
-    C3D::LoggerInstance<16> m_logger;
-
     C3D::Transform m_transform;
-    C3D::Transform* m_selectedObjectTransform;
+    C3D::Transform* m_selectedObjectTransform = nullptr;
 
     /** @brief Used to keep the gizmo a consistent size on the screen despite camera distance. */
-    f32 m_scale;
+    f32 m_scale = 0.0f;
 
     EditorGizmoMode m_mode;
     EditorGizmoModeData m_modeData[ToUnderlying(EditorGizmoMode::Max)];
@@ -111,5 +109,5 @@ private:
     EditorGizmoInteractionType m_interaction;
     EditorGizmoOrientation m_orientation;
 
-    const C3D::SystemManager* m_pSystemsManager;
+    const C3D::SystemManager* m_pSystemsManager = nullptr;
 };

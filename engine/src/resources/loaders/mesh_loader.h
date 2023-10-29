@@ -68,8 +68,7 @@ namespace C3D
         bool ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig>& outGeometries) const;
         void ObjParseVertexLine(const String& line, DynamicArray<vec3>& positions, DynamicArray<vec3>& normals,
                                 DynamicArray<vec2>& texCoords) const;
-        static void ObjParseFaceLine(const String& line, u64 normalCount, u64 texCoordinateCount,
-                                     DynamicArray<MeshGroupData>& groups);
+        static void ObjParseFaceLine(const String& line, u64 normalCount, u64 texCoordinateCount, DynamicArray<MeshGroupData>& groups);
 
         void ProcessSubObject(DynamicArray<vec3>& positions, DynamicArray<vec3>& normals, DynamicArray<vec2>& texCoords,
                               DynamicArray<MeshFaceData>& faces, GeometryConfig* outData) const;
@@ -77,22 +76,19 @@ namespace C3D
         bool ImportObjMaterialLibraryFile(const String& mtlFilePath) const;
         void ObjMaterialParseColorLine(const String& line, MaterialConfig& config) const;
         void ObjMaterialParseMapLine(const String& line, MaterialConfig& config) const;
-        void ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName,
-                                        const String& mtlFilePath) const;
+        void ObjMaterialParseNewMtlLine(const String& line, MaterialConfig& config, bool& hitName, const String& mtlFilePath) const;
 
         template <typename VertexType, typename IndexType>
         bool LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const;
 
         template <typename VertexType, typename IndexType>
-        bool WriteCsmFile(const String& path, const char* name,
-                          DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const;
+        bool WriteCsmFile(const String& path, const char* name, DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const;
 
         bool WriteMtFile(const String& mtlFilePath, const MaterialConfig& config) const;
     };
 
     template <typename VertexType, typename IndexType>
-    bool ResourceLoader<MeshResource>::LoadCsmFile(
-        File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const
+    bool ResourceLoader<MeshResource>::LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const
     {
         Clock clock(m_pSystemsManager->GetSystemPtr<Platform>(PlatformSystemType));
         clock.Start();
@@ -157,29 +153,29 @@ namespace C3D
         }
 
         clock.Update();
-        m_logger.Info("ReadCsmFile() - {} Bytes read from file {} in {:.4f} ms", file.bytesRead, file.currentPath,
-                      clock.GetElapsedMs());
+        INSTANCE_INFO_LOG("MESH_LOADER", "{} Bytes read from file {} in {:.4f} ms.", file.bytesRead, file.currentPath,
+                          clock.GetElapsedMs());
         file.Close();
         return true;
     }
 
     template <typename VertexType, typename IndexType>
-    bool ResourceLoader<MeshResource>::WriteCsmFile(
-        const String& path, const char* name, DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const
+    bool ResourceLoader<MeshResource>::WriteCsmFile(const String& path, const char* name,
+                                                    DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const
     {
         if (File::Exists(path))
         {
-            m_logger.Info("WriteCsmFile() - File: '{}' already exists and will be overwritten.", path);
+            INSTANCE_INFO_LOG("MESH_LOADER", "File: '{}' already exists and will be overwritten.", path);
         }
 
         File file;
         if (!file.Open(path, FileModeWrite | FileModeBinary))
         {
-            m_logger.Error("WriteCsmFile() - Failed to open path '{}'.", path);
+            INSTANCE_ERROR_LOG("MESH_LOADER", "Failed to open path '{}'.", path);
             return false;
         }
 
-        m_logger.Info("WriteCsmFile() - Started writing CSM file to: '{}'.", path);
+        INSTANCE_INFO_LOG("MESH_LOADER", "Started writing CSM file to: '{}'.", path);
 
         // Version
         constexpr u16 version = 0x0001u;
@@ -227,7 +223,7 @@ namespace C3D
             file.Write(&geometry.maxExtents);
         }
 
-        m_logger.Info("WriteCsmFile() - {} Bytes written to file: '{}'.", file.bytesWritten, name);
+        INSTANCE_INFO_LOG("MESH_LOADER", "{} Bytes written to file: '{}'.", file.bytesWritten, name);
         file.Close();
         return true;
     }

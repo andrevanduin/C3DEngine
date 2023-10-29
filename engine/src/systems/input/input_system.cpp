@@ -14,13 +14,13 @@ namespace
 
 namespace C3D
 {
-    InputSystem::InputSystem(const SystemManager* pSystemsManager)
-        : BaseSystem(pSystemsManager, "INPUT"), m_keyboardCurrent(), m_keyboardPrevious(), m_mouseCurrent(), m_mousePrevious()
-    {}
+    constexpr const char* INSTANCE_NAME = "INPUT";
 
-    bool InputSystem::Init()
+    InputSystem::InputSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager) {}
+
+    bool InputSystem::OnInit()
     {
-        m_logger.Info("Init() - Started.");
+        INFO_LOG("Initializing.");
 
         m_initialized = true;
 
@@ -33,11 +33,10 @@ namespace C3D
             button = INVALID_ID_U8;
         }
 
-        m_logger.Info("Init() - Successful.");
         return true;
     }
 
-    void InputSystem::Update(const FrameData& frameData)
+    void InputSystem::OnUpdate(const FrameData& frameData)
     {
         if (!m_initialized) return;
 
@@ -100,7 +99,7 @@ namespace C3D
     {
         if (key >= Keys::MaxKeys)
         {
-            m_logger.Warn("Key{} keycode was larger than expected '{}'.", state == InputState::Down ? "Down" : "Up", ToUnderlying(key));
+            WARN_LOG("Key{} keycode was larger than expected '{}'.", state == InputState::Down ? "Down" : "Up", ToUnderlying(key));
             return;
         }
 
@@ -159,14 +158,14 @@ namespace C3D
         }
         else
         {
+            currentButton.state = InputState::Up;
+            Event.Fire(EventCodeButtonUp, this, context);
+
             if (currentButton.inDrag)
             {
                 Event.Fire(EventCodeMouseDraggedEnd, this, context);
                 currentButton.inDrag = false;
             }
-
-            currentButton.state = InputState::Up;
-            Event.Fire(EventCodeButtonUp, this, context);
         }
     }
 

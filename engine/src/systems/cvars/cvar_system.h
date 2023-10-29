@@ -13,7 +13,7 @@ namespace C3D
 
     struct CVarSystemConfig
     {
-        u32 maxCVars = 0;
+        u32 maxCVars        = 0;
         UIConsole* pConsole = nullptr;
     };
 
@@ -27,15 +27,15 @@ namespace C3D
     public:
         explicit CVarSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const CVarSystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const CVarSystemConfig& config) override;
+        void OnShutdown() override;
 
         template <typename T>
         bool Create(const CVarName& name, const T& value)
         {
             if (Exists(name))
             {
-                m_logger.Error("Create() - Failed to create CVar. A CVar named: \'{}\' already exists!", name);
+                INSTANCE_ERROR_LOG("Failed to create CVar. A CVar named: '{}' already exists!", name);
                 return false;
             }
 
@@ -53,7 +53,7 @@ namespace C3D
         {
             if (!Exists(name))
             {
-                m_logger.Fatal("Get() - Failed to find a CVar with the name: \'{}\'", name);
+                INSTANCE_FATAL_LOG("Failed to find a CVar with the name: '{}'.", name);
             }
             return *reinterpret_cast<CVar<T>*>(m_cVars.Get(name));
         }

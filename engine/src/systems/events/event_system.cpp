@@ -7,17 +7,13 @@
 
 namespace C3D
 {
-    EventSystem::EventSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager, "EVENT"), m_registered{} {}
+    constexpr const char* INSTANCE_NAME = "EVENT_SYSTEM";
 
-    bool EventSystem::Init()
-    {
-        m_initialized = true;
-        return true;
-    }
+    EventSystem::EventSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager) {}
 
-    void EventSystem::Shutdown()
+    void EventSystem::OnShutdown()
     {
-        m_logger.Info("Shutting Down");
+        INFO_LOG("Unregistering and clearing all events.");
         for (auto& [events] : m_registered)
         {
             if (!events.Empty()) events.Clear();
@@ -39,14 +35,14 @@ namespace C3D
     {
         if (code > MAX_MESSAGE_CODES)
         {
-            m_logger.Warn("Unregister() - Tried to Unregister Event for invalid code: '{}'", code);
+            WARN_LOG("Tried to Unregister Event for invalid code: '{}'.", code);
             return false;
         }
 
         auto& events = m_registered[code].events;
         if (events.Empty())
         {
-            m_logger.Warn("Unregister() - Tried to Unregister Event for code: '{}' that has no events", code);
+            WARN_LOG("Tried to Unregister Event for code: '{}' that has no events.", code);
             return false;
         }
 
@@ -58,7 +54,7 @@ namespace C3D
             return true;
         }
 
-        m_logger.Warn("Unregister() - Tried to Unregister Event that did not exist");
+        WARN_LOG("Tried to Unregister Event that did not exist.");
         return false;
     }
 
@@ -69,7 +65,7 @@ namespace C3D
         auto& events = m_registered[code].events;
         if (events.Empty())
         {
-            m_logger.Warn("UnRegisterAll() - Tried to UnRegister all Events for code: '{}' that has no events", code);
+            WARN_LOG("Tried to UnRegister all Events for code: '{}' that has no events.", code);
             return false;
         }
 

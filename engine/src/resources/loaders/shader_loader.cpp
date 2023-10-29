@@ -9,15 +9,17 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "SHADER_LOADER";
+
     ResourceLoader<ShaderConfig>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, "SHADER_LOADER", MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
+        : IResourceLoader(pSystemsManager, MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
     {}
 
     bool ResourceLoader<ShaderConfig>::Load(const char* name, ShaderConfig& resource) const
     {
         if (std::strlen(name) == 0)
         {
-            m_logger.Error("Load() - Provided name was empty.");
+            ERROR_LOG("Provided name was empty.");
             return false;
         }
 
@@ -26,7 +28,7 @@ namespace C3D
         File file;
         if (!file.Open(fullPath, FileModeRead))
         {
-            m_logger.Error("Load() - Failed to open shader config file for reading: '{}'", fullPath);
+            ERROR_LOG("Failed to open shader config file for reading: '{}'.", fullPath);
             return false;
         }
 
@@ -54,8 +56,7 @@ namespace C3D
             // Check if we have a '=' symbol
             if (!line.Contains('='))
             {
-                m_logger.Warn("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.", fullPath,
-                              lineNumber);
+                WARN_LOG("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.", fullPath, lineNumber);
                 lineNumber++;
                 continue;
             }
@@ -63,8 +64,8 @@ namespace C3D
             auto parts = line.Split('=');
             if (parts.Size() != 2)
             {
-                m_logger.Warn("Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.", fullPath,
-                              lineNumber);
+                WARN_LOG("Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.", fullPath,
+                         lineNumber);
                 lineNumber++;
                 continue;
             }
@@ -165,8 +166,8 @@ namespace C3D
         if (!data.stageFileNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
         {
             // We already found the stage file names and the lengths don't match
-            m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})", data.stageNames.Size(),
-                           data.stageFileNames.Size());
+            ERROR_LOG("Mismatch between the amount of StageNames ({}) and StageFileNames ({}).", data.stageNames.Size(),
+                      data.stageFileNames.Size());
         }
 
         for (auto& stageName : data.stageNames)
@@ -189,7 +190,7 @@ namespace C3D
             }
             else
             {
-                m_logger.Error("ParseStages() - Unrecognized stage '{}'", stageName);
+                ERROR_LOG("Unrecognized stage '{}'.", stageName);
             }
         }
     }
@@ -200,8 +201,8 @@ namespace C3D
         if (!data.stageNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
         {
             // We already found the stage names and the lengths don't match
-            m_logger.Error("ParseStages() - Mismatch between the amount of StageNames ({}) and StageFileNames ({})", data.stageNames.Size(),
-                           data.stageFileNames.Size());
+            ERROR_LOG("Mismatch between the amount of StageNames ({}) and StageFileNames ({}).", data.stageNames.Size(),
+                      data.stageFileNames.Size());
         }
     }
 
@@ -210,7 +211,7 @@ namespace C3D
         const auto fields = value.Split(',');
         if (fields.Size() != 2)
         {
-            m_logger.Error("ParseAttribute() - Invalid layout. Attribute field must be 'type,name'. Skipping this line.");
+            ERROR_LOG("Invalid layout. Attribute field must be 'type,name'. Skipping this line.");
             return;
         }
 
@@ -267,10 +268,8 @@ namespace C3D
         }
         else
         {
-            m_logger.Error(
-                "ParseAttribute() - Invalid file layout. Attribute type must be be f32, vec2, vec3, vec4, i8, i16, "
-                "i32, u8, u16, or u32.");
-            m_logger.Warn("Defaulting to f32.");
+            ERROR_LOG("Invalid file layout. Attribute type must be be f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, or u32.");
+            WARN_LOG("Defaulting to f32.");
             attribute.type = Attribute_Float32;
             attribute.size = 4;
         }
@@ -284,7 +283,7 @@ namespace C3D
         const auto fields = value.Split(',');
         if (fields.Size() != 3)
         {
-            m_logger.Error("ParseAttribute() - Invalid layout. Uniform field must be 'type,scope,name'.");
+            ERROR_LOG("Invalid layout. Uniform field must be 'type,scope,name'.");
             return false;
         }
 
@@ -354,7 +353,7 @@ namespace C3D
             // Type is struct
             if (fields[0].Size() <= 6)
             {
-                m_logger.Error("ParseUniform() - Invalid struct type: {}", fields[0]);
+                ERROR_LOG("Invalid struct type: '{}'.", fields[0]);
                 return false;
             }
             String structSize = fields[0].SubStr(6, 0);
@@ -363,10 +362,10 @@ namespace C3D
         }
         else
         {
-            m_logger.Error(
-                "ParseUniform(). Invalid file layout. Uniform type must be f32, vec2, vec3, vec4, i8, i16, i32, u8, "
-                "u16, u32, mat4, samp/sampler or struct.");
-            m_logger.Warn("Defaulting to f32.");
+            ERROR_LOG(
+                "Invalid file layout. Uniform type must be f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, u32, mat4, samp/sampler or "
+                "struct.");
+            WARN_LOG("Defaulting to f32.");
             uniform.type = Uniform_Float32;
             uniform.size = 4;
         }
@@ -385,8 +384,8 @@ namespace C3D
         }
         else
         {
-            m_logger.Error("ParseUniform() - Invalid file layout. Uniform scope must be global, instance or local.");
-            m_logger.Warn("ParseUniform() - Defaulting to global.");
+            ERROR_LOG("Invalid file layout. Uniform scope must be global, instance or local.");
+            WARN_LOG("Defaulting to global.");
             uniform.scope = ShaderScope::Global;
         }
 

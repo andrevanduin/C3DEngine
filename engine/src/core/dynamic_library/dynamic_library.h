@@ -1,41 +1,38 @@
 
 #pragma once
-#include "containers/cstring.h"
+#include "containers/string.h"
 #include "memory/allocators/malloc_allocator.h"
 #include "platform/platform.h"
 
 namespace C3D
 {
-	class C3D_API DynamicLibrary
-	{
-	public:
-		DynamicLibrary();
+    class C3D_API DynamicLibrary
+    {
+    public:
+        DynamicLibrary(const String& name);
 
-		DynamicLibrary(const DynamicLibrary&) = delete;
-		DynamicLibrary(DynamicLibrary&&) = delete;
+        DynamicLibrary(const DynamicLibrary&) = delete;
+        DynamicLibrary(DynamicLibrary&&)      = delete;
 
-		DynamicLibrary& operator=(const DynamicLibrary&) = delete;
-		DynamicLibrary& operator=(DynamicLibrary&&) = delete;
+        DynamicLibrary& operator=(const DynamicLibrary&) = delete;
+        DynamicLibrary& operator=(DynamicLibrary&&)      = delete;
 
-		~DynamicLibrary();
+        ~DynamicLibrary();
 
-		bool Load(const char* name);
-		bool Unload();
+        bool Load(const char* name);
+        bool Unload();
 
-		template <typename Signature>
-		Signature LoadFunction(const char* name)
-		{
-			return Platform::LoadDynamicLibraryFunction<Signature>(name, m_data);
-		}
+        template <typename Signature>
+        Signature LoadFunction(const char* name)
+        {
+            return Platform::LoadDynamicLibraryFunction<Signature>(name, m_data);
+        }
 
-	protected:
-		explicit DynamicLibrary(const CString<16>& name);
+    protected:
+        String m_name;
+        String m_fileName;
 
-		CString<64> m_name;
-		CString<64> m_fileName;
-		u64 m_dataSize;
-		void* m_data;
-
-		LoggerInstance<16> m_logger;
-	};
-}
+        u64 m_dataSize = 0;
+        void* m_data   = nullptr;
+    };
+}  // namespace C3D

@@ -5,6 +5,7 @@
 #include <math/c3d_math.h>
 #include <renderer/renderer_frontend.h>
 #include <renderer/renderer_types.h>
+#include <renderer/viewport.h>
 #include <resources/loaders/shader_loader.h>
 #include <resources/mesh.h>
 #include <resources/textures/texture.h>
@@ -15,36 +16,61 @@
 #include <systems/resources/resource_system.h>
 #include <systems/shaders/shader_system.h>
 
+constexpr const char* INSTANCE_NAME = "RENDER_VIEW_WORLD";
+
 RenderViewWorld::RenderViewWorld() : RenderView("WORLD_VIEW", "") {}
 
 void RenderViewWorld::OnSetupPasses()
 {
-    C3D::RenderPassConfig pass;
-    pass.name       = "RenderPass.Builtin.World";
-    pass.renderArea = { 0, 0, 1280, 720 };
-    pass.clearColor = { 0, 0, 0.2f, 1.0f };
-    pass.clearFlags = C3D::ClearDepthBuffer | C3D::ClearStencilBuffer;
-    pass.depth      = 1.0f;
-    pass.stencil    = 0;
+    {
+        C3D::RenderPassConfig pass{};
+        pass.name       = "RenderPass.Builtin.Skybox";
+        pass.clearColor = { 0, 0, 0.2f, 1.0f };
+        pass.clearFlags = C3D::ClearColorBuffer;
+        pass.depth      = 1.0f;
+        pass.stencil    = 0;
 
-    C3D::RenderTargetAttachmentConfig targetAttachments[2]{};
-    targetAttachments[0].type           = C3D::RenderTargetAttachmentType::Color;
-    targetAttachments[0].source         = C3D::RenderTargetAttachmentSource::Default;
-    targetAttachments[0].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::Load;
-    targetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
-    targetAttachments[0].presentAfter   = false;
+        C3D::RenderTargetAttachmentConfig targetAttachment = {};
+        targetAttachment.type                              = C3D::RenderTargetAttachmentType::Color;
+        targetAttachment.source                            = C3D::RenderTargetAttachmentSource::Default;
+        targetAttachment.loadOperation                     = C3D::RenderTargetAttachmentLoadOperation::DontCare;
+        targetAttachment.storeOperation                    = C3D::RenderTargetAttachmentStoreOperation::Store;
+        targetAttachment.presentAfter                      = false;
 
-    targetAttachments[1].type           = C3D::RenderTargetAttachmentType::Depth;
-    targetAttachments[1].source         = C3D::RenderTargetAttachmentSource::Default;
-    targetAttachments[1].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
-    targetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
-    targetAttachments[1].presentAfter   = false;
+        pass.target.attachments.PushBack(targetAttachment);
 
-    pass.target.attachments.PushBack(targetAttachments[0]);
-    pass.target.attachments.PushBack(targetAttachments[1]);
-    pass.renderTargetCount = Renderer.GetWindowAttachmentCount();
+        pass.renderTargetCount = Renderer.GetWindowAttachmentCount();
 
-    m_passConfigs.PushBack(pass);
+        m_passConfigs.PushBack(pass);
+    }
+    {
+        C3D::RenderPassConfig pass;
+        pass.name       = "RenderPass.Builtin.World";
+        pass.clearColor = { 0, 0, 0.2f, 1.0f };
+        pass.clearFlags = C3D::ClearDepthBuffer | C3D::ClearStencilBuffer;
+        pass.depth      = 1.0f;
+        pass.stencil    = 0;
+
+        C3D::RenderTargetAttachmentConfig targetAttachments[2]{};
+        targetAttachments[0].type           = C3D::RenderTargetAttachmentType::Color;
+        targetAttachments[0].source         = C3D::RenderTargetAttachmentSource::Default;
+        targetAttachments[0].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::Load;
+        targetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+        targetAttachments[0].presentAfter   = false;
+
+        targetAttachments[1].type           = C3D::RenderTargetAttachmentType::Depth;
+        targetAttachments[1].source         = C3D::RenderTargetAttachmentSource::Default;
+        targetAttachments[1].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
+        targetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
+        targetAttachments[1].presentAfter   = false;
+
+        pass.target.attachments.PushBack(targetAttachments[0]);
+        pass.target.attachments.PushBack(targetAttachments[1]);
+
+        pass.renderTargetCount = Renderer.GetWindowAttachmentCount();
+
+        m_passConfigs.PushBack(pass);
+    }
 }
 
 bool RenderViewWorld::OnCreate()
@@ -53,74 +79,97 @@ bool RenderViewWorld::OnCreate()
     const auto materialShaderName = "Shader.Builtin.Material";
     const auto terrainShaderName  = "Shader.Builtin.Terrain";
     const auto debugShaderName    = "Shader.Builtin.Color3DShader";
+    const auto skyboxShaderName   = "Shader.Builtin.Skybox";
 
     C3D::ShaderConfig shaderConfig;
     if (!Resources.Load(materialShaderName, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to load ShaderResource for Material Shader");
+        ERROR_LOG("Failed to load ShaderResource for Material Shader.");
         return false;
     }
-    // NOTE: Since this view only has 1 pass we assume index 0
-    if (!Shaders.Create(m_passes[0], shaderConfig))
+    // NOTE: Second pass is the WORLD pass
+    if (!Shaders.Create(m_passes[1], shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to create {}", materialShaderName);
+        ERROR_LOG("Failed to create: '{}'.", materialShaderName);
         return false;
     }
-
     Resources.Unload(shaderConfig);
 
     if (!Resources.Load(terrainShaderName, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to load ShaderResource for Terrain Shader.");
+        ERROR_LOG("Failed to load ShaderResource for Terrain Shader.");
         return false;
     }
-    // NOTE: Since this view only has 1 pass we assume index 0
-    if (!Shaders.Create(m_passes[0], shaderConfig))
+    // NOTE: Second pass is the WORLD pass
+    if (!Shaders.Create(m_passes[1], shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to create '{}'.", terrainShaderName);
+        ERROR_LOG("Failed to create: '{}'.", terrainShaderName);
         return false;
     }
-
     Resources.Unload(shaderConfig);
 
     if (!Resources.Load(debugShaderName, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to load ShaderResource for Debug Shader.");
+        ERROR_LOG("Failed to load ShaderResource for Debug Shader.");
         return false;
     }
-    // NOTE: Since this view only has 1 pass we assume index 0
+    // NOTE: Second pass is the WORLD pass
+    if (!Shaders.Create(m_passes[1], shaderConfig))
+    {
+        ERROR_LOG("Failed to create: '{}'.", debugShaderName);
+        return false;
+    }
+    Resources.Unload(shaderConfig);
+
+    if (!Resources.Load(skyboxShaderName, shaderConfig))
+    {
+        ERROR_LOG("Failed to load ShaderResource for Skybox Shader.");
+        return false;
+    }
+    // NOTE: First pass is the Skybox pass
     if (!Shaders.Create(m_passes[0], shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to create '{}'.", debugShaderName);
+        ERROR_LOG("Failed to load builtin Skybox Shader.");
         return false;
     }
-
     Resources.Unload(shaderConfig);
 
     m_materialShader = Shaders.Get(m_customShaderName ? m_customShaderName.Data() : materialShaderName);
     m_terrainShader  = Shaders.Get(terrainShaderName);
     m_debugShader    = Shaders.Get(debugShaderName);
-
-    m_debugShaderLocations.projection = m_debugShader->GetUniformIndex("projection");
-    m_debugShaderLocations.view       = m_debugShader->GetUniformIndex("view");
-    m_debugShaderLocations.model      = m_debugShader->GetUniformIndex("model");
+    m_skyboxShader   = Shaders.Get(skyboxShaderName);
 
     if (!m_materialShader)
     {
-        m_logger.Error("Load() - Failed to get Material Shader.");
+        ERROR_LOG("Failed to get Material Shader.");
         return false;
     }
 
     if (!m_terrainShader)
     {
-        m_logger.Error("Load() - Failed to get Terrain Shader.");
+        ERROR_LOG("Failed to get Terrain Shader.");
         return false;
     }
 
-    const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
-    m_projectionMatrix     = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
+    if (!m_debugShader)
+    {
+        ERROR_LOG("LFailed to get Debug Shader.");
+        return false;
+    }
 
-    m_camera = Cam.GetDefault();
+    if (!m_skyboxShader)
+    {
+        ERROR_LOG("Failed to get Skybox Shader.");
+        return false;
+    }
+
+    m_debugShaderLocations.projection = m_debugShader->GetUniformIndex("projection");
+    m_debugShaderLocations.view       = m_debugShader->GetUniformIndex("view");
+    m_debugShaderLocations.model      = m_debugShader->GetUniformIndex("model");
+
+    m_skyboxShaderLocations.projection = m_skyboxShader->GetUniformIndex("projection");
+    m_skyboxShaderLocations.view       = m_skyboxShader->GetUniformIndex("view");
+    m_skyboxShaderLocations.cubeMap    = m_skyboxShader->GetUniformIndex("cubeTexture");
 
     // TODO: Obtain from scene
     m_ambientColor = vec4(0.25f, 0.25f, 0.25f, 1.0f);
@@ -138,33 +187,31 @@ void RenderViewWorld::OnDestroy()
     Event.Unregister(m_onEventCallback);
 }
 
-void RenderViewWorld::OnResize()
-{
-    const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
-    m_projectionMatrix     = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
-}
-
-bool RenderViewWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* data, C3D::RenderViewPacket* outPacket)
+bool RenderViewWorld::OnBuildPacket(const C3D::FrameData& frameData, const C3D::Viewport& viewport, C3D::Camera* camera, void* data,
+                                    C3D::RenderViewPacket* outPacket)
 {
     if (!data || !outPacket)
     {
-        m_logger.Warn("OnBuildPacket() - Requires a valid pointer to data and outPacket");
+        WARN_LOG("Requires a valid pointer to data and outPacket.");
         return false;
     }
 
     const auto& worldData = *static_cast<C3D::RenderViewWorldData*>(data);
 
     outPacket->view             = this;
-    outPacket->projectionMatrix = m_projectionMatrix;
-    outPacket->viewMatrix       = m_camera->GetViewMatrix();
-    outPacket->viewPosition     = m_camera->GetPosition();
+    outPacket->projectionMatrix = viewport.GetProjection();
+    outPacket->viewMatrix       = camera->GetViewMatrix();
+    outPacket->viewPosition     = camera->GetPosition();
     outPacket->ambientColor     = m_ambientColor;
+    outPacket->viewport         = &viewport;
 
-    outPacket->geometries.SetAllocator(frameAllocator);
-    outPacket->terrainGeometries.SetAllocator(frameAllocator);
-    outPacket->debugGeometries.SetAllocator(frameAllocator);
+    outPacket->geometries.SetAllocator(frameData.frameAllocator);
+    outPacket->terrainGeometries.SetAllocator(frameData.frameAllocator);
+    outPacket->debugGeometries.SetAllocator(frameData.frameAllocator);
 
-    m_distances.SetAllocator(frameAllocator);
+    outPacket->skyboxData = worldData.skyboxData;
+
+    m_distances.SetAllocator(frameData.frameAllocator);
 
     for (const auto& gData : worldData.worldGeometries)
     {
@@ -183,7 +230,7 @@ bool RenderViewWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* 
         else
         {
             vec3 center        = vec4(gData.geometry->center, 1.0f) * gData.model;
-            const f32 distance = glm::distance(center, m_camera->GetPosition());
+            const f32 distance = glm::distance(center, camera->GetPosition());
 
             GeometryDistance gDistance{ gData, C3D::Abs(distance) };
             m_distances.PushBack(gDistance);
@@ -211,30 +258,98 @@ bool RenderViewWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* 
     return true;
 }
 
-bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, const u64 frameNumber,
-                               const u64 renderTargetIndex)
+bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet)
 {
-    for (const auto pass : m_passes)
+    // Bind the viewport
+    Renderer.SetActiveViewport(packet->viewport);
+
     {
-        if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
+        // Skybox pass
+        const auto pass = m_passes[0];
+        if (!Renderer.BeginRenderPass(pass, &pass->targets[frameData.renderTargetIndex]))
         {
-            m_logger.Error("OnRender() - BeginRenderPass failed for pass width id '{}'.", pass->id);
+            ERROR_LOG("BeginRenderPass failed for pass width id: '{}'.", pass->id);
             return false;
         }
+
+        if (packet->skyboxData.box)
+        {
+            Shaders.UseById(m_skyboxShader->id);
+
+            // Get the view matrix, but zero out the position so the skybox stays put on screen.
+            mat4 viewMatrix  = packet->viewMatrix;
+            viewMatrix[3][0] = 0.0f;
+            viewMatrix[3][1] = 0.0f;
+            viewMatrix[3][2] = 0.0f;
+
+            // Apply our globals
+            Renderer.ShaderBindGlobals(*m_skyboxShader);
+
+            if (!Shaders.SetUniformByIndex(m_skyboxShaderLocations.projection, &packet->projectionMatrix))
+            {
+                ERROR_LOG("Failed to apply Skybox projection uniform.");
+                return false;
+            }
+
+            if (!Shaders.SetUniformByIndex(m_skyboxShaderLocations.view, &viewMatrix))
+            {
+                ERROR_LOG("Failed to apply Skybox view uniform.");
+                return false;
+            }
+            Shaders.ApplyGlobal(true);
+
+            // Instance
+            Shaders.BindInstance(packet->skyboxData.box->instanceId);
+            if (!Shaders.SetUniformByIndex(m_skyboxShaderLocations.cubeMap, &packet->skyboxData.box->cubeMap))
+            {
+                ERROR_LOG("Failed to apply Skybox cubemap uniform.");
+                return false;
+            }
+
+            bool needsUpdate =
+                packet->skyboxData.box->frameNumber != frameData.frameNumber || packet->skyboxData.box->drawIndex != frameData.drawIndex;
+            Shaders.ApplyInstance(needsUpdate);
+
+            // Sync the frame number and draw index
+            packet->skyboxData.box->frameNumber = frameData.frameNumber;
+            packet->skyboxData.box->drawIndex   = frameData.drawIndex;
+
+            // Draw it
+            const auto renderData = C3D::GeometryRenderData(packet->skyboxData.box->g);
+            Renderer.DrawGeometry(renderData);
+        }
+
+        if (!Renderer.EndRenderPass(pass))
+        {
+            ERROR_LOG("EndRenderPass failed for pass with id: '{}'", pass->id);
+        }
+    }
+
+    {
+        // World pass
+        const auto pass = m_passes[1];
+        if (!Renderer.BeginRenderPass(pass, &pass->targets[frameData.renderTargetIndex]))
+        {
+            ERROR_LOG("BeginRenderPass failed for pass width id: '{}'.", pass->id);
+            return false;
+        }
+
+        const auto frameNumber = frameData.frameNumber;
+        const auto drawIndex   = frameData.drawIndex;
 
         // Terrain geometries
         if (!packet->terrainGeometries.Empty())
         {
             if (!Shaders.UseById(m_terrainShader->id))
             {
-                m_logger.Error("OnRender() - Failed to use shader: '{}'.", m_terrainShader->name);
+                ERROR_LOG("Failed to use shader: '{}'.", m_terrainShader->name);
                 return false;
             }
 
-            if (!Materials.ApplyGlobal(m_terrainShader->id, frameNumber, &packet->projectionMatrix, &packet->viewMatrix,
+            if (!Materials.ApplyGlobal(m_terrainShader->id, frameData, &packet->projectionMatrix, &packet->viewMatrix,
                                        &packet->ambientColor, &packet->viewPosition, m_renderMode))
             {
-                m_logger.Error("OnRender() - Failed to apply globals for shader: '{}'.", m_terrainShader->name);
+                ERROR_LOG("Failed to apply globals for shader: '{}'.", m_terrainShader->name);
                 return false;
             }
 
@@ -246,14 +361,15 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 // This means we always bind the shader but we skip updating the internal shader bindings if it has
                 // already happened this frame for this material (for example because the previous terrain geometry
                 // uses the same material)
-                bool needsUpdate = mat->renderFrameNumber != frameNumber;
+                bool needsUpdate = mat->renderFrameNumber != frameData.frameNumber || mat->renderDrawIndex != frameData.drawIndex;
                 if (!Materials.ApplyInstance(mat, needsUpdate))
                 {
-                    m_logger.Warn("OnRender() - Failed to apply instance for shader: '{}'.", m_terrainShader->name);
+                    WARN_LOG("Failed to apply instance for shader: '{}'.", m_terrainShader->name);
                     continue;
                 }
-                // Sync the frame number with the current
-                mat->renderFrameNumber = frameNumber;
+                // Sync the frame number and draw index with the current
+                mat->renderFrameNumber = frameData.frameNumber;
+                mat->renderDrawIndex   = frameData.drawIndex;
 
                 // Apply the locals for this geometry
                 Materials.ApplyLocal(mat, &terrain.model);
@@ -267,15 +383,15 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
         {
             if (!Shaders.UseById(m_materialShader->id))
             {
-                m_logger.Error("OnRender() - Failed to use shader: '{}'.", m_materialShader->name);
+                ERROR_LOG("Failed to use shader: '{}'.", m_materialShader->name);
                 return false;
             }
 
             // TODO: Generic way to request data such as ambient color (which should come from a scene)
-            if (!Materials.ApplyGlobal(m_materialShader->id, frameNumber, &packet->projectionMatrix, &packet->viewMatrix,
+            if (!Materials.ApplyGlobal(m_materialShader->id, frameData, &packet->projectionMatrix, &packet->viewMatrix,
                                        &packet->ambientColor, &packet->viewPosition, m_renderMode))
             {
-                m_logger.Error("OnRender() - Failed to apply globals for shader: '{}'", m_materialShader->name);
+                ERROR_LOG("Failed to apply globals for shader: '{}'.", m_materialShader->name);
                 return false;
             }
 
@@ -286,7 +402,7 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 const bool needsUpdate = mat->renderFrameNumber != frameNumber;
                 if (!Materials.ApplyInstance(mat, needsUpdate))
                 {
-                    m_logger.Warn("Failed to apply material '{}'. Skipping draw.", mat->name);
+                    WARN_LOG("Failed to apply material: '{}'. Skipping draw.", mat->name);
                     continue;
                 }
                 // Sync the frame number with the current
@@ -295,20 +411,8 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 // Apply the locals for this geometry
                 Materials.ApplyLocal(mat, &geometry.model);
 
-                // If the winding is inverted make sure we change the Renderer's winding
-                if (geometry.windingInverted)
-                {
-                    Renderer.SetWinding(C3D::RendererWinding::Clockwise);
-                }
-
                 // Actually draw our geometry
                 Renderer.DrawGeometry(geometry);
-
-                // If we just inverted the winding we should make sure to put it back to the default
-                if (geometry.windingInverted)
-                {
-                    Renderer.SetWinding(C3D::RendererWinding::CounterClockwise);
-                }
             }
         }
 
@@ -317,7 +421,7 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
         {
             if (!Shaders.UseById(m_debugShader->id))
             {
-                m_logger.Error("OnRender() - Failed to use shader: '{}'.", m_debugShader->name);
+                ERROR_LOG("Failed to use shader: '{}'.", m_debugShader->name);
                 return false;
             }
 
@@ -344,7 +448,7 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
 
         if (!Renderer.EndRenderPass(pass))
         {
-            m_logger.Error("OnRender() - EndRenderPass failed for pass with id '{}'", pass->id);
+            ERROR_LOG("EndRenderPass failed for pass with id: '{}'.", pass->id);
             return false;
         }
     }
@@ -359,19 +463,19 @@ bool RenderViewWorld::OnEvent(const u16 code, void* sender, const C3D::EventCont
         switch (const i32 mode = context.data.i32[0])
         {
             case C3D::RendererViewMode::Default:
-                m_logger.Debug("Renderer mode set to default");
+                DEBUG_LOG("Renderer mode set to default.");
                 m_renderMode = C3D::RendererViewMode::Default;
                 break;
             case C3D::RendererViewMode::Lighting:
-                m_logger.Debug("Renderer mode set to lighting");
+                DEBUG_LOG("Renderer mode set to lighting.");
                 m_renderMode = C3D::RendererViewMode::Lighting;
                 break;
             case C3D::RendererViewMode::Normals:
-                m_logger.Debug("Renderer mode set to normals");
+                DEBUG_LOG("Renderer mode set to normals.");
                 m_renderMode = C3D::RendererViewMode::Normals;
                 break;
             default:
-                m_logger.Fatal("Unknown render mode");
+                FATAL_LOG("Unknown render mode.");
                 break;
         }
     }

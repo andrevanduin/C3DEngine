@@ -24,7 +24,7 @@ namespace C3D
     {
     public:
         VulkanRenderPass();
-        VulkanRenderPass(VulkanContext* context, const RenderPassConfig& config);
+        VulkanRenderPass(const SystemManager* pSystemsManager, VulkanContext* context, const RenderPassConfig& config);
 
         bool Create(const RenderPassConfig& config) override;
 

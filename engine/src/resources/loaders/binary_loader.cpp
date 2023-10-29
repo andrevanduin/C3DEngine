@@ -9,8 +9,10 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "BINARY_LOADER";
+
     ResourceLoader<BinaryResource>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, "BINARY_LOADER", MemoryType::Array, ResourceType::Binary, nullptr, "shaders")
+        : IResourceLoader(pSystemsManager, MemoryType::Array, ResourceType::Binary, nullptr, "shaders")
     {}
 
     bool ResourceLoader<BinaryResource>::Load(const char* name, BinaryResource& resource) const
@@ -23,7 +25,7 @@ namespace C3D
         File file;
         if (!file.Open(fullPath, FileModeRead | FileModeBinary))
         {
-            m_logger.Error("Load() - Unable to open file for binary reading: '{}'.", fullPath);
+            ERROR_LOG("Unable to open file for binary reading: '{}'.", fullPath);
             return false;
         }
 
@@ -32,7 +34,7 @@ namespace C3D
         u64 fileSize = 0;
         if (!file.Size(&fileSize))
         {
-            m_logger.Error("Load() - Unable to binary read size of file: '{}'.", fullPath);
+            ERROR_LOG("Unable to binary read size of file: '{}'.", fullPath);
             file.Close();
             return false;
         }
@@ -43,7 +45,7 @@ namespace C3D
 
         if (!file.ReadAll(resource.data, &resource.size))
         {
-            m_logger.Error("Load() - Unable to read binary file: '{}'.", fullPath);
+            ERROR_LOG("Unable to read binary file: '{}'.", fullPath);
             file.Close();
             return false;
         }

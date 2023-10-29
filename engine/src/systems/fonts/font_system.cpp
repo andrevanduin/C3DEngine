@@ -10,13 +10,15 @@
 
 namespace C3D
 {
-    FontSystem::FontSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager, "FONT_SYSTEM") {}
+    constexpr const char* INSTANCE_NAME = "FONT_SYSTEM";
 
-    bool FontSystem::Init(const FontSystemConfig& config)
+    FontSystem::FontSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
+
+    bool FontSystem::OnInit(const FontSystemConfig& config)
     {
         if (config.maxBitmapFontCount == 0 || config.maxSystemFontCount == 0)
         {
-            m_logger.Error("Init() - Config.maxBitmapFontCount and Config.maxSystemFontCount must be > 0.");
+            ERROR_LOG("Config.maxBitmapFontCount and Config.maxSystemFontCount must be > 0.");
             return false;
         }
 
@@ -29,15 +31,17 @@ namespace C3D
         {
             if (!LoadBitmapFont(font))
             {
-                m_logger.Error("Init() - Failed to load bitmap font: '{}'", font.name);
+                ERROR_LOG("Failed to load bitmap font: '{}'.", font.name);
             }
         }
 
         return true;
     }
 
-    void FontSystem::Shutdown()
+    void FontSystem::OnShutdown()
     {
+        INFO_LOG("Cleaning font data for all registered fonts.");
+
         // Cleanup all our bitmap fonts
         for (auto& font : m_bitmapFonts)
         {
@@ -49,7 +53,7 @@ namespace C3D
 
     bool FontSystem::LoadSystemFont(const FontSystemConfig& config) const
     {
-        m_logger.Error("LoadSystemFont() - This functionality is not yet supported.");
+        ERROR_LOG("This functionality is not yet supported.");
         return false;
     }
 
@@ -57,8 +61,7 @@ namespace C3D
     {
         if (m_bitmapFonts.Has(config.name.Data()))
         {
-            m_logger.Warn("LoadBitmapFont() - A font named: '{}' already exists and won't be loaded again.",
-                          config.name);
+            WARN_LOG("A font named: '{}' already exists and won't be loaded again.", config.name);
             return true;
         }
 
@@ -66,7 +69,7 @@ namespace C3D
         BitmapFontLookup lookup;
         if (!Resources.Load(config.resourceName.Data(), lookup.resource))
         {
-            m_logger.Error("LoadBitmapFont() - Failed to load bitmap font resource.");
+            ERROR_LOG("Failed to load bitmap font resource.");
             return false;
         }
 
@@ -87,7 +90,7 @@ namespace C3D
         {
             if (!m_bitmapFonts.Has(fontName))
             {
-                m_logger.Error("Acquire() - Bitmap font named: '{}' was not found.", fontName);
+                ERROR_LOG("Bitmap font named: '{}' was not found.", fontName);
                 return false;
             }
 
@@ -103,11 +106,11 @@ namespace C3D
 
         if (text->type == UITextType::System)
         {
-            m_logger.Error("Acquire() - System fonts are not yet supported.");
+            ERROR_LOG("System fonts are not yet supported.");
             return false;
         }
 
-        m_logger.Error("Acquire() - Unknown font type: {}.", ToUnderlying(text->type));
+        ERROR_LOG("Unknown font type: {}.", ToUnderlying(text->type));
         return false;
     }
 
@@ -125,7 +128,7 @@ namespace C3D
             return true;
         }
 
-        m_logger.Error("VerifyAtlas() - Failed to verify atlas, unknown font type");
+        ERROR_LOG("Failed to verify atlas, unknown font type.");
         return false;
     }
 
@@ -136,7 +139,7 @@ namespace C3D
 
         if (!Renderer.AcquireTextureMapResources(font.atlas))
         {
-            m_logger.Error("SetupFontData() - Unable to acquire resources for font atlas.");
+            ERROR_LOG("Unable to acquire resources for font atlas.");
             return false;
         }
 

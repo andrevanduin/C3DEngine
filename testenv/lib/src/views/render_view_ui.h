@@ -29,12 +29,10 @@ public:
 
     bool OnCreate() override;
 
-    void OnResize() override;
+    bool OnBuildPacket(const C3D::FrameData& frameData, const C3D::Viewport& viewport, C3D::Camera* camera, void* data,
+                       C3D::RenderViewPacket* outPacket) override;
 
-    bool OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* data, C3D::RenderViewPacket* outPacket) override;
-
-    bool OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, u64 frameNumber,
-                  u64 renderTargetIndex) override;
+    bool OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet) override;
 
 private:
     void OnSetupPasses() override;
@@ -42,8 +40,7 @@ private:
     f32 m_nearClip = -100.0f;
     f32 m_farClip  = 100.0f;
 
-    mat4 m_projectionMatrix = mat4(1);
-    mat4 m_viewMatrix       = mat4(1);
+    mat4 m_viewMatrix = mat4(1);
 
     C3D::Shader* m_shader    = nullptr;
     u16 m_diffuseMapLocation = INVALID_ID_U16;

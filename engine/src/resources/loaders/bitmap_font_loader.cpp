@@ -9,6 +9,8 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "BITMAP_FONT_LOADER";
+
     // These are in order of priority to be looked up (since we would much rather load our custom binary format)
     constexpr static SupportedBitmapFontFileType SUPPORTED_FILE_TYPES[2] = {
         { ".cbf", BitmapFontFileType::CBF, true },
@@ -16,8 +18,7 @@ namespace C3D
     };
 
     ResourceLoader<BitmapFontResource>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, "BITMAP_FONT_LOADER", MemoryType::BitmapFont, ResourceType::BitmapFont,
-                          nullptr, "fonts")
+        : IResourceLoader(pSystemsManager, MemoryType::BitmapFont, ResourceType::BitmapFont, nullptr, "fonts")
     {}
 
     bool ResourceLoader<BitmapFontResource>::Load(const char* name, BitmapFontResource& resource) const
@@ -30,8 +31,7 @@ namespace C3D
         // Try our supported file types in order
         for (auto& supportedType : SUPPORTED_FILE_TYPES)
         {
-            filepath =
-                String::FromFormat("{}/{}/{}{}", Resources.GetBasePath(), typePath, name, supportedType.extension);
+            filepath = String::FromFormat("{}/{}/{}{}", Resources.GetBasePath(), typePath, name, supportedType.extension);
             if (File::Exists(filepath))
             {
                 const u8 mode = FileModeRead | (supportedType.isBinary ? FileModeBinary : 0);
@@ -46,7 +46,7 @@ namespace C3D
 
         if (type == BitmapFontFileType::NotFound)
         {
-            m_logger.Error("Load() - Unable to find bitmap font of supported type called: '{}'.", name);
+            ERROR_LOG("Unable to find bitmap font of supported type called: '{}'.", name);
             return false;
         }
 
@@ -65,7 +65,7 @@ namespace C3D
                 result = ReadCbfFile(file, resource);
                 break;
             case BitmapFontFileType::NotFound:
-                m_logger.Error("Load() - Unable to find bitmap font of supported type called: '{}.'", name);
+                ERROR_LOG("Unable to find bitmap font of supported type called: '{}.'", name);
                 break;
         }
 
@@ -73,7 +73,7 @@ namespace C3D
 
         if (!result)
         {
-            m_logger.Error("Load() - Failed to process bitmap font file: '{}'.", filepath);
+            ERROR_LOG("Failed to process bitmap font file: '{}'.", filepath);
             return false;
         }
 
@@ -91,15 +91,14 @@ namespace C3D
         resource.name.Destroy();
     }
 
-#define VERIFY_PARSE(lineType, lineNumber, result)                                                 \
-    if (!(result))                                                                                 \
-    {                                                                                              \
-        m_logger.Error("Error in file format reading type: '{}', line: {}." lineType, lineNumber); \
-        return false;                                                                              \
+#define VERIFY_PARSE(lineType, lineNumber, result)                                            \
+    if (!(result))                                                                            \
+    {                                                                                         \
+        ERROR_LOG("Error in file format reading type: '{}', line: {}." lineType, lineNumber); \
+        return false;                                                                         \
     }
 
-    bool ResourceLoader<BitmapFontResource>::ImportFntFile(File& file, const String& outCbfFilename,
-                                                           BitmapFontResource& data) const
+    bool ResourceLoader<BitmapFontResource>::ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource& data) const
     {
         String line;
         line.Reserve(512);
@@ -139,7 +138,7 @@ namespace C3D
                     }
                     else
                     {
-                        m_logger.Error("Error in file format reading: '{}'.", line);
+                        ERROR_LOG("Error in file format reading: '{}'.", line);
                         return false;
                     }
                     break;
@@ -157,7 +156,7 @@ namespace C3D
                     }
                     break;
                 default:
-                    m_logger.Warn("Invalid starting sequence on line: '{}'.", line);
+                    WARN_LOG("Invalid starting sequence on line: '{}'.", line);
                     break;
                     ;
             }
@@ -210,7 +209,7 @@ namespace C3D
         const auto pageCount = values[1].ToU32();
         if (pageCount != 1)
         {
-            m_logger.Error("Error in file. Page count is {} but is expected to be 1.", pageCount);
+            ERROR_LOG("Error in file. Page count is {} but is expected to be 1.", pageCount);
             return false;
         }
 
@@ -229,7 +228,7 @@ namespace C3D
         const auto glyphCount = values[1].ToU32();
         if (glyphCount == 0)
         {
-            m_logger.Error("Error in file. Glyph count is 0 but is expected to be > 0");
+            ERROR_LOG("Error in file. Glyph count is 0 but is expected to be > 0.");
             return false;
         }
 
@@ -305,7 +304,7 @@ namespace C3D
         const auto kerningCount = values[1].ToU32();
         if (kerningCount == 0)
         {
-            m_logger.Error("Error in file. Kerning count is 0 but is expected to be > 0");
+            ERROR_LOG("Error in file. Kerning count is 0 but is expected to be > 0.");
             return false;
         }
 
@@ -338,10 +337,9 @@ namespace C3D
         ResourceHeader header = {};
         file.Read(&header);
 
-        if (header.magicNumber != BINARY_RESOURCE_FILE_MAGIC_NUMBER ||
-            header.resourceType != ToUnderlying(ResourceType::BitmapFont))
+        if (header.magicNumber != BINARY_RESOURCE_FILE_MAGIC_NUMBER || header.resourceType != ToUnderlying(ResourceType::BitmapFont))
         {
-            m_logger.Error("CBF file header is invalid. The file can not be properly read");
+            ERROR_LOG("CBF file header is invalid. The file can not be properly read.");
             return false;
         }
 
@@ -396,7 +394,7 @@ namespace C3D
         File file;
         if (!file.Open(path, FileModeWrite | FileModeBinary))
         {
-            m_logger.Error("Failed to open file for writing: '{}'.", path);
+            ERROR_LOG("Failed to open file for writing: '{}'.", path);
             return false;
         }
 

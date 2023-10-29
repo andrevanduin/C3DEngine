@@ -27,10 +27,10 @@ namespace C3D
     public:
         explicit JobSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const JobSystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const JobSystemConfig& config) override;
+        void OnShutdown() override;
 
-        void Update(const FrameData& frameData) override;
+        void OnUpdate(const FrameData& frameData) override;
 
         C3D_API void Submit(JobInfo&& jobInfo);
 
@@ -39,7 +39,7 @@ namespace C3D
 
         void ProcessQueue(RingQueue<JobInfo>& queue, std::mutex& queueMutex);
 
-        bool m_running = false;
+        bool m_running   = false;
         u8 m_threadCount = 0;
 
         JobThread m_jobThreads[MAX_JOB_THREADS] = {};

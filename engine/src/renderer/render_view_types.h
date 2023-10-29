@@ -2,16 +2,17 @@
 #pragma once
 #include "core/defines.h"
 #include "memory/allocators/linear_allocator.h"
+#include "renderer/renderer_types.h"
 #include "renderer/renderpass.h"
 #include "resources/terrain/terrain_config.h"
 
 namespace C3D
 {
     class RenderView;
-    class Skybox;
     class Mesh;
     class UIMesh;
     class SystemManager;
+    class Viewport;
     struct Geometry;
     struct Material;
 
@@ -31,6 +32,8 @@ namespace C3D
 
     struct RenderViewWorldData
     {
+        SkyboxPacketData skyboxData;
+
         DynamicArray<GeometryRenderData> worldGeometries;
         DynamicArray<GeometryRenderData> terrainGeometries;
         DynamicArray<GeometryRenderData> debugGeometries;
@@ -38,7 +41,9 @@ namespace C3D
 
     struct RenderViewPacket
     {
-        // @brief A constant pointer to the view this packet is associated with.
+        /** @brief A pointer to the viewport that we should be using for this packet. */
+        const Viewport* viewport;
+        /** @brief A pointer to the view this packet is associated with. */
         RenderView* view;
 
         mat4 viewMatrix;
@@ -46,13 +51,15 @@ namespace C3D
         vec3 viewPosition;
         vec4 ambientColor;
 
+        SkyboxPacketData skyboxData;
+
         DynamicArray<GeometryRenderData, LinearAllocator> geometries;
         DynamicArray<GeometryRenderData, LinearAllocator> terrainGeometries;
         DynamicArray<GeometryRenderData, LinearAllocator> debugGeometries;
 
-        // @brief The name of the custom shader to use, if not using it is nullptr.
+        /** @brief The name of the custom shader to use, if not using it is nullptr. **/
         const char* customShaderName;
-        // @brief Holds a pointer to extra data understood by both the object and consuming view.
+        /** @brief Holds a pointer to extra data understood by both the object and consuming view. **/
         void* extendedData;
     };
 
@@ -94,11 +101,6 @@ namespace C3D
         // TEMP:
         DynamicArray<UIText*, LinearAllocator> texts;
         // TEMP END
-    };
-
-    struct SkyboxPacketData
-    {
-        Skybox* box;
     };
 
     struct PrimitivePacketData

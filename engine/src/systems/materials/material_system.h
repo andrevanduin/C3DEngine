@@ -12,6 +12,8 @@
 
 namespace C3D
 {
+    class FrameData;
+
     constexpr auto DEFAULT_MATERIAL_NAME         = "default";
     constexpr auto DEFAULT_UI_MATERIAL_NAME      = "default_ui";
     constexpr auto DEFAULT_TERRAIN_MATERIAL_NAME = "default_terrain";
@@ -77,9 +79,9 @@ namespace C3D
     public:
         explicit MaterialSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const MaterialSystemConfig& config) override;
+        bool OnInit(const MaterialSystemConfig& config) override;
 
-        void Shutdown() override;
+        void OnShutdown() override;
 
         Material* Acquire(const String& name);
         Material* AcquireTerrain(const String& name, const DynamicArray<String>& materialNames, bool autoRelease);
@@ -91,8 +93,8 @@ namespace C3D
         Material* GetDefaultUI();
         Material* GetDefaultTerrain();
 
-        bool ApplyGlobal(u32 shaderId, u64 frameNumber, const mat4* projection, const mat4* view,
-                         const vec4* ambientColor, const vec3* viewPosition, u32 renderMode) const;
+        bool ApplyGlobal(u32 shaderId, const FrameData& frameData, const mat4* projection, const mat4* view, const vec4* ambientColor,
+                         const vec3* viewPosition, u32 renderMode) const;
         bool ApplyInstance(Material* material, bool needsUpdate) const;
         bool ApplyLocal(Material* material, const mat4* model) const;
 
@@ -110,8 +112,6 @@ namespace C3D
 
         void DestroyMaterial(Material& mat) const;
 
-        bool m_initialized = false;
-
         Material m_defaultMaterial, m_defaultUIMaterial, m_defaultTerrainMaterial;
         /** @brief HashMap to map names to material-references */
         HashMap<String, MaterialReference> m_registeredMaterials;
@@ -126,6 +126,6 @@ namespace C3D
 
         // Known locations for the Terrain Shader
         TerrainUniformLocations m_terrainLocations;
-        u32 m_terrainShaderId;
+        u32 m_terrainShaderId = INVALID_ID;
     };
 }  // namespace C3D

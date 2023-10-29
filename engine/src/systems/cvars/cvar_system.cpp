@@ -5,20 +5,22 @@
 
 namespace C3D
 {
-    CVarSystem::CVarSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager, "CVAR_SYSTEM") {}
+    constexpr const char* INSTANCE_NAME = "CVAR_SYSTEM";
 
-    bool CVarSystem::Init(const CVarSystemConfig& config)
+    CVarSystem::CVarSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
+
+    bool CVarSystem::OnInit(const CVarSystemConfig& config)
     {
-        m_logger.Info("Init()");
+        INFO_LOG("Initializing.");
 
-        m_config = config;
+        m_config   = config;
         m_pConsole = config.pConsole;
 
         m_cVars.Create(config.maxCVars);
 
         if (!CreateDefaultCVars())
         {
-            m_logger.Error("Init() - Failed to create default CVars");
+            ERROR_LOG("Failed to create default CVars.");
             return false;
         }
 
@@ -26,9 +28,9 @@ namespace C3D
         return true;
     }
 
-    void CVarSystem::Shutdown()
+    void CVarSystem::OnShutdown()
     {
-        m_logger.Info("Shutdown()");
+        INFO_LOG("Shutting down.");
 
         for (const auto cVar : m_cVars)
         {
@@ -42,7 +44,7 @@ namespace C3D
     {
         if (!Exists(name))
         {
-            m_logger.Error("Remove() - No CVar with name: \'{}\' exist!", name);
+            ERROR_LOG("No CVar with name: '{}' exist!", name);
             return false;
         }
 
@@ -59,7 +61,7 @@ namespace C3D
     {
         if (!Exists(name))
         {
-            m_logger.Error("Print() - No CVar with name: \'{}\' exists!", name);
+            ERROR_LOG("No CVar with name: '{}' exists!", name);
             return false;
         }
 
@@ -80,8 +82,8 @@ namespace C3D
 
     void CVarSystem::RegisterDefaultCommands()
     {
-        m_pConsole->RegisterCommand(
-            "cvar", [this](const DynamicArray<ArgName>& args, String& output) { return OnCVarCommand(args, output); });
+        m_pConsole->RegisterCommand("cvar",
+                                    [this](const DynamicArray<ArgName>& args, String& output) { return OnCVarCommand(args, output); });
     }
 
     bool CVarSystem::CreateDefaultCVars()
@@ -122,7 +124,7 @@ namespace C3D
             // Assume arg2 is the name of a CVar
             if (!Exists(arg2))
             {
-                output = String::FromFormat("The CVar \'{}\' does not exist!", arg2);
+                output = String::FromFormat("The CVar '{}' does not exist!", arg2);
                 return false;
             }
 
@@ -144,11 +146,11 @@ namespace C3D
             const auto cVarName = args[2];
             if (!Exists(cVarName))
             {
-                output = String::FromFormat("The CVar \'{}\' does not exist!", cVarName);
+                output = String::FromFormat("The CVar '{}' does not exist!", cVarName);
                 return false;
             }
 
-            const auto type = args[3];
+            const auto type     = args[3];
             const auto valueStr = args[4];
 
             if (type == "i32" || type == "int")
@@ -169,11 +171,11 @@ namespace C3D
                 return true;
             }
 
-            output = String::FromFormat("Unknown type: \'{}\'", type);
+            output = String::FromFormat("Unknown type: '{}'", type);
             return false;
         }
 
-        output = String::FromFormat("Unknown argument \'{}\'", commandType);
+        output = String::FromFormat("Unknown argument '{}'", commandType);
         return false;
     }
 }  // namespace C3D

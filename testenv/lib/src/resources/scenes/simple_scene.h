@@ -99,7 +99,7 @@ public:
      * @param packet The packet that needs to be filled with render data
      * @return True if successful, false otherwise
      */
-    bool PopulateRenderPacket(C3D::FrameData& frameData, const C3D::Camera* camera, f32 aspect, C3D::RenderPacket& packet);
+    bool PopulateRenderPacket(C3D::FrameData& frameData, C3D::Camera* camera, const C3D::Viewport& viewport, C3D::RenderPacket& packet);
 
     bool AddDirectionalLight(const C3D::String& name, C3D::DirectionalLight& light);
     bool RemoveDirectionalLight(const C3D::String& name);
@@ -131,8 +131,6 @@ private:
     /** @brief Unloads the scene. Deallocates the resources for the scene.
      * After calling this method the scene is in an unloaded state ready to be destroyed.*/
     void UnloadInternal();
-
-    C3D::LoggerInstance<16> m_logger;
 
     u32 m_id           = INVALID_ID;
     SceneState m_state = SceneState::Uninitialized;

@@ -8,18 +8,14 @@
 
 namespace C3D
 {
-    LinearAllocator::LinearAllocator()
-        : BaseAllocator(ToUnderlying(AllocatorType::Linear)),
-          m_logger("LINEAR_ALLOCATOR"),
-          m_totalSize(0),
-          m_allocated(0),
-          m_ownsMemory(false)
-    {}
+    constexpr const char* INSTANCE_NAME = "LINEAR_ALLOCATOR";
+
+    LinearAllocator::LinearAllocator() : BaseAllocator(ToUnderlying(AllocatorType::Linear)) {}
 
     void LinearAllocator::Create(const char* name, const u64 totalSize, void* memory)
     {
-        m_totalSize = totalSize;
-        m_allocated = 0;
+        m_totalSize  = totalSize;
+        m_allocated  = 0;
         m_ownsMemory = memory == nullptr;
 
         // The memory already exists thus it's owned by someone else
@@ -39,7 +35,7 @@ namespace C3D
 
     void LinearAllocator::Destroy()
     {
-        m_logger.Info("Destroy()");
+        INFO_LOG("Destroying.");
 
         // First we free all our memory
         FreeAll();
@@ -53,8 +49,8 @@ namespace C3D
         Metrics.DestroyAllocator(m_id, false);
 
         m_memoryBlock = nullptr;
-        m_totalSize = 0;
-        m_ownsMemory = false;
+        m_totalSize   = 0;
+        m_ownsMemory  = false;
     }
 
     void* LinearAllocator::AllocateBlock(const MemoryType type, const u64 size, u16 alignment)
@@ -75,7 +71,7 @@ namespace C3D
             return block;
         }
 
-        m_logger.Error("Not initialized");
+        ERROR_LOG("Not initialized.");
         return nullptr;
     }
 

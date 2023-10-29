@@ -9,9 +9,9 @@
 
 namespace C3D
 {
-    RenderView::RenderView(const String& name, const String& customShaderName)
-        : m_name(name), m_customShaderName(customShaderName), m_logger(name.Data())
-    {}
+    constexpr const char* INSTANCE_NAME = "RENDER_VIEW";
+
+    RenderView::RenderView(const String& name, const String& customShaderName) : m_name(name), m_customShaderName(customShaderName) {}
 
     bool RenderView::OnRegister(const SystemManager* pSystemsManager)
     {
@@ -20,10 +20,9 @@ namespace C3D
         // We Register the RenderTargetRefreshRequired event here since this is the first time
         // we actually have access to the SystemsManager
         m_defaultRenderTargetRefreshRequiredCallback =
-            Event.Register(EventCodeDefaultRenderTargetRefreshRequired,
-                           [this](const u16 code, void* sender, const EventContext& context) {
-                               return OnRenderTargetRefreshRequired(code, sender, context);
-                           });
+            Event.Register(EventCodeDefaultRenderTargetRefreshRequired, [this](const u16 code, void* sender, const EventContext& context) {
+                return OnRenderTargetRefreshRequired(code, sender, context);
+            });
 
         // Setup our passes so we can start creating them (again called here because we need the SystemsManager)
         OnSetupPasses();
@@ -34,7 +33,7 @@ namespace C3D
             const auto pass = Renderer.CreateRenderPass(config);
             if (!pass)
             {
-                m_logger.Error("OnRegister() - RenderPass: '{}' could not be created.", config.name);
+                ERROR_LOG("RenderPass: '{}' could not be created.", config.name);
                 return false;
             }
             m_passes.PushBack(pass);
@@ -59,12 +58,6 @@ namespace C3D
         {
             m_width  = static_cast<u16>(width);
             m_height = static_cast<u16>(height);
-
-            for (const auto pass : m_passes)
-            {
-                pass->renderArea = ivec4(0, 0, m_width, m_height);
-            }
-
             OnResize();
         }
     }
@@ -116,26 +109,22 @@ namespace C3D
                         }
                         else
                         {
-                            m_logger.Fatal("RegenerateRenderTargets() -  attachment type: '{}'.",
-                                           ToUnderlying(attachment.type));
+                            FATAL_LOG("Attachment type: '{}'.", ToUnderlying(attachment.type));
                         }
                     }
                     else if (attachment.source == RenderTargetAttachmentSource::View)
                     {
                         if (!RegenerateAttachmentTarget(r, &attachment))
                         {
-                            m_logger.Error(
-                                "RegenerateRenderTargets() - View failed to regenerate attachment target for "
-                                "attachment type: '{}'.",
-                                ToUnderlying(attachment.type));
+                            ERROR_LOG("View failed to regenerate attachment target for attachment type: '{}'.",
+                                      ToUnderlying(attachment.type));
                         }
                     }
                 }
 
                 // Create the render target
-                Renderer.CreateRenderTarget(target.attachmentCount, target.attachments, pass,
-                                            target.attachments[0].texture->width, target.attachments[0].texture->height,
-                                            &pass->targets[i]);
+                Renderer.CreateRenderTarget(target.attachmentCount, target.attachments, pass, target.attachments[0].texture->width,
+                                            target.attachments[0].texture->height, &pass->targets[i]);
             }
         }
     }

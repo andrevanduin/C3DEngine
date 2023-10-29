@@ -12,6 +12,8 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "VULKAN_BUFFER";
+
     VulkanBuffer::VulkanBuffer(const VulkanContext* context, const String& name) : RenderBuffer(name), m_context(context) {}
 
     bool VulkanBuffer::Create(const RenderBufferType bufferType, const u64 size, const bool useFreelist)
@@ -49,10 +51,10 @@ namespace C3D
                 m_memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
                 break;
             case RenderBufferType::Storage:
-                m_logger.Error("Create() - RenderBufferType::Storage is not yet supported.");
+                ERROR_LOG("RenderBufferType::Storage is not yet supported.");
                 return false;
             case RenderBufferType::Unknown:
-                m_logger.Error("Create() - Unsupported buffer type: '{}'.", ToUnderlying(bufferType));
+                ERROR_LOG("Unsupported buffer type: '{}'.", ToUnderlying(bufferType));
                 return false;
         }
 
@@ -71,7 +73,7 @@ namespace C3D
         m_memoryIndex = m_context->device.FindMemoryIndex(m_memoryRequirements.memoryTypeBits, m_memoryPropertyFlags);
         if (m_memoryIndex == -1)
         {
-            m_logger.Error("Create() - Unable to create because the required memory type index was not found");
+            ERROR_LOG("Unable to create because the required memory type index was not found.");
             return false;
         }
 
@@ -92,7 +94,7 @@ namespace C3D
 
         if (result != VK_SUCCESS)
         {
-            m_logger.Error("Create() - Unable to create because the required memory allocation failed. Error: {}", result);
+            ERROR_LOG("Unable to create because the required memory allocation failed. Error: {}.", result);
             return false;
         }
 
@@ -186,7 +188,7 @@ namespace C3D
         const VkResult result = vkAllocateMemory(logicalDevice, &allocateInfo, m_context->allocator, &newMemory);
         if (result != VK_SUCCESS)
         {
-            m_logger.Error("Resize() - Unable to resize because the required memory allocation failed. Error: {}", result);
+            ERROR_LOG("Unable to resize because the required memory allocation failed. Error: {}.", result);
             return false;
         }
 
@@ -238,7 +240,7 @@ namespace C3D
     {
         if (!outMemory)
         {
-            m_logger.Error("Read() - Requires a valid pointer to outMemory pointer.");
+            ERROR_LOG("Requires a valid pointer to outMemory pointer.");
             return false;
         }
 
@@ -250,7 +252,7 @@ namespace C3D
             VulkanBuffer read(m_context, "READ_BUFFER");
             if (!read.Create(RenderBufferType::Read, size, false))
             {
-                m_logger.Error("Read() - Failed to create read buffer.");
+                ERROR_LOG("Failed to create read buffer.");
                 return false;
             }
             read.Bind(0);
@@ -289,7 +291,7 @@ namespace C3D
     {
         if (!data)
         {
-            m_logger.Error("LoadRange() - Requires valid data to load.");
+            ERROR_LOG("Requires valid data to load.");
             return false;
         }
 
@@ -299,7 +301,7 @@ namespace C3D
             VulkanBuffer staging(m_context, "LOAD_RANGE_STAGING_BUFFER");
             if (!staging.Create(RenderBufferType::Staging, size, false))
             {
-                m_logger.Error("LoadRange() - Failed to create staging buffer.");
+                ERROR_LOG("Failed to create staging buffer.");
                 return false;
             }
             staging.Bind(0);
@@ -307,7 +309,7 @@ namespace C3D
             // Load the data into the staging buffer
             if (!staging.LoadRange(0, size, data))
             {
-                m_logger.Error("LoadRange() - Failed to run Staging::LoadRange().");
+                ERROR_LOG("Failed to run Staging::LoadRange().");
                 return false;
             }
 
@@ -336,7 +338,7 @@ namespace C3D
     {
         if (!dest || size == 0)
         {
-            m_logger.Error("CopyRange() - Requires a valid destination and a nonzero size");
+            ERROR_LOG("Requires a valid destination and a nonzero size.");
             return false;
         }
         return CopyRangeInternal(srcOffset, dynamic_cast<VulkanBuffer*>(dest)->handle, dstOffset, size);
@@ -367,7 +369,7 @@ namespace C3D
             return true;
         }
 
-        m_logger.Error("Draw() - Cannot draw a buffer of type: '{}'.", ToUnderlying(type));
+        ERROR_LOG("Cannot draw a buffer of type: '{}'.", ToUnderlying(type));
         return false;
     }
 

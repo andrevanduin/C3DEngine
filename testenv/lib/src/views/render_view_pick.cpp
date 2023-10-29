@@ -2,6 +2,7 @@
 #include "render_view_pick.h"
 
 #include <core/colors.h>
+#include <core/frame_data.h>
 #include <core/uuid.h>
 #include <math/c3d_math.h>
 #include <renderer/renderer_frontend.h>
@@ -13,14 +14,15 @@
 #include <systems/resources/resource_system.h>
 #include <systems/shaders/shader_system.h>
 
+constexpr const char* INSTANCE_NAME = "RENDER_VIEW_PICK";
+
 RenderViewPick::RenderViewPick() : RenderView("PICK_VIEW", "") {}
 
 void RenderViewPick::OnSetupPasses()
 {
     C3D::RenderPassConfig passes[2] = {};
 
-    passes[0].name       = "RenderPass.Builtin.WorldPick";
-    passes[0].renderArea = { 0, 0, 1280, 720 };
+    passes[0].name = "RenderPass.Builtin.WorldPick";
     // HACK: Clear to white for better visibility (should be 0 since it's invalid id)
     passes[0].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     passes[0].clearFlags = C3D::RenderPassClearFlags::ClearColorBuffer | C3D::RenderPassClearFlags::ClearDepthBuffer;
@@ -45,7 +47,6 @@ void RenderViewPick::OnSetupPasses()
     passes[0].renderTargetCount = 1;
 
     passes[1].name       = "RenderPass.Builtin.UIPick";
-    passes[1].renderArea = { 0, 0, 1280, 720 };
     passes[1].clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     passes[1].clearFlags = C3D::RenderPassClearFlags::ClearNone;
     passes[1].depth      = 1.0f;
@@ -76,13 +77,13 @@ bool RenderViewPick::OnCreate()
     C3D::ShaderConfig shaderConfig;
     if (!Resources.Load(uiShaderName, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to load builtin UI Pick shader.");
+        ERROR_LOG("Failed to load builtin UI Pick shader.");
         return false;
     }
 
     if (!Shaders.Create(m_uiShaderInfo.pass, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to create builtin UI Pick Shader.");
+        ERROR_LOG("Failed to create builtin UI Pick Shader.");
         return false;
     }
 
@@ -106,13 +107,13 @@ bool RenderViewPick::OnCreate()
     constexpr auto worldShaderName = "Shader.Builtin.WorldPick";
     if (!Resources.Load(worldShaderName, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to load builtin World Pick shader.");
+        ERROR_LOG("Failed to load builtin World Pick shader.");
         return false;
     }
 
     if (!Shaders.Create(m_worldShaderInfo.pass, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to create builtin World Pick Shader.");
+        ERROR_LOG("Failed to create builtin World Pick Shader.");
         return false;
     }
 
@@ -137,13 +138,13 @@ bool RenderViewPick::OnCreate()
     constexpr auto terrainShaderName = "Shader.Builtin.TerrainPick";
     if (!Resources.Load(terrainShaderName, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to load builtin Terrain Pick shader.");
+        ERROR_LOG("Failed to load builtin Terrain Pick shader.");
         return false;
     }
 
     if (!Shaders.Create(m_terrainShaderInfo.pass, shaderConfig))
     {
-        m_logger.Error("OnCreate() - Failed to create builtin World Pick Shader.");
+        ERROR_LOG("Failed to create builtin World Pick Shader.");
         return false;
     }
 
@@ -198,11 +199,12 @@ void RenderViewPick::OnResize()
         glm::perspective(m_terrainShaderInfo.fov, aspect, m_terrainShaderInfo.nearClip, m_terrainShaderInfo.farClip);
 }
 
-bool RenderViewPick::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* data, C3D::RenderViewPacket* outPacket)
+bool RenderViewPick::OnBuildPacket(const C3D::FrameData& frameData, const C3D::Viewport& viewport, C3D::Camera* camera, void* data,
+                                   C3D::RenderViewPacket* outPacket)
 {
     if (!data || !outPacket)
     {
-        m_logger.Warn("OnBuildPacket() - Requires a valid pointer to data and outPacket");
+        WARN_LOG("Requires a valid pointer to data and outPacket");
         return false;
     }
 
@@ -214,7 +216,7 @@ bool RenderViewPick::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* d
     m_worldShaderInfo.view = worldCam->GetViewMatrix();
 
     packetData->uiGeometryCount = 0;
-    outPacket->extendedData     = frameAllocator->New<PickPacketData>(C3D::MemoryType::RenderView);
+    outPacket->extendedData     = frameData.frameAllocator->New<PickPacketData>(C3D::MemoryType::RenderView);
 
     u32 highestInstanceId = 0;
 
@@ -286,12 +288,12 @@ bool RenderViewPick::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* d
     return true;
 }
 
-bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, u64 frameNumber, u64 renderTargetIndex)
+bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet)
 {
     // We start at the 0-th pass (world)
     auto pass = m_passes[0];
 
-    if (renderTargetIndex == 0)
+    if (frameData.renderTargetIndex == 0)
     {
         // Reset
         for (auto& instance : m_instanceUpdated)
@@ -299,9 +301,9 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
             instance = false;
         }
 
-        if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
+        if (!Renderer.BeginRenderPass(pass, &pass->targets[frameData.renderTargetIndex]))
         {
-            m_logger.Error("OnRender() - BeginRenderPass() failed for pass: '{}'.", pass->GetName());
+            ERROR_LOG("BeginRenderPass() failed for pass: '{}'.", pass->GetName());
             return false;
         }
 
@@ -318,24 +320,24 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
         {
             if (!Shaders.UseById(m_terrainShaderInfo.shader->id))
             {
-                m_logger.Error("OnRender() - Failed to use terrain pick shader. Render frame failed.");
+                ERROR_LOG("Failed to use terrain pick shader. Render frame failed.");
                 return false;
             }
 
             // Apply globals
             if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.projectionLocation, &m_terrainShaderInfo.projection))
             {
-                m_logger.Error("OnRender() - Failed to apply projection matrix.");
+                ERROR_LOG("Failed to apply projection matrix.");
             }
 
             if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.viewLocation, &m_terrainShaderInfo.view))
             {
-                m_logger.Error("OnRender() - Failed to apply view matrix.");
+                ERROR_LOG("Failed to apply view matrix.");
             }
 
             if (!Shaders.ApplyGlobal(true))
             {
-                m_logger.Error("OnRender() - Failed to apply globals.");
+                ERROR_LOG("Failed to apply globals.");
             }
 
             // Draw terrain geometries.
@@ -346,7 +348,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
                 if (!Shaders.BindInstance(currentInstanceId))
                 {
-                    m_logger.Error("OnRender() - Failed to bind instance with id: {}.", currentInstanceId);
+                    ERROR_LOG("Failed to bind instance with id: {}.", currentInstanceId);
                 }
 
                 u32 r, g, b;
@@ -355,7 +357,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
                 if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.idColorLocation, &color))
                 {
-                    m_logger.Error("OnRender() - Failed to apply id color uniform.");
+                    ERROR_LOG("Failed to apply id color uniform.");
                     return false;
                 }
 
@@ -365,7 +367,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
                 // Apply the locals
                 if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.modelLocation, &geo.model))
                 {
-                    m_logger.Error("OnRender() - Failed to apply model matrix for terrain geometry.");
+                    ERROR_LOG("Failed to apply model matrix for terrain geometry.");
                 }
 
                 // Actually draw the geometry
@@ -383,24 +385,24 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
         {
             if (!Shaders.UseById(m_worldShaderInfo.shader->id))
             {
-                m_logger.Error("OnRender() - Failed to use world pick shader. Render frame failed.");
+                ERROR_LOG("Failed to use world pick shader. Render frame failed.");
                 return false;
             }
 
             // Apply globals
             if (!Shaders.SetUniformByIndex(m_worldShaderInfo.projectionLocation, &m_worldShaderInfo.projection))
             {
-                m_logger.Error("OnRender() - Failed to apply projection matrix.");
+                ERROR_LOG("Failed to apply projection matrix.");
             }
 
             if (!Shaders.SetUniformByIndex(m_worldShaderInfo.viewLocation, &m_worldShaderInfo.view))
             {
-                m_logger.Error("OnRender() - Failed to apply view matrix.");
+                ERROR_LOG("Failed to apply view matrix.");
             }
 
             if (!Shaders.ApplyGlobal(true))
             {
-                m_logger.Error("OnRender() - Failed to apply globals.");
+                ERROR_LOG("Failed to apply globals.");
             }
 
             // Draw world geometries.
@@ -411,7 +413,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
                 if (!Shaders.BindInstance(currentInstanceId))
                 {
-                    m_logger.Error("OnRender() - Failed to bind instance with id: {}.", currentInstanceId);
+                    ERROR_LOG("Failed to bind instance with id: {}.", currentInstanceId);
                 }
 
                 u32 r, g, b;
@@ -420,7 +422,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
                 if (!Shaders.SetUniformByIndex(m_worldShaderInfo.idColorLocation, &color))
                 {
-                    m_logger.Error("OnRender() - Failed to apply id color uniform.");
+                    ERROR_LOG("Failed to apply id color uniform.");
                     return false;
                 }
 
@@ -430,7 +432,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
                 // Apply the locals
                 if (!Shaders.SetUniformByIndex(m_worldShaderInfo.modelLocation, &geo.model))
                 {
-                    m_logger.Error("OnRender() - Failed to apply model matrix for world geometry.");
+                    ERROR_LOG("Failed to apply model matrix for world geometry.");
                 }
 
                 // Actually draw the geometry
@@ -441,40 +443,40 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
         if (!Renderer.EndRenderPass(pass))
         {
-            m_logger.Error("OnRender() - EndRenderPass() failed for pass: '{}'.", pass->id);
+            ERROR_LOG("EndRenderPass() failed for pass: '{}'.", pass->id);
             return false;
         }
 
         // Second (UI) pass
         pass = m_passes[1];
 
-        if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
+        if (!Renderer.BeginRenderPass(pass, &pass->targets[frameData.renderTargetIndex]))
         {
-            m_logger.Error("OnRender() - BeginRenderPass() failed for pass: '{}'.", pass->id);
+            ERROR_LOG("BeginRenderPass() failed for pass: '{}'.", pass->id);
             return false;
         }
 
         // UI
         if (!Shaders.UseById(m_uiShaderInfo.shader->id))
         {
-            m_logger.Error("OnRender() - Failed to use world pick shader. Render frame failed.");
+            ERROR_LOG("Failed to use world pick shader. Render frame failed.");
             return false;
         }
 
         // Apply globals
         if (!Shaders.SetUniformByIndex(m_uiShaderInfo.projectionLocation, &m_uiShaderInfo.projection))
         {
-            m_logger.Error("OnRender() - Failed to apply projection matrix.");
+            ERROR_LOG("Failed to apply projection matrix.");
         }
 
         if (!Shaders.SetUniformByIndex(m_uiShaderInfo.viewLocation, &m_uiShaderInfo.view))
         {
-            m_logger.Error("OnRender() - Failed to apply view matrix.");
+            ERROR_LOG("Failed to apply view matrix.");
         }
 
         if (!Shaders.ApplyGlobal(true))
         {
-            m_logger.Error("OnRender() - Failed to apply globals.");
+            ERROR_LOG("Failed to apply globals.");
         }
 
         // Draw our ui geometries. We start where the terrain geometries left off.
@@ -487,7 +489,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
             if (!Shaders.BindInstance(currentInstanceId))
             {
-                m_logger.Error("OnRender() - Failed to bind instance with id: {}.", currentInstanceId);
+                ERROR_LOG("Failed to bind instance with id: {}.", currentInstanceId);
             }
 
             u32 r, g, b;
@@ -496,7 +498,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
             if (!Shaders.SetUniformByIndex(m_uiShaderInfo.idColorLocation, &color))
             {
-                m_logger.Error("OnRender() - Failed to apply id color uniform.");
+                ERROR_LOG("Failed to apply id color uniform.");
                 return false;
             }
 
@@ -506,7 +508,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
             // Apply the locals
             if (!Shaders.SetUniformByIndex(m_uiShaderInfo.modelLocation, &geo.model))
             {
-                m_logger.Error("OnRender() - Failed to apply model matrix for ui geometry.");
+                ERROR_LOG("Failed to apply model matrix for ui geometry.");
             }
 
             // Actually draw the geometry
@@ -519,7 +521,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
             currentInstanceId = text->uniqueId;
             if (!Shaders.BindInstance(currentInstanceId))
             {
-                m_logger.Error("OnRender() - Failed to bind instance with id: {}.", currentInstanceId);
+                ERROR_LOG("Failed to bind instance with id: {}.", currentInstanceId);
             }
 
             u32 r, g, b;
@@ -528,20 +530,20 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
             if (!Shaders.SetUniformByIndex(m_uiShaderInfo.idColorLocation, &color))
             {
-                m_logger.Error("OnRender() - Failed to apply id color uniform.");
+                ERROR_LOG("Failed to apply id color uniform.");
                 return false;
             }
 
             if (!Shaders.ApplyInstance(true))
             {
-                m_logger.Error("OnRender() - Failed to apply instance.");
+                ERROR_LOG("Failed to apply instance.");
             }
 
             // Apply the locals
             mat4 model = text->transform.GetWorld();
             if (!Shaders.SetUniformByIndex(m_uiShaderInfo.modelLocation, &model))
             {
-                m_logger.Error("OnRender() - Failed to apply model matrix for text.");
+                ERROR_LOG("Failed to apply model matrix for text.");
             }
 
             // Actually draw the text
@@ -550,7 +552,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
 
         if (!Renderer.EndRenderPass(pass))
         {
-            m_logger.Error("OnRender() - EndRenderPass() failed for pass: '{}'.", pass->id);
+            ERROR_LOG("EndRenderPass() failed for pass: '{}'.", pass->id);
             return false;
         }
     }
@@ -591,7 +593,7 @@ bool RenderViewPick::RegenerateAttachmentTarget(u32 passIndex, C3D::RenderTarget
     }
     else
     {
-        m_logger.Error("RegenerateAttachmentTarget() - Unknown attachment type: '{}'", ToUnderlying(attachment->type));
+        ERROR_LOG("Unknown attachment type: '{}'.", ToUnderlying(attachment->type));
     }
 
     if (passIndex == 1)
@@ -610,8 +612,8 @@ bool RenderViewPick::RegenerateAttachmentTarget(u32 passIndex, C3D::RenderTarget
     // Generate a UUID to act as the name
     const auto textureNameUUID = C3D::UUIDS::Generate();
 
-    const u32 width  = m_passes[passIndex]->renderArea.z;
-    const u32 height = m_passes[passIndex]->renderArea.w;
+    const u32 width  = m_width;
+    const u32 height = m_height;
     // TODO: make this configurable
     constexpr bool hasTransparency = false;
 
@@ -652,17 +654,17 @@ void RenderViewPick::AcquireShaderInstances()
     u32 instance;
     if (!Renderer.AcquireShaderInstanceResources(*m_uiShaderInfo.shader, 0, nullptr, &instance))
     {
-        m_logger.Fatal("AcquireShaderInstances() - Failed to acquire UI shader resources from Renderer.");
+        FATAL_LOG("Failed to acquire UI shader resources from Renderer.");
     }
 
     if (!Renderer.AcquireShaderInstanceResources(*m_worldShaderInfo.shader, 0, nullptr, &instance))
     {
-        m_logger.Fatal("AcquireShaderInstances() - Failed to acquire World shader resources from Renderer.");
+        FATAL_LOG("Failed to acquire World shader resources from Renderer.");
     }
 
     if (!Renderer.AcquireShaderInstanceResources(*m_terrainShaderInfo.shader, 0, nullptr, &instance))
     {
-        m_logger.Fatal("AcquireShaderInstances() - Failed to acquire Terrain shader resources from Renderer.");
+        FATAL_LOG("Failed to acquire Terrain shader resources from Renderer.");
     }
 
     m_instanceCount++;
@@ -675,17 +677,17 @@ void RenderViewPick::ReleaseShaderInstances()
     {
         if (!Renderer.ReleaseShaderInstanceResources(*m_uiShaderInfo.shader, i))
         {
-            m_logger.Warn("ReleaseShaderInstances() - Failed to release UI shader resources.");
+            WARN_LOG("Failed to release UI shader resources.");
         }
 
         if (!Renderer.ReleaseShaderInstanceResources(*m_worldShaderInfo.shader, i))
         {
-            m_logger.Warn("ReleaseShaderInstances() - Failed to release World shader resources.");
+            WARN_LOG("Failed to release World shader resources.");
         }
 
         if (!Renderer.ReleaseShaderInstanceResources(*m_terrainShaderInfo.shader, i))
         {
-            m_logger.Warn("ReleaseShaderInstances() - Failed to release Terrain shader resources.");
+            WARN_LOG("Failed to release Terrain shader resources.");
         }
     }
     m_instanceUpdated.Clear();

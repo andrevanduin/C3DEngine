@@ -182,7 +182,7 @@ namespace C3D
         return false;
     }
 
-    Ray Ray::FromScreen(const vec2& screenPos, const vec2& viewportSize, const vec3& origin, const mat4& view, const mat4& projection)
+    Ray Ray::FromScreen(const vec2& screenPos, const Rect2D& viewportRect, const vec3& origin, const mat4& view, const mat4& projection)
     {
         Ray ray;
         ray.origin = origin;
@@ -190,8 +190,8 @@ namespace C3D
         // We start with the screen position that is provided
         // First we get normalized device coordinates (-1:1 range that our gpu uses)
         vec3 rayNdc;
-        rayNdc.x = (2.0f * screenPos.x) / viewportSize.x - 1.0f;
-        rayNdc.y = 1.0f - (2.0f * screenPos.y) / viewportSize.y;
+        rayNdc.x = (2.0f * (screenPos.x - viewportRect.x)) / viewportRect.width - 1.0f;
+        rayNdc.y = 1.0f - (2.0f * (screenPos.y - viewportRect.y)) / viewportRect.height;
         rayNdc.z = 1.0f;
 
         // Then we get the clip space out of those NDC

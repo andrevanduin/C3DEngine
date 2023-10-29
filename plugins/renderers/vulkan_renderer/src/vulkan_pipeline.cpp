@@ -68,6 +68,15 @@ namespace C3D
         rasterizerCreateInfo.depthBiasClamp                         = 0.0f;
         rasterizerCreateInfo.depthBiasSlopeFactor                   = 0.0f;
 
+        // Smooth line rasterization (when it's supported)
+        VkPipelineRasterizationLineStateCreateInfoEXT lineRasterizationCreateInfo = {};
+        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION_BIT))
+        {
+            lineRasterizationCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT;
+            lineRasterizationCreateInfo.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+            rasterizerCreateInfo.pNext                        = &lineRasterizationCreateInfo;
+        }
+
         // MultiSampling
         VkPipelineMultisampleStateCreateInfo multiSampleCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
         multiSampleCreateInfo.sampleShadingEnable                  = VK_FALSE;

@@ -8,20 +8,15 @@
 
 namespace C3D
 {
-    DynamicAllocator::DynamicAllocator(const AllocatorType type)
-        : BaseAllocator(ToUnderlying(type)),
-          m_logger("DYNAMIC_ALLOCATOR"),
-          m_initialized(false),
-          m_totalSize(0),
-          m_memorySize(0),
-          m_memory(nullptr)
-    {}
+    constexpr const char* INSTANCE_NAME = "DYNAMIC_ALLOCATOR";
+
+    DynamicAllocator::DynamicAllocator(const AllocatorType type) : BaseAllocator(ToUnderlying(type)) {}
 
     bool DynamicAllocator::Create(void* memory, const u64 totalMemory, const u64 usableMemory)
     {
         if (totalMemory == 0)
         {
-            m_logger.Error("Create() - Size cannot be 0. Creation failed");
+            ERROR_LOG("Size cannot be 0. Creation failed");
             return false;
         }
 
@@ -36,7 +31,7 @@ namespace C3D
         // The second part of the memory will store the actual data that this allocator manages
         m_memory = static_cast<char*>(memory) + freeListMemoryRequirement;
 
-        m_logger.Trace(
+        TRACE(
             "Create() - Successfully created DynamicAllocator managing {} bytes. Total memory usage = ({} + {} = {}) "
             "(UsableMemory + FreeListMemory = total)",
             usableMemory, usableMemory, freeListMemoryRequirement, totalMemory);
@@ -66,7 +61,7 @@ namespace C3D
 
         if (size == 0 || alignment == 0)
         {
-            m_logger.Error("Allocate() requires a valid size and alignment");
+            ERROR_LOG("Allocate() requires a valid size and alignment");
             return nullptr;
         }
 
@@ -111,8 +106,8 @@ namespace C3D
             header->alignment = alignment;
 
 #ifdef C3D_TRACE_ALLOCS
-            m_logger.Trace("Allocated (size: {}, alignment {}, header: {} and marker: {} = {}) bytes at {}", size, alignment,
-                           sizeof(AllocHeader), ALLOC_SIZE_MARKER_SIZE, requiredSize, basePtr);
+            TRACE(INSTANCE_NAME, "Allocated (size: {}, alignment {}, header: {} and marker: {} = {}) bytes at {}.", size, alignment,
+                  sizeof(AllocHeader), ALLOC_SIZE_MARKER_SIZE, requiredSize, basePtr);
 #endif
 
             MetricsAllocate(m_id, type, size, requiredSize, userDataPtr);
@@ -122,8 +117,8 @@ namespace C3D
         }
 
         const auto available = m_freeList.FreeSpace();
-        m_logger.Error("AllocateAligned() - No blocks of memory large enough to allocate from.");
-        m_logger.Error("Requested size: {}, total space available: {}", size, available);
+        ERROR_LOG("No blocks of memory large enough to allocate from.");
+        ERROR_LOG("Requested size: {}, total space available: {}.", size, available);
 
         throw std::bad_alloc();
     }
@@ -134,19 +129,19 @@ namespace C3D
 
         if (!block)
         {
-            m_logger.Fatal("FreeAligned() - Called with nullptr block.");
+            FATAL_LOG("Called with nullptr block.");
         }
 
         if (m_memory == nullptr || m_totalSize == 0)
         {
             // Tried to free something from this allocator while it is not managing any memory
-            m_logger.Fatal("Free() - Called while dynamic allocator is not managing memory.");
+            FATAL_LOG("Called while dynamic allocator is not managing memory.");
         }
 
         if (block < m_memory || block > m_memory + m_totalSize)
         {
             void* endOfBlock = m_memory + m_totalSize;
-            m_logger.Fatal("Free() - Called with block ({}) outside of allocator range ({}) - ({}).", block, m_memory, endOfBlock);
+            FATAL_LOG("Called with block ({}) outside of allocator range ({}) - ({}).", block, m_memory, endOfBlock);
         }
 
         // The provided address points to the user's data block
@@ -163,11 +158,11 @@ namespace C3D
         // Then we simply free this memory
         if (!m_freeList.FreeBlock(requiredSize, offset))
         {
-            m_logger.Error("Free() - failed");
+            ERROR_LOG("Failed to free block in Freelist.");
         }
 
 #ifdef C3D_TRACE_ALLOCS
-        m_logger.Trace("FreeAligned() - Freed {} bytes at {}.", requiredSize, header->start);
+        TRACE("Freed {} bytes at {}.", requiredSize, header->start);
 #endif
 
         MetricsFree(m_id, type, *blockSize, requiredSize, userDataPtr);

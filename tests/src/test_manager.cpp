@@ -4,7 +4,9 @@
 #include <core/clock.h>
 #include <core/logger.h>
 
-TestManager::TestManager(const u64 memorySize) : m_logger("TEST_MANAGER")
+constexpr const char* INSTANCE_NAME = "TEST_MANAGER";
+
+TestManager::TestManager(const u64 memorySize)
 {
     C3D::Logger::Init();
     Metrics.Init();
@@ -39,7 +41,7 @@ void TestManager::RunTests()
     config.makeWindow      = false;
 
     C3D::Platform platform;
-    platform.Init(config);
+    platform.OnInit(config);
 
     C3D::Clock totalTime(&platform);
     totalTime.Start();
@@ -49,7 +51,7 @@ void TestManager::RunTests()
     {
         if (m_prevType != test.type)
         {
-            m_logger.Info("{:-^70}", test.type);
+            INFO_LOG("{:-^70}", test.type);
             m_prevType = test.type;
         }
 
@@ -66,23 +68,23 @@ void TestManager::RunTests()
         else if (result == SKIPPED)
         {
             skipped++;
-            m_logger.Warn("[SKIPPED] - {}", test.description);
+            WARN_LOG("[SKIPPED] - {}.", test.description);
         }
         else if (result == FAILED)
         {
-            m_logger.Error("[FAILED] - {}", test.description);
+            ERROR_LOG("[FAILED] - {}.", test.description);
             failed++;
         }
 
         totalTime.Update();
 
         auto status = failed ? "*** FAILED ***" : "SUCCESS";
-        m_logger.Info("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total)", i, m_tests.size(), skipped, status,
-                      testTime.GetElapsed(), totalTime.GetElapsed());
+        INFO_LOG("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total).", i, m_tests.size(), skipped, status,
+                 testTime.GetElapsed(), totalTime.GetElapsed());
     }
 
     totalTime.Stop();
-    m_logger.Info("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec", passed, failed, skipped, totalTime.GetElapsed());
+    INFO_LOG("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec.", passed, failed, skipped, totalTime.GetElapsed());
 
-    platform.Shutdown();
+    platform.OnShutdown();
 }

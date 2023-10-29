@@ -11,13 +11,15 @@
 
 namespace C3D
 {
-    Platform::Platform() : SystemWithConfig(nullptr, "PLATFORM") {}
+    constexpr const char* INSTANCE_NAME = "PLATFORM";
 
-    Platform::Platform(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager, "PLATFORM") {}
+    Platform::Platform() : SystemWithConfig(nullptr) {}
 
-    bool Platform::Init(const PlatformSystemConfig& config)
+    Platform::Platform(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
+
+    bool Platform::OnInit(const PlatformSystemConfig& config)
     {
-        m_logger.Info("Init() - Started.");
+        INFO_LOG("Started.");
 
         m_handle.hInstance = GetModuleHandle(nullptr);
 
@@ -41,7 +43,7 @@ namespace C3D
 
             if (!RegisterClass(&windowClass))
             {
-                m_logger.Error("Init() - Window registration failed.");
+                ERROR_LOG("Window registration failed.");
                 return false;
             }
 
@@ -69,7 +71,7 @@ namespace C3D
 
             if (!handle)
             {
-                m_logger.Error("Init() - Window registration failed.");
+                ERROR_LOG("Window registration failed.");
                 return false;
             }
 
@@ -77,7 +79,7 @@ namespace C3D
 
             SetWindowLongPtr(m_handle.hwnd, 0, reinterpret_cast<LONG_PTR>(this));
 
-            m_logger.Info("Init() - Window Creation successful.");
+            INFO_LOG("Window Creation successful.");
 
             // Actually show our window
             // TODO: Make configurable. This should be false when the window should not accept input
@@ -86,7 +88,7 @@ namespace C3D
 
             ShowWindow(m_handle.hwnd, showWindowCommandFlags);
 
-            m_logger.Info("Init() - ShowWindow successful.");
+            INFO_LOG("ShowWindow successful.");
         }
 
         LARGE_INTEGER frequency;
@@ -103,9 +105,9 @@ namespace C3D
         return true;
     }
 
-    void Platform::Shutdown()
+    void Platform::OnShutdown()
     {
-        m_logger.Info("Shutdown() - Started.");
+        INFO_LOG("Started.");
 
         // Unwatch all files that we are currently watching
         for (const auto& watch : m_fileWatches)
@@ -154,7 +156,7 @@ namespace C3D
     {
         if (!filePath)
         {
-            m_logger.Error("WatchFile() - Failed due to filePath being invalid.");
+            ERROR_LOG("Failed due to filePath being invalid.");
             return INVALID_ID;
         }
 
@@ -162,13 +164,13 @@ namespace C3D
         const auto fileHandle = FindFirstFileA(filePath, &data);
         if (fileHandle == INVALID_HANDLE_VALUE)
         {
-            m_logger.Error("WatchFile() - Could not find file at: '{}'.", filePath);
+            ERROR_LOG("Could not find file at: '{}'.", filePath);
             return INVALID_ID;
         }
 
         if (!FindClose(fileHandle))
         {
-            m_logger.Error("WatchFile() - Could not close file at: '{}'.", filePath);
+            ERROR_LOG("Could not close file at: '{}'.", filePath);
             return INVALID_ID;
         }
 
@@ -183,7 +185,7 @@ namespace C3D
                 watch.filePath      = filePath;
                 watch.lastWriteTime = data.ftLastWriteTime;
 
-                m_logger.Info("WatchFile() - Registered watch for: '{}'.", filePath);
+                INFO_LOG("Registered watch for: '{}'.", filePath);
                 return i;
             }
         }
@@ -194,7 +196,7 @@ namespace C3D
         const Win32FileWatch watch = { nextIndex, filePath, data.ftLastWriteTime };
         m_fileWatches.PushBack(watch);
 
-        m_logger.Info("WatchFile() - Registered watch for: '{}'.", filePath);
+        INFO_LOG("Registered watch for: '{}'.", filePath);
         return nextIndex;
     }
 
@@ -202,19 +204,19 @@ namespace C3D
     {
         if (watchId == INVALID_ID)
         {
-            m_logger.Error("UnwatchFile() - Failed due to watchId being invalid.");
+            ERROR_LOG("Failed due to watchId being invalid.");
             return false;
         }
 
         if (m_fileWatches.Empty())
         {
-            m_logger.Error("UnwatchFile() - Failed since there are no files being watched currently.");
+            ERROR_LOG("Failed since there are no files being watched currently.");
             return false;
         }
 
         if (watchId >= m_fileWatches.Size())
         {
-            m_logger.Error("UnwatchFile() - Failed since there is no watch for the provided id: {}.", watchId);
+            ERROR_LOG("Failed since there is no watch for the provided id: '{}'.", watchId);
             return false;
         }
 
@@ -222,7 +224,7 @@ namespace C3D
         // This makes the slot available to be filled by a different FileWatch in the future
         Win32FileWatch& watch = m_fileWatches[watchId];
 
-        m_logger.Info("UnwatchFile() - Stopped watching: '{}'.", watch.filePath);
+        INFO_LOG("Stopped watching: '{}'.", watch.filePath);
 
         watch.id = INVALID_ID;
         watch.filePath.Clear();

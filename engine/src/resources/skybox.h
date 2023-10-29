@@ -18,7 +18,7 @@ namespace C3D
     class C3D_API Skybox
     {
     public:
-        Skybox();
+        Skybox() = default;
 
         bool Create(const SystemManager* pSystemsManager, const SkyboxConfig& config);
 
@@ -34,13 +34,13 @@ namespace C3D
         Geometry* g = nullptr;
 
         u32 instanceId = INVALID_ID;
-        /* @brief Synced to the renderer's current frame number
-         * when the material has been applied for that frame. */
+
+        /** @brief Synced to the renderer's current frame number when the material has been applied that frame. */
         u64 frameNumber = INVALID_ID_U64;
+        /** @brief Synced to the renderer's current draw index when the material has been applied that frame.*/
+        u8 drawIndex = INVALID_ID_U8;
 
     private:
-        LoggerInstance<16> m_logger;
-
         SkyboxConfig m_config;
         GeometryConfig m_skyboxGeometryConfig;
 

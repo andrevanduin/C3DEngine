@@ -21,9 +21,9 @@ namespace
         YZAxis  = 5,
         XYZAxis = 6,
     };
-}  // namespace
 
-EditorGizmo::EditorGizmo() : m_logger("EDITOR_GIZMO") {}
+    constexpr const char* INSTANCE_NAME = "EDITOR_GIZMO";
+}  // namespace
 
 bool EditorGizmo::Create(const C3D::SystemManager* pSystemsManager)
 {
@@ -57,13 +57,13 @@ bool EditorGizmo::Load()
     {
         if (!Renderer.CreateGeometry(data.geometry, sizeof(C3D::ColorVertex3D), data.vertices.Size(), data.vertices.GetData(), 0, 0, 0))
         {
-            m_logger.Error("Load() - Failed to create gizmo geometry.");
+            ERROR_LOG("Failed to create gizmo geometry.");
             return false;
         }
 
         if (!Renderer.UploadGeometry(data.geometry))
         {
-            m_logger.Error("Load() - Failed to upload gizmo geometry.");
+            ERROR_LOG("Failed to upload gizmo geometry.");
             return false;
         }
 
@@ -208,7 +208,7 @@ void EditorGizmo::BeginInteraction(EditorGizmoInteractionType interactionType, c
             // Try from the other direction
             if (!ray.TestAgainstPlane3D(data.interactionPlaneBack, intersection, distance))
             {
-                m_logger.Error("BeginInteraction() - RayCast could not find an intersection with the ineraction plane.");
+                ERROR_LOG("RayCast could not find an intersection with the ineraction plane.");
                 return;
             }
         }
@@ -245,7 +245,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
                 // Try from the other direction
                 if (!ray.TestAgainstPlane3D(data.interactionPlaneBack, intersection, distance))
                 {
-                    m_logger.Error("BeginInteraction() - RayCast could not find an intersection with the ineraction plane.");
+                    ERROR_LOG("RayCast could not find an intersection with the ineraction plane.");
                     return;
                 }
             }
@@ -305,7 +305,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
                 // Try from the other direction
                 if (!ray.TestAgainstPlane3D(data.interactionPlaneBack, intersection, distance))
                 {
-                    m_logger.Error("BeginInteraction() - RayCast could not find an intersection with the ineraction plane.");
+                    ERROR_LOG("RayCast could not find an intersection with the ineraction plane.");
                     return;
                 }
             }
@@ -394,7 +394,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
                 }
             }
 
-            m_logger.Info("HandleInteraction() - scale (diff) = [{:.4f}, {:.4f}, {:.4f}]", scale.x, scale.y, scale.z);
+            INFO_LOG("scale (diff) = [{:.4f}, {:.4f}, {:.4f}].", scale.x, scale.y, scale.z);
 
             // Apply the scale to the selected object
             if (m_selectedObjectTransform)
@@ -405,7 +405,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
                     scale[i] += 1.0f;
                 }
 
-                m_logger.Info("HandleInteraction() - Applying scale: [{:.4f}, {:.4f}, {:.4f}]", scale.x, scale.y, scale.z);
+                INFO_LOG("Applying scale: [{:.4f}, {:.4f}, {:.4f}].", scale.x, scale.y, scale.z);
                 m_selectedObjectTransform->Scale(scale);
             }
             data.interactionLastPos = intersection;
@@ -702,7 +702,7 @@ void EditorGizmo::EndInteraction()
 {
     if (m_interaction == EditorGizmoInteractionType::MouseDrag && m_mode == EditorGizmoMode::Rotate)
     {
-        m_logger.Info("EndInteraction() - For ROTATE interaction.");
+        INFO_LOG("For ROTATE interaction.");
         if (m_orientation == EditorGizmoOrientation::Global)
         {
             // Reset our orientation when we are in global orientation mode

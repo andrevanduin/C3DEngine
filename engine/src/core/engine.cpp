@@ -24,8 +24,10 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "ENGINE";
+
     Engine::Engine(Application* pApplication, UIConsole* pConsole)
-        : m_logger("ENGINE"), m_application(pApplication), m_pConsole(pConsole), m_pSystemsManager(&m_systemsManager)
+        : m_application(pApplication), m_pConsole(pConsole), m_pSystemsManager(&m_systemsManager)
     {
         m_application->m_pSystemsManager = &m_systemsManager;
         m_application->m_pConsole        = pConsole;
@@ -56,14 +58,14 @@ namespace C3D
         auto threadCount = Platform::GetProcessorCount();
         if (threadCount <= 1)
         {
-            m_logger.Fatal("System reported {} threads. C3DEngine requires at least 1 thread besides the main thread.", threadCount);
+            FATAL_LOG("System reported {} threads. C3DEngine requires at least 1 thread besides the main thread.", threadCount);
         }
         else
         {
-            m_logger.Info("System reported {} threads (including main thread).", threadCount);
+            INFO_LOG("System reported {} threads (including main thread).", threadCount);
         }
 
-        m_systemsManager.Init();
+        m_systemsManager.OnInit();
 
         String windowName = String::FromFormat("C3DEngine - {}", appState->name);
 
@@ -89,8 +91,8 @@ namespace C3D
         constexpr auto maxThreadCount = 15;
         if (threadCount - 1 > maxThreadCount)
         {
-            m_logger.Info("Available threads on this system is greater than {}. Capping used threads at {}.", maxThreadCount,
-                          (threadCount - 1), maxThreadCount);
+            INFO_LOG("Available threads on this system is greater than {}. Capping used threads at {}.", maxThreadCount, (threadCount - 1),
+                     maxThreadCount);
             threadCount = maxThreadCount;
         }
 
@@ -141,7 +143,7 @@ namespace C3D
             if (!Views.Register(view))
             {
                 String name = view ? view->GetName() : "UNKOWN";
-                m_logger.Fatal("Failed to Create view: '{}'", name);
+                FATAL_LOG("Failed to Create view: '{}'.", name);
             }
         }
 
@@ -200,7 +202,7 @@ namespace C3D
                 // Reset our frame allocator (freeing all memory used previous frame)
                 m_frameData.frameAllocator->FreeAll();
 
-                Jobs.Update(m_frameData);
+                Jobs.OnUpdate(m_frameData);
                 Metrics.Update(frameElapsedTime);
                 OS.WatchFiles();
 
@@ -209,23 +211,26 @@ namespace C3D
                 // Reset our drawn mesh count for the next frame
                 m_frameData.drawnMeshCount = 0;
 
-                // TODO: Refactor packet creation
+                // This frame's render packet
                 RenderPacket packet;
                 // Ensure that we will be using our frame allocator for this packet's view
                 packet.views.SetAllocator(&m_frameAllocator);
 
+                // Have the application generate our render packet
+                bool result = m_application->OnPrepareRenderPacket(packet, m_frameData);
+                if (!result)
+                {
+                    ERROR_LOG("OnPrepareRenderPacket() failed. Skipping this frame.");
+                    continue;
+                }
+
+                // Call the game's render routine
                 if (!m_application->OnRender(packet, m_frameData))
                 {
-                    m_logger.Fatal("OnRender() for the game failed. Shutting down.");
+                    FATAL_LOG("OnRender() failed. Shutting down.");
+                    m_state.running = false;
                     break;
                 }
-
-                if (!Renderer.DrawFrame(&packet, m_frameData))
-                {
-                    m_logger.Warn("DrawFrame() failed");
-                }
-
-                // TODO: Do we need an AfterRender() method?
 
                 // Cleanup our packets
                 for (auto& view : packet.views)
@@ -249,7 +254,7 @@ namespace C3D
                     frameCount++;
                 }
 
-                Input.Update(m_frameData);
+                Input.OnUpdate(m_frameData);
 
                 m_state.lastTime = currentTime;
             }
@@ -296,19 +301,22 @@ namespace C3D
     {
         C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized")
 
-        m_logger.Info("Shutdown()");
+        INFO_LOG("Shutting down.");
 
         // Call the OnShutdown() method that is defined by the user
         m_application->OnShutdown();
 
+        // Destroy our frame allocator since we will no longer render any frames
         m_frameAllocator.Destroy();
 
         // Free the application specific frame data
         Memory.Free(MemoryType::Game, m_frameData.applicationFrameData);
 
+        // Shutdown our console
         m_pConsole->OnShutDown();
 
-        m_systemsManager.Shutdown();
+        // Finally our systems manager can be shutdoen
+        m_systemsManager.OnShutdown();
 
         m_state.initialized = false;
     }
@@ -324,7 +332,7 @@ namespace C3D
             // We only update out width and height if they actually changed
             if (width != appState->width || height != appState->height)
             {
-                m_logger.Info("OnResizeEvent() - width: '{}' and height: '{}'.", width, height);
+                INFO_LOG("width: '{}' and height: '{}'.", width, height);
 
                 const auto appState = m_application->m_appState;
                 appState->width     = width;
@@ -332,7 +340,7 @@ namespace C3D
 
                 if (width == 0 || height == 0)
                 {
-                    m_logger.Info("OnResizeEvent() - Window minimized, supsending application.");
+                    INFO_LOG("Window minimized, suspending application.");
                     m_state.suspended = true;
                     return true;
                 }
@@ -355,7 +363,7 @@ namespace C3D
     {
         if (code == EventCodeMinimized)
         {
-            m_logger.Info("Window was minimized - suspending application");
+            INFO_LOG("Window was minimized - suspending application.");
             m_state.suspended = true;
         }
 
@@ -366,7 +374,7 @@ namespace C3D
     {
         if (code == EventCodeFocusGained)
         {
-            m_logger.Info("Window has regained focus - resuming application");
+            INFO_LOG("Window has regained focus - resuming application.");
             m_state.suspended = false;
 
             const u16 width  = context.data.u16[0];

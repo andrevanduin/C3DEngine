@@ -6,18 +6,18 @@
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
 
-constexpr auto FILE_EXTENSION = "csimplescenecfg";
+constexpr const char* FILE_EXTENSION = "csimplescenecfg";
+constexpr const char* INSTANCE_NAME  = "SIMPLE_SCENE_LOADER";
 
 C3D::ResourceLoader<SimpleSceneConfig>::ResourceLoader(const C3D::SystemManager* pSystemsManager)
-    : C3D::IResourceLoader(pSystemsManager, "SIMPLE_SCENE_LOADER", C3D::MemoryType::Scene, C3D::ResourceType::SimpleScene, nullptr,
-                           "scenes")
+    : C3D::IResourceLoader(pSystemsManager, C3D::MemoryType::Scene, C3D::ResourceType::SimpleScene, nullptr, "scenes")
 {}
 
 bool C3D::ResourceLoader<SimpleSceneConfig>::Load(const char* name, SimpleSceneConfig& resource) const
 {
     if (std::strlen(name) == 0)
     {
-        m_logger.Error("Load() - Provided name was empty");
+        ERROR_LOG("Provided name was empty.");
         return false;
     }
 
@@ -27,7 +27,7 @@ bool C3D::ResourceLoader<SimpleSceneConfig>::Load(const char* name, SimpleSceneC
     File file;
     if (!file.Open(fullPath, FileModeRead))
     {
-        m_logger.Error("Load() - Failed to open simple scene config file for reading: '{}'", fullPath);
+        ERROR_LOG("Failed to open simple scene config file for reading: '{}'.", fullPath);
         return false;
     }
 
@@ -54,10 +54,7 @@ bool C3D::ResourceLoader<SimpleSceneConfig>::Load(const char* name, SimpleSceneC
 
         if (version == 0 && !line.StartsWith("!version"))
         {
-            m_logger.Error(
-                "Load() - Failed to load file: '{}'. Simple scene config should start with !version = <parser "
-                "version>: ",
-                fullPath);
+            ERROR_LOG("Failed to load file: '{}'. Simple scene config should start with !version = <parser version>.", fullPath);
             return false;
         }
 
@@ -66,7 +63,7 @@ bool C3D::ResourceLoader<SimpleSceneConfig>::Load(const char* name, SimpleSceneC
             type = ParseTag(line, fileName, lineNumber, resource);
             if (type == ParserTagType::Invalid)
             {
-                m_logger.Error("Load() - Failed to load file: '{}'. Unknown tag: '{}' found on line: {}", fileName, line, lineNumber);
+                ERROR_LOG("Failed to load file: '{}'. Unknown tag: '{}' found on line: {}.", fileName, line, lineNumber);
                 return false;
             }
         }
@@ -97,14 +94,14 @@ bool C3D::ResourceLoader<SimpleSceneConfig>::ParseTagContent(const C3D::String& 
     // Check if we have a '=' symbol
     if (!line.Contains('='))
     {
-        m_logger.Warn("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.", fileName, lineNumber);
+        WARN_LOG("Potential formatting issue found in file: '{}', '=' token not found. Skipping line: {}.", fileName, lineNumber);
         return false;
     }
 
     auto parts = line.Split('=');
     if (parts.Size() != 2)
     {
-        m_logger.Warn("Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.", fileName, lineNumber);
+        WARN_LOG("Potential formatting issue found in file: '{}', too many '=' tokens found. Skipping line: {}.", fileName, lineNumber);
         return false;
     }
 
@@ -149,7 +146,7 @@ bool C3D::ResourceLoader<SimpleSceneConfig>::ParseTagContent(const C3D::String& 
     }
     catch (const std::exception& exc)
     {
-        m_logger.Error("Load() - Failed to load file: '{}'. Error found on line {}: {}", fileName, lineNumber, exc.what());
+        ERROR_LOG("Failed to load file: '{}'. Error found on line: {} - {}.", fileName, lineNumber, exc.what());
         return false;
     }
 
@@ -331,8 +328,7 @@ C3D::ResourceLoader<SimpleSceneConfig>::ParserTagType C3D::ResourceLoader<Simple
     {
         if (line[1] == '/')
         {
-            m_logger.Error("Load() - Failed to load file: '{}'. Expected an opening tag but found a closing tag at line: {}", fileName,
-                           lineNumber);
+            ERROR_LOG("Failed to load file: '{}'. Expected an opening tag but found a closing tag at line: {}.", fileName, lineNumber);
             return ParserTagType::Invalid;
         }
         closeTag = false;
@@ -341,8 +337,7 @@ C3D::ResourceLoader<SimpleSceneConfig>::ParserTagType C3D::ResourceLoader<Simple
     {
         if (line[1] != '/')
         {
-            m_logger.Error("Load() - Failed to load file: '{}'. Expected a closing tag but found an opening tag at line: {}", fileName,
-                           lineNumber);
+            ERROR_LOG("Failed to load file: '{}'. Expected a closing tag but found an opening tag at line: {}.", fileName, lineNumber);
             return ParserTagType::Invalid;
         }
 

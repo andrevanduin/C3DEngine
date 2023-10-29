@@ -8,15 +8,17 @@
 
 namespace C3D
 {
-    ShaderSystem::ShaderSystem(const SystemManager* pSystemsManager)
-        : SystemWithConfig(pSystemsManager, "SHADER_SYSTEM")
-    {}
+    constexpr const char* INSTANCE_NAME = "SHADER_SYSTEM";
 
-    bool ShaderSystem::Init(const ShaderSystemConfig& config)
+    ShaderSystem::ShaderSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
+
+    bool ShaderSystem::OnInit(const ShaderSystemConfig& config)
     {
+        INFO_LOG("Initializing.");
+
         if (config.maxShaderCount == 0)
         {
-            m_logger.Error("Init() - config.maxShaderCount must be greater than 0");
+            ERROR_LOG("config.maxShaderCount must be greater than 0.");
             return false;
         }
 
@@ -27,8 +29,9 @@ namespace C3D
         return true;
     }
 
-    void ShaderSystem::Shutdown()
+    void ShaderSystem::OnShutdown()
     {
+        INFO_LOG("Destroying all currently loaded shaders.");
         for (auto& shader : m_shaders)
         {
             ShaderDestroy(shader);
@@ -40,7 +43,7 @@ namespace C3D
     {
         if (m_shaders.Has(config.name))
         {
-            m_logger.Error("Create() - A shader with the name '{}' already exists", config.name);
+            ERROR_LOG("A shader with the name '{}' already exists.", config.name);
             return false;
         }
 
@@ -53,8 +56,8 @@ namespace C3D
         shader.attributes.Reserve(4);
 
         // Setup HashMap for uniform lookups
-        shader.uniforms.Create(
-            1024);  // NOTE: Way more than we will ever need but it prevents collisions in our hashtable
+        // NOTE: Way more than we will ever need but it prevents collisions in our hashtable
+        shader.uniforms.Create(1024);
 
         // Process flags
         if (config.depthTest)
@@ -68,7 +71,7 @@ namespace C3D
 
         if (!Renderer.CreateShader(&shader, config, pass))
         {
-            m_logger.Error("Create() - Failed to create shader: '{}'", config.name);
+            ERROR_LOG("Failed to create shader: '{}'.", config.name);
             return false;
         }
 
@@ -97,7 +100,7 @@ namespace C3D
         // Initialize the Shader
         if (!Renderer.InitializeShader(shader))
         {
-            m_logger.Error("Create() - Initialization failed for shader: '{}'", config.name);
+            ERROR_LOG("Initialization failed for shader: '{}'.", config.name);
             return false;
         }
 
@@ -106,7 +109,7 @@ namespace C3D
         // Store the shader in our hashtable
         m_shaders.Set(config.name, shader);
 
-        m_logger.Info("Create() - Successfully created shader: '{}'.", config.name);
+        INFO_LOG("Successfully created shader: '{}'.", config.name);
         return true;
     }
 
@@ -114,7 +117,7 @@ namespace C3D
     {
         if (!m_shaders.Has(name))
         {
-            m_logger.Error("GetId() - There is no shader registered with name: '{}'", name);
+            ERROR_LOG("There is no shader registered with name: '{}'.", name);
             return INVALID_ID;
         }
         return static_cast<u32>(m_shaders.GetIndex(name));
@@ -154,12 +157,12 @@ namespace C3D
         m_currentShaderId = shaderId;
         if (!Renderer.UseShader(shader))
         {
-            m_logger.Error("UseById() - Failed to use shader '{}'.", shader.name);
+            ERROR_LOG("Failed to use shader: '{}'.", shader.name);
             return false;
         }
         if (!Renderer.ShaderBindGlobals(shader))
         {
-            m_logger.Error("UseById() - Failed to bind globals for shader '{}'.", shader.name);
+            ERROR_LOG("Failed to bind globals for shader: '{}'.", shader.name);
             return false;
         }
         //}
@@ -170,14 +173,13 @@ namespace C3D
     {
         if (!shader || shader->id == INVALID_ID)
         {
-            m_logger.Error("GetUniformIndex() - Called with invalid shader.");
+            ERROR_LOG("Called with invalid shader.");
             return INVALID_ID_U16;
         }
 
         if (!shader->uniforms.Has(name))
         {
-            m_logger.Error("GetUniformIndex() - Shader '{}' does not a have a registered uniform named '{}'.",
-                           shader->name, name);
+            ERROR_LOG("Shader: '{}' does not a have a registered uniform named '{}'.", shader->name, name);
             return INVALID_ID_U16;
         }
 
@@ -188,14 +190,14 @@ namespace C3D
     {
         if (m_currentShaderId == INVALID_ID)
         {
-            m_logger.Error("SetUniform() - Called with no Shader in use.");
+            ERROR_LOG("Called with no Shader in use.");
             return false;
         }
         Shader* shader  = &m_shaders.GetByIndex(m_currentShaderId);
         const u16 index = GetUniformIndex(shader, name);
         if (index == INVALID_ID_U16)
         {
-            m_logger.Error("SetUniform() - Called with invalid Uniform Name: '{}'", name);
+            ERROR_LOG("Called with invalid Uniform Name: '{}'.", name);
             return false;
         }
         return SetUniformByIndex(index, value);
@@ -271,8 +273,7 @@ namespace C3D
                 size = 16;
                 break;
             default:
-                m_logger.Error(
-                    "AddAttribute() - Unrecognized type {}, default to size of 4. This is probably not what you want!");
+                ERROR_LOG("Unrecognized type, default to size of 4. This is probably not what you want!");
                 size = 4;
                 break;
         }
@@ -294,7 +295,7 @@ namespace C3D
         // We cannot use PushConstants for samplers
         if (config.scope == ShaderScope::Local)
         {
-            m_logger.Error("AddSampler() - Cannot add a sampler at local scope.");
+            ERROR_LOG("Cannot add a sampler at local scope.");
             return false;
         }
 
@@ -311,8 +312,7 @@ namespace C3D
             const u8 globalTextureCount = static_cast<u8>(shader.globalTextureMaps.Size());
             if (globalTextureCount + 1 > m_config.maxGlobalTextures)
             {
-                m_logger.Error("AddSampler() - Global texture count {} exceeds the max of {}.", globalTextureCount,
-                               m_config.maxGlobalTextures);
+                ERROR_LOG("Global texture count: {} exceeds the max of: {}.", globalTextureCount, m_config.maxGlobalTextures);
                 return false;
             }
             location = globalTextureCount;
@@ -328,7 +328,7 @@ namespace C3D
 
             if (!Renderer.AcquireTextureMapResources(*map))
             {
-                m_logger.Error("AddSampler() - Failed to acquire global texture map resources.");
+                ERROR_LOG("Failed to acquire global texture map resources.");
                 return false;
             }
 
@@ -340,8 +340,7 @@ namespace C3D
             // acquisition
             if (shader.instanceTextureCount + 1 > m_config.maxInstanceTextures)
             {
-                m_logger.Error("AddSampler() - Instance texture count {} exceeds the max of {}.",
-                               shader.instanceTextureCount, m_config.maxInstanceTextures);
+                ERROR_LOG("Instance texture count: {} exceeds the max of: {}.", shader.instanceTextureCount, m_config.maxInstanceTextures);
                 return false;
             }
 
@@ -351,7 +350,7 @@ namespace C3D
 
         if (!AddUniform(shader, config.name, 0, config.type, config.scope, location, true))
         {
-            m_logger.Error("AddSampler() - Unable to add sampler uniform.");
+            ERROR_LOG("Unable to add sampler uniform.");
             return false;
         }
 
@@ -367,16 +366,14 @@ namespace C3D
         return AddUniform(shader, config.name, config.size, config.type, config.scope, 0, false);
     }
 
-    bool ShaderSystem::AddUniform(Shader& shader, const String& name, const u16 size, const ShaderUniformType type,
-                                  ShaderScope scope, const u16 setLocation, const bool isSampler)
+    bool ShaderSystem::AddUniform(Shader& shader, const String& name, const u16 size, const ShaderUniformType type, ShaderScope scope,
+                                  const u16 setLocation, const bool isSampler)
     {
         const u16 uniformCount = static_cast<u16>(shader.uniforms.Count());
         if (uniformCount + 1 > m_config.maxUniformCount)
         {
-            m_logger.Error(
-                "AddUniform() - A shader can only accept a combined maximum of {} uniforms and sampler at global, "
-                "instance and local scopes.",
-                m_config.maxUniformCount);
+            ERROR_LOG("A shader can only accept a combined maximum of: {} uniforms and sampler at global, instance and local scopes.",
+                      m_config.maxUniformCount);
             return false;
         }
 
@@ -454,7 +451,7 @@ namespace C3D
     {
         if (shader.state != ShaderState::Uninitialized)
         {
-            m_logger.Error("Uniforms may only be added to shaders before initialization");
+            ERROR_LOG("Uniforms may only be added to shaders before initialization.");
             return false;
         }
         return true;
@@ -464,12 +461,12 @@ namespace C3D
     {
         if (!name)
         {
-            m_logger.Error("Uniform name does not exist or is empty");
+            ERROR_LOG("Uniform name does not exist or is empty.");
             return false;
         }
         if (shader.uniforms.Has(name))
         {
-            m_logger.Error("Shader '{}' already contains a uniform named '{}'", shader.name, name);
+            ERROR_LOG("Shader: '{}' already contains a uniform named '{}'.", shader.name, name);
             return false;
         }
         return true;

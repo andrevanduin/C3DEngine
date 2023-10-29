@@ -13,7 +13,7 @@ namespace C3D
     static constexpr u64 VERTICES_PER_QUAD = 4;
     static constexpr u64 INDICES_PER_QUAD  = 6;
 
-    UIText::UIText() : m_logger("UI_TEXT") {}
+    constexpr const char* INSTANCE_NAME = "UI_TEXT";
 
     UIText::~UIText()
     {
@@ -23,12 +23,12 @@ namespace C3D
         }
     }
 
-    bool UIText::Create(const String& name, const SystemManager* pSystemsManager, const UITextType fontType,
-                        const char* fontName, const u16 fontSize, const char* textContent)
+    bool UIText::Create(const String& name, const SystemManager* pSystemsManager, const UITextType fontType, const char* fontName,
+                        const u16 fontSize, const char* textContent)
     {
         if (!fontName || !textContent)
         {
-            m_logger.Error("Create() - Requires a valid font name and content");
+            ERROR_LOG("Requires a valid font name and content.");
             return false;
         }
 
@@ -38,7 +38,7 @@ namespace C3D
         // Acquire our font and assign it's internal data
         if (!Fonts.Acquire(fontName, fontSize, this))
         {
-            m_logger.Error("Create() - Unable to acquire font: '{}'.", fontName);
+            ERROR_LOG("Unable to acquire font: '{}'.", fontName);
             return false;
         }
 
@@ -53,7 +53,7 @@ namespace C3D
 
         if (!Renderer.AcquireShaderInstanceResources(*uiShader, 1, fontMaps, &instanceId))
         {
-            m_logger.Fatal("Create() - Unable to acquire shader resources for font texture map.");
+            FATAL_LOG("Unable to acquire shader resources for font texture map.");
             return false;
         }
 
@@ -66,11 +66,10 @@ namespace C3D
 
         const auto vertexBufferName = name + "_VERTEX_BUFFER";
 
-        m_vertexBuffer =
-            Renderer.CreateRenderBuffer(vertexBufferName, RenderBufferType::Vertex, textSize * quad_size, false);
+        m_vertexBuffer = Renderer.CreateRenderBuffer(vertexBufferName, RenderBufferType::Vertex, textSize * quad_size, false);
         if (!m_vertexBuffer)
         {
-            m_logger.Error("Create() - Failed to create vertex buffer.");
+            ERROR_LOG("Failed to create vertex buffer.");
             return false;
         }
         m_vertexBuffer->Bind(0);
@@ -80,11 +79,10 @@ namespace C3D
 
         const auto indexBufferName = name + "_INDEX_BUFFER";
 
-        m_indexBuffer =
-            Renderer.CreateRenderBuffer(indexBufferName, RenderBufferType::Index, textSize * index_size, false);
+        m_indexBuffer = Renderer.CreateRenderBuffer(indexBufferName, RenderBufferType::Index, textSize * index_size, false);
         if (!m_indexBuffer)
         {
-            m_logger.Error("Create() - Failed to create index buffer.");
+            ERROR_LOG("Failed to create index buffer.");
             return false;
         }
         m_indexBuffer->Bind(0);
@@ -92,7 +90,7 @@ namespace C3D
         // Verify that our atlas has all the required glyphs
         if (!Fonts.VerifyAtlas(data, m_text))
         {
-            m_logger.Error("Create() - Font atlas verification failed.");
+            ERROR_LOG("Font atlas verification failed.");
             return false;
         }
 
@@ -123,7 +121,7 @@ namespace C3D
         Shader* uiShader = Shaders.Get("Shader.Builtin.UI");
         if (!Renderer.ReleaseShaderInstanceResources(*uiShader, instanceId))
         {
-            m_logger.Fatal("Destroy() - Failed to release shader resources for font texture map.");
+            FATAL_LOG("Failed to release shader resources for font texture map.");
         }
     }
 
@@ -142,7 +140,7 @@ namespace C3D
         // Ensure that our font atlas has all the glyphs required
         if (!Fonts.VerifyAtlas(data, m_text))
         {
-            m_logger.Error("SetText() - Font atlas verification failed.");
+            ERROR_LOG("Font atlas verification failed.");
             return;
         }
 
@@ -157,12 +155,12 @@ namespace C3D
     {
         if (!m_vertexBuffer->Draw(0, static_cast<u32>(m_vertexData.Size()), true))
         {
-            m_logger.Error("Draw() - Failed to draw vertex buffer.");
+            ERROR_LOG("Failed to draw vertex buffer.");
         }
 
         if (!m_indexBuffer->Draw(0, static_cast<u32>(m_indexData.Size()), false))
         {
-            m_logger.Error("Draw() - Failed to draw index buffer.");
+            ERROR_LOG("Failed to draw index buffer.");
         }
     }
 
@@ -187,7 +185,7 @@ namespace C3D
         {
             if (!m_vertexBuffer->Resize(vertexBufferSize))
             {
-                m_logger.Error("RegenerateGeometry() - Failed to resize vertex buffer.");
+                ERROR_LOG("Failed to resize vertex buffer.");
                 return;
             }
         }
@@ -196,7 +194,7 @@ namespace C3D
         {
             if (!m_indexBuffer->Resize(indexBufferSize))
             {
-                m_logger.Error("RegenerateGeometry() - Failed to resize index buffer.");
+                ERROR_LOG("Failed to resize index buffer.");
                 return;
             }
         }
@@ -275,7 +273,7 @@ namespace C3D
             }
             else
             {
-                m_logger.Error("RegenerateGeometry() - Failed find codepoint. Skipping this glyph.");
+                ERROR_LOG("Failed find codepoint. Skipping this glyph.");
                 continue;
             }
 
@@ -294,11 +292,11 @@ namespace C3D
         // Load up our vertex and index buffer data
         if (!m_vertexBuffer->LoadRange(0, m_vertexData.Size() * sizeof(Vertex2D), m_vertexData.GetData()))
         {
-            m_logger.Error("RegenerateGeometry() - Failed to LoadRange() for vertex buffer.");
+            ERROR_LOG("Failed to LoadRange() for vertex buffer.");
         }
         if (!m_indexBuffer->LoadRange(0, m_indexData.Size() * sizeof(u32), m_indexData.GetData()))
         {
-            m_logger.Error("RegenerateGeometry() - Failed to LoadRange() for index buffer.");
+            ERROR_LOG("Failed to LoadRange() for index buffer.");
         }
     }
 

@@ -21,8 +21,8 @@ namespace C3D
     public:
         explicit ShaderSystem(const SystemManager* pSystemsManager);
 
-        bool Init(const ShaderSystemConfig& config) override;
-        void Shutdown() override;
+        bool OnInit(const ShaderSystemConfig& config) override;
+        void OnShutdown() override;
 
         bool Create(RenderPass* pass, const ShaderConfig& config);
 

@@ -1,7 +1,9 @@
 
 #include "render_view_editor_world.h"
 
+#include <core/frame_data.h>
 #include <renderer/renderer_frontend.h>
+#include <renderer/viewport.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/shaders/shader_system.h>
@@ -9,13 +11,14 @@
 
 #include "editor/editor_gizmo.h"
 
+constexpr const char* INSTANCE_NAME = "EDITOR_WORLD_VIEW";
+
 RenderViewEditorWorld::RenderViewEditorWorld() : RenderView("EDITOR_WORLD_VIEW", "") {}
 
 void RenderViewEditorWorld::OnSetupPasses()
 {
     C3D::RenderPassConfig pass;
     pass.name       = "RenderPass.TestEnv.EditorWorld";
-    pass.renderArea = { 0, 0, 1280, 720 };
     pass.clearColor = { 0, 0, 0.2f, 1.0f };
     pass.clearFlags = C3D::ClearDepthBuffer | C3D::ClearStencilBuffer;
     pass.depth      = 1.0f;
@@ -44,12 +47,12 @@ void RenderViewEditorWorld::OnSetupPasses()
 
 bool RenderViewEditorWorld::OnCreate()
 {
-    // Builtin skybox shader
+    // Builtin Color3D Shader
     const auto shaderName = "Shader.Builtin.Color3DShader";
     m_shader              = Shaders.Get(shaderName);
     if (!m_shader)
     {
-        m_logger.Error("OnCreate() - Failed to get Color3DShader.");
+        ERROR_LOG("Failed to get Color3DShader.");
         return false;
     }
 
@@ -57,38 +60,30 @@ bool RenderViewEditorWorld::OnCreate()
     m_debugShaderLocations.view       = m_shader->GetUniformIndex("view");
     m_debugShaderLocations.model      = m_shader->GetUniformIndex("model");
 
-    const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
-    m_projectionMatrix     = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
-
-    m_camera = Cam.GetDefault();
     return true;
 }
 
-void RenderViewEditorWorld::OnResize()
-{
-    const auto aspectRatio = static_cast<f32>(m_width) / static_cast<f32>(m_height);
-    m_projectionMatrix     = glm::perspective(m_fov, aspectRatio, m_nearClip, m_farClip);
-}
-
-bool RenderViewEditorWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, void* data, C3D::RenderViewPacket* outPacket)
+bool RenderViewEditorWorld::OnBuildPacket(const C3D::FrameData& frameData, const C3D::Viewport& viewport, C3D::Camera* camera, void* data,
+                                          C3D::RenderViewPacket* outPacket)
 {
     if (!data || !outPacket)
     {
-        m_logger.Warn("OnBuildPacket() - Requires a valid pointer to data and outPacket.");
+        WARN_LOG("Requires a valid pointer to data and outPacket.");
         return false;
     }
 
     const auto& packetData = *static_cast<EditorWorldPacketData*>(data);
 
     outPacket->view             = this;
-    outPacket->projectionMatrix = m_projectionMatrix;
-    outPacket->viewMatrix       = m_camera->GetViewMatrix();
+    outPacket->projectionMatrix = viewport.GetProjection();
+    outPacket->viewMatrix       = camera->GetViewMatrix();
+    outPacket->viewport         = &viewport;
 
-    outPacket->geometries.SetAllocator(frameAllocator);
+    outPacket->geometries.SetAllocator(frameData.frameAllocator);
 
     if (packetData.gizmo)
     {
-        vec3 camPos   = m_camera->GetPosition();
+        vec3 camPos   = camera->GetPosition();
         vec3 gizmoPos = packetData.gizmo->GetPosition();
 
         // TODO: Should get this from the camera/viewport
@@ -112,36 +107,42 @@ bool RenderViewEditorWorld::OnBuildPacket(C3D::LinearAllocator* frameAllocator, 
     return true;
 }
 
-bool RenderViewEditorWorld::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet, u64 frameNumber,
-                                     u64 renderTargetIndex)
+bool RenderViewEditorWorld::OnRender(const C3D::FrameData& frameData, const C3D::RenderViewPacket* packet)
 {
+    // Bind the viewport
+    Renderer.SetActiveViewport(packet->viewport);
+
     for (const auto pass : m_passes)
     {
-        if (!Renderer.BeginRenderPass(pass, &pass->targets[renderTargetIndex]))
+        if (!Renderer.BeginRenderPass(pass, &pass->targets[frameData.renderTargetIndex]))
         {
-            m_logger.Error("OnRender() - Failed to begin renderpass: '{}'.", pass->GetName());
+            ERROR_LOG("Failed to begin renderpass: '{}'.", pass->GetName());
             return false;
         }
 
         if (!Shaders.UseById(m_shader->id))
         {
-            m_logger.Error("OnRender() - Failed to use shader by id: '{}'.", m_shader->name);
+            ERROR_LOG("Failed to use shader by id: '{}'.", m_shader->name);
             return false;
         }
 
         if (!Renderer.ShaderBindGlobals(*m_shader))
         {
-            m_logger.Error("OnRender() - Failed bind globals for shader: '{}'.", m_shader->name);
+            ERROR_LOG("Failed bind globals for shader: '{}'.", m_shader->name);
             return false;
         }
 
-        bool needsUpdate = frameNumber != m_shader->frameNumber;
+        bool needsUpdate = frameData.frameNumber != m_shader->frameNumber || frameData.drawIndex != m_shader->drawIndex;
         if (needsUpdate)
         {
             Shaders.SetUniformByIndex(m_debugShaderLocations.projection, &packet->projectionMatrix);
             Shaders.SetUniformByIndex(m_debugShaderLocations.view, &packet->viewMatrix);
         }
         Shaders.ApplyGlobal(needsUpdate);
+
+        // Sync the frame number and draw index
+        m_shader->frameNumber = frameData.frameNumber;
+        m_shader->drawIndex   = frameData.drawIndex;
 
         for (const auto& data : packet->geometries)
         {
@@ -155,7 +156,7 @@ bool RenderViewEditorWorld::OnRender(const C3D::FrameData& frameData, const C3D:
 
         if (!Renderer.EndRenderPass(pass))
         {
-            m_logger.Error("OnRender() - Failed to end renderpass: '{}'.", pass->GetName());
+            ERROR_LOG("Failed to end renderpass: '{}'.", pass->GetName());
             return false;
         }
     }

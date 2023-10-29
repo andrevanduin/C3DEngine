@@ -14,9 +14,10 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "IMAGE_LOADER";
+
     ResourceLoader<Image>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, "IMAGE_LOADER", MemoryType::Texture, ResourceType::Image, nullptr,
-                          "textures")
+        : IResourceLoader(pSystemsManager, MemoryType::Texture, ResourceType::Image, nullptr, "textures")
     {}
 
     bool ResourceLoader<Image>::Load(const char* name, Image& resource) const { return Load(name, resource, {}); }
@@ -53,7 +54,7 @@ namespace C3D
 
         if (!found)
         {
-            m_logger.Error("Load() - Failed to find file '{}' with any supported extension.", name);
+            ERROR_LOG("Failed to find file '{}' with any supported extension.", name);
             return false;
         }
 
@@ -63,7 +64,7 @@ namespace C3D
         u64 fileSize;
         if (!f.Size(&fileSize))
         {
-            m_logger.Error("Load() - Failed to get file size for '{}'.", fullPath);
+            ERROR_LOG("Failed to get file size for '{}'.", fullPath);
             f.Close();
             return false;
         }
@@ -76,7 +77,7 @@ namespace C3D
         const auto rawData = Memory.Allocate<u8>(MemoryType::Texture, fileSize);
         if (!rawData)
         {
-            m_logger.Error("Load() - Unable to allocate memory to store raw data for '{}'.", fullPath);
+            ERROR_LOG("Unable to allocate memory to store raw data for '{}'.", fullPath);
             f.Close();
             return false;
         }
@@ -89,15 +90,14 @@ namespace C3D
         // Check if we could actually successfully read the data
         if (!result)
         {
-            m_logger.Error("Load() - Unable to read data for '{}'.", fullPath);
+            ERROR_LOG("Unable to read data for '{}'.", fullPath);
             return false;
         }
 
-        u8* data = stbi_load_from_memory(rawData, static_cast<i32>(fileSize), &width, &height, &channelCount,
-                                         requiredChannelCount);
+        u8* data = stbi_load_from_memory(rawData, static_cast<i32>(fileSize), &width, &height, &channelCount, requiredChannelCount);
         if (!data)
         {
-            m_logger.Error("Load() - STBI failed to load data from memory for '{}'.", fullPath);
+            ERROR_LOG("STBI failed to load data from memory for '{}'.", fullPath);
             return false;
         }
 

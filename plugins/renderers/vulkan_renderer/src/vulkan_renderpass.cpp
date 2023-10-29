@@ -4,15 +4,22 @@
 #include <core/logger.h>
 #include <core/random.h>
 #include <platform/platform.h>
+#include <renderer/renderer_frontend.h>
+#include <renderer/viewport.h>
+#include <systems/system_manager.h>
 
 #include "vulkan_formatters.h"
 #include "vulkan_utils.h"
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "VULKAN_RENDERPASS";
+
     VulkanRenderPass::VulkanRenderPass() : RenderPass() {}
 
-    VulkanRenderPass::VulkanRenderPass(VulkanContext* context, const RenderPassConfig& config) : RenderPass(config), m_context(context) {}
+    VulkanRenderPass::VulkanRenderPass(const SystemManager* pSystemsManager, VulkanContext* context, const RenderPassConfig& config)
+        : RenderPass(pSystemsManager, config), m_context(context)
+    {}
 
     bool VulkanRenderPass::Create(const RenderPassConfig& config)
     {
@@ -61,9 +68,9 @@ namespace C3D
                     {
                         if (doClearColor)
                         {
-                            Logger::Warn(
-                                "[RENDER_PASS] - Create() - Color attachment load operation is set to load, but is "
-                                "also set to clear. This combination is invalid and should not be used.");
+                            WARN_LOG(
+                                "Color attachment load operation is set to load, but is also set to clear. This combination is invalid and "
+                                "should not be used.");
                             attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                         }
                         else
@@ -73,10 +80,8 @@ namespace C3D
                     }
                     else
                     {
-                        Logger::Fatal(
-                            "[RENDER_PASS] - Create() - Invalid and unsupported combination of load operation ({}) and "
-                            "clear flags ({}) for color attachment.",
-                            attachmentDescription.loadOp, m_clearFlags);
+                        FATAL_LOG("Invalid and unsupported combination of load operation ({}) and clear flags ({}) for color attachment.",
+                                  attachmentDescription.loadOp, m_clearFlags);
                         return false;
                     }
                 }
@@ -92,10 +97,8 @@ namespace C3D
                 }
                 else
                 {
-                    Logger::Fatal(
-                        "[RENDER_PASS] - Create() - Invalid store operation ({}) set for attachment. Check your "
-                        "configuration.",
-                        ToUnderlying(attachmentConfig.storeOperation));
+                    FATAL_LOG("Invalid store operation ({}) set for attachment. Check your configuration.",
+                              ToUnderlying(attachmentConfig.storeOperation));
                     return false;
                 }
 
@@ -146,9 +149,9 @@ namespace C3D
                     {
                         if (doClearDepth)
                         {
-                            Logger::Warn(
-                                "[RENDER_PASS] - Create() - Depth attachment load operation set to load, but also set "
-                                "to clear. This combination is invalid and should not be used.");
+                            WARN_LOG(
+                                "Depth attachment load operation set to load, but also set to clear. This combination is invalid and "
+                                "should not be used.");
                             attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                         }
                         else
@@ -158,10 +161,8 @@ namespace C3D
                     }
                     else
                     {
-                        Logger::Fatal(
-                            "[RENDER_PASS] - Create() - Invalid and unsupported combination of load operation ({}) and "
-                            "clear flags ({}) for depth attachment.",
-                            attachmentDescription.loadOp, m_clearFlags);
+                        FATAL_LOG("Invalid and unsupported combination of load operation ({}) and clear flags ({}) for depth attachment.",
+                                  attachmentDescription.loadOp, m_clearFlags);
                         return false;
                     }
                 }
@@ -177,10 +178,8 @@ namespace C3D
                 }
                 else
                 {
-                    Logger::Fatal(
-                        "[RENDER_PASS] - Create() - Invalid store operation ({}) set for depth attachment. Check your "
-                        "configuration.",
-                        ToUnderlying(attachmentConfig.storeOperation));
+                    FATAL_LOG("Invalid store operation ({}) set for depth attachment. Check your configuration.",
+                              ToUnderlying(attachmentConfig.storeOperation));
                 }
 
                 // TODO: Configurability for stencil attachments.
@@ -292,13 +291,13 @@ namespace C3D
             Memory.Free(MemoryType::Array, depthAttachmentReferences);
         }
 
-        Logger::Info("[VULKAN_RENDER_PASS] - RenderPass: '{}' successfully created", config.name);
+        INFO_LOG("RenderPass: '{}' successfully created.", config.name);
         return true;
     }
 
     void VulkanRenderPass::Destroy()
     {
-        Logger::Info("[VULKAN_RENDER_PASS] - Destroying RenderPass");
+        INFO_LOG("Destroying RenderPass.");
         RenderPass::Destroy();
         if (handle)
         {
@@ -309,13 +308,17 @@ namespace C3D
 
     void VulkanRenderPass::Begin(VulkanCommandBuffer* commandBuffer, const RenderTarget* target) const
     {
-        VkRenderPassBeginInfo beginInfo    = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-        beginInfo.renderPass               = handle;
-        beginInfo.framebuffer              = static_cast<VkFramebuffer>(target->internalFrameBuffer);
-        beginInfo.renderArea.offset.x      = renderArea.x;
-        beginInfo.renderArea.offset.y      = renderArea.y;
-        beginInfo.renderArea.extent.width  = renderArea.z;
-        beginInfo.renderArea.extent.height = renderArea.w;
+        VkRenderPassBeginInfo beginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+        beginInfo.renderPass            = handle;
+        beginInfo.framebuffer           = static_cast<VkFramebuffer>(target->internalFrameBuffer);
+
+        const auto viewport = Renderer.GetActiveViewport();
+        const auto rect     = viewport->GetRect2D();
+
+        beginInfo.renderArea.offset.x      = rect.x;
+        beginInfo.renderArea.offset.y      = rect.y;
+        beginInfo.renderArea.extent.width  = rect.width;
+        beginInfo.renderArea.extent.height = rect.height;
 
         beginInfo.clearValueCount = 0;
         beginInfo.pClearValues    = nullptr;

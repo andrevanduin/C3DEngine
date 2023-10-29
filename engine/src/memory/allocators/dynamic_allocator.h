@@ -34,13 +34,13 @@ namespace C3D
         /** @brief Obtains the size and alignment of a given block of memory.
          * Will fail if the provided block of memory is invalid.
          */
-        bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment);
+        bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment) override;
 
         /** @brief Obtains the alignment of a given block of memory.
          * Will fail if the provided block of memory is invalid.
          */
-        bool GetAlignment(void* block, u16* outAlignment);
-        bool GetAlignment(const void* block, u16* outAlignment);
+        bool GetAlignment(void* block, u16* outAlignment) override;
+        bool GetAlignment(const void* block, u16* outAlignment) override;
 
         [[nodiscard]] u64 FreeSpace() const;
         [[nodiscard]] u64 GetTotalUsableSize() const;
@@ -50,17 +50,15 @@ namespace C3D
         static DynamicAllocator* GetDefault();
 
     private:
-        LoggerInstance<32> m_logger;
-
-        bool m_initialized;
+        bool m_initialized = false;
         // The total size including our freelist
-        u64 m_totalSize;
+        u64 m_totalSize = 0;
         // The size of usable memory
-        u64 m_memorySize;
+        u64 m_memorySize = 0;
         // The freelist to keep track of all the free blocks of memory
         FreeList m_freeList;
         // A pointer to the actual block of memory that this allocator manages
-        char* m_memory;
+        char* m_memory = nullptr;
         // A mutex to ensure allocations happen in a thread-safe manor
         std::mutex m_mutex;
     };

@@ -11,7 +11,7 @@ namespace C3D
 {
     constexpr auto VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME = "VK_KHR_portability_subset";
 
-    VulkanDevice::VulkanDevice() : m_logger("DEVICE") {}
+    constexpr const char* INSTANCE_NAME = "VULKAN_DEVICE";
 
     bool VulkanDevice::Create(VulkanContext* context)
     {
@@ -19,11 +19,11 @@ namespace C3D
 
         if (!SelectPhysicalDevice())
         {
-            m_logger.Error("Create() - Failed to select Physical device.");
+            ERROR_LOG("Failed to select Physical device.");
             return false;
         }
 
-        m_logger.Info("Create() - Creating logical device.");
+        INFO_LOG("Creating logical device.");
 
         u32 indexCount = 0;
         u32 indices[8];
@@ -100,8 +100,8 @@ namespace C3D
         // If we support smooth rasterization of lines we load the extension
         if (HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION_BIT))
         {
-            m_logger.Info("Create() - We have support for smooth line rasterization through the: '{}' extension. We are enabling it!",
-                          VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
+            INFO_LOG("We have support for smooth line rasterization through the: '{}' extension. We are enabling it!",
+                     VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
 
             requestedExtensions.PushBack(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
         }
@@ -138,42 +138,42 @@ namespace C3D
 
         VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_DEVICE, m_logicalDevice, "VULKAN_LOGICAL_DEVICE");
 
-        m_logger.Info("Create() - Logical Device created.");
+        INFO_LOG("Logical Device created.");
 
         vkGetDeviceQueue(m_logicalDevice, m_graphicsQueueIndex, 0, &m_graphicsQueue);
         vkGetDeviceQueue(m_logicalDevice, m_presentQueueIndex, 0, &m_presentQueue);
         vkGetDeviceQueue(m_logicalDevice, m_transferQueueIndex, 0, &m_transferQueue);
 
-        m_logger.Info("Create() - Queues obtained.");
+        INFO_LOG("Queues obtained.");
 
         VkCommandPoolCreateInfo poolCreateInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
         poolCreateInfo.queueFamilyIndex        = m_graphicsQueueIndex;
         poolCreateInfo.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
         VK_CHECK(vkCreateCommandPool(m_logicalDevice, &poolCreateInfo, context->allocator, &m_graphicsCommandPool));
-        m_logger.Info("Create() - Graphics command pool created.");
+        INFO_LOG("Graphics command pool created.");
 
         return true;
     }
 
     void VulkanDevice::Destroy()
     {
-        m_logger.Info("Destroy() - Destroying Queue indices.");
+        INFO_LOG("Destroying Queue indices.");
         m_graphicsQueueIndex = -1;
         m_presentQueueIndex  = -1;
         m_transferQueueIndex = -1;
 
-        m_logger.Info("Destroy() - Destroying command pool.");
+        INFO_LOG("Destroying command pool.");
         vkDestroyCommandPool(m_logicalDevice, m_graphicsCommandPool, m_context->allocator);
 
-        m_logger.Info("Destroy() - Destroying Logical Device.");
+        INFO_LOG("Destroying Logical Device.");
         vkDestroyDevice(m_logicalDevice, m_context->allocator);
         m_logicalDevice = nullptr;
 
-        m_logger.Info("Destroy() - Releasing Physical Device Handle.");
+        INFO_LOG("Releasing Physical Device Handle.");
         m_physicalDevice = nullptr;
 
-        m_logger.Info("Destroy() - Destroying SwapChainSupport formats and present modes.");
+        INFO_LOG("Destroying SwapChainSupport formats and present modes.");
         m_swapChainSupport.formats.Destroy();
         m_swapChainSupport.presentModes.Destroy();
     }
@@ -248,7 +248,7 @@ namespace C3D
 
         if (physicalDeviceCount == 0)
         {
-            m_logger.Error("SelectPhysicalDevice() - No phyiscal devices that support Vulkan were found.");
+            ERROR_LOG("No phyiscal devices that support Vulkan were found.");
             return false;
         }
 
@@ -279,7 +279,7 @@ namespace C3D
 
             vkGetPhysicalDeviceProperties(m_physicalDevice, &m_properties);
 
-            m_logger.Info("SelectPhysicalDevice() - Evaluating device: '{}'.", m_properties.deviceName);
+            INFO_LOG("Evaluating device: '{}'.", m_properties.deviceName);
 
             vkGetPhysicalDeviceFeatures(m_physicalDevice, &m_features);
 
@@ -318,7 +318,7 @@ namespace C3D
                 continue;
             }
 
-            m_logger.Info("SelectPhysicalDevice() - Selected is:");
+            INFO_LOG("Selected is:");
 
             f32 gpuMemory = 0.0f;
             for (u32 i = 0; i < m_memory.memoryHeapCount; i++)
@@ -340,11 +340,11 @@ namespace C3D
             m_apiVersionMinor = VK_API_VERSION_MINOR(m_properties.apiVersion);
             m_apiVersionPatch = VK_API_VERSION_PATCH(m_properties.apiVersion);
 
-            m_logger.Info("GPU            - {}", m_properties.deviceName);
-            m_logger.Info("Type           - {}", VkPhysicalDeviceTypeToString(m_properties.deviceType));
-            m_logger.Info("GPU Memory     - {:.2f}GiB", gpuMemory);
-            m_logger.Info("Driver Version - {}.{}.{}", m_driverVersionMajor, m_driverVersionMinor, m_driverVersionPatch);
-            m_logger.Info("API Version    - {}.{}.{}", m_apiVersionMajor, m_apiVersionMinor, m_apiVersionPatch);
+            INFO_LOG("GPU            - {}", m_properties.deviceName);
+            INFO_LOG("Type           - {}", VkPhysicalDeviceTypeToString(m_properties.deviceType));
+            INFO_LOG("GPU Memory     - {:.2f}GiB", gpuMemory);
+            INFO_LOG("Driver Version - {}.{}.{}", m_driverVersionMajor, m_driverVersionMinor, m_driverVersionPatch);
+            INFO_LOG("API Version    - {}.{}.{}", m_apiVersionMajor, m_apiVersionMinor, m_apiVersionPatch);
 
             m_graphicsQueueIndex = queueInfo.graphicsFamilyIndex;
             m_presentQueueIndex  = queueInfo.presentFamilyIndex;
@@ -377,7 +377,7 @@ namespace C3D
 
         if (!m_physicalDevice)
         {
-            m_logger.Error("SelectPhysicalDevice() - Failed to find a suitable PhysicalDevice.");
+            ERROR_LOG("Failed to find a suitable PhysicalDevice.");
             return false;
         }
 
@@ -393,10 +393,7 @@ namespace C3D
 
         if (requirements.discreteGpu && m_properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
         {
-            m_logger.Info(
-                "DoesPhysicalDeviceSupportRequirements() - Skipping: '{}' since it's not a discrete GPU which is a "
-                "requirement.",
-                m_properties.deviceName);
+            INFO_LOG("Skipping: '{}' since it's not a discrete GPU which is a requirement.", m_properties.deviceName);
             return false;
         }
 
@@ -465,42 +462,38 @@ namespace C3D
 
                     if (outQueueFamilyInfo.presentFamilyIndex != outQueueFamilyInfo.graphicsFamilyIndex)
                     {
-                        m_logger.Warn(
-                            "DoesPhysicalDeviceSupportRequirements() - Present and Graphics queue indices do not "
-                            "match!");
+                        WARN_LOG("Present and Graphics queue indices do not match!");
                     }
                     break;
                 }
             }
         }
 
-        m_logger.Info(
-            "DoesPhysicalDeviceSupportRequirements() - Name: '{}' | Graphics: {} | Present: {} | Compute: {} | "
-            "Transfer: {}.",
-            m_properties.deviceName, outQueueFamilyInfo.graphicsFamilyIndex != -1, outQueueFamilyInfo.presentFamilyIndex != -1,
-            outQueueFamilyInfo.computeFamilyIndex != -1, outQueueFamilyInfo.transferFamilyIndex != -1);
+        INFO_LOG("Name: '{}' | Graphics: {} | Present: {} | Compute: {} | Transfer: {}.", m_properties.deviceName,
+                 outQueueFamilyInfo.graphicsFamilyIndex != -1, outQueueFamilyInfo.presentFamilyIndex != -1,
+                 outQueueFamilyInfo.computeFamilyIndex != -1, outQueueFamilyInfo.transferFamilyIndex != -1);
 
         if (requirements.graphicsQueue && outQueueFamilyInfo.graphicsFamilyIndex == -1)
         {
-            m_logger.Info("DoesPhysicalDeviceSupportRequirements() - Device does not support Graphics Queue as required.");
+            INFO_LOG("Device does not support Graphics Queue as required.");
             return false;
         }
 
         if (requirements.presentQueue && outQueueFamilyInfo.presentFamilyIndex == -1)
         {
-            m_logger.Info("DoesPhysicalDeviceSupportRequirements() - Device does not support Present Queue as required.");
+            INFO_LOG("Device does not support Present Queue as required.");
             return false;
         }
 
         if (requirements.transferQueue && outQueueFamilyInfo.transferFamilyIndex == -1)
         {
-            m_logger.Info("DoesPhysicalDeviceSupportRequirements() - Device does not support Transfer Queue as required.");
+            INFO_LOG("Device does not support Transfer Queue as required.");
             return false;
         }
 
         if (requirements.computeQueue && outQueueFamilyInfo.computeFamilyIndex == -1)
         {
-            m_logger.Info("DoesPhysicalDeviceSupportRequirements() - Device does not support Compute Queue as required.");
+            INFO_LOG("Device does not support Compute Queue as required.");
             return false;
         }
 
@@ -508,7 +501,7 @@ namespace C3D
 
         if (m_swapChainSupport.formats.Empty() || m_swapChainSupport.presentModes.Empty())
         {
-            m_logger.Info("DoesPhysicalDeviceSupportRequirements() - Device does not have the required SwapChain support.");
+            INFO_LOG("Device does not have the required SwapChain support.");
             return false;
         }
 
@@ -532,10 +525,7 @@ namespace C3D
 
                     if (index == availableExtensions.end())
                     {
-                        m_logger.Info(
-                            "DoesPhysicalDeviceSupportRequirements() - Device does not support the : '{}' extension "
-                            "which is required.",
-                            extension);
+                        INFO_LOG("Device does not support the: '{}' extension which is required.", extension);
                         return false;
                     }
                 }
@@ -549,9 +539,7 @@ namespace C3D
 
                 if (index != availableExtensions.end())
                 {
-                    m_logger.Info(
-                        "DoesPhysicalDeviceSupportRequirements() - VK_KHR_portability_subset extension is present so we must add it as a "
-                        "required extension.");
+                    INFO_LOG("VK_KHR_portability_subset extension is present so we must add it as a required extension.");
 
                     m_requiresPortability = true;
                 }
@@ -560,9 +548,7 @@ namespace C3D
 
         if (requirements.samplerAnisotropy && !m_features.samplerAnisotropy)
         {
-            m_logger.Error(
-                "DoesPhysicalDeviceSupportRequirements() - Device does not support SamplerAnisotropy which is "
-                "required.");
+            ERROR_LOG("Device does not support SamplerAnisotropy which is required.");
             return false;
         }
 
@@ -578,7 +564,7 @@ namespace C3D
         if (HasSupportFor(nativeBit))
         {
             // We natively support the feature
-            m_logger.Info("CheckForSupportAndAddExtensionIfNeeded() - We have native support for: '{}'.", feature);
+            INFO_LOG("We have native support for: '{}'.", feature);
             return VulkanDeviceSupportResult::Native;
         }
 
@@ -592,16 +578,14 @@ namespace C3D
             if (it == requestedExtensions.end())
             {
                 requestedExtensions.PushBack(extensionName);
-                m_logger.Info(
-                    "CheckForSupportAndAddExtensionIfNeeded() - No native support for: '{}' but there is support through the: '{}' "
-                    "extension. We are enabling it!",
-                    feature, extensionName);
+                INFO_LOG("No native support for: '{}' but there is support through the: '{}' extension. We are enabling it!", feature,
+                         extensionName);
             }
             else
             {
-                m_logger.Info(
-                    "CheckForSupportAndAddExtensionIfNeeded() - No native support for: '{}' but there is support through the: '{}' "
-                    "extension. We already have that extension enabled so we are good.",
+                INFO_LOG(
+                    "No native support for: '{}' but there is support through the: '{}' extension. We already have that extension enabled "
+                    "so we are good.",
                     feature, extensionName);
             }
 
@@ -609,7 +593,7 @@ namespace C3D
         }
 
         // We do not support the feature natively or by extension
-        m_logger.Warn("CheckForSupportAndAddExtensionIfNeeded() - No support for: '{}'.", feature);
+        WARN_LOG("No support for: '{}'.", feature);
         return VulkanDeviceSupportResult::None;
     }
 
@@ -638,6 +622,6 @@ namespace C3D
                                                                m_swapChainSupport.presentModes.GetData()))
         }
 
-        m_logger.Info("QuerySwapChainSupport() - SwapChain support information obtained.");
+        INFO_LOG("SwapChain support information obtained.");
     }
 }  // namespace C3D

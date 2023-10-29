@@ -7,19 +7,21 @@
 
 namespace C3D
 {
-    JobSystem::JobSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager, "JOB_SYSTEM") {}
+    constexpr const char* INSTANCE_NAME = "JOB_SYSTEM";
 
-    bool JobSystem::Init(const JobSystemConfig& config)
+    JobSystem::JobSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
+
+    bool JobSystem::OnInit(const JobSystemConfig& config)
     {
         if (config.threadCount == 0)
         {
-            m_logger.Error("Init() - maxJobThreads must be > 0.");
+            ERROR_LOG("maxJobThreads must be > 0.");
             return false;
         }
 
         if (config.threadCount > MAX_JOB_THREADS)
         {
-            m_logger.Error("Init() - maxJobThreads must be <= {}. ", MAX_JOB_THREADS);
+            ERROR_LOG("maxJobThreads must be <= {}.", MAX_JOB_THREADS);
             return false;
         }
 
@@ -32,8 +34,8 @@ namespace C3D
 
         m_pendingResults.Reserve(100);
 
-        m_logger.Info("Main thread id is: {}", Platform::GetThreadId());
-        m_logger.Info("Spawning {} job threads.", m_threadCount);
+        INFO_LOG("Main thread id is: {}.", Platform::GetThreadId());
+        INFO_LOG("Spawning {} job threads.", m_threadCount);
 
         m_running = true;
 
@@ -47,8 +49,10 @@ namespace C3D
         return true;
     }
 
-    void JobSystem::Shutdown()
+    void JobSystem::OnShutdown()
     {
+        INFO_LOG("Joining all job threads.");
+
         m_running = false;
 
         for (auto& jobThread : m_jobThreads)
@@ -62,7 +66,7 @@ namespace C3D
         m_highPriorityQueue.Destroy();
     }
 
-    void JobSystem::Update(const FrameData& frameData)
+    void JobSystem::OnUpdate(const FrameData& frameData)
     {
         // Process all our queues
         ProcessQueue(m_highPriorityQueue, m_highPriorityMutex);
@@ -102,7 +106,7 @@ namespace C3D
                     std::lock_guard threadLock(thread.mutex);
                     if (thread.IsFree())
                     {
-                        m_logger.Trace("Submit() - Job immediately submitted on thread {} since it has HIGH priority.", thread.index);
+                        TRACE("Job immediately submitted on thread '{}' since it has HIGH priority.", thread.index);
                         thread.SetInfo(std::move(jobInfo));
                         return;
                     }
@@ -133,11 +137,11 @@ namespace C3D
             }
             default:
             case JobPriority::None:
-                m_logger.Error("Submit() - Failed to submit job since it has priority type NONE");
+                ERROR_LOG("Failed to submit job since it has priority type NONE.");
                 break;
         }
 
-        m_logger.Trace("Submit() - Job has been queued.");
+        TRACE("Job has been queued.");
     }
 
     void JobSystem::Runner(const u32 index)
@@ -145,7 +149,7 @@ namespace C3D
         auto& currentThread = m_jobThreads[index];
         auto threadId       = currentThread.thread.get_id();
 
-        m_logger.Trace("Starting job thread #{} (id={}, type={}).", index, threadId, currentThread.typeMask);
+        TRACE("Starting job thread #{} (id={}, type={}).", index, threadId, currentThread.typeMask);
 
         // Keep running, waiting for jobs
         while (true)
@@ -164,7 +168,7 @@ namespace C3D
                 // Call our entry point and do the work and store the result of the work
                 // if the user has provided a onSuccess callback (in the case of success)
                 // or if the user has provided a onFailure callback (in the case of a failure)
-                m_logger.Trace("Executing job on thread #{}.", index);
+                TRACE("Executing job on thread #{}.", index);
 
                 static u16 resultId = 0;
 
@@ -199,7 +203,7 @@ namespace C3D
             }
         }
 
-        m_logger.Trace("Stopping job thread #{} (id={}, type={}).", index, threadId, currentThread.typeMask);
+        TRACE("Stopping job thread #{} (id={}, type={}).", index, threadId, currentThread.typeMask);
     }
 
     void JobSystem::ProcessQueue(RingQueue<JobInfo>& queue, std::mutex& queueMutex)
@@ -230,7 +234,7 @@ namespace C3D
                         }
 
                         thread.SetInfo(std::move(nextJobInfo));
-                        m_logger.Trace("Assigning job to thread: #{}", thread.index);
+                        TRACE("Assigning job to thread: #{}.", thread.index);
 
                         threadFound = true;
                     }

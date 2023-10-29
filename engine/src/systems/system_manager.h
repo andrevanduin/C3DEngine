@@ -47,26 +47,26 @@ namespace C3D
     class C3D_API SystemManager
     {
     public:
-        SystemManager();
+        SystemManager() = default;
 
-        void Init();
+        void OnInit();
 
         template <class System>
         bool RegisterSystem(const u16 systemType)
         {
-            static_assert(std::is_base_of_v<BaseSystem, System>, "The provided system does not derive from the ISystem class");
+            static_assert(std::is_base_of_v<BaseSystem, System>, "The provided system does not derive from the ISystem class.");
 
             if (systemType > MaxKnownSystemType)
             {
-                m_logger.Error("RegisterSystem() - The provided systemType should be 0 <= {} < {}", systemType,
-                               ToUnderlying(MaxKnownSystemType));
+                INSTANCE_ERROR_LOG("SYSTEM_MANAGER", "The provided systemType should be 0 <= {} < {}.", systemType,
+                                   ToUnderlying(MaxKnownSystemType));
                 return false;
             }
 
             auto s = m_allocator.New<System>(MemoryType::CoreSystem, this);
-            if (!s->Init())
+            if (!s->OnInit())
             {
-                m_logger.Fatal("RegisterSystem() - Failed to initialize system");
+                INSTANCE_FATAL_LOG("SYSTEM_MANAGER", "Failed to initialize system.");
                 return false;
             }
 
@@ -78,19 +78,19 @@ namespace C3D
         bool RegisterSystem(const u16 systemType, const Config& config)
         {
             static_assert(std::is_base_of_v<SystemWithConfig<Config>, System>,
-                          "The provided system does not derive from the ISystem class");
+                          "The provided system does not derive from the ISystem class.");
 
             if (systemType > MaxKnownSystemType)
             {
-                m_logger.Error("RegisterSystem() - The provided systemType should be 0 <= {} < {}", systemType,
-                               ToUnderlying(MaxKnownSystemType));
+                INSTANCE_ERROR_LOG("SYSTEM_MANAGER", "The provided systemType should be 0 <= {} < {}.", systemType,
+                                   ToUnderlying(MaxKnownSystemType));
                 return false;
             }
 
             auto s = m_allocator.New<System>(MemoryType::CoreSystem, this);
-            if (!s->Init(config))
+            if (!s->OnInit(config))
             {
-                m_logger.Fatal("RegisterSystem() - Failed to initialize system.");
+                INSTANCE_FATAL_LOG("SYSTEM_MANAGER", "Failed to initialize system.");
                 return false;
             }
 
@@ -110,12 +110,11 @@ namespace C3D
             return reinterpret_cast<SystemType*>(m_systems[type]);
         }
 
-        void Shutdown();
+        void OnShutdown();
 
     private:
         Array<ISystem*, MaxKnownSystemType> m_systems = {};
 
         LinearAllocator m_allocator;
-        LoggerInstance<16> m_logger;
     };
 }  // namespace C3D
