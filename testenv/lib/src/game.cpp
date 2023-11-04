@@ -24,6 +24,7 @@
 #include <glm/gtx/matrix_decompose.hpp>
 
 #include "editor/render_view_editor_world.h"
+#include "editor/render_view_wireframe.h"
 #include "math/ray.h"
 #include "resources/debug/debug_box_3d.h"
 #include "resources/debug/debug_line_3d.h"
@@ -85,11 +86,11 @@ bool TestEnv::OnBoot()
         return false;
     }
 
-    C3D::Rect2D worldViewport2Rect = { 20.0f, 20.0f, 128.0f, 72.0f };
-    if (!m_state->worldViewport2.Create(worldViewport2Rect, C3D::DegToRad(45.0f), 0.1f, 4000.0f,
-                                        C3D::RendererProjectionMatrixType::Perspective))
+    C3D::Rect2D wireframeViewportRect = { 20.0f, 20.0f, 128.0f, 72.0f };
+    if (!m_state->wireframeViewport.Create(wireframeViewportRect, 0.015f, -4000.0f, 4000.0f,
+                                           C3D::RendererProjectionMatrixType::OrthographicCentered))
     {
-        ERROR_LOG("Failed to create World Viewport.");
+        ERROR_LOG("Failed to create Wireframe Viewport.");
         return false;
     }
 
@@ -164,9 +165,9 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     m_state->camera->SetPosition({ 16.07f, 4.5f, 25.0f });
     m_state->camera->SetEulerRotation({ -20.0f, 51.0f, 0.0f });
 
-    m_state->camera2 = Cam.Acquire("WORLD_CAM_2");
-    m_state->camera2->SetPosition({ -17.64f, 22.07f, 30.89f });
-    m_state->camera2->SetEulerRotation({ -40.0f, -51.0f, 0.0f });
+    m_state->wireframeCamera = Cam.Acquire("WIREFRAME_CAM");
+    m_state->wireframeCamera->SetPosition({ 8.0f, 0.0f, 10.0f });
+    m_state->wireframeCamera->SetEulerRotation({ 0.0f, -90.0f, 0.0f });
 
     // Set the allocator for the dynamic array that contains our world geometries to our frame allocator
     auto gameFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
@@ -432,6 +433,9 @@ bool TestEnv::OnPrepareRenderPacket(C3D::RenderPacket& packet, C3D::FrameData& f
     packet.views[TEST_ENV_VIEW_EDITOR_WORLD].view = Views.Get("EDITOR_WORLD_VIEW");
     packet.views[TEST_ENV_VIEW_EDITOR_WORLD].geometries.SetAllocator(frameData.frameAllocator);
 
+    packet.views[TEST_ENV_VIEW_WIREFRAME].view = Views.Get("WIREFRAME_VIEW");
+    packet.views[TEST_ENV_VIEW_WIREFRAME].geometries.SetAllocator(frameData.frameAllocator);
+
     packet.views[TEST_ENV_VIEW_UI].view = Views.Get("UI_VIEW");
     packet.views[TEST_ENV_VIEW_UI].geometries.SetAllocator(frameData.frameAllocator);
 
@@ -473,6 +477,22 @@ bool TestEnv::OnPrepareRenderPacket(C3D::RenderPacket& packet, C3D::FrameData& f
     {
         ERROR_LOG("Failed to build packet for view: 'editor world'.");
         return false;
+    }
+
+    // Wireframe
+    {
+        RenderViewWireframeData wireframeData = {};
+        wireframeData.selectedId              = m_state->selectedObject.uniqueId;
+        wireframeData.worldGeometries         = packet.views[TEST_ENV_VIEW_WORLD].geometries;
+        wireframeData.terrainGeometries       = packet.views[TEST_ENV_VIEW_WORLD].terrainGeometries;
+
+        auto& wireframeViewPacket = packet.views[TEST_ENV_VIEW_WIREFRAME];
+        if (!Views.BuildPacket(wireframeViewPacket.view, frameData, m_state->wireframeViewport, m_state->wireframeCamera, &wireframeData,
+                               &wireframeViewPacket))
+        {
+            ERROR_LOG("Failed to build packet for view: 'Wireframe'.");
+            return false;
+        }
     }
 
     // UI
@@ -537,17 +557,8 @@ bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
     viewPacket = &packet.views[TEST_ENV_VIEW_EDITOR_WORLD];
     viewPacket->view->OnRender(frameData, viewPacket);
 
-    // Executes the current command buffer
-    Renderer.End(frameData);
-
-    // Begins the command buffer again
-    Renderer.Begin(frameData);
-
-    // Render the world again, but with the new viewport and camera
-    viewPacket                   = &packet.views[TEST_ENV_VIEW_WORLD];
-    viewPacket->projectionMatrix = m_state->worldViewport2.GetProjection();
-    viewPacket->viewport         = &m_state->worldViewport2;
-    viewPacket->viewMatrix       = m_state->camera2->GetViewMatrix();
+    // Render the wireframe view
+    viewPacket = &packet.views[TEST_ENV_VIEW_WIREFRAME];
     viewPacket->view->OnRender(frameData, viewPacket);
 
     // UI
@@ -573,8 +584,8 @@ void TestEnv::OnResize()
     C3D::Rect2D worldViewportRect = { halfWidth + 20.0f, 20.0f, halfWidth - 40.0f, m_state->height - 40.0f };
     m_state->worldViewport.Resize(worldViewportRect);
 
-    C3D::Rect2D worldViewport2Rect = { 20.0f, 20.0f, halfWidth - 40.0f, m_state->height - 40.0f };
-    m_state->worldViewport2.Resize(worldViewport2Rect);
+    C3D::Rect2D wireframeViewportRect = { 20.0f, 20.0f, halfWidth - 40.0f, m_state->height - 40.0f };
+    m_state->wireframeViewport.Resize(wireframeViewportRect);
 
     C3D::Rect2D uiViewportRect = { 0.0f, 0.0f, static_cast<f32>(m_state->width), static_cast<f32>(m_state->height) };
     m_state->uiViewport.Resize(uiViewportRect);
@@ -699,6 +710,9 @@ bool TestEnv::ConfigureRenderViews() const
     // Editor World View
     RenderViewEditorWorld* editorWorldView = Memory.New<RenderViewEditorWorld>(C3D::MemoryType::RenderView);
     m_state->renderViews.PushBack(editorWorldView);
+
+    RenderViewWireframe* wireframeView = Memory.New<RenderViewWireframe>(C3D::MemoryType::RenderView);
+    m_state->renderViews.PushBack(wireframeView);
 
     // UI View
     RenderViewUi* uiView = Memory.New<RenderViewUi>(C3D::MemoryType::RenderView);

@@ -70,7 +70,7 @@ namespace C3D
          *	@param OverwriteIfExists Set to true if you want to overwrite the file in the dest if it exists
          *	@return True if successfully copied file false otherwise
          */
-        static CopyFileStatus CopyFile(const char* source, const char* dest, bool overwriteIfExists);
+        static CopyFileStatus CopyFile(const String& source, const String& dest, bool overwriteIfExists);
 
         /**
          * @brief Starts watching the file at the provided filePath for changes

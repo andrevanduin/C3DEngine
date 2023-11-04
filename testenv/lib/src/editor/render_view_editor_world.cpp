@@ -126,7 +126,7 @@ bool RenderViewEditorWorld::OnRender(const C3D::FrameData& frameData, const C3D:
             return false;
         }
 
-        if (!Renderer.ShaderBindGlobals(*m_shader))
+        if (!Renderer.BindShaderGlobals(*m_shader))
         {
             ERROR_LOG("Failed bind globals for shader: '{}'.", m_shader->name);
             return false;

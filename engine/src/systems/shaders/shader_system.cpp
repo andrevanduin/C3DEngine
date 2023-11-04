@@ -59,15 +59,8 @@ namespace C3D
         // NOTE: Way more than we will ever need but it prevents collisions in our hashtable
         shader.uniforms.Create(1024);
 
-        // Process flags
-        if (config.depthTest)
-        {
-            shader.flags |= ShaderFlagDepthTest;
-        }
-        if (config.depthWrite)
-        {
-            shader.flags |= ShaderFlagDepthWrite;
-        }
+        // Copy over the flags specified in the config
+        shader.flags = config.flags;
 
         if (!Renderer.CreateShader(&shader, config, pass))
         {
@@ -75,7 +68,7 @@ namespace C3D
             return false;
         }
 
-        // Mark shader as created (but not yet initialized)
+        // Mark Shader as created (but not yet initialized)
         shader.state = ShaderState::Uninitialized;
 
         // Add attributes
@@ -160,7 +153,7 @@ namespace C3D
             ERROR_LOG("Failed to use shader: '{}'.", shader.name);
             return false;
         }
-        if (!Renderer.ShaderBindGlobals(shader))
+        if (!Renderer.BindShaderGlobals(shader))
         {
             ERROR_LOG("Failed to bind globals for shader: '{}'.", shader.name);
             return false;
@@ -211,11 +204,11 @@ namespace C3D
         {
             if (uniform.scope == ShaderScope::Global)
             {
-                Renderer.ShaderBindGlobals(shader);
+                Renderer.BindShaderGlobals(shader);
             }
             else if (uniform.scope == ShaderScope::Instance)
             {
-                Renderer.ShaderBindInstance(shader, shader.boundInstanceId);
+                Renderer.BindShaderInstance(shader, shader.boundInstanceId);
             }
             shader.boundScope = uniform.scope;
         }
@@ -242,7 +235,7 @@ namespace C3D
     {
         Shader& shader         = m_shaders.GetByIndex(m_currentShaderId);
         shader.boundInstanceId = instanceId;
-        return Renderer.ShaderBindInstance(shader, instanceId);
+        return Renderer.BindShaderInstance(shader, instanceId);
     }
 
     bool ShaderSystem::AddAttribute(Shader& shader, const ShaderAttributeConfig& config) const

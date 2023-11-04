@@ -34,8 +34,8 @@ struct SelectedObject
 
 struct GameState final : C3D::ApplicationState
 {
-    C3D::Camera* camera  = nullptr;
-    C3D::Camera* camera2 = nullptr;
+    C3D::Camera* camera          = nullptr;
+    C3D::Camera* wireframeCamera = nullptr;
 
     ReloadState reloadState = ReloadState::Done;
 
@@ -47,8 +47,9 @@ struct GameState final : C3D::ApplicationState
     C3D::DynamicArray<C3D::DebugLine3D> testLines;
     C3D::DynamicArray<C3D::DebugBox3D> testBoxes;
 
-    C3D::Viewport worldViewport, worldViewport2;
+    C3D::Viewport worldViewport;
     C3D::Viewport uiViewport;
+    C3D::Viewport wireframeViewport;
 
     SelectedObject selectedObject;
 

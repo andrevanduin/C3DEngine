@@ -494,7 +494,7 @@ namespace C3D
         return true;
     }
 
-    bool MaterialSystem::ApplyInstance(Material* material, const bool needsUpdate) const
+    bool MaterialSystem::ApplyInstance(Material* material, const FrameData& frameData, const bool needsUpdate) const
     {
         MATERIAL_APPLY_OR_FAIL(Shaders.BindInstance(material->internalId))
         if (needsUpdate)

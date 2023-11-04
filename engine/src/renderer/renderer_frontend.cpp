@@ -258,11 +258,11 @@ namespace C3D
 
     bool RenderSystem::UseShader(const Shader& shader) const { return m_backendPlugin->UseShader(shader); }
 
-    bool RenderSystem::ShaderBindGlobals(Shader& shader) const { return m_backendPlugin->ShaderBindGlobals(shader); }
+    bool RenderSystem::BindShaderGlobals(Shader& shader) const { return m_backendPlugin->BindShaderGlobals(shader); }
 
-    bool RenderSystem::ShaderBindInstance(Shader& shader, u32 instanceId) const
+    bool RenderSystem::BindShaderInstance(Shader& shader, u32 instanceId) const
     {
-        return m_backendPlugin->ShaderBindInstance(shader, instanceId);
+        return m_backendPlugin->BindShaderInstance(shader, instanceId);
     }
 
     bool RenderSystem::ShaderApplyGlobals(const Shader& shader, bool needsUpdate) const

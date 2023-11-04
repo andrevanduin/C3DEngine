@@ -33,7 +33,7 @@ bool TryCopyLib()
     auto errorCode = C3D::CopyFileStatus::Locked;
     while (errorCode == C3D::CopyFileStatus::Locked)
     {
-        errorCode = C3D::Platform::CopyFile(source.Data(), dest.Data(), true);
+        errorCode = C3D::Platform::CopyFile(source, dest, true);
         if (errorCode == C3D::CopyFileStatus::Locked)
         {
             C3D::Platform::SleepMs(50);

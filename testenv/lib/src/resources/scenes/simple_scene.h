@@ -13,6 +13,7 @@
 #include <resources/terrain/terrain.h>
 
 #include "simple_scene_config.h"
+#include "views/render_view_world.h"
 
 namespace C3D
 {
@@ -150,7 +151,7 @@ private:
     C3D::HashMap<C3D::String, C3D::Mesh> m_meshes;
     C3D::HashMap<C3D::String, C3D::Terrain> m_terrains;
 
-    C3D::RenderViewWorldData m_worldData;
+    RenderViewWorldData m_worldData;
 
     C3D::Transform m_transform;
 

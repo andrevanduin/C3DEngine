@@ -131,9 +131,9 @@ namespace C3D
         return true;
     }
 
-    CopyFileStatus Platform::CopyFile(const char* source, const char* dest, const bool overwriteIfExists = true)
+    CopyFileStatus Platform::CopyFile(const String& source, const String& dest, const bool overwriteIfExists = true)
     {
-        if (const auto result = CopyFileA(source, dest, !overwriteIfExists); !result)
+        if (const auto result = CopyFileA(source.Data(), dest.Data(), !overwriteIfExists); !result)
         {
             const auto error = GetLastError();
             if (error == ERROR_FILE_NOT_FOUND)

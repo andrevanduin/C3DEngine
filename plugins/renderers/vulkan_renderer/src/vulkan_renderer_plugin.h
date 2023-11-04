@@ -70,8 +70,8 @@ namespace C3D
         bool InitializeShader(Shader& shader) override;
         bool UseShader(const Shader& shader) override;
 
-        bool ShaderBindGlobals(Shader& shader) override;
-        bool ShaderBindInstance(Shader& shader, u32 instanceId) override;
+        bool BindShaderGlobals(Shader& shader) override;
+        bool BindShaderInstance(Shader& shader, u32 instanceId) override;
 
         bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) override;
         bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) override;

@@ -15,10 +15,8 @@ layout(push_constant) uniform pushConstants
 	mat4 model; // 64 bytes
 } uPushConstants;
 
-layout(location = 0) out int outMode;
-
 // Data transfer object
-layout(location = 1) out struct dto 
+layout(location = 0) out struct dto 
 {
 	vec2 texCoord;
 } outDto;

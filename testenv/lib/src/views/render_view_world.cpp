@@ -196,7 +196,7 @@ bool RenderViewWorld::OnBuildPacket(const C3D::FrameData& frameData, const C3D::
         return false;
     }
 
-    const auto& worldData = *static_cast<C3D::RenderViewWorldData*>(data);
+    const auto& worldData = *static_cast<RenderViewWorldData*>(data);
 
     outPacket->view             = this;
     outPacket->projectionMatrix = viewport.GetProjection();
@@ -283,7 +283,7 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
             viewMatrix[3][2] = 0.0f;
 
             // Apply our globals
-            Renderer.ShaderBindGlobals(*m_skyboxShader);
+            Renderer.BindShaderGlobals(*m_skyboxShader);
 
             if (!Shaders.SetUniformByIndex(m_skyboxShaderLocations.projection, &packet->projectionMatrix))
             {
@@ -362,7 +362,7 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 // already happened this frame for this material (for example because the previous terrain geometry
                 // uses the same material)
                 bool needsUpdate = mat->renderFrameNumber != frameData.frameNumber || mat->renderDrawIndex != frameData.drawIndex;
-                if (!Materials.ApplyInstance(mat, needsUpdate))
+                if (!Materials.ApplyInstance(mat, frameData, needsUpdate))
                 {
                     WARN_LOG("Failed to apply instance for shader: '{}'.", m_terrainShader->name);
                     continue;
@@ -400,7 +400,7 @@ bool RenderViewWorld::OnRender(const C3D::FrameData& frameData, const C3D::Rende
                 C3D::Material* mat = geometry.geometry->material ? geometry.geometry->material : Materials.GetDefault();
 
                 const bool needsUpdate = mat->renderFrameNumber != frameNumber;
-                if (!Materials.ApplyInstance(mat, needsUpdate))
+                if (!Materials.ApplyInstance(mat, frameData, needsUpdate))
                 {
                     WARN_LOG("Failed to apply material: '{}'. Skipping draw.", mat->name);
                     continue;

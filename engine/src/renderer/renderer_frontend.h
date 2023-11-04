@@ -112,8 +112,8 @@ namespace C3D
         bool InitializeShader(Shader& shader) const;
         bool UseShader(const Shader& shader) const;
 
-        bool ShaderBindGlobals(Shader& shader) const;
-        bool ShaderBindInstance(Shader& shader, u32 instanceId) const;
+        bool BindShaderGlobals(Shader& shader) const;
+        bool BindShaderInstance(Shader& shader, u32 instanceId) const;
 
         bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) const;
         bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) const;

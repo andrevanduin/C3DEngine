@@ -26,7 +26,6 @@ namespace C3D
 
         FaceCullMode cullMode;
         ShaderFlagBits shaderFlags = ShaderFlags::ShaderFlagNone;
-        bool isWireFrame           = false;
 
         /** @brief The name of the shader that is associated with this pipeline. */
         String shaderName;

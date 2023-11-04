@@ -1435,7 +1435,6 @@ namespace C3D
             config.viewport    = viewport;
             config.scissor     = scissor;
             config.cullMode    = vulkanShader->config.cullMode;
-            config.isWireFrame = false;
             config.shaderFlags = shader.flags;
             config.shaderName  = shader.name;
 
@@ -1510,14 +1509,14 @@ namespace C3D
         return true;
     }
 
-    bool VulkanRendererPlugin::ShaderBindGlobals(Shader& shader)
+    bool VulkanRendererPlugin::BindShaderGlobals(Shader& shader)
     {
         // Global UBO is always at the beginning, but let's use this anyways for completeness
         shader.boundUboOffset = static_cast<u32>(shader.globalUboOffset);
         return true;
     }
 
-    bool VulkanRendererPlugin::ShaderBindInstance(Shader& shader, const u32 instanceId)
+    bool VulkanRendererPlugin::BindShaderInstance(Shader& shader, const u32 instanceId)
     {
         const auto internal = static_cast<VulkanShader*>(shader.apiSpecificData);
 
