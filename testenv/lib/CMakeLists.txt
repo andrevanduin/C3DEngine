@@ -17,8 +17,3 @@ target_compile_definitions(TestEnvLib PUBLIC C3D_EXPORT)
 target_link_libraries(TestEnvLib PUBLIC C3DEngine)
 
 target_include_directories(TestEnvLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-
-add_custom_command(TARGET TestEnvLib COMMAND ${CMAKE_COMMAND} -E copy 
-    "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}TestEnvLib${CMAKE_SHARED_LIBRARY_SUFFIX}" 
-    "${CMAKE_BINARY_DIR}/testenv/executable"
-)
