@@ -89,10 +89,8 @@ namespace C3D::GeometryUtils
 
     bool Vertex3DEqual(const Vertex3D& vert0, const Vertex3D& vert1)
     {
-        return EpsilonEqual(vert0.position, vert1.position, F32_EPSILON) &&
-               EpsilonEqual(vert0.normal, vert1.normal, F32_EPSILON) &&
-               EpsilonEqual(vert0.texture, vert1.texture, F32_EPSILON) &&
-               EpsilonEqual(vert0.color, vert1.color, F32_EPSILON) &&
+        return EpsilonEqual(vert0.position, vert1.position, F32_EPSILON) && EpsilonEqual(vert0.normal, vert1.normal, F32_EPSILON) &&
+               EpsilonEqual(vert0.texture, vert1.texture, F32_EPSILON) && EpsilonEqual(vert0.color, vert1.color, F32_EPSILON) &&
                EpsilonEqual(vert0.tangent, vert1.tangent, F32_EPSILON);
     }
 
@@ -148,10 +146,10 @@ namespace C3D::GeometryUtils
         // Copy over the unique vertices (resizing the dynamic array to fit the smaller amount)
         config.vertices.Copy(uniqueVertices, uniqueVertexCount);
         // Destroy our temporary array
-        Memory.Free(MemoryType::Array, uniqueVertices);
+        Memory.Free(uniqueVertices);
 
         u64 removedCount = oldVertexCount - uniqueVertexCount;
-        Logger::Debug("GeometryUtils::DeduplicateVertices() - removed {} vertices, Originally: {} | Now: {}",
-                      removedCount, oldVertexCount, uniqueVertexCount);
+        Logger::Debug("GeometryUtils::DeduplicateVertices() - removed {} vertices, Originally: {} | Now: {}", removedCount, oldVertexCount,
+                      uniqueVertexCount);
     }
 }  // namespace C3D::GeometryUtils

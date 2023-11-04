@@ -56,7 +56,7 @@ namespace C3D
 
     void ResourceLoader<BinaryResource>::Unload(BinaryResource& resource)
     {
-        Memory.Free(MemoryType::Array, resource.data);
+        Memory.Free(resource.data);
         resource.data = nullptr;
 
         resource.name.Destroy();

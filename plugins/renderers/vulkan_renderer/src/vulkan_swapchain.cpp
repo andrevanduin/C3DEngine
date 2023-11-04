@@ -79,7 +79,7 @@ namespace C3D
 
         // Since we don't destroy our depth and render textures in destroy internal (so we can re-use the textures on a
         // recreate() call) We still need to cleanup our depth textures
-        Memory.Free(MemoryType::Texture, depthTextures);
+        Memory.Free(depthTextures);
         depthTextures = nullptr;
 
         // And we also need to cleanup our render textures
@@ -87,11 +87,11 @@ namespace C3D
         {
             // We start with the vulkan internal data
             const auto img = static_cast<VulkanImage*>(renderTextures[i].internalData);
-            Memory.Delete(MemoryType::Texture, img);
+            Memory.Delete(img);
         }
 
         // then we cleanup the actual render textures themselves
-        Memory.Free(MemoryType::Texture, renderTextures);
+        Memory.Free(renderTextures);
         renderTextures = nullptr;
     }
 
@@ -308,7 +308,7 @@ namespace C3D
         {
             // First we destroy the internal vulkan specific data for every depth texture
             const auto image = static_cast<VulkanImage*>(depthTextures[i].internalData);
-            Memory.Delete(MemoryType::Texture, image);
+            Memory.Delete(image);
 
             depthTextures[i].internalData = nullptr;
         }

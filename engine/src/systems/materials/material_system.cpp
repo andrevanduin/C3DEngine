@@ -303,7 +303,7 @@ namespace C3D
 
             if (maps)
             {
-                Memory.Free(MemoryType::Array, maps);
+                Memory.Free(maps);
             }
 
             if (mat.generation == INVALID_ID)
@@ -875,7 +875,7 @@ namespace C3D
 
         if (maps)
         {
-            Memory.Free(MemoryType::Array, maps);
+            Memory.Free(maps);
         }
 
         return result;
@@ -909,7 +909,7 @@ namespace C3D
         // Release all associated properties
         if (mat.properties && mat.propertiesSize > 0)
         {
-            Memory.Free(MemoryType::MaterialInstance, mat.properties);
+            Memory.Free(mat.properties);
         }
 
         // Zero out memory and invalidate ids

@@ -101,7 +101,7 @@ namespace C3D
             return false;
         }
 
-        Memory.Free(MemoryType::Texture, rawData);
+        Memory.Free(rawData);
 
         resource.pixels       = data;
         resource.width        = width;

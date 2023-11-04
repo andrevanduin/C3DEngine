@@ -41,7 +41,7 @@ namespace C3D
             return dataPtr;
         }
 
-        void Free(MemoryType type, void* block) override {}
+        void Free(void* block) override {}
 
         void FreeAll()
         {

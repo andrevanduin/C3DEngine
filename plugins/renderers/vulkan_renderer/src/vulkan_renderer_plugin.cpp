@@ -201,7 +201,7 @@ namespace C3D
 #if C3D_VULKAN_USE_CUSTOM_ALLOCATOR == 1
         if (m_context.allocator)
         {
-            Memory.Free(MemoryType::RenderSystem, m_context.allocator);
+            Memory.Free(m_context.allocator);
             m_context.allocator = nullptr;
         }
 #endif
@@ -488,7 +488,7 @@ namespace C3D
             target->internalFrameBuffer = nullptr;
             if (freeInternalMemory)
             {
-                Memory.Free(MemoryType::Array, target->attachments);
+                Memory.Free(target->attachments);
                 target->attachmentCount = 0;
                 target->attachments     = nullptr;
             }
@@ -509,7 +509,7 @@ namespace C3D
     bool VulkanRendererPlugin::DestroyRenderPass(RenderPass* pass)
     {
         pass->Destroy();
-        Memory.Free(MemoryType::RenderSystem, pass);
+        Memory.Free(pass);
         return true;
     }
 
@@ -524,7 +524,7 @@ namespace C3D
     bool VulkanRendererPlugin::DestroyRenderBuffer(RenderBuffer* buffer)
     {
         buffer->Destroy();
-        Memory.Delete(MemoryType::RenderSystem, buffer);
+        Memory.Delete(buffer);
         return true;
     }
 
@@ -711,7 +711,7 @@ namespace C3D
         if (texture && texture->internalData)
         {
             const auto image = static_cast<VulkanImage*>(texture->internalData);
-            Memory.Delete(MemoryType::Texture, image);
+            Memory.Delete(image);
 
             const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
@@ -818,7 +818,7 @@ namespace C3D
         if (const auto image = static_cast<VulkanImage*>(texture->internalData))
         {
             image->Destroy();
-            Memory.Delete(MemoryType::Texture, texture->internalData);
+            Memory.Delete(texture->internalData);
             texture->internalData = nullptr;
         }
     }
@@ -1175,7 +1175,7 @@ namespace C3D
                 if (pipeline)
                 {
                     pipeline->Destroy();
-                    Memory.Delete(MemoryType::Vulkan, pipeline);
+                    Memory.Delete(pipeline);
                 }
             }
             // Do the same for our Clockwise Pipelines
@@ -1184,7 +1184,7 @@ namespace C3D
                 if (pipeline)
                 {
                     pipeline->Destroy();
-                    Memory.Delete(MemoryType::Vulkan, pipeline);
+                    Memory.Delete(pipeline);
                 }
             }
             vulkanShader->pipelines.Clear();
@@ -1200,7 +1200,7 @@ namespace C3D
             std::memset(&vulkanShader->config, 0, sizeof(VulkanShaderConfig));
 
             // Free the api (Vulkan in this case) specific data from the shader
-            Memory.Free(MemoryType::Shader, shader.apiSpecificData);
+            Memory.Free(shader.apiSpecificData);
             shader.apiSpecificData = nullptr;
         }
     }
@@ -1824,7 +1824,7 @@ namespace C3D
         // Free the memory for the instance texture pointer array
         if (instanceState->instanceTextureMaps)
         {
-            Memory.Free(MemoryType::Array, instanceState->instanceTextureMaps);
+            Memory.Free(instanceState->instanceTextureMaps);
             instanceState->instanceTextureMaps = nullptr;
         }
 

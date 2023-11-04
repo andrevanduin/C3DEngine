@@ -24,7 +24,7 @@ namespace C3D
         for (const auto system : m_systems)
         {
             system->OnShutdown();
-            m_allocator.Delete(MemoryType::CoreSystem, system);
+            m_allocator.Delete(system);
         }
 
         m_allocator.Destroy();

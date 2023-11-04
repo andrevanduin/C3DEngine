@@ -351,10 +351,10 @@ namespace C3D
         m_defaultNormalTexture.generation = INVALID_ID;
 
         // Cleanup our pixel arrays
-        Memory.Free(MemoryType::Array, pixels);
-        Memory.Free(MemoryType::Array, diffusePixels);
-        Memory.Free(MemoryType::Array, specPixels);
-        Memory.Free(MemoryType::Array, normalPixels);
+        Memory.Free(pixels);
+        Memory.Free(diffusePixels);
+        Memory.Free(specPixels);
+        Memory.Free(normalPixels);
 
         return true;
     }
@@ -452,7 +452,7 @@ namespace C3D
                 if (texture->width != res.width || texture->height != res.height || texture->channelCount != res.channelCount)
                 {
                     ERROR_LOG("Failed to load. All textures must be the same resolution and bit depth.");
-                    Memory.Free(MemoryType::Array, pixels);
+                    Memory.Free(pixels);
                     pixels = nullptr;
                     return false;
                 }
@@ -467,7 +467,7 @@ namespace C3D
         // Acquire internal texture resources and upload to the GPU
         Renderer.CreateTexture(pixels, texture);
 
-        Memory.Free(MemoryType::Array, pixels);
+        Memory.Free(pixels);
         pixels = nullptr;
 
         return true;

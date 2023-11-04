@@ -310,7 +310,7 @@ namespace C3D
         m_frameAllocator.Destroy();
 
         // Free the application specific frame data
-        Memory.Free(MemoryType::Game, m_frameData.applicationFrameData);
+        Memory.Free(m_frameData.applicationFrameData);
 
         // Shutdown our console
         m_pConsole->OnShutDown();

@@ -9,14 +9,21 @@ namespace C3D
 {
     typedef u32 AllocSizeMarker;
 
-    struct AllocHeader
+    /** @brief The allocation footer that gets added to every allocation. */
+    struct AllocFooter
     {
-        void* start;
-        u16 alignment;
+        /** @brief A pointer to where this allocations starts.
+         * We can use this to calculate the offset into the memory block that is managed by the dynamic allocator.
+         */
+        void* start = nullptr;
+        /** @brief The alignment that needs to be used for the user's memory. */
+        u16 alignment = 0;
+        /** @brief The memory type of the user's memory. (used to keep track of where allocations are coming from) */
+        MemoryType type = MemoryType::Unknown;
     };
 
     constexpr auto MAX_SINGLE_ALLOC_SIZE        = GibiBytes(4);
-    constexpr auto SMALLEST_POSSIBLE_ALLOCATION = sizeof(AllocHeader) + sizeof(AllocSizeMarker) + 1 + 1;
+    constexpr auto SMALLEST_POSSIBLE_ALLOCATION = sizeof(AllocFooter) + sizeof(AllocSizeMarker) + 1 + 1;
 
     class C3D_API DynamicAllocator final : public BaseAllocator<DynamicAllocator>
     {
@@ -29,7 +36,7 @@ namespace C3D
 
         void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
 
-        void Free(MemoryType type, void* block) override;
+        void Free(void* block) override;
 
         /** @brief Obtains the size and alignment of a given block of memory.
          * Will fail if the provided block of memory is invalid.

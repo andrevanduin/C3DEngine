@@ -21,7 +21,7 @@ namespace C3D
         virtual ~BaseAllocator() = default;
 
         virtual void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) = 0;
-        virtual void Free(MemoryType type, void* block)                           = 0;
+        virtual void Free(void* block)                                            = 0;
 
         virtual bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment) { return true; }
 
@@ -55,12 +55,12 @@ namespace C3D
         }
 
         template <class T>
-        void Delete(const MemoryType type, T* instance)
+        void Delete(T* instance)
         {
             // Call our destructor
             instance->~T();
             // Free our memory
-            Free(type, instance);
+            Free(instance);
         }
 
         [[nodiscard]] void* GetMemory() const { return m_memoryBlock; }
