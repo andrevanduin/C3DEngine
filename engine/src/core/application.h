@@ -56,6 +56,8 @@ namespace C3D
         virtual void OnLibraryLoad()   = 0;
         virtual void OnLibraryUnload() = 0;
 
+        const SystemManager* GetSystemsManager() const { return m_pSystemsManager; }
+
         friend Engine;
 
     protected:
