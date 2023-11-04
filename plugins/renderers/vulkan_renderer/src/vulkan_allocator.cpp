@@ -44,7 +44,7 @@ namespace C3D
         u16 alignment;
         if (Memory.GetSizeAlignment(memory, &size, &alignment))
         {
-            Memory.Free(MemoryType::Vulkan, memory);
+            Memory.Free(memory);
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
             Logger::Trace("[VULKAN_FREE] - Block at: {} was Freed.", memory);
 #endif
@@ -103,7 +103,7 @@ namespace C3D
 #ifdef C3D_VULKAN_ALLOCATOR_TRACE
             Logger::Trace("[VULKAN_REALLOCATE] - Freeing original block: {}.", original);
 #endif
-            Memory.Free(MemoryType::Vulkan, original);
+            Memory.Free(original);
         }
         else
         {

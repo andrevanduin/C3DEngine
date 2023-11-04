@@ -72,7 +72,7 @@ namespace C3D
          *	- A marker to hold the size for quick and easy lookups`
          *
          */
-        u64 requiredSize = alignment + sizeof(AllocHeader) + sizeof(AllocSizeMarker) + size;
+        u64 requiredSize = alignment + sizeof(AllocSizeMarker) + size + sizeof(AllocFooter);
         // Don't perform allocations of more than 4 GibiBytes at the time.
         assert(requiredSize < MAX_SINGLE_ALLOC_SIZE);
 
@@ -84,7 +84,7 @@ namespace C3D
              * x  bytes - padding (alignment)
              * 4  bytes - size of the user's block
              * x  bytes - user's memory block
-             * 16 bytes - AllocHeader
+             * 16 bytes - AllocFooter
              */
 
             // Get the base pointer to the start of our unaligned memory block
@@ -100,14 +100,15 @@ namespace C3D
             // Store the size right before the user's data
             const auto sizePtr = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
             *sizePtr           = static_cast<u32>(size);
-            // Store the header immediately after the user block
-            const auto header = reinterpret_cast<AllocHeader*>(userDataPtr + size);
-            header->start     = basePtr;
-            header->alignment = alignment;
+            // Store the footer immediately after the user block
+            const auto footer = reinterpret_cast<AllocFooter*>(userDataPtr + size);
+            footer->start     = basePtr;
+            footer->alignment = alignment;
+            footer->type      = type;
 
 #ifdef C3D_TRACE_ALLOCS
-            TRACE(INSTANCE_NAME, "Allocated (size: {}, alignment {}, header: {} and marker: {} = {}) bytes at {}.", size, alignment,
-                  sizeof(AllocHeader), ALLOC_SIZE_MARKER_SIZE, requiredSize, basePtr);
+            TRACE(INSTANCE_NAME, "Allocated (size: {}, alignment {}, footer: {} and marker: {} = {}) bytes at {}.", size, alignment,
+                  sizeof(AllocFooter), ALLOC_SIZE_MARKER_SIZE, requiredSize, basePtr);
 #endif
 
             MetricsAllocate(m_id, type, size, requiredSize, userDataPtr);
@@ -123,7 +124,7 @@ namespace C3D
         throw std::bad_alloc();
     }
 
-    void DynamicAllocator::Free(const MemoryType type, void* block)
+    void DynamicAllocator::Free(void* block)
     {
         std::lock_guard freeGuard(m_mutex);
 
@@ -148,13 +149,15 @@ namespace C3D
         const auto userDataPtr = static_cast<char*>(block);
         // If we subtract the size of our ALLOC_SIZE_MARKER we get our size
         const auto blockSize = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
-        // If we add the size of the user's data to our user data block ptr we get our alloc header
-        const auto header = reinterpret_cast<AllocHeader*>(userDataPtr + *blockSize);
+        // If we add the size of the user's data to our user data block ptr we get our alloc footer
+        const auto footer = reinterpret_cast<AllocFooter*>(userDataPtr + *blockSize);
+        // We can figure out the memory type that was associated with this allocation
+        const auto memoryType = footer->type;
         // We can now calculate the total size of our entire data combined
-        const u64 requiredSize = header->alignment + sizeof(AllocHeader) + sizeof(AllocSizeMarker) + *blockSize;
+        const u64 requiredSize = footer->alignment + sizeof(AllocSizeMarker) + *blockSize + sizeof(AllocFooter);
         // From our header we can find the pointer to the start of our current block and subtract the start of our
         // managed memory block we get an offset into our managed block of memory
-        const u64 offset = static_cast<char*>(header->start) - m_memory;
+        const u64 offset = static_cast<char*>(footer->start) - m_memory;
         // Then we simply free this memory
         if (!m_freeList.FreeBlock(requiredSize, offset))
         {
@@ -162,10 +165,10 @@ namespace C3D
         }
 
 #ifdef C3D_TRACE_ALLOCS
-        TRACE("Freed {} bytes at {}.", requiredSize, header->start);
+        TRACE("Freed {} bytes at {}.", requiredSize, footer->start);
 #endif
 
-        MetricsFree(m_id, type, *blockSize, requiredSize, userDataPtr);
+        MetricsFree(m_id, memoryType, *blockSize, requiredSize, userDataPtr);
     }
 
     bool DynamicAllocator::GetSizeAlignment(void* block, u64* outSize, u16* outAlignment)
@@ -177,11 +180,11 @@ namespace C3D
         const auto sizePtr      = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
         const auto userDataSize = *sizePtr;
 
-        // Get the header
-        const auto header = reinterpret_cast<AllocHeader*>(userDataPtr + userDataSize);
+        // Get the footer
+        const auto footer = reinterpret_cast<AllocFooter*>(userDataPtr + userDataSize);
 
         *outSize      = userDataSize;
-        *outAlignment = header->alignment;
+        *outAlignment = footer->alignment;
         return true;
     }
 
@@ -194,10 +197,10 @@ namespace C3D
         const auto sizePtr      = reinterpret_cast<u32*>(userDataPtr - sizeof(AllocSizeMarker));
         const auto userDataSize = *sizePtr;
 
-        // Get the header
-        const auto header = reinterpret_cast<AllocHeader*>(userDataPtr + userDataSize);
+        // Get the footer
+        const auto footer = reinterpret_cast<AllocFooter*>(userDataPtr + userDataSize);
 
-        *outAlignment = header->alignment;
+        *outAlignment = footer->alignment;
         return true;
     }
 
@@ -210,10 +213,10 @@ namespace C3D
         const auto sizePtr      = reinterpret_cast<const u32*>(userDataPtr - sizeof(AllocSizeMarker));
         const auto userDataSize = *sizePtr;
 
-        // Get the header
-        const auto header = reinterpret_cast<const AllocHeader*>(userDataPtr + userDataSize);
+        // Get the footer
+        const auto footer = reinterpret_cast<const AllocFooter*>(userDataPtr + userDataSize);
 
-        *outAlignment = header->alignment;
+        *outAlignment = footer->alignment;
         return true;
     }
 

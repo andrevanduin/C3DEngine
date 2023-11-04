@@ -37,7 +37,7 @@ u8 DynamicAllocatorShouldCreateAndDestroy()
 
     allocator.Destroy();
 
-    Memory.Free(C3D::MemoryType::DynamicAllocator, memoryBlock);
+    Memory.Free(memoryBlock);
 
     ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicAllocator));
 
@@ -98,7 +98,7 @@ void CleanupAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocat
 {
     for (auto& allocation : data)
     {
-        allocator.Free(C3D::MemoryType::Test, allocation.dataPtr);
+        allocator.Free(allocation.dataPtr);
     }
 }
 
@@ -130,11 +130,11 @@ u8 DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees()
 
     for (const auto allocation : allocations)
     {
-        allocator.Free(C3D::MemoryType::Test, allocation);
+        allocator.Free(allocation);
     }
 
     allocator.Destroy();
-    Memory.Free(C3D::MemoryType::DynamicAllocator, memoryBlock);
+    Memory.Free(memoryBlock);
 
     return true;
 }
@@ -186,14 +186,13 @@ u8 DynamicAllocatorShouldHaveNoDataCorruption()
     CleanupAllocations(allocations, allocator);
 
     allocator.Destroy();
-    Memory.Free(C3D::MemoryType::DynamicAllocator, memoryBlock);
+    Memory.Free(memoryBlock);
 
     return true;
 }
 
 template <u64 Size>
-bool FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator, Util& util,
-                           const int freeCount)
+bool FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator, Util& util, const int freeCount)
 {
     // Randomly pick some indices into the allocation array to free them
     const auto freeIndices = util.GenerateRandom<u64>(freeCount, 0, data.size() - 1);
@@ -203,7 +202,7 @@ bool FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllo
         auto& alloc = data[i];
         if (alloc.size != 0)
         {
-            allocator.Free(C3D::MemoryType::Test, alloc.dataPtr);
+            allocator.Free(alloc.dataPtr);
             alloc.size    = 0;
             alloc.dataPtr = nullptr;
             alloc.data    = 0;
@@ -252,7 +251,7 @@ u8 DynamicAllocatorShouldHaveNoDataCorruptionWithFrees()
     CleanupAllocations(allocations, allocator);
 
     allocator.Destroy();
-    Memory.Free(C3D::MemoryType::DynamicAllocator, memoryBlock);
+    Memory.Free(memoryBlock);
 
     return true;
 }
@@ -263,8 +262,7 @@ void DynamicAllocator::RegisterTests(TestManager& manager)
     manager.Register(DynamicAllocatorShouldCreateAndDestroy, "Dynamic Allocator should create and destroy.");
     manager.Register(DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees,
                      "Dynamic Allocator should always allocate and free for lot's of random allocations");
-    manager.Register(DynamicAllocatorShouldHaveNoDataCorruption,
-                     "Dynamic Allocator should always allocate without data corruption");
+    manager.Register(DynamicAllocatorShouldHaveNoDataCorruption, "Dynamic Allocator should always allocate without data corruption");
     manager.Register(DynamicAllocatorShouldHaveNoDataCorruptionWithFrees,
                      "Dynamic Allocator should always allocate and free without data corruption");
 }

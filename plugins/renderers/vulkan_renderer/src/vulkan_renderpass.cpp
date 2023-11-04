@@ -283,12 +283,12 @@ namespace C3D
 
         if (colorAttachmentReferences)
         {
-            Memory.Free(MemoryType::Array, colorAttachmentReferences);
+            Memory.Free(colorAttachmentReferences);
         }
 
         if (depthAttachmentReferences)
         {
-            Memory.Free(MemoryType::Array, depthAttachmentReferences);
+            Memory.Free(depthAttachmentReferences);
         }
 
         INFO_LOG("RenderPass: '{}' successfully created.", config.name);

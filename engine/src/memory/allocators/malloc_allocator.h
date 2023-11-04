@@ -25,7 +25,7 @@ namespace C3D
         ~MallocAllocator() override;
 
         void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
-        void Free(MemoryType type, void* block) override;
+        void Free(void* block) override;
 
         static MallocAllocator* GetDefault();
     };

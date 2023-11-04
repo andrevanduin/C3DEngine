@@ -51,7 +51,7 @@ namespace C3D
         INFO_LOG("Shutting down.");
 
         m_backendPlugin->Shutdown();
-        Memory.Delete(MemoryType::RenderSystem, m_backendPlugin);
+        Memory.Delete(m_backendPlugin);
     }
 
     void RenderSystem::OnResize(const u32 width, const u32 height)
@@ -212,7 +212,7 @@ namespace C3D
         m_backendPlugin->DestroyGeometry(geometry);
 
         // Free the memory that we've allocated for the vertices in the CreateGeometry method
-        Memory.Free(MemoryType::RenderSystem, geometry.vertices);
+        Memory.Free(geometry.vertices);
         geometry.vertexCount       = 0;
         geometry.vertexElementSize = 0;
         geometry.vertices          = nullptr;
@@ -220,7 +220,7 @@ namespace C3D
         if (geometry.indices)
         {
             // Free the memory that we've allocated for the indices in the CreateGeometry method
-            Memory.Free(MemoryType::RenderSystem, geometry.indices);
+            Memory.Free(geometry.indices);
             geometry.indexCount       = 0;
             geometry.indexElementSize = 0;
             geometry.indices          = nullptr;

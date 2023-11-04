@@ -47,7 +47,7 @@ namespace C3D
         DestroyGeometry(&m_defaultGeometry);
         DestroyGeometry(&m_default2DGeometry);
 
-        Memory.Free(MemoryType::Geometry, m_registeredGeometries);
+        Memory.Free(m_registeredGeometries);
         m_registeredGeometries = nullptr;
     }
 

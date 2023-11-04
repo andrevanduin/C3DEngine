@@ -36,7 +36,7 @@ namespace C3D
         {
             // We are using a freelist
             m_freeList.Destroy();
-            Memory.Free(MemoryType::RenderSystem, m_freeListBlock);
+            Memory.Free(m_freeListBlock);
             m_freeListMemoryRequirement = 0;
         }
     }
@@ -72,12 +72,12 @@ namespace C3D
             {
                 // Our resize failed
                 ERROR_LOG("Failed to resize internal freelist.");
-                Memory.Free(MemoryType::RenderSystem, newMemory);
+                Memory.Free(newMemory);
                 return false;
             }
 
             // Free our old memory and store our new info
-            Memory.Free(MemoryType::RenderSystem, oldMemory);
+            Memory.Free(oldMemory);
             m_freeListMemoryRequirement = newMemoryRequirement;
             m_freeListBlock             = newMemory;
         }

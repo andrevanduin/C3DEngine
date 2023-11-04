@@ -21,7 +21,7 @@ namespace C3D
         return ptr;
     }
 
-    void MallocAllocator::Free(const MemoryType type, void* block)
+    void MallocAllocator::Free(void* block)
     {
 #if defined C3D_MEMORY_METRICS_MALLOC && C3D_MEMORY_METRICS_POINTERS
         Metrics.Free(m_id, DeAllocation(type, block));

@@ -426,7 +426,7 @@ namespace C3D
         // Free the global texture maps
         for (const auto textureMap : shader.globalTextureMaps)
         {
-            Memory.Free(MemoryType::RenderSystem, textureMap);
+            Memory.Free(textureMap);
         }
         // Destroy the global texture maps
         shader.globalTextureMaps.Destroy();
