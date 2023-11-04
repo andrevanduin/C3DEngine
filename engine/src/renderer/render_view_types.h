@@ -30,15 +30,6 @@ namespace C3D
         bool windingInverted = false;
     };
 
-    struct RenderViewWorldData
-    {
-        SkyboxPacketData skyboxData;
-
-        DynamicArray<GeometryRenderData> worldGeometries;
-        DynamicArray<GeometryRenderData> terrainGeometries;
-        DynamicArray<GeometryRenderData> debugGeometries;
-    };
-
     struct RenderViewPacket
     {
         /** @brief A pointer to the viewport that we should be using for this packet. */

@@ -8,6 +8,8 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "VULKAN_PIPELINE";
+
     VkCullModeFlagBits GetVkCullMode(const FaceCullMode cullMode)
     {
         switch (cullMode)
@@ -36,7 +38,7 @@ namespace C3D
         }
         else
         {
-            Logger::Warn("GetVkFrontFace() - Invalid RenderWinding provided. Defaulting to Counter Clockwise");
+            WARN_LOG("Invalid RenderWinding provided. Default to Counter-CounterClockwise");
             return VK_FRONT_FACE_COUNTER_CLOCKWISE;
         }
     }
@@ -49,6 +51,7 @@ namespace C3D
     {
         m_context = context;
 
+        // Viewport state
         VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
         viewportState.viewportCount                     = 1;
         viewportState.pViewports                        = &config.viewport;
@@ -59,14 +62,14 @@ namespace C3D
         VkPipelineRasterizationStateCreateInfo rasterizerCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
         rasterizerCreateInfo.depthClampEnable                       = VK_FALSE;
         rasterizerCreateInfo.rasterizerDiscardEnable                = VK_FALSE;
-        rasterizerCreateInfo.polygonMode                            = config.isWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
-        rasterizerCreateInfo.lineWidth                              = 1.0f;
-        rasterizerCreateInfo.cullMode                               = GetVkCullMode(config.cullMode);
-        rasterizerCreateInfo.frontFace                              = GetVkFrontFace(m_rendererWinding);
-        rasterizerCreateInfo.depthBiasEnable                        = VK_FALSE;
-        rasterizerCreateInfo.depthBiasConstantFactor                = 0.0f;
-        rasterizerCreateInfo.depthBiasClamp                         = 0.0f;
-        rasterizerCreateInfo.depthBiasSlopeFactor                   = 0.0f;
+        rasterizerCreateInfo.polygonMode     = (config.shaderFlags & ShaderFlagWireframe) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+        rasterizerCreateInfo.lineWidth       = 1.0f;
+        rasterizerCreateInfo.cullMode        = GetVkCullMode(config.cullMode);
+        rasterizerCreateInfo.frontFace       = GetVkFrontFace(m_rendererWinding);
+        rasterizerCreateInfo.depthBiasEnable = VK_FALSE;
+        rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
+        rasterizerCreateInfo.depthBiasClamp          = 0.0f;
+        rasterizerCreateInfo.depthBiasSlopeFactor    = 0.0f;
 
         // Smooth line rasterization (when it's supported)
         VkPipelineRasterizationLineStateCreateInfoEXT lineRasterizationCreateInfo = {};
@@ -100,18 +103,19 @@ namespace C3D
             depthStencil.stencilTestEnable     = VK_FALSE;
         }
 
+        // Color blend attachment
         VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
-
-        colorBlendAttachmentState.blendEnable         = VK_TRUE;
-        colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        colorBlendAttachmentState.colorBlendOp        = VK_BLEND_OP_ADD;
-        colorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        colorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        colorBlendAttachmentState.alphaBlendOp        = VK_BLEND_OP_ADD;
+        colorBlendAttachmentState.blendEnable                         = VK_TRUE;
+        colorBlendAttachmentState.srcColorBlendFactor                 = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachmentState.dstColorBlendFactor                 = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachmentState.colorBlendOp                        = VK_BLEND_OP_ADD;
+        colorBlendAttachmentState.srcAlphaBlendFactor                 = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachmentState.dstAlphaBlendFactor                 = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachmentState.alphaBlendOp                        = VK_BLEND_OP_ADD;
         colorBlendAttachmentState.colorWriteMask =
             VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
+        // Color blend state create info
         VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
         colorBlendStateCreateInfo.logicOpEnable                       = VK_FALSE;
         colorBlendStateCreateInfo.logicOp                             = VK_LOGIC_OP_COPY;
@@ -136,6 +140,7 @@ namespace C3D
             dynamicStates.PushBack(VK_DYNAMIC_STATE_FRONT_FACE);
         }
 
+        // Dynamic state create info
         VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
         dynamicStateCreateInfo.dynamicStateCount                = dynamicStates.Size();
         dynamicStateCreateInfo.pDynamicStates                   = dynamicStates.GetData();
@@ -187,7 +192,7 @@ namespace C3D
                         m_currentTopology      = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
                         break;
                     default:
-                        Logger::Warn("[VULKAN_PIPELINE] - Create() - Unsupported primitive topology: '{}'. Skipping", ToUnderlying(ptt));
+                        WARN_LOG("Unsupported primitive topology: '{}'. Skipping", ToUnderlying(ptt));
                 }
                 break;
             }
@@ -205,8 +210,7 @@ namespace C3D
             // bytes with 4-byte alignment.
             if (config.pushConstantRanges.Size() > 32)
             {
-                Logger::Error("[VULKAN_PIPELINE] - Create() Cannot have more than 32 push constant ranges. Passed count: {}",
-                              config.pushConstantRanges.Size());
+                ERROR_LOG("Cannot have more than 32 push constant ranges. Passed count: '{}'.", config.pushConstantRanges.Size());
                 return false;
             }
 
@@ -267,11 +271,11 @@ namespace C3D
 
         if (VulkanUtils::IsSuccess(result))
         {
-            Logger::Debug("[VULKAN_PIPELINE] - Graphics pipeline created");
+            DEBUG_LOG("Graphics pipeline created.");
             return true;
         }
 
-        Logger::Error("[VULKAN_PIPELINE] - vkCreateGraphicsPipelines failed with: {}", VulkanUtils::ResultString(result, true));
+        ERROR_LOG("vkCreateGraphicsPipelines failed with: '{}'.", VulkanUtils::ResultString(result, true));
         return false;
     }
 

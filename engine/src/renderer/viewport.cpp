@@ -14,6 +14,12 @@ namespace C3D
         m_farClip              = farClip;
         m_projectionMatrixType = projectionMatrixType;
 
+        if (m_projectionMatrixType == RendererProjectionMatrixType::OrthographicCentered && m_fov == 0)
+        {
+            ERROR_LOG("Tried to create a viewport with Centered Orthographic type and Fov == 0. Fov should be non-zero for this type.");
+            return false;
+        }
+
         RegenerateProjectionMatrix();
 
         return true;
@@ -31,17 +37,24 @@ namespace C3D
 
     void Viewport::RegenerateProjectionMatrix()
     {
-        if (m_projectionMatrixType == RendererProjectionMatrixType::Perspective)
+        switch (m_projectionMatrixType)
         {
-            m_projection = glm::perspective(m_fov, m_rect.width / m_rect.height, m_nearClip, m_farClip);
-        }
-        else if (m_projectionMatrixType == RendererProjectionMatrixType::Orthographic)
-        {
-            m_projection = glm::ortho(m_rect.x, m_rect.width, m_rect.height, m_rect.y, m_nearClip, m_farClip);
-        }
-        else
-        {
-            ERROR_LOG("Unknown Projection Matrix type: '{}'.", ToUnderlying(m_projectionMatrixType));
+            case RendererProjectionMatrixType::Perspective:
+                m_projection = glm::perspective(m_fov, m_rect.width / m_rect.height, m_nearClip, m_farClip);
+                break;
+            case RendererProjectionMatrixType::OrthographicCentered:
+            {
+                f32 mod = m_fov;
+                m_projection =
+                    glm::ortho(-m_rect.width * mod, m_rect.width * mod, -m_rect.height * mod, m_rect.height * mod, m_nearClip, m_farClip);
+            }
+            break;
+            case RendererProjectionMatrixType::Orthographic:
+                m_projection = glm::ortho(m_rect.x, m_rect.width, m_rect.height, m_rect.y, m_nearClip, m_farClip);
+                break;
+            default:
+                ERROR_LOG("Unknown Projection Matrix type: '{}'.", ToUnderlying(m_projectionMatrixType));
+                break;
         }
     }
 }  // namespace C3D

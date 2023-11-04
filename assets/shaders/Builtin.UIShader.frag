@@ -16,7 +16,7 @@ layout(set = 1, binding = 0) uniform localUniformObject
 const int SAMP_DIFFUSE = 0;
 layout(set = 1, binding = 1) uniform sampler2D samplers[1];
 
-layout(location = 1) in struct dto
+layout(location = 0) in struct dto
 {
 	vec2 texCoord;
 } inDto;

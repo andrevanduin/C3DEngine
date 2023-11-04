@@ -81,8 +81,8 @@ namespace C3D
         virtual bool InitializeShader(Shader& shader) = 0;
         virtual bool UseShader(const Shader& shader)  = 0;
 
-        virtual bool ShaderBindGlobals(Shader& shader)                  = 0;
-        virtual bool ShaderBindInstance(Shader& shader, u32 instanceId) = 0;
+        virtual bool BindShaderGlobals(Shader& shader)                  = 0;
+        virtual bool BindShaderInstance(Shader& shader, u32 instanceId) = 0;
 
         virtual bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate)  = 0;
         virtual bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) = 0;

@@ -17,6 +17,15 @@ struct GeometryDistance
     f32 distance;
 };
 
+struct RenderViewWorldData
+{
+    C3D::SkyboxPacketData skyboxData;
+
+    C3D::DynamicArray<C3D::GeometryRenderData> worldGeometries;
+    C3D::DynamicArray<C3D::GeometryRenderData> terrainGeometries;
+    C3D::DynamicArray<C3D::GeometryRenderData> debugGeometries;
+};
+
 class RenderViewWorld final : public C3D::RenderView
 {
 public:

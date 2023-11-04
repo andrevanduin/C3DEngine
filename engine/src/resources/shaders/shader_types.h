@@ -115,6 +115,15 @@ namespace C3D
         ShaderScope scope = ShaderScope::None;
     };
 
+    enum ShaderFlags
+    {
+        ShaderFlagNone       = 0x0,
+        ShaderFlagDepthTest  = 0x1,
+        ShaderFlagDepthWrite = 0x2,
+        ShaderFlagWireframe  = 0x4,
+    };
+    typedef u32 ShaderFlagBits;
+
     struct ShaderConfig final : Resource
     {
         String name;
@@ -133,11 +142,8 @@ namespace C3D
         /** @brief The types of toplogy that this shader should support. */
         u32 topologyTypes = 0;
 
-        // TODO: Convert these bools to flags to save space
-        /** @brief Indicates if depth testing should be done by this shader. */
-        bool depthTest;
-        /** @brief Indicates if depth writing should be done by this shader (this is ignored if depthTest = false). */
-        bool depthWrite;
+        /** @brief The flags that need to be set*/
+        ShaderFlagBits flags = ShaderFlagNone;
     };
 
     enum class ShaderState : u8
@@ -164,12 +170,4 @@ namespace C3D
         ShaderAttributeType type;
         u32 size;
     };
-
-    enum ShaderFlags
-    {
-        ShaderFlagNone       = 0x0,
-        ShaderFlagDepthTest  = 0x1,
-        ShaderFlagDepthWrite = 0x2,
-    };
-    typedef u32 ShaderFlagBits;
 }  // namespace C3D

@@ -9,6 +9,7 @@ namespace C3D
     class SystemManager;
     class Skybox;
 
+    /** @brief The Renderer Plugin type. */
     enum class RendererPluginType
     {
         Unknown,
@@ -26,9 +27,9 @@ namespace C3D
 
     enum RendererConfigFlagBits : u8
     {
-        /* Sync frame rate to monitor refresh rate. */
+        /** @brief Sync frame rate to monitor refresh rate. */
         FlagVSyncEnabled = 0x1,
-        /* Configure renderer to try to save power wherever possible (useful when on battery power for example). */
+        /** @brief Configure renderer to try to save power wherever possible (useful when on battery power for example). */
         FlagPowerSavingEnabled = 0x2,
     };
 
@@ -44,7 +45,7 @@ namespace C3D
         const SystemManager* pSystemsManager;
     };
 
-    /** @brief The windinig order of the vertices, used to determine what the front-face of a triangle is. */
+    /** @brief The winding order of the vertices, used to determine what the front-face of a triangle is. */
     enum class RendererWinding : u8
     {
         /** @brief The default counter-clockwise direction. */
@@ -56,10 +57,17 @@ namespace C3D
     /** @brief The type of projection matrix used. */
     enum class RendererProjectionMatrixType : u8
     {
+        /** @brief A perspective matrix is being used. */
         Perspective,
+        /** @brief An orthographic matrix that is zero-based on the top left. */
         Orthographic,
+        /** @brief An orthographic matrix that is centered around width/height instead of zero-based.
+         * @note This will use the fov as sort of a "zoom".
+         */
+        OrthographicCentered,
     };
 
+    /** @brief The stage that a Shader is used for. */
     enum class ShaderStage
     {
         Vertex,

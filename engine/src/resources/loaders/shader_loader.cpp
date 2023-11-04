@@ -93,11 +93,15 @@ namespace C3D
             }
             else if (varName.IEquals("depthTest"))
             {
-                resource.depthTest = value.ToBool();
+                if (value.ToBool()) resource.flags |= ShaderFlagDepthTest;
             }
             else if (varName.IEquals("depthWrite"))
             {
-                resource.depthWrite = value.ToBool();
+                if (value.ToBool()) resource.flags |= ShaderFlagDepthWrite;
+            }
+            else if (varName.IEquals("wireframe"))
+            {
+                if (value.ToBool()) resource.flags |= ShaderFlagWireframe;
             }
             else if (varName.IEquals("topology"))
             {

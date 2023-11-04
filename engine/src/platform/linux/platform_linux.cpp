@@ -241,13 +241,13 @@ namespace C3D
         return status;
     }
 
-    CopyFileStatus Platform::CopyFile(const char* source, const char* dest, bool overwriteIfExists)
+    CopyFileStatus Platform::CopyFile(const String& source, const String& dest, bool overwriteIfExists)
     {
         auto status  = CopyFileStatus::Failed;
         i32 sourceFd = -1, destFd = -1;
 
         // Obtain a file descriptor for the source file
-        sourceFd = open(source, O_RDONLY);
+        sourceFd = open(source.Data(), O_RDONLY);
         if (sourceFd == -1)
         {
             if (errno == ENOENT)
@@ -274,7 +274,7 @@ namespace C3D
         ssize_t size = static_cast<ssize_t>(sourceStat.st_size);
 
         // Obtain a file descriptor for the dest file
-        destFd = open(dest, O_WRONLY | O_CREAT);
+        destFd = open(dest.Data(), O_WRONLY | O_CREAT);
         if (destFd == -1)
         {
             if (errno == ENOENT)

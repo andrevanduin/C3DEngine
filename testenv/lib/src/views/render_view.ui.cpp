@@ -127,7 +127,7 @@ bool RenderViewUi::OnRender(const C3D::FrameData& frameData, const C3D::RenderVi
             C3D::Material* m = geometry.geometry->material ? geometry.geometry->material : Materials.GetDefaultUI();
 
             const bool needsUpdate = m->renderFrameNumber != frameData.frameNumber;
-            if (!Materials.ApplyInstance(m, needsUpdate))
+            if (!Materials.ApplyInstance(m, frameData, needsUpdate))
             {
                 WARN_LOG("Failed to apply material: '{}'. Skipping draw.", m->name);
                 continue;
