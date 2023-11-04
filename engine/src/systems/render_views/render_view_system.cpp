@@ -34,7 +34,7 @@ namespace C3D
         for (const auto view : m_registeredViews)
         {
             view->OnDestroy();
-            Memory.Delete(MemoryType::RenderView, view);
+            Memory.Delete(view);
         }
         m_registeredViews.Destroy();
     }

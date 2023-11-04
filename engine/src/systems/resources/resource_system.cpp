@@ -73,7 +73,7 @@ namespace C3D
         INFO_LOG("Destroying all registered loaders.");
         for (const auto loader : m_registeredLoaders)
         {
-            Memory.Delete(MemoryType::ResourceLoader, loader);
+            Memory.Delete(loader);
         }
         m_registeredLoaders.Destroy();
     }

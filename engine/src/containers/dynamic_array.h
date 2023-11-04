@@ -121,7 +121,7 @@ namespace C3D
                 }
 
                 // We delete our old memory
-                m_allocator->Free(MemoryType::DynamicArray, m_elements);
+                m_allocator->Free(m_elements);
             }
 
             // We set our new capacity
@@ -169,7 +169,7 @@ namespace C3D
             // Copy over the elements from our already allocated memory
             std::copy_n(begin(), m_size, iterator(newElements));
             // Free our old memory
-            m_allocator->Free(MemoryType::DynamicArray, m_elements);
+            m_allocator->Free(m_elements);
             // Our element pointer can now be copied over
             m_elements = newElements;
             // Our capacity is now equal to our size (size remains unchanged)
@@ -584,7 +584,7 @@ namespace C3D
                 // Call destructor for every element
                 std::destroy_n(m_elements, m_size);
                 // Free the memory
-                m_allocator->Free(MemoryType::DynamicArray, m_elements);
+                m_allocator->Free(m_elements);
                 // Reset everything to initial values
                 m_elements = nullptr;
                 m_capacity = 0;

@@ -34,7 +34,7 @@ namespace C3D
             if (!m_debugBox->Initialize())
             {
                 WARN_LOG("Failed to initialize Debug Box.");
-                Memory.Delete(MemoryType::Resource, m_debugBox);
+                Memory.Delete(m_debugBox);
                 m_debugBox = nullptr;
             }
         }
@@ -73,7 +73,7 @@ namespace C3D
                 WARN_LOG("Failed to load Debug Box.");
                 m_debugBox->Destroy();
 
-                Memory.Delete(MemoryType::Resource, m_debugBox);
+                Memory.Delete(m_debugBox);
                 m_debugBox = nullptr;
             }
         }
@@ -97,7 +97,7 @@ namespace C3D
                 WARN_LOG("Failed to unload Debug Box.");
                 m_debugBox->Destroy();
 
-                Memory.Delete(MemoryType::Resource, m_debugBox);
+                Memory.Delete(m_debugBox);
                 m_debugBox = nullptr;
             }
         }
@@ -118,7 +118,7 @@ namespace C3D
         if (m_debugBox)
         {
             m_debugBox->Destroy();
-            Memory.Delete(MemoryType::Resource, m_debugBox);
+            Memory.Delete(m_debugBox);
             m_debugBox = nullptr;
         }
 
@@ -229,7 +229,7 @@ namespace C3D
                     WARN_LOG("Failed to load Debug Box.");
                     m_debugBox->Destroy();
 
-                    Memory.Delete(MemoryType::Resource, m_debugBox);
+                    Memory.Delete(m_debugBox);
                     m_debugBox = nullptr;
                 }
                 else

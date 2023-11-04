@@ -43,7 +43,7 @@ namespace C3D
         if (m_ownsMemory && m_memoryBlock)
         {
             // We own the memory so let's free it
-            Memory.Free(MemoryType::LinearAllocator, m_memoryBlock);
+            Memory.Free(m_memoryBlock);
         }
         // Destroy the metrics object associated with this allocator
         Metrics.DestroyAllocator(m_id, false);
@@ -75,7 +75,7 @@ namespace C3D
         return nullptr;
     }
 
-    void LinearAllocator::Free(MemoryType type, void* block) {}
+    void LinearAllocator::Free(void* block) {}
 
     void LinearAllocator::FreeAll()
     {

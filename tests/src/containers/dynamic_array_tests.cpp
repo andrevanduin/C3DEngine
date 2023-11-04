@@ -577,7 +577,7 @@ public:
         {
             if (m_ptr)
             {
-                Memory.Free(C3D::MemoryType::Test, m_ptr);
+                Memory.Free(m_ptr);
             }
 
             if (other.m_ptr)

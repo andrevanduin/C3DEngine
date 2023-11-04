@@ -82,7 +82,7 @@ bool SimpleScene::Initialize()
         if (!m_skybox->Create(m_pSystemsManager, config))
         {
             ERROR_LOG("Failed to create skybox from config.");
-            Memory.Delete(C3D::MemoryType::Scene, m_skybox);
+            Memory.Delete(m_skybox);
             return false;
         }
 
@@ -522,7 +522,7 @@ bool SimpleScene::RemovePointLight(const C3D::String& name)
         auto debug  = static_cast<LightDebugData*>(pLight->debugData);
         debug->box.Unload();
         debug->box.Destroy();
-        Memory.Delete(C3D::MemoryType::Resource, debug);
+        Memory.Delete(debug);
     }
 
     auto result = Lights.RemovePointLight(name);
@@ -726,7 +726,7 @@ bool SimpleScene::RemoveSkybox(const C3D::String& name)
 
         m_skybox->Destroy();
 
-        Memory.Delete(C3D::MemoryType::Scene, m_skybox);
+        Memory.Delete(m_skybox);
         m_skybox = nullptr;
         return true;
     }
@@ -827,7 +827,7 @@ void SimpleScene::UnloadInternal()
         auto debug  = static_cast<LightDebugData*>(pLight->debugData);
         debug->box.Unload();
         debug->box.Destroy();
-        Memory.Delete(C3D::MemoryType::Resource, debug);
+        Memory.Delete(debug);
         Lights.RemovePointLight(name);
     }
 

@@ -40,7 +40,7 @@ namespace C3D
     {
         if (targets && renderTargetCount > 0)
         {
-            Memory.Free(MemoryType::Array, targets);
+            Memory.Free(targets);
             targets = nullptr;
         }
     }

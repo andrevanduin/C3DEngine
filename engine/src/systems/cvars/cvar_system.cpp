@@ -51,7 +51,7 @@ namespace C3D
         const auto cVar = m_cVars.Get(name);
         m_cVars.Delete(name);
 
-        Memory.Delete(MemoryType::CVar, cVar);
+        Memory.Delete(cVar);
         return true;
     }
 

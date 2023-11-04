@@ -113,7 +113,7 @@ namespace C3D
                 }
 
                 // We delete our old memory
-                m_allocator->Free(MemoryType::Stack, m_elements);
+                m_allocator->Free(m_elements);
             }
 
             // We set our new capacity
@@ -162,7 +162,7 @@ namespace C3D
             // Copy over the elements from our already allocated memory
             std::copy_n(begin(), m_size, Iterator(newElements));
             // Free our old memory
-            m_allocator->Free(MemoryType::Stack, m_elements);
+            m_allocator->Free(m_elements);
             // Our element pointer can now be copied over
             m_elements = newElements;
             // Our capacity is now equal to our size (size remains unchanged)
@@ -372,7 +372,7 @@ namespace C3D
         {
             if (m_elements && m_capacity != 0)
             {
-                m_allocator->Free(MemoryType::Stack, m_elements);
+                m_allocator->Free(m_elements);
                 m_elements = nullptr;
                 m_capacity = 0;
                 m_size     = 0;

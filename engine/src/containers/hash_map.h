@@ -151,7 +151,7 @@ namespace C3D
             // If this HashMap is created we free all it's dynamically allocated memory
             if (m_size > 0 && m_nodes)
             {
-                Memory.Free(MemoryType::HashMap, m_nodes);
+                Memory.Free(m_nodes);
                 m_nodes = nullptr;
 
                 m_size  = 0;

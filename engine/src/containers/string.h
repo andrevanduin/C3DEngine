@@ -76,7 +76,7 @@ namespace C3D
                     // Copy over the old data (including the final '0' byte)
                     std::memcpy(newData, m_data, m_size + 1);
                     // Now we free our current pointer
-                    m_allocator->Free(MemoryType::C3DString, m_data);
+                    m_allocator->Free(m_data);
                     // And set our data pointer to the newly allocated block
                     m_data = newData;
                     // Finally we store our new capacity
@@ -107,7 +107,7 @@ namespace C3D
             // We only need to cleanup if we are using the heap
             if (m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP && m_data)
             {
-                m_allocator->Free(MemoryType::C3DString, m_data);
+                m_allocator->Free(m_data);
                 m_data = nullptr;
             }
         }
@@ -381,7 +381,7 @@ namespace C3D
                     // Copy over the old data (including the final '0' byte)
                     if (m_size > 0) std::memcpy(newData, m_data, m_size + 1);
                     // Now we free our current pointer
-                    m_allocator->Free(MemoryType::C3DString, m_data);
+                    m_allocator->Free(m_data);
                     // And set our data pointer to the newly allocated block
                     m_data = newData;
                 }

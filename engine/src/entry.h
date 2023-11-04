@@ -39,7 +39,7 @@ int main(int argc, char** argv)
     engine->Run();
 
     // Cleanup our engine
-    Memory.Delete(C3D::MemoryType::Engine, engine);
+    Memory.Delete(engine);
 
     // Call the user's cleanup method
     C3D::DestroyApplication();
