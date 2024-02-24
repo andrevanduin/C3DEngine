@@ -122,6 +122,16 @@ namespace C3D
         return true;
     }
 
+    bool FreeList::Clear()
+    {
+        std::memset(m_nodes, 0, m_nodesSize);
+        m_head         = &m_nodes[0];
+        m_head->size   = m_totalManagedSize;
+        m_head->offset = 0;
+        m_head->next   = nullptr;
+        return true;
+    }
+
     bool FreeList::AllocateBlock(const u64 size, u64* outOffset) const
     {
         // Keep track of our current and previous node

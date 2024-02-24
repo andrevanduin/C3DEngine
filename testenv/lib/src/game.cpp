@@ -75,7 +75,7 @@ bool TestEnv::OnBoot()
     }
 
     // Setup viewports
-    C3D::Rect2D worldViewportRect = { 20.0f, 20.0f, 1280.0f - 40.0f, 720.0f - 40.0f };
+    C3D::Rect2D worldViewportRect = { 0.0f, 0.0f, 1280.0f, 720.0f };
     if (!m_state->worldViewport.Create(worldViewportRect, C3D::DegToRad(45.0f), 0.1f, 4000.0f,
                                        C3D::RendererProjectionMatrixType::Perspective))
     {
@@ -519,7 +519,7 @@ void TestEnv::OnResize()
     f32 halfWidth = m_state->width * 0.5f;
 
     // Resize our viewports
-    C3D::Rect2D worldViewportRect = { halfWidth + 20.0f, 20.0f, halfWidth - 40.0f, m_state->height - 40.0f };
+    C3D::Rect2D worldViewportRect = { 0.0f, 0.0f, static_cast<f32>(m_state->width), static_cast<f32>(m_state->height) };
     m_state->worldViewport.Resize(worldViewportRect);
 
     C3D::Rect2D wireframeViewportRect = { 20.0f, 20.0f, halfWidth - 40.0f, m_state->height - 40.0f };

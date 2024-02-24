@@ -115,7 +115,11 @@ namespace C3D
         VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;
 
         VulkanContext m_context;
-        VulkanBuffer m_objectVertexBuffer, m_objectIndexBuffer;
+
+        /** @brief A buffer to hold all the renderer's vertex data. */
+        VulkanBuffer m_objectVertexBuffer;
+        /** @brief A buffer to hold all the renderer's index data. */
+        VulkanBuffer m_objectIndexBuffer;
 
         // TODO: make dynamic
         VulkanGeometryData m_geometries[VULKAN_MAX_GEOMETRY_COUNT];

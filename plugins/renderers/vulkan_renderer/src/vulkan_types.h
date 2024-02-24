@@ -4,6 +4,7 @@
 #include <core/defines.h>
 #include <vulkan/vulkan.h>
 
+#include "vulkan_buffer.h"
 #include "vulkan_device.h"
 #include "vulkan_renderpass.h"
 #include "vulkan_swapchain.h"
@@ -106,5 +107,8 @@ namespace C3D
 
         /** @brief A pointer to the currently bound shader. */
         const Shader* boundShader;
+
+        /** @brief A reusable staging buffer to transfer data from a resource to the GPU-only buffer. */
+        mutable VulkanBuffer stagingBuffer = VulkanBuffer(this, "VULKAN_STAGING_BUFFER");
     };
 }  // namespace C3D
