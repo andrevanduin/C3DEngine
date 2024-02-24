@@ -132,6 +132,14 @@ namespace C3D
         }
         m_objectIndexBuffer.Bind(0);
 
+        constexpr u64 stagingBufferSize = MebiBytes(256);
+        if (!m_context.stagingBuffer.Create(RenderBufferType::Staging, stagingBufferSize, true))
+        {
+            ERROR_LOG("Error creating staging buffer.");
+            return false;
+        }
+        m_context.stagingBuffer.Bind(0);
+
         // Mark all the geometry as invalid
         for (auto& geometry : m_geometries)
         {
@@ -150,6 +158,7 @@ namespace C3D
         m_context.device.WaitIdle();
 
         // Destroy stuff in opposite order of creation
+        m_context.stagingBuffer.Destroy();
         m_objectVertexBuffer.Destroy();
         m_objectIndexBuffer.Destroy();
 
@@ -256,6 +265,13 @@ namespace C3D
             m_context.renderFlagChanged = false;
 
             INFO_LOG("SwapChain Resized successfully. Stopping PrepareFrame().");
+            return false;
+        }
+
+        // Reset our staging buffer for the next frame
+        if (!m_context.stagingBuffer.Clear(false))
+        {
+            ERROR_LOG("Failed to clear staging buffer.");
             return false;
         }
 
@@ -674,34 +690,40 @@ namespace C3D
         const auto image           = static_cast<VulkanImage*>(texture->internalData);
         const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
-        // Create a staging buffer and load data into it.
-        VulkanBuffer staging(&m_context, "TEXTURE_WRITE_STAGING");
-        staging.Create(RenderBufferType::Staging, size, false);
-        staging.Bind(0);
+        // Allocate space in our staging buffer
+        u64 stagingOffset = 0;
+        if (!m_context.stagingBuffer.Allocate(size, &stagingOffset))
+        {
+            ERROR_LOG("Failed to allocate in the staging buffer.");
+            return;
+        }
 
         // Load the data into our staging buffer
-        staging.LoadRange(0, size, pixels);
+        if (!m_context.stagingBuffer.LoadRange(stagingOffset, size, pixels))
+        {
+            ERROR_LOG("Failed to load range into staging buffer.");
+            return;
+        }
 
-        VulkanCommandBuffer tempBuffer;
+        VulkanCommandBuffer tempCommandBuffer;
         VkCommandPool pool = m_context.device.GetGraphicsCommandPool();
         VkQueue queue      = m_context.device.GetGraphicsQueue();
 
-        tempBuffer.AllocateAndBeginSingleUse(&m_context, pool);
+        tempCommandBuffer.AllocateAndBeginSingleUse(&m_context, pool);
 
         // Transition the layout from whatever it is currently to optimal for receiving data.
-        image->TransitionLayout(&tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        image->TransitionLayout(&tempCommandBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_UNDEFINED,
+                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
         // Copy the data from the buffer.
-        image->CopyFromBuffer(texture->type, staging.handle, &tempBuffer);
+        image->CopyFromBuffer(texture->type, m_context.stagingBuffer.handle, stagingOffset, &tempCommandBuffer);
 
         // Transition from optimal for receiving data to shader-read-only optimal layout.
-        image->TransitionLayout(&tempBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        image->TransitionLayout(&tempCommandBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        tempBuffer.EndSingleUse(&m_context, pool, queue);
+        tempCommandBuffer.EndSingleUse(&m_context, pool, queue);
 
-        staging.Unbind();
-        staging.Destroy();
         texture->generation++;
     }
 
@@ -729,6 +751,7 @@ namespace C3D
         const auto image       = static_cast<VulkanImage*>(texture->internalData);
         const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
+        // TODO: Add a global read buffer (with freelist) which is similar to staging buffer but meant for reading
         // Create a staging buffer and load data into it
         VulkanBuffer staging(&m_context, "TEXTURE_READ_STAGING");
         if (!staging.Create(RenderBufferType::Read, size, false))

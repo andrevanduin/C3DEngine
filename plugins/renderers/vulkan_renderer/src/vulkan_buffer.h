@@ -2,11 +2,12 @@
 #pragma once
 #include <core/defines.h>
 #include <renderer/render_buffer.h>
-
-#include "vulkan_types.h"
+#include <vulkan/vulkan.h>
 
 namespace C3D
 {
+    struct VulkanContext;
+
     class VulkanBuffer final : public RenderBuffer
     {
     public:

@@ -8,6 +8,7 @@
 #include "vulkan_command_buffer.h"
 #include "vulkan_device.h"
 #include "vulkan_formatters.h"
+#include "vulkan_types.h"
 #include "vulkan_utils.h"
 
 namespace C3D
@@ -298,27 +299,26 @@ namespace C3D
         if (IsDeviceLocal() && !IsHostVisible())
         {
             // The memory is local but not host visible so we need a staging buffer
-            VulkanBuffer staging(m_context, "LOAD_RANGE_STAGING_BUFFER");
-            if (!staging.Create(RenderBufferType::Staging, size, false))
+            u64 stagingOffset = 0;
+            if (!m_context->stagingBuffer.Allocate(size, &stagingOffset))
             {
-                ERROR_LOG("Failed to create staging buffer.");
+                ERROR_LOG("Failed to Allocate from staging buffer.");
                 return false;
             }
-            staging.Bind(0);
 
             // Load the data into the staging buffer
-            if (!staging.LoadRange(0, size, data))
+            if (!m_context->stagingBuffer.LoadRange(stagingOffset, size, data))
             {
-                ERROR_LOG("Failed to run Staging::LoadRange().");
+                ERROR_LOG("Failed to run load range into staging buffer.");
                 return false;
             }
 
             // Perform the copy from the staging to the device local buffer
-            staging.CopyRangeInternal(0, handle, offset, size);
-
-            // Cleanup the staging buffer
-            staging.Unbind();
-            staging.Destroy();
+            if (!m_context->stagingBuffer.CopyRangeInternal(stagingOffset, handle, offset, size))
+            {
+                ERROR_LOG("Failed to copy range from staging buffer.");
+                return false;
+            }
         }
         else
         {

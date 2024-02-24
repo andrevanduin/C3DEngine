@@ -28,6 +28,7 @@ namespace C3D
         void Destroy();
 
         bool Resize(void* newMemory, u64 newSize, void** outOldMemory);
+        bool Clear();
 
         bool AllocateBlock(u64 size, u64* outOffset) const;
         bool FreeBlock(u64 size, u64 offset) const;

@@ -32,6 +32,8 @@ namespace C3D
 
     void RenderBuffer::Destroy()
     {
+        m_name.Destroy();
+
         if (m_freeListMemoryRequirement > 0)
         {
             // We are using a freelist
@@ -118,6 +120,23 @@ namespace C3D
         }
 
         return m_freeList.FreeBlock(size, offset);
+    }
+
+    bool RenderBuffer::Clear(bool zeroMemory)
+    {
+        if (zeroMemory)
+        {
+            // TODO: Zero out memory
+            FATAL_LOG("Unimplemented functionality.");
+            return false;
+        }
+
+        if (!m_freeList.Clear())
+        {
+            ERROR_LOG("Failed to Clear the freelist.");
+            return false;
+        }
+        return true;
     }
 
     bool RenderBuffer::Read(u64 offset, u64 size, void** outMemory) { return true; }

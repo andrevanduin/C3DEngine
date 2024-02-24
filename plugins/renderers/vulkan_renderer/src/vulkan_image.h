@@ -25,7 +25,7 @@ namespace C3D
         void TransitionLayout(const VulkanCommandBuffer* commandBuffer, TextureType type, VkFormat format, VkImageLayout oldLayout,
                               VkImageLayout newLayout) const;
 
-        void CopyFromBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
+        void CopyFromBuffer(TextureType type, VkBuffer buffer, u64 offset, const VulkanCommandBuffer* commandBuffer) const;
         void CopyToBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
         void CopyPixelToBuffer(TextureType type, VkBuffer buffer, u32 x, u32 y, const VulkanCommandBuffer* commandBuffer) const;
 

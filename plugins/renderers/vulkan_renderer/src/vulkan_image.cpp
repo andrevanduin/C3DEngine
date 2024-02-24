@@ -194,10 +194,10 @@ namespace C3D
         vkCmdPipelineBarrier(commandBuffer->handle, sourceStage, destStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     }
 
-    void VulkanImage::CopyFromBuffer(const TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
+    void VulkanImage::CopyFromBuffer(const TextureType type, VkBuffer buffer, u64 offset, const VulkanCommandBuffer* commandBuffer) const
     {
         VkBufferImageCopy region = {};
-        region.bufferOffset      = 0;
+        region.bufferOffset      = offset;
         region.bufferRowLength   = 0;
         region.bufferImageHeight = 0;
 

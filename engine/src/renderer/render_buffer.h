@@ -50,6 +50,7 @@ namespace C3D
 
         virtual bool Allocate(u64 size, u64* outOffset);
         virtual bool Free(u64 size, u64 offset);
+        virtual bool Clear(bool zeroMemory);
 
         virtual bool Read(u64 offset, u64 size, void** outMemory);
         virtual bool LoadRange(u64 offset, u64 size, const void* data);
