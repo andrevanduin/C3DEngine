@@ -144,6 +144,10 @@ namespace C3D
         vkGetDeviceQueue(m_logicalDevice, m_presentQueueIndex, 0, &m_presentQueue);
         vkGetDeviceQueue(m_logicalDevice, m_transferQueueIndex, 0, &m_transferQueue);
 
+        VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_QUEUE, m_graphicsQueue, "VULKAN_GRAHPICS_QUEUE");
+        VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_QUEUE, m_presentQueue, "VULKAN_PRESENT_QUEUE");
+        VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_QUEUE, m_transferQueue, "VULKAN_TRANSFER_QUEUE");
+
         INFO_LOG("Queues obtained.");
 
         VkCommandPoolCreateInfo poolCreateInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };

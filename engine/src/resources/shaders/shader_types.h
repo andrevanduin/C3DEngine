@@ -94,7 +94,7 @@ namespace C3D
         Triangles
     };
 
-    /* @brief Configuration for an attribute. */
+    /** @brief Configuration for an attribute. */
     struct ShaderAttributeConfig
     {
         String name;
@@ -103,7 +103,7 @@ namespace C3D
         ShaderAttributeType type;
     };
 
-    /* @brief Configuration for a uniform. */
+    /** @brief Configuration for a uniform. */
     struct ShaderUniformConfig
     {
         String name;

@@ -13,6 +13,21 @@ namespace C3D
         Stencil = 0x04,
     };
 
+    static inline const char* ToString(RenderTargetAttachmentType type)
+    {
+        switch (type)
+        {
+            case RenderTargetAttachmentType::Color:
+                return "Color";
+            case RenderTargetAttachmentType::Depth:
+                return "Depth";
+            case RenderTargetAttachmentType::Stencil:
+                return "Stencil";
+            default:
+                return "UNKOWN";
+        }
+    }
+
     enum class RenderTargetAttachmentSource : i8
     {
         Default = 0x01,
@@ -57,9 +72,7 @@ namespace C3D
 
     struct RenderTarget
     {
-        u8 attachmentCount;
-        RenderTargetAttachment* attachments;
-
+        DynamicArray<RenderTargetAttachment> attachments;
         void* internalFrameBuffer;
     };
 }  // namespace C3D

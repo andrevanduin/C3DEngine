@@ -16,7 +16,6 @@
 #define Shaders m_pSystemsManager->GetSystem<C3D::ShaderSystem>(C3D::SystemType::ShaderSystemType)
 #define Lights m_pSystemsManager->GetSystem<C3D::LightSystem>(C3D::SystemType::LightSystemType)
 #define Cam m_pSystemsManager->GetSystem<C3D::CameraSystem>(C3D::SystemType::CameraSystemType)
-#define Views m_pSystemsManager->GetSystem<C3D::RenderViewSystem>(C3D::SystemType::RenderViewSystemType)
 #define Jobs m_pSystemsManager->GetSystem<C3D::JobSystem>(C3D::SystemType::JobSystemType)
 #define Fonts m_pSystemsManager->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
 #define CVars m_pSystemsManager->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
@@ -28,7 +27,6 @@ namespace C3D
     {
         FontSystemType = 0,
         LightSystemType,
-        RenderViewSystemType,
         CameraSystemType,
         GeometrySystemType,
         MaterialSystemType,

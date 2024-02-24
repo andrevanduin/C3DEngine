@@ -1,9 +1,7 @@
 
 #include "console.h"
-
 #include "core/engine.h"
 #include "core/string_utils.h"
-#include "renderer/render_view.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/events/event_system.h"
 #include "systems/input/input_system.h"
@@ -68,7 +66,7 @@ namespace C3D
         }
     }
 
-    void UIConsole::OnRender(UIPacketData& packet)
+    void UIConsole::OnPrepareRender(DynamicArray<UIText*, LinearAllocator>& texts)
     {
         if (m_isTextDirty)
         {
@@ -98,10 +96,10 @@ namespace C3D
 
         if (m_isOpen)
         {
-            packet.texts.PushBack(&m_text);
+            texts.PushBack(&m_text);
 
-            if (!m_current.Empty()) packet.texts.PushBack(&m_entry);
-            if (m_cursorCounter >= 90) packet.texts.PushBack(&m_cursor);
+            if (!m_current.Empty()) texts.PushBack(&m_entry);
+            if (m_cursorCounter >= 90) texts.PushBack(&m_cursor);
         }
     }
 

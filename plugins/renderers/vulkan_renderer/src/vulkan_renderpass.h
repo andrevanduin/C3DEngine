@@ -1,6 +1,7 @@
 
 #pragma once
 #include <core/defines.h>
+#include <core/frame_data.h>
 #include <math/math_types.h>
 #include <renderer/renderpass.h>
 
@@ -30,7 +31,7 @@ namespace C3D
 
         void Destroy() override;
 
-        void Begin(VulkanCommandBuffer* commandBuffer, const RenderTarget* target) const;
+        void Begin(VulkanCommandBuffer* commandBuffer, const FrameData& frameData) const;
 
         void End(VulkanCommandBuffer* commandBuffer) const;
 

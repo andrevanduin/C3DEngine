@@ -287,6 +287,14 @@ namespace C3D
 
     u64 Platform::GetThreadId() { return GetCurrentThreadId(); }
 
+    int Platform::GetPrimaryScreenWidth() { return GetSystemMetrics(SM_CXSCREEN); }
+
+    int Platform::GetPrimaryScreenHeight() { return GetSystemMetrics(SM_CYSCREEN); }
+
+    int Platform::GetVirtualScreenWidth() { return GetSystemMetrics(SM_CXVIRTUALSCREEN); }
+
+    int Platform::GetVirtualScreenHeight() { return GetSystemMetrics(SM_CYVIRTUALSCREEN); }
+
     bool Platform::LoadDynamicLibrary(const char* name, void** libraryData, u64& size)
     {
         if (!name)

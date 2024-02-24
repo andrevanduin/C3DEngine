@@ -78,7 +78,7 @@ bool RenderViewWorld::OnCreate()
     // Builtin skybox shader
     const auto materialShaderName = "Shader.Builtin.Material";
     const auto terrainShaderName  = "Shader.Builtin.Terrain";
-    const auto debugShaderName    = "Shader.Builtin.Color3DShader";
+    const auto debugShaderName    = "Shader.Builtin.Color3D";
     const auto skyboxShaderName   = "Shader.Builtin.Skybox";
 
     C3D::ShaderConfig shaderConfig;
@@ -205,13 +205,13 @@ bool RenderViewWorld::OnBuildPacket(const C3D::FrameData& frameData, const C3D::
     outPacket->ambientColor     = m_ambientColor;
     outPacket->viewport         = &viewport;
 
-    outPacket->geometries.SetAllocator(frameData.frameAllocator);
-    outPacket->terrainGeometries.SetAllocator(frameData.frameAllocator);
-    outPacket->debugGeometries.SetAllocator(frameData.frameAllocator);
+    outPacket->geometries.SetAllocator(frameData.allocator);
+    outPacket->terrainGeometries.SetAllocator(frameData.allocator);
+    outPacket->debugGeometries.SetAllocator(frameData.allocator);
 
     outPacket->skyboxData = worldData.skyboxData;
 
-    m_distances.SetAllocator(frameData.frameAllocator);
+    m_distances.SetAllocator(frameData.allocator);
 
     for (const auto& gData : worldData.worldGeometries)
     {

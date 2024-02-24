@@ -216,7 +216,7 @@ bool RenderViewPick::OnBuildPacket(const C3D::FrameData& frameData, const C3D::V
     m_worldShaderInfo.view = worldCam->GetViewMatrix();
 
     packetData->uiGeometryCount = 0;
-    outPacket->extendedData     = frameData.frameAllocator->New<PickPacketData>(C3D::MemoryType::RenderView);
+    outPacket->extendedData     = frameData.allocator->New<PickPacketData>(C3D::MemoryType::RenderView);
 
     u32 highestInstanceId = 0;
 

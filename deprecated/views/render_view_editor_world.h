@@ -1,7 +1,6 @@
 
 #pragma once
 #include <core/defines.h>
-#include <renderer/render_view.h>
 
 #include "test_env_types.h"
 

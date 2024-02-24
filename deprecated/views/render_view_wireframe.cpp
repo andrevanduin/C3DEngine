@@ -141,9 +141,9 @@ bool RenderViewWireframe::OnBuildPacket(const C3D::FrameData& frameData, const C
     outPacket->viewport         = &viewport;
 
     // Set frame allocator for our outpacket dynamic arrays
-    outPacket->geometries.SetAllocator(frameData.frameAllocator);
-    outPacket->terrainGeometries.SetAllocator(frameData.frameAllocator);
-    outPacket->debugGeometries.SetAllocator(frameData.frameAllocator);
+    outPacket->geometries.SetAllocator(frameData.allocator);
+    outPacket->terrainGeometries.SetAllocator(frameData.allocator);
+    outPacket->debugGeometries.SetAllocator(frameData.allocator);
 
     // Reset draw indices
     m_meshShader.normalInstance.drawIndex      = 0;

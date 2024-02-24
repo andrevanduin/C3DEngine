@@ -19,7 +19,7 @@ namespace C3D
         /** @brief The number of meshes drawn in the last frame. */
         u32 drawnMeshCount = 0;
         /** @brief A pointer to the engine's frame allocator. */
-        LinearAllocator* frameAllocator = nullptr;
+        LinearAllocator* allocator = nullptr;
         /** @brief The current frame number, typically used for data synchronization. */
         u64 frameNumber = INVALID_ID_U64;
         /** @brief The current draw index for this frame. Used to track queue submissions for this frame. */

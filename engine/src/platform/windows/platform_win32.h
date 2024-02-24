@@ -34,13 +34,13 @@ namespace C3D
 
     struct Win32HandleInfo
     {
-        HINSTANCE hInstance;
-        HWND hwnd;
+        HINSTANCE hInstance = nullptr;
+        HWND hwnd           = nullptr;
     };
 
     struct Win32FileWatch
     {
-        u32 id;
+        u32 id = INVALID_ID;
         String filePath;
         FILETIME lastWriteTime;
     };
@@ -51,8 +51,15 @@ namespace C3D
         Platform();
         explicit Platform(const SystemManager* pSystemsManager);
 
+        /**
+         * @brief Initializes the platform system.
+         *
+         * @param config The configuration for the platform system.
+         * @return True when successful, otherwise false
+         */
         bool OnInit(const PlatformSystemConfig& config) override;
 
+        /** @brief Shuts down the platform system. */
         void OnShutdown() override;
 
         /**
@@ -63,90 +70,116 @@ namespace C3D
         bool PumpMessages();
 
         /**
-         * @brief Copies a file from source to dest
+         * @brief Copies a file from source to dest.
          *
-         *  @param Source The path to the file we want to copy
-         *	@param Dest The path to where we want the file to be copied
-         *	@param OverwriteIfExists Set to true if you want to overwrite the file in the dest if it exists
+         *  @param Source The path to the file we want to copy.
+         *	@param Dest The path to where we want the file to be copied.
+         *	@param OverwriteIfExists Set to true if you want to overwrite the file in the dest if it exists.
          *	@return True if successfully copied file false otherwise
          */
         static CopyFileStatus CopyFile(const String& source, const String& dest, bool overwriteIfExists);
 
         /**
-         * @brief Starts watching the file at the provided filePath for changes
+         * @brief Starts watching the file at the provided filePath for changes.
          *
-         * @param filePath The path the the file you want to watch
+         * @param filePath The path the the file you want to watch.
          * @return FileWatchId The id for the watched file if successful, otherwise INVALID_ID
          */
         FileWatchId WatchFile(const char* filePath);
 
         /**
-         * @brief Stops watching the file at with the provided FileWatchId
+         * @brief Stops watching the file at with the provided FileWatchId.
          *
-         * @param FileWatchId The id for the file that you no longer want to watch
+         * @param FileWatchId The id for the file that you no longer want to watch.
          * @return True if successful, otherwise false
          */
         bool UnwatchFile(FileWatchId watchId);
 
-        /**
-         * @brief Check all the watched files again for changes
-         *
-         */
+        /** @brief Check all the watched files for any changes. */
         void WatchFiles();
 
         /**
-         * @brief Gets the systems absolute time
+         * @brief Gets the systems absolute time.
          *
          * @return f64 The system's absolute time
          */
         [[nodiscard]] f64 GetAbsoluteTime() const;
 
+        /** @brief Get the handle info for the current platform. */
         const Win32HandleInfo& GetHandleInfo() const { return m_handle; }
 
         /**
-         * @brief Sleeps the current thread for the provided amount of ms
+         * @brief Sleeps the current thread for the provided amount of ms.
          *
-         * @param ms The number of milliseconds that the system should sleep
+         * @param ms The number of milliseconds that the system should sleep.
          */
         static void SleepMs(u64 ms);
 
         /**
-         * @brief Obtains the number of logical processor cores
+         * @brief Obtains the number of logical processor cores.
          *
-         * @return i32 The amount of logical processor cores
+         * @return i32 The amount of logical processor cores.
          */
         static i32 GetProcessorCount();
 
         /**
-         * @brief Obtains the current thread's id
+         * @brief Obtains the current thread's id.
          *
-         * @return u64 The id for the current thread
+         * @return u64 The id for the current thread.
          */
         static u64 GetThreadId();
 
         /**
-         * @brief Loads a dynamic library by name into memory
+         * @brief Get the primary screen width.
          *
-         * @param Name The name of the dynamic library you want to load
-         * @param LibraryData A pointer to a void pointer that can accept the data
-         * @param Size A reference to a u64 that can hold the size of the provided data
+         * @return int The width of the primary screen.
+         */
+        static int GetPrimaryScreenWidth();
+
+        /**
+         * @brief Get the primary screen height.
+         *
+         * @return int The height of the primary screen.
+         */
+        static int GetPrimaryScreenHeight();
+
+        /**
+         * @brief Get the virtual screen width (all monitors combined)
+         *
+         * @return int The width of the primary screen.
+         */
+        static int GetVirtualScreenWidth();
+
+        /**
+         * @brief Get the virtual screen height (all monitors combined)
+         *
+         * @return int The height of the primary screen.
+         */
+        static int GetVirtualScreenHeight();
+
+        /**
+         * @brief Loads a dynamic library by name into memory.
+         *
+         * @param Name The name of the dynamic library you want to load.
+         * @param LibraryData A pointer to a void pointer that can accept the data.
+         * @param Size A reference to a u64 that can hold the size of the provided data.
          * @return True if successful, false otherwise
          */
         static bool LoadDynamicLibrary(const char* name, void** libraryData, u64& size);
 
         /**
-         * @brief Unloads a dynamic library from memory
+         * @brief Unloads a dynamic library from memory.
          *
-         * @param LibraryData A void pointer to the library data
+         * @param LibraryData A void pointer to the library data.
          * @return True if successful, false otherwise
          */
         static bool UnloadDynamicLibrary(void* libraryData);
 
         /**
-         * @brief Loads a function inside a loaded dynamic library
+         * @brief Loads a function inside a loaded dynamic library.
          *
-         * @param Name The name of the function you want to load
-         * @param LibraryData A void pointer to the loaded library data
+         * @param Name The name of the function you want to load.
+         * @param LibraryData A void pointer to the loaded library data.
          * @return True if successful, false otherwise
          */
         template <typename Func>
@@ -171,14 +204,14 @@ namespace C3D
         }
 
         /**
-         * @brief Get the prefix that is used for dynamic libraries on the current platform
+         * @brief Get the prefix that is used for dynamic libraries on the current platform.
          *
          * @return constexpr DynamicLibraryPrefix The prefix for the current platform
          */
         constexpr static DynamicLibraryPrefix GetDynamicLibraryPrefix() { return ""; }
 
         /**
-         * @brief Get the extension that is used for dynamic libraries on the current platform
+         * @brief Get the extension that is used for dynamic libraries on the current platform.
          *
          * @return DynamicLibraryExtension The extension for the current platform
          */

@@ -492,7 +492,7 @@ namespace C3D
          * array. Keep in mind that this allocator needs to be of the same type as the initial allocator. Also keep in
          * mind that this is a destructive operation since it will clear and free anything inside the array.
          */
-        void SetAllocator(Allocator* allocator)
+        void SetAllocator(const Allocator* allocator)
         {
             // Free any memory that is currently in our array since we will swap allocator
             Free();
@@ -595,7 +595,7 @@ namespace C3D
         u64 m_capacity = 0;
         u64 m_size     = 0;
 
-        T* m_elements          = nullptr;
-        Allocator* m_allocator = nullptr;
+        T* m_elements                = nullptr;
+        const Allocator* m_allocator = nullptr;
     };
 }  // namespace C3D

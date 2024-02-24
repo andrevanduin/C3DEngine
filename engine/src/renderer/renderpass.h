@@ -49,17 +49,17 @@ namespace C3D
         virtual bool Create(const RenderPassConfig& config) = 0;
         virtual void Destroy();
 
+        bool RegenerateRenderTargets(u32 width, u32 height);
+
         const String& GetName() const { return m_name; }
 
-        u16 id = INVALID_ID_U16;
-
-        u8 renderTargetCount  = 0;
-        RenderTarget* targets = nullptr;
-
     protected:
+        u16 id = INVALID_ID_U16;
         String m_name;
         u8 m_clearFlags   = 0;
         vec4 m_clearColor = vec4(0);
+
+        DynamicArray<RenderTarget> m_targets;
 
         const SystemManager* m_pSystemsManager = nullptr;
     };

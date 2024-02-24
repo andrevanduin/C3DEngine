@@ -20,14 +20,14 @@ namespace C3D
     {
         explicit GeometryRenderData(Geometry* geometry) : geometry(geometry) {}
 
-        GeometryRenderData(const mat4& model, Geometry* geometry, const u32 uniqueId = INVALID_ID, bool windingInverted = false)
+        GeometryRenderData(const mat4& model, const Geometry* geometry, const u32 uniqueId = INVALID_ID, bool windingInverted = false)
             : model(model), geometry(geometry), uniqueId(uniqueId), windingInverted(windingInverted)
         {}
 
         mat4 model;
-        Geometry* geometry   = nullptr;
-        u32 uniqueId         = INVALID_ID;
-        bool windingInverted = false;
+        const Geometry* geometry = nullptr;
+        u32 uniqueId             = INVALID_ID;
+        bool windingInverted     = false;
     };
 
     struct RenderViewPacket
@@ -52,11 +52,6 @@ namespace C3D
         const char* customShaderName;
         /** @brief Holds a pointer to extra data understood by both the object and consuming view. **/
         void* extendedData;
-    };
-
-    struct RenderPacket
-    {
-        DynamicArray<RenderViewPacket, LinearAllocator> views;
     };
 
     struct MeshPacketData

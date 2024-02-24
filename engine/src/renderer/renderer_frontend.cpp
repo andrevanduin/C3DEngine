@@ -5,10 +5,10 @@
 
 #include "core/engine.h"
 #include "core/logger.h"
+#include "geometry.h"
 #include "platform/platform.h"
 #include "resources/shaders/shader.h"
 #include "systems/cvars/cvar_system.h"
-#include "systems/render_views/render_view_system.h"
 #include "systems/system_manager.h"
 #include "viewport.h"
 
@@ -56,10 +56,9 @@ namespace C3D
 
     void RenderSystem::OnResize(const u32 width, const u32 height)
     {
-        m_resizing          = true;
         m_frameBufferWidth  = width;
         m_frameBufferHeight = height;
-        m_framesSinceResize = 0;
+        m_backendPlugin->OnResize(width, height);
     }
 
     bool RenderSystem::PrepareFrame(FrameData& frameData)
@@ -69,28 +68,6 @@ namespace C3D
 
         // Reset the draw index for this frame
         m_backendPlugin->drawIndex = 0;
-
-        if (m_resizing)
-        {
-            m_framesSinceResize++;
-
-            if (m_framesSinceResize >= 5)
-            {
-                // Notify our views of the resize
-                Views.OnWindowResize(m_frameBufferWidth, m_frameBufferHeight);
-                m_backendPlugin->OnResize(m_frameBufferWidth, m_frameBufferHeight);
-
-                m_framesSinceResize = 0;
-                m_resizing          = false;
-            }
-            else
-            {
-                // Simulate a 60FPS frame
-                Platform::SleepMs(16);
-                // Skip rendering this frame
-                return false;
-            }
-        }
 
         bool result = m_backendPlugin->PrepareFrame(frameData);
 
@@ -114,7 +91,7 @@ namespace C3D
         return result;
     }
 
-    bool RenderSystem::Present(const RenderPacket& packet, const FrameData& frameData) const
+    bool RenderSystem::Present(const FrameData& frameData) const
     {
         bool result = m_backendPlugin->Present(frameData);
         if (!result)
@@ -240,9 +217,9 @@ namespace C3D
         m_backendPlugin->DrawGeometry(data);
     }
 
-    bool RenderSystem::BeginRenderPass(RenderPass* pass, RenderTarget* target) const
+    bool RenderSystem::BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) const
     {
-        return m_backendPlugin->BeginRenderPass(pass, target);
+        return m_backendPlugin->BeginRenderPass(pass, frameData);
     }
 
     bool RenderSystem::EndRenderPass(RenderPass* pass) const { return m_backendPlugin->EndRenderPass(pass); }
@@ -295,32 +272,19 @@ namespace C3D
         return m_backendPlugin->SetUniform(shader, uniform, value);
     }
 
-    void RenderSystem::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, const u32 width,
-                                          const u32 height, RenderTarget* outTarget) const
+    void RenderSystem::CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) const
     {
-        m_backendPlugin->CreateRenderTarget(attachmentCount, attachments, pass, width, height, outTarget);
+        m_backendPlugin->CreateRenderTarget(pass, target, width, height);
     }
 
-    void RenderSystem::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory) const
+    void RenderSystem::DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory) const
     {
         m_backendPlugin->DestroyRenderTarget(target, freeInternalMemory);
-        if (freeInternalMemory)
-        {
-            std::memset(target, 0, sizeof(RenderTarget));
-        }
     }
 
     RenderPass* RenderSystem::CreateRenderPass(const RenderPassConfig& config) const { return m_backendPlugin->CreateRenderPass(config); }
 
-    bool RenderSystem::DestroyRenderPass(RenderPass* pass) const
-    {
-        // Destroy this pass's render targets first
-        for (u8 i = 0; i < pass->renderTargetCount; i++)
-        {
-            DestroyRenderTarget(&pass->targets[i], true);
-        }
-        return m_backendPlugin->DestroyRenderPass(pass);
-    }
+    bool RenderSystem::DestroyRenderPass(RenderPass* pass) const { return m_backendPlugin->DestroyRenderPass(pass); }
 
     Texture* RenderSystem::GetWindowAttachment(const u8 index) const { return m_backendPlugin->GetWindowAttachment(index); }
 

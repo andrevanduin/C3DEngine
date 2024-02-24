@@ -8,17 +8,12 @@
 #include <renderer/viewport.h>
 #include <resources/debug/debug_box_3d.h>
 #include <resources/mesh.h>
+#include <resources/skybox.h>
 #include <systems/lights/light_system.h>
-#include <systems/render_views/render_view_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
 
 #include "test_env_types.h"
-
-struct LightDebugData
-{
-    C3D::DebugBox3D box;
-};
 
 static u32 global_scene_id = 0;
 
@@ -40,9 +35,6 @@ bool SimpleScene::Create(const C3D::SystemManager* pSystemsManager, const Simple
 
     m_meshes.Create(1024);
     m_terrains.Create(512);
-
-    // Reserve a reasonable amount of space for geometries (to avoid reallocs)
-    m_worldData.worldGeometries.Reserve(512);
 
     m_config = config;
 
@@ -326,99 +318,9 @@ bool SimpleScene::Update(C3D::FrameData& frameData)
     return true;
 }
 
-bool SimpleScene::PopulateRenderPacket(C3D::FrameData& frameData, C3D::Camera* camera, const C3D::Viewport& viewport,
-                                       C3D::RenderPacket& packet)
+bool SimpleScene::PrepareRender(C3D::FrameData& frameData, C3D::Camera* camera, const C3D::Viewport& viewport)
 {
     if (m_state != SceneState::Loaded) return true;
-
-    // World
-    auto& worldViewPacket = packet.views[TEST_ENV_VIEW_WORLD];
-
-    // Clear our world geometries
-    m_worldData.worldGeometries.Clear();
-    m_worldData.terrainGeometries.Clear();
-    m_worldData.debugGeometries.Clear();
-
-    // Skybox
-    m_worldData.skyboxData.box = m_skybox;
-
-    // Update the frustum
-    vec3 forward = camera->GetForward();
-    vec3 right   = camera->GetRight();
-    vec3 up      = camera->GetUp();
-
-    const auto viewportRect = viewport.GetRect2D();
-
-    C3D::Frustum frustum = C3D::Frustum(camera->GetPosition(), forward, right, up, viewport);
-
-    for (const auto& mesh : m_meshes)
-    {
-        if (mesh.generation != INVALID_ID_U8)
-        {
-            mat4 model           = mesh.transform.GetWorld();
-            bool windingInverted = mesh.transform.GetDeterminant() < 0;
-
-            if (mesh.HasDebugBox())
-            {
-                const auto box = mesh.GetDebugBox();
-                m_worldData.debugGeometries.EmplaceBack(box->GetModel(), box->GetGeometry(), box->GetUniqueId());
-            }
-
-            for (const auto geometry : mesh.geometries)
-            {
-                // AABB Calculation
-                const vec3 extentsMax = model * vec4(geometry->extents.max, 1.0f);
-                const vec3 center     = model * vec4(geometry->center, 1.0f);
-
-                const vec3 halfExtents = {
-                    C3D::Abs(extentsMax.x - center.x),
-                    C3D::Abs(extentsMax.y - center.y),
-                    C3D::Abs(extentsMax.z - center.z),
-                };
-
-                if (frustum.IntersectsWithAABB({ center, halfExtents }))
-                {
-                    m_worldData.worldGeometries.EmplaceBack(model, geometry, mesh.uniqueId, windingInverted);
-                    frameData.drawnMeshCount++;
-                }
-            }
-        }
-    }
-
-    for (auto& terrain : m_terrains)
-    {
-        // TODO: Check terrain generation
-        // TODO: Frustum culling
-        m_worldData.terrainGeometries.EmplaceBack(terrain.GetModel(), terrain.GetGeometry(), terrain.uniqueId);
-        // TODO: Seperate counter for terrain meshes/geometry
-        frameData.drawnMeshCount++;
-    }
-
-    // Debug geometry
-    // Grid
-    constexpr auto identity = mat4(1.0f);
-    m_worldData.debugGeometries.EmplaceBack(identity, m_grid.GetGeometry(), INVALID_ID);
-
-    // TODO: Directional lights
-
-    // Point Lights
-    for (auto& name : m_pointLights)
-    {
-        auto light = Lights.GetPointLight(name);
-        auto debug = static_cast<LightDebugData*>(light->debugData);
-
-        if (debug && debug->box.IsValid())
-        {
-            m_worldData.debugGeometries.EmplaceBack(debug->box.GetModel(), debug->box.GetGeometry(), debug->box.GetUniqueId());
-        }
-    }
-
-    // World
-    if (!Views.BuildPacket(worldViewPacket.view, frameData, viewport, camera, &m_worldData, &worldViewPacket))
-    {
-        ERROR_LOG("Failed to populate render packet with world data.");
-        return false;
-    }
 
     return true;
 }
@@ -780,6 +682,16 @@ C3D::Transform* SimpleScene::GetTransformById(u32 uniqueId)
     return nullptr;
 }
 
+C3D::DynamicArray<C3D::Mesh, C3D::LinearAllocator> SimpleScene::GetMeshes(C3D::LinearAllocator* frameAllocator) const
+{
+    auto meshes = C3D::DynamicArray<C3D::Mesh, C3D::LinearAllocator>(m_meshes.Count(), frameAllocator);
+    for (auto& mesh : m_meshes)
+    {
+        meshes.PushBack(mesh);
+    }
+    return meshes;
+}
+
 void SimpleScene::UnloadInternal()
 {
     if (m_skybox)
@@ -836,10 +748,6 @@ void SimpleScene::UnloadInternal()
     m_pointLights.Destroy();
     m_meshes.Destroy();
     m_terrains.Destroy();
-
-    m_worldData.worldGeometries.Destroy();
-    m_worldData.terrainGeometries.Destroy();
-    m_worldData.debugGeometries.Destroy();
 
     m_directionalLight.Destroy();
     m_skybox  = nullptr;

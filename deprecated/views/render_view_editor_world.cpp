@@ -48,11 +48,11 @@ void RenderViewEditorWorld::OnSetupPasses()
 bool RenderViewEditorWorld::OnCreate()
 {
     // Builtin Color3D Shader
-    const auto shaderName = "Shader.Builtin.Color3DShader";
+    const auto shaderName = "Shader.Builtin.Color3D";
     m_shader              = Shaders.Get(shaderName);
     if (!m_shader)
     {
-        ERROR_LOG("Failed to get Color3DShader.");
+        ERROR_LOG("Failed to get Color3D.");
         return false;
     }
 
@@ -79,7 +79,7 @@ bool RenderViewEditorWorld::OnBuildPacket(const C3D::FrameData& frameData, const
     outPacket->viewMatrix       = camera->GetViewMatrix();
     outPacket->viewport         = &viewport;
 
-    outPacket->geometries.SetAllocator(frameData.frameAllocator);
+    outPacket->geometries.SetAllocator(frameData.allocator);
 
     if (packetData.gizmo)
     {

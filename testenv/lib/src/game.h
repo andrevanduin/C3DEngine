@@ -16,8 +16,8 @@ public:
     bool OnRun(C3D::FrameData& frameData) override;
 
     void OnUpdate(C3D::FrameData& frameData) override;
-    bool OnPrepareRenderPacket(C3D::RenderPacket& packet, C3D::FrameData& frameData) override;
-    bool OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData) override;
+    bool OnPrepareRender(C3D::FrameData& frameData) override;
+    bool OnRender(C3D::FrameData& frameData) override;
 
     void OnResize() override;
 
@@ -27,7 +27,7 @@ public:
     void OnLibraryUnload() override;
 
 private:
-    bool ConfigureRenderViews() const;
+    bool ConfigureRendergraph() const;
 
     bool OnEvent(u16 code, void* sender, const C3D::EventContext& context);
     bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context);

@@ -16,7 +16,6 @@
 #include "systems/jobs/job_system.h"
 #include "systems/lights/light_system.h"
 #include "systems/materials/material_system.h"
-#include "systems/render_views/render_view_system.h"
 #include "systems/resources/resource_system.h"
 #include "systems/shaders/shader_system.h"
 #include "systems/system_manager.h"
@@ -33,15 +32,32 @@ namespace C3D
         m_application->m_pConsole        = pConsole;
     }
 
-    void Engine::Init()
+    bool Engine::Init()
     {
         C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the engine twice");
 
         const auto appState = m_application->m_appState;
 
+        // Check the appliation flags and set some properties based on those
+        if (appState->flags & ApplicationFlagWindowFullScreen)
+        {
+            appState->width  = Platform::GetPrimaryScreenWidth();
+            appState->height = Platform::GetPrimaryScreenWidth();
+        }
+
+        if (appState->flags & ApplicationFlagWindowCenter || appState->flags & ApplicationFlagWindowCenterHorizontal)
+        {
+            appState->x = (Platform::GetPrimaryScreenWidth() / 2) - (appState->width / 2);
+        }
+
+        if (appState->flags & ApplicationFlagWindowCenter || appState->flags & ApplicationFlagWindowCenterVertical)
+        {
+            appState->y = (Platform::GetPrimaryScreenHeight() / 2) - (appState->height / 2);
+        }
+
         // Setup our frame allocator
         m_frameAllocator.Create("FRAME_ALLOCATOR", appState->frameAllocatorSize);
-        m_frameData.frameAllocator = &m_frameAllocator;
+        m_frameData.allocator = &m_frameAllocator;
 
         // Allocate enough space for the application specific frame-data. Which is used only by the user from the
         // application itself
@@ -58,11 +74,11 @@ namespace C3D
         auto threadCount = Platform::GetProcessorCount();
         if (threadCount <= 1)
         {
-            FATAL_LOG("System reported {} threads. C3DEngine requires at least 1 thread besides the main thread.", threadCount);
+            FATAL_LOG("System reported: {} threads. C3DEngine requires at least 1 thread besides the main thread.", threadCount);
         }
         else
         {
-            INFO_LOG("System reported {} threads (including main thread).", threadCount);
+            INFO_LOG("System reported: {} threads (including main thread).", threadCount);
         }
 
         m_systemsManager.OnInit();
@@ -86,12 +102,19 @@ namespace C3D
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
-        m_application->OnBoot();
+        // Ensure the application can access the engine before we start calling into application code
+        m_application->m_pEngine = this;
+
+        if (!m_application->OnBoot())
+        {
+            ERROR_LOG("Application failed to boot!");
+            return false;
+        }
 
         constexpr auto maxThreadCount = 15;
         if (threadCount - 1 > maxThreadCount)
         {
-            INFO_LOG("Available threads on this system is greater than {}. Capping used threads at {}.", maxThreadCount, (threadCount - 1),
+            INFO_LOG("Available threads on this system is > {}. Capping used threads at {}.", maxThreadCount, (threadCount - 1),
                      maxThreadCount);
             threadCount = maxThreadCount;
         }
@@ -117,14 +140,11 @@ namespace C3D
         const JobSystemConfig jobSystemConfig{ static_cast<u8>(threadCount - 1), jobThreadTypes };
         constexpr TextureSystemConfig textureSystemConfig{ 65536 };
         constexpr CameraSystemConfig cameraSystemConfig{ 61 };
-        constexpr RenderViewSystemConfig viewSystemConfig{ 251 };
 
         m_systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);              // Job System
         m_systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
         m_systemsManager.RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);       // Font System
         m_systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);     // Camera System
-        m_systemsManager.RegisterSystem<RenderViewSystem>(RenderViewSystemType,
-                                                          viewSystemConfig);  // Render View System
 
         Event.Register(EventCodeResized,
                        [this](const u16 code, void* sender, const EventContext& context) { return OnResizeEvent(code, sender, context); });
@@ -137,16 +157,6 @@ namespace C3D
         Event.Register(EventCodeApplicationQuit,
                        [this](const u16 code, void* sender, const EventContext& context) { return OnQuitEvent(code, sender, context); });
 
-        // Load render views
-        for (auto view : appState->renderViews)
-        {
-            if (!Views.Register(view))
-            {
-                String name = view ? view->GetName() : "UNKOWN";
-                FATAL_LOG("Failed to Create view: '{}'.", name);
-            }
-        }
-
         constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
         constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
@@ -157,10 +167,8 @@ namespace C3D
         m_state.initialized = true;
         m_state.lastTime    = 0;
 
-        m_application->OnResize();
-        Renderer.OnResize(appState->width, appState->height);
-
         m_pConsole->OnInit(&m_systemsManager);
+        return true;
     }
 
     void Engine::Run()
@@ -200,42 +208,58 @@ namespace C3D
                 m_frameData.deltaTime = delta;
 
                 // Reset our frame allocator (freeing all memory used previous frame)
-                m_frameData.frameAllocator->FreeAll();
+                m_frameData.allocator->FreeAll();
 
                 Jobs.OnUpdate(m_frameData);
                 Metrics.Update(frameElapsedTime);
                 OS.WatchFiles();
+
+                if (m_state.resizing)
+                {
+                    m_state.framesSinceResize++;
+
+                    if (m_state.framesSinceResize >= 5)
+                    {
+                        const auto appState = m_application->m_appState;
+                        OnResize(appState->width, appState->height);
+                    }
+                    else
+                    {
+                        // Simulate a 60FPS frame
+                        Platform::SleepMs(16);
+                    }
+
+                    // No need to do other logic since we are still resizing
+                    continue;
+                }
+
+                if (!Renderer.PrepareFrame(m_frameData))
+                {
+                    // If we fail to prepare the frame we just skip this frame since we are propabably just done resizing
+                    // or we just changed a renderer flag (like VSYNC) which will require resource recreation and will skip a frame.
+                    // Notify our application of the resize
+                    m_application->OnResize();
+                    continue;
+                }
 
                 OnUpdate();
 
                 // Reset our drawn mesh count for the next frame
                 m_frameData.drawnMeshCount = 0;
 
-                // This frame's render packet
-                RenderPacket packet;
-                // Ensure that we will be using our frame allocator for this packet's view
-                packet.views.SetAllocator(&m_frameAllocator);
-
-                // Have the application generate our render packet
-                bool result = m_application->OnPrepareRenderPacket(packet, m_frameData);
-                if (!result)
+                // Let the application prepare all the data for the next frame
+                if (!m_application->OnPrepareRender(m_frameData))
                 {
-                    ERROR_LOG("OnPrepareRenderPacket() failed. Skipping this frame.");
+                    // We skip this frame since we failed to prepare our render
                     continue;
                 }
 
                 // Call the game's render routine
-                if (!m_application->OnRender(packet, m_frameData))
+                if (!m_application->OnRender(m_frameData))
                 {
                     FATAL_LOG("OnRender() failed. Shutting down.");
                     m_state.running = false;
                     break;
-                }
-
-                // Cleanup our packets
-                for (auto& view : packet.views)
-                {
-                    Views.DestroyPacket(view.view, view);
                 }
 
                 const f64 frameEndTime = OS.GetAbsoluteTime();
@@ -269,14 +293,19 @@ namespace C3D
     {
         m_pConsole->OnUpdate();
         m_application->OnUpdate(m_frameData);
-
-        const auto jan = 0xAFFFFFFF;
     }
 
-    void Engine::OnResize(const u32 width, const u32 height) const
+    void Engine::OnResize(const u32 width, const u32 height)
     {
-        m_application->OnResize();
+        // Notify our renderer of the resize
         Renderer.OnResize(width, height);
+        // Prepare our next frame
+        Renderer.PrepareFrame(m_frameData);
+        // Notify our application of the resize
+        m_application->OnResize();
+
+        m_state.framesSinceResize = 0;
+        m_state.resizing          = false;
     }
 
     void Engine::GetFrameBufferSize(u32* width, u32* height) const
@@ -299,12 +328,13 @@ namespace C3D
 
     void Engine::Shutdown()
     {
-        C3D_ASSERT_MSG(m_state.initialized, "Tried to Shutdown application that hasn't been initialized")
-
         INFO_LOG("Shutting down.");
 
         // Call the OnShutdown() method that is defined by the user
-        m_application->OnShutdown();
+        if (m_application)
+        {
+            m_application->OnShutdown();
+        }
 
         // Destroy our frame allocator since we will no longer render any frames
         m_frameAllocator.Destroy();
@@ -325,6 +355,11 @@ namespace C3D
     {
         if (code == EventCodeResized)
         {
+            // Flag that we are currently resizing
+            m_state.resizing = true;
+            // Start counting the frames since the last resize
+            m_state.framesSinceResize = 0;
+
             const u16 width     = context.data.u16[0];
             const u16 height    = context.data.u16[1];
             const auto appState = m_application->m_appState;
@@ -346,7 +381,6 @@ namespace C3D
                 }
 
                 m_state.suspended = false;
-                OnResize(width, height);
             }
         }
 

@@ -1,6 +1,7 @@
 
 #pragma once
 #include <core/defines.h>
+#include <resources/debug/debug_box_3d.h>
 
 enum TestEnvPacketViews
 {
@@ -23,4 +24,9 @@ struct SkyboxShaderLocations
     u16 projection;
     u16 view;
     u16 cubeMap;
+};
+
+struct LightDebugData
+{
+    C3D::DebugBox3D box;
 };
