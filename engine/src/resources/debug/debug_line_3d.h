@@ -26,7 +26,7 @@ namespace C3D
         bool Update();
 
         mat4 GetModel() const { return m_transform.GetWorld(); }
-        Geometry* GetGeometry() { return &m_geometry; }
+        const Geometry* GetGeometry() const { return &m_geometry; }
 
         void SetParent(Transform* parent) { m_transform.SetParent(parent); }
         void SetColor(const vec4& color);

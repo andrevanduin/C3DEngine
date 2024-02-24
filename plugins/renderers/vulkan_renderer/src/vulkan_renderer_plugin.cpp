@@ -6,6 +6,7 @@
 #include <core/logger.h>
 #include <core/metrics/metrics.h>
 #include <platform/platform.h>
+#include <renderer/geometry.h>
 #include <renderer/renderer_frontend.h>
 #include <renderer/vertex.h>
 #include <resources/loaders/binary_loader.h>
@@ -260,7 +261,7 @@ namespace C3D
 
         // Wait for the execution of the current frame to complete.
         const VkResult result =
-            vkWaitForFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
+            vkWaitForFences(device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
         if (!VulkanUtils::IsSuccess(result))
         {
             FATAL_LOG("vkWaitForFences() failed: '{}'.", VulkanUtils::ResultString(result));
@@ -456,41 +457,38 @@ namespace C3D
         }
     }
 
-    void VulkanRendererPlugin::CreateRenderTarget(const u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass,
-                                                  const u32 width, const u32 height, RenderTarget* outTarget)
+    void VulkanRendererPlugin::CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height)
     {
-        VkImageView attachmentViews[32];
-        for (u32 i = 0; i < attachmentCount; i++)
+        VkImageView attachmentViews[32] = { 0 };
+        for (u32 i = 0; i < target.attachments.Size(); i++)
         {
-            attachmentViews[i] = static_cast<VulkanImage*>(attachments[i].texture->internalData)->view;
+            attachmentViews[i] = static_cast<VulkanImage*>(target.attachments[i].texture->internalData)->view;
         }
-        std::memcpy(outTarget->attachments, attachments, sizeof(RenderTargetAttachment) * attachmentCount);
 
         // Setup our frameBuffer creation
         VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
         frameBufferCreateInfo.renderPass              = dynamic_cast<VulkanRenderPass*>(pass)->handle;
-        frameBufferCreateInfo.attachmentCount         = attachmentCount;
+        frameBufferCreateInfo.attachmentCount         = target.attachments.Size();
         frameBufferCreateInfo.pAttachments            = attachmentViews;
         frameBufferCreateInfo.width                   = width;
         frameBufferCreateInfo.height                  = height;
         frameBufferCreateInfo.layers                  = 1;
 
         VK_CHECK(vkCreateFramebuffer(m_context.device.GetLogical(), &frameBufferCreateInfo, m_context.allocator,
-                                     reinterpret_cast<VkFramebuffer*>(&outTarget->internalFrameBuffer)));
+                                     reinterpret_cast<VkFramebuffer*>(&target.internalFrameBuffer)));
     }
 
-    void VulkanRendererPlugin::DestroyRenderTarget(RenderTarget* target, const bool freeInternalMemory)
+    void VulkanRendererPlugin::DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory)
     {
-        if (target && target->internalFrameBuffer)
+        if (target.internalFrameBuffer)
         {
-            vkDestroyFramebuffer(m_context.device.GetLogical(), static_cast<VkFramebuffer>(target->internalFrameBuffer),
+            vkDestroyFramebuffer(m_context.device.GetLogical(), static_cast<VkFramebuffer>(target.internalFrameBuffer),
                                  m_context.allocator);
-            target->internalFrameBuffer = nullptr;
+            target.internalFrameBuffer = nullptr;
+
             if (freeInternalMemory)
             {
-                Memory.Free(target->attachments);
-                target->attachmentCount = 0;
-                target->attachments     = nullptr;
+                target.attachments.Destroy();
             }
         }
     }
@@ -508,8 +506,9 @@ namespace C3D
 
     bool VulkanRendererPlugin::DestroyRenderPass(RenderPass* pass)
     {
-        pass->Destroy();
-        Memory.Free(pass);
+        const auto vulkanPass = dynamic_cast<VulkanRenderPass*>(pass);
+        vulkanPass->Destroy();
+        Memory.Delete(pass);
         return true;
     }
 
@@ -564,11 +563,11 @@ namespace C3D
 
     bool VulkanRendererPlugin::IsFlagEnabled(const RendererConfigFlagBits flag) const { return m_config.flags & flag; }
 
-    bool VulkanRendererPlugin::BeginRenderPass(RenderPass* pass, RenderTarget* target)
+    bool VulkanRendererPlugin::BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData)
     {
         VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
         const auto vulkanPass              = dynamic_cast<VulkanRenderPass*>(pass);
-        vulkanPass->Begin(commandBuffer, target);
+        vulkanPass->Begin(commandBuffer, frameData);
         return true;
     }
 

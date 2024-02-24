@@ -163,7 +163,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<TerrainConfig>::Unload(TerrainConfig& resource)
+    void ResourceLoader<TerrainConfig>::Unload(TerrainConfig& resource) const
     {
         resource.name.Destroy();
         resource.resourceName.Destroy();

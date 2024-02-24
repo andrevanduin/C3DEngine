@@ -48,7 +48,7 @@ namespace C3D
         bool Unload();
         bool Update();
 
-        Geometry* GetGeometry() { return &m_geometry; }
+        const Geometry* GetGeometry() const { return &m_geometry; }
 
     private:
         u32 m_uniqueId = INVALID_ID;

@@ -12,6 +12,6 @@ namespace C3D
         explicit ResourceLoader(const SystemManager* pSystemsManager);
 
         bool Load(const char* name, TerrainConfig& resource) const;
-        static void Unload(TerrainConfig& resource);
+        void Unload(TerrainConfig& resource) const;
     };
 }  // namespace C3D

@@ -82,7 +82,7 @@ bool RenderViewUi::OnBuildPacket(const C3D::FrameData& frameData, const C3D::Vie
     outPacket->projectionMatrix = viewport.GetProjection();
     outPacket->viewMatrix       = m_viewMatrix;
     outPacket->viewport         = &viewport;
-    outPacket->extendedData     = frameData.frameAllocator->Allocate<C3D::UIPacketData>(C3D::MemoryType::RenderView);
+    outPacket->extendedData     = frameData.allocator->Allocate<C3D::UIPacketData>(C3D::MemoryType::RenderView);
     *static_cast<C3D::UIPacketData*>(outPacket->extendedData) = *uiData;
 
     for (const auto mesh : uiData->meshData.meshes)

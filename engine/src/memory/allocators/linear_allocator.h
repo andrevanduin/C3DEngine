@@ -13,8 +13,8 @@ namespace C3D
         void Create(const char* name, u64 totalSize, void* memory = nullptr);
         void Destroy();
 
-        void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
-        void Free(void* block) override;
+        void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) const override;
+        void Free(void* block) const override;
 
         void FreeAll();
 
@@ -26,8 +26,8 @@ namespace C3D
         static LinearAllocator* GetDefault();
 
     private:
-        u64 m_totalSize = 0;
-        u64 m_allocated = 0;
+        u64 m_totalSize         = 0;
+        mutable u64 m_allocated = 0;
 
         bool m_ownsMemory = false;
     };

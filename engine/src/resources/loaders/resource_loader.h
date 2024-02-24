@@ -47,6 +47,6 @@ namespace C3D
         {}
 
         bool Load(const char* name, T& resource) const;
-        static void Unload(T& resource);
+        void Unload(T& resource) const;
     };
 }  // namespace C3D

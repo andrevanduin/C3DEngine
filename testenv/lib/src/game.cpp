@@ -16,25 +16,23 @@
 #include <systems/geometry/geometry_system.h>
 #include <systems/input/input_system.h>
 #include <systems/lights/light_system.h>
-#include <systems/render_views/render_view_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
 #include <systems/textures/texture_system.h>
 
 #include <glm/gtx/matrix_decompose.hpp>
 
-#include "editor/render_view_editor_world.h"
-#include "editor/render_view_wireframe.h"
 #include "math/ray.h"
+#include "passes/editor_pass.h"
+#include "passes/scene_pass.h"
+#include "passes/skybox_pass.h"
+#include "passes/ui_pass.h"
 #include "resources/debug/debug_box_3d.h"
 #include "resources/debug/debug_line_3d.h"
 #include "resources/loaders/simple_scene_loader.h"
 #include "resources/scenes/simple_scene.h"
 #include "resources/scenes/simple_scene_config.h"
 #include "test_env_types.h"
-#include "views/render_view_pick.h"
-#include "views/render_view_ui.h"
-#include "views/render_view_world.h"
 
 constexpr const char* INSTANCE_NAME = "TEST_ENV";
 
@@ -63,10 +61,16 @@ bool TestEnv::OnBoot()
     m_state->fontConfig.maxBitmapFontCount = 101;
     m_state->fontConfig.maxSystemFontCount = 101;
 
-    // Config our render views. TODO: Read this from a file
+    /* Config our render views. TODO: Read this from a file
     if (!ConfigureRenderViews())
     {
         ERROR_LOG("Failed to create render views.");
+        return false;
+    }*/
+
+    if (!ConfigureRendergraph())
+    {
+        ERROR_LOG("Failed to create Rendergraph.");
         return false;
     }
 
@@ -171,7 +175,7 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 
     // Set the allocator for the dynamic array that contains our world geometries to our frame allocator
     auto gameFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
-    gameFrameData->worldGeometries.SetAllocator(frameData.frameAllocator);
+    gameFrameData->worldGeometries.SetAllocator(frameData.allocator);
 
     // Create, initialize and load our editor gizmo
     if (!m_state->gizmo.Create(m_pSystemsManager))
@@ -419,67 +423,27 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     m_state->testText.SetText(buffer.Data());
 }
 
-bool TestEnv::OnPrepareRenderPacket(C3D::RenderPacket& packet, C3D::FrameData& frameData)
+bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 {
     // Get our application specific frame data
     auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
-    // Pre-Allocate enough space for 4 views (and default initialize them)
-    packet.views.Resize(4);
 
-    // FIXME: Read this from a config
-    packet.views[TEST_ENV_VIEW_WORLD].view = Views.Get("WORLD_VIEW");
-    packet.views[TEST_ENV_VIEW_WORLD].geometries.SetAllocator(frameData.frameAllocator);
+    auto camera = m_state->camera;
 
-    packet.views[TEST_ENV_VIEW_EDITOR_WORLD].view = Views.Get("EDITOR_WORLD_VIEW");
-    packet.views[TEST_ENV_VIEW_EDITOR_WORLD].geometries.SetAllocator(frameData.frameAllocator);
+    m_state->skyboxPass.Prepare(&m_state->worldViewport, m_state->camera, m_state->simpleScene.GetSkybox());
 
-    packet.views[TEST_ENV_VIEW_WIREFRAME].view = Views.Get("WIREFRAME_VIEW");
-    packet.views[TEST_ENV_VIEW_WIREFRAME].geometries.SetAllocator(frameData.frameAllocator);
-
-    packet.views[TEST_ENV_VIEW_UI].view = Views.Get("UI_VIEW");
-    packet.views[TEST_ENV_VIEW_UI].geometries.SetAllocator(frameData.frameAllocator);
-
-    // packet.views[TEST_ENV_VIEW_PICK].view = Views.Get("PICK_VIEW");
-    // packet.views[TEST_ENV_VIEW_PICK].geometries.SetAllocator(frameData.frameAllocator);
-
-    // This method generate the skybox and world packet for us
+    // When the scene is loaded we prepare the skybox and scene pass
     if (m_state->simpleScene.GetState() == SceneState::Loaded)
     {
-        if (!m_state->simpleScene.PopulateRenderPacket(frameData, m_state->camera, m_state->worldViewport, packet))
-        {
-            ERROR_LOG("Failed to populate render packet for Simple Scene.");
-            return false;
-        }
+        m_state->scenePass.Prepare(&m_state->worldViewport, m_state->camera, frameData, m_state->simpleScene, m_state->renderMode,
+                                   m_state->testLines, m_state->testBoxes);
 
-        // HACK: Inject debug geometries into world packet
-        for (auto& line : m_state->testLines)
-        {
-            packet.views[TEST_ENV_VIEW_WORLD].debugGeometries.EmplaceBack(line.GetModel(), line.GetGeometry(), INVALID_ID);
-        }
-        for (auto& box : m_state->testBoxes)
-        {
-            packet.views[TEST_ENV_VIEW_WORLD].debugGeometries.EmplaceBack(box.GetModel(), box.GetGeometry(), INVALID_ID);
-        }
-    }
-    else
-    {
-        // Ensure that we always have at least one viewport
-        packet.views[TEST_ENV_VIEW_WORLD].viewport = &m_state->worldViewport;
+        // Prepare the editor pass
+        m_state->editorPass.Prepare(&m_state->worldViewport, m_state->camera, &m_state->gizmo);
     }
 
-    // Editor world
-    EditorWorldPacketData editorWorldPacket = {};
-    editorWorldPacket.gizmo                 = &m_state->gizmo;
-
-    auto& editorWorldViewPacket = packet.views[TEST_ENV_VIEW_EDITOR_WORLD];
-    if (!Views.BuildPacket(editorWorldViewPacket.view, frameData, m_state->worldViewport, m_state->camera, &editorWorldPacket,
-                           &editorWorldViewPacket))
-    {
-        ERROR_LOG("Failed to build packet for view: 'editor world'.");
-        return false;
-    }
-
-    // Wireframe
+    /* Wireframe
+    m_state->pas
     {
         RenderViewWireframeData wireframeData = {};
         wireframeData.selectedId              = m_state->selectedObject.uniqueId;
@@ -493,29 +457,14 @@ bool TestEnv::OnPrepareRenderPacket(C3D::RenderPacket& packet, C3D::FrameData& f
             ERROR_LOG("Failed to build packet for view: 'Wireframe'.");
             return false;
         }
-    }
+    }*/
 
-    // UI
-    C3D::UIPacketData uiPacket = {};
-    uiPacket.meshData.meshes.SetAllocator(frameData.frameAllocator);
-    for (auto& mesh : m_state->uiMeshes)
-    {
-        if (mesh.generation != INVALID_ID_U8)
-        {
-            uiPacket.meshData.meshes.PushBack(&mesh);
-        }
-    }
-    uiPacket.texts.SetAllocator(frameData.frameAllocator);
-    uiPacket.texts.PushBack(&m_state->testText);
+    // Prepare the UI pass
+    C3D::DynamicArray<C3D::UIText*, C3D::LinearAllocator> texts(frameData.allocator);
+    texts.PushBack(&m_state->testText);
 
-    m_pConsole->OnRender(uiPacket);
-
-    auto& uiViewPacket = packet.views[TEST_ENV_VIEW_UI];
-    if (!Views.BuildPacket(uiViewPacket.view, frameData, m_state->uiViewport, nullptr, &uiPacket, &uiViewPacket))
-    {
-        ERROR_LOG("Failed to build packet for view: 'ui'.");
-        return false;
-    }
+    m_pConsole->OnPrepareRender(texts);
+    m_state->uiPass.Prepare(&m_state->uiViewport, m_state->camera, m_state->uiMeshes, texts);
 
     // Pick
     /*
@@ -526,7 +475,7 @@ bool TestEnv::OnPrepareRenderPacket(C3D::RenderPacket& packet, C3D::FrameData& f
     pickPacket.texts               = uiPacket.texts;
 
     auto& pickViewPacket = packet.views[TEST_ENV_VIEW_PICK];
-    if (!Views.BuildPacket(pickViewPacket.view, frameData.frameAllocator, &pickPacket, &pickViewPacket))
+    if (!Views.BuildPacket(pickViewPacket.view, frameData.allocator, &pickPacket, &pickViewPacket))
     {
         m_logger.Error("OnRender() - Failed to build packet for view: 'pick'.");
         return false;
@@ -536,40 +485,29 @@ bool TestEnv::OnPrepareRenderPacket(C3D::RenderPacket& packet, C3D::FrameData& f
     return true;
 }
 
-bool TestEnv::OnRender(C3D::RenderPacket& packet, C3D::FrameData& frameData)
+bool TestEnv::OnRender(C3D::FrameData& frameData)
 {
-    if (!Renderer.PrepareFrame(frameData))
-    {
-        // Skip this frame
-        return true;
-    }
-
     if (!Renderer.Begin(frameData))
     {
-        ERROR_LOG("Renderer.Begin() failed.");
+        ERROR_LOG("Failed to Begin the Renderer.");
     }
 
-    // World
-    C3D::RenderViewPacket* viewPacket = &packet.views[TEST_ENV_VIEW_WORLD];
-    viewPacket->view->OnRender(frameData, viewPacket);
-
-    // Editor world
-    viewPacket = &packet.views[TEST_ENV_VIEW_EDITOR_WORLD];
-    viewPacket->view->OnRender(frameData, viewPacket);
-
-    // Render the wireframe view
-    viewPacket = &packet.views[TEST_ENV_VIEW_WIREFRAME];
-    viewPacket->view->OnRender(frameData, viewPacket);
-
-    // UI
-    viewPacket = &packet.views[TEST_ENV_VIEW_UI];
-    viewPacket->view->OnRender(frameData, viewPacket);
-
-    Renderer.End(frameData);
-
-    if (!Renderer.Present(packet, frameData))
+    // Execute our Rendergraph
+    if (!m_state->frameGraph.ExecuteFrame(frameData))
     {
-        ERROR_LOG("Renderer.Present() failed. Shutting down application.");
+        ERROR_LOG("Execute frame failed for the Rendergraph.");
+        return false;
+    }
+
+    if (!Renderer.End(frameData))
+    {
+        ERROR_LOG("Failed to end the Renderer.");
+        return false;
+    }
+
+    if (!Renderer.Present(frameData))
+    {
+        ERROR_LOG("Failed to present the Renderer.");
         return false;
     }
 
@@ -592,12 +530,17 @@ void TestEnv::OnResize()
 
     m_state->testText.SetPosition({ 10, m_state->height - 80, 0 });
     m_state->uiMeshes[0].transform.SetPosition({ m_state->width - 130, 10, 0 });
+
+    m_state->frameGraph.OnResize(m_state->width, m_state->height);
 }
 
 void TestEnv::OnShutdown()
 {
     // Unload our simple scene
     m_state->simpleScene.Unload(true);
+
+    // Destroy our Rendergraph
+    m_state->frameGraph.Destroy();
 
     // Destroy our test text
     m_state->testText.Destroy();
@@ -666,6 +609,29 @@ void TestEnv::OnLibraryLoad()
     });
     m_state->registeredCallbacks.PushBack(cb);
 
+    cb = Event.Register(C3D::EventCodeSetRenderMode, [this](const u16 code, void* sender, const C3D::EventContext& context) {
+        switch (const i32 mode = context.data.i32[0])
+        {
+            case C3D::RendererViewMode::Default:
+                DEBUG_LOG("Renderer mode set to default.");
+                m_state->renderMode = C3D::RendererViewMode::Default;
+                break;
+            case C3D::RendererViewMode::Lighting:
+                DEBUG_LOG("Renderer mode set to lighting.");
+                m_state->renderMode = C3D::RendererViewMode::Lighting;
+                break;
+            case C3D::RendererViewMode::Normals:
+                DEBUG_LOG("Renderer mode set to normals.");
+                m_state->renderMode = C3D::RendererViewMode::Normals;
+                break;
+            default:
+                FATAL_LOG("Unknown render mode.");
+                break;
+        }
+        return true;
+    });
+    m_state->registeredCallbacks.PushBack(cb);
+
     m_pConsole->RegisterCommand("load_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         Event.Fire(C3D::EventCodeDebug1, this, {});
         return true;
@@ -701,26 +667,161 @@ void TestEnv::OnLibraryUnload()
     m_pConsole->UnregisterCommand("reload_scene");
 }
 
-bool TestEnv::ConfigureRenderViews() const
+bool TestEnv::ConfigureRendergraph() const
 {
-    // World View
-    RenderViewWorld* worldView = Memory.New<RenderViewWorld>(C3D::MemoryType::RenderView);
-    m_state->renderViews.PushBack(worldView);
+    if (!m_state->frameGraph.Create("FRAME_RENDERGRAPH", this))
+    {
+        ERROR_LOG("Failed to create Frame Rendergraph.");
+        return false;
+    }
 
-    // Editor World View
-    RenderViewEditorWorld* editorWorldView = Memory.New<RenderViewEditorWorld>(C3D::MemoryType::RenderView);
-    m_state->renderViews.PushBack(editorWorldView);
+    // Add our global sources
+    if (!m_state->frameGraph.AddGlobalSource("COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
+                                             C3D::RendergraphSourceOrigin::Global))
+    {
+        ERROR_LOG("Failed to add global color buffer source to Rendergraph.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddGlobalSource("DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
+                                             C3D::RendergraphSourceOrigin::Global))
+    {
+        ERROR_LOG("Failed to add global depth buffer source to Rendergraph.");
+        return false;
+    }
 
-    RenderViewWireframe* wireframeView = Memory.New<RenderViewWireframe>(C3D::MemoryType::RenderView);
-    m_state->renderViews.PushBack(wireframeView);
+    // Skybox pass
+    m_state->skyboxPass = SkyboxPass(m_pSystemsManager);
+    if (!m_state->frameGraph.AddPass("SKYBOX", &m_state->skyboxPass))
+    {
+        ERROR_LOG("Failed to add SKYBOX pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("SKYBOX", "COLOR_BUFFER"))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER sink to Skybox pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("SKYBOX", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
+                                       C3D::RendergraphSourceOrigin::Other))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER source to Skybox pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("COLOR_BUFFER", "SKYBOX", "COLOR_BUFFER"))
+    {
+        ERROR_LOG("Failed to link Global COLOR_BUFFER source to SKYBOX COLOR_BUFFER sink.");
+        return false;
+    }
 
-    // UI View
-    RenderViewUi* uiView = Memory.New<RenderViewUi>(C3D::MemoryType::RenderView);
-    m_state->renderViews.PushBack(uiView);
+    // Scene pass
+    m_state->scenePass = ScenePass(m_pSystemsManager);
+    if (!m_state->frameGraph.AddPass("SCENE", &m_state->scenePass))
+    {
+        ERROR_LOG("Failed to add SCENE pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("SCENE", "COLOR_BUFFER"))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER sink to Scene pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("SCENE", "DEPTH_BUFFER"))
+    {
+        ERROR_LOG("Failed to add DEPTH_BUFFER sink to Scene pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("SCENE", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
+                                       C3D::RendergraphSourceOrigin::Other))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER source to Scene pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("SCENE", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
+                                       C3D::RendergraphSourceOrigin::Other))
+    {
+        ERROR_LOG("Failed to add DEPTH_BUFFER source to Scene pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("SKYBOX", "COLOR_BUFFER", "SCENE", "COLOR_BUFFER"))
+    {
+        ERROR_LOG("Failed to link SKYBOX COLOR_BUFFER source to SCENE COLOR_BUFFER sink.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("DEPTH_BUFFER", "SCENE", "DEPTH_BUFFER"))
+    {
+        ERROR_LOG("Failed to link Global DEPTH_BUFFER source to SCENE DEPTH_BUFFER sink.");
+        return false;
+    }
 
-    // Pick View
-    RenderViewPick* pickView = Memory.New<RenderViewPick>(C3D::MemoryType::RenderView);
-    m_state->renderViews.PushBack(pickView);
+    // Editor pass
+    m_state->editorPass = EditorPass(m_pSystemsManager);
+    if (!m_state->frameGraph.AddPass("EDITOR", &m_state->editorPass))
+    {
+        ERROR_LOG("Failed to add EDITOR pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("EDITOR", "COLOR_BUFFER"))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER sink to Editor pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("EDITOR", "DEPTH_BUFFER"))
+    {
+        ERROR_LOG("Failed to add DEPTH_BUFFER sink to Editor pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("EDITOR", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
+                                       C3D::RendergraphSourceOrigin::Other))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER source to Editor pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("EDITOR", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
+                                       C3D::RendergraphSourceOrigin::Other))
+    {
+        ERROR_LOG("Failed to add DEPTH_BUFFER source to Editor pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("SCENE", "COLOR_BUFFER", "EDITOR", "COLOR_BUFFER"))
+    {
+        ERROR_LOG("Failed to link SCENE COLOR_BUFFER source to EDITOR COLOR_BUFFER sink.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("SCENE", "DEPTH_BUFFER", "EDITOR", "DEPTH_BUFFER"))
+    {
+        ERROR_LOG("Failed to link SCENE DEPTH_BUFFER source to EDITOR DEPTH_BUFFER sink.");
+        return false;
+    }
+
+    // UI Pass
+    m_state->uiPass = UIPass(m_pSystemsManager);
+    if (!m_state->frameGraph.AddPass("UI", &m_state->uiPass))
+    {
+        ERROR_LOG("Failed to add UI pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("UI", "COLOR_BUFFER"))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER sink to UI pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("UI", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
+                                       C3D::RendergraphSourceOrigin::Other))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER source to UI pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("EDITOR", "COLOR_BUFFER", "UI", "COLOR_BUFFER"))
+    {
+        ERROR_LOG("Failed to link Editor COLOR_BUFFER source to UI COLOR_BUFFER sink.");
+        return false;
+    }
+
+    if (!m_state->frameGraph.Finalize(m_pEngine->GetFrameAllocator()))
+    {
+        ERROR_LOG("Failed to finalize rendergraph.");
+        return false;
+    }
 
     return true;
 }
@@ -1037,8 +1138,7 @@ C3D::ApplicationState* CreateApplicationState()
     state->name               = "TestEnv";
     state->width              = 1280;
     state->height             = 720;
-    state->x                  = 2560 / 2 - 1280 / 2;
-    state->y                  = 1440 / 2 - 720 / 2;
+    state->flags              = C3D::ApplicationFlagWindowCenter;
     state->frameAllocatorSize = MebiBytes(8);
     state->appFrameDataSize   = sizeof(GameFrameData);
     return state;

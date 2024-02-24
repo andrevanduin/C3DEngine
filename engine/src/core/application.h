@@ -9,14 +9,37 @@ namespace C3D
     class Engine;
     struct FrameData;
 
+    enum ApplicationFlag : u8
+    {
+        /** @brief No flags set. */
+        ApplicationFlagNone = 0x0,
+        /** @brief Center the window horizontally. When this flag is set the x property is ignored. */
+        ApplicationFlagWindowCenterHorizontal = 0x1,
+        /** @brief Center the window vertically. When this flag is set the y property is ignored. */
+        ApplicationFlagWindowCenterVertical = 0x2,
+        /** @brief Center the window horizontally and vertically. When this flag is set the x and y property are ignored. */
+        ApplicationFlagWindowCenter = 0x4,
+        /** @brief Make the window automatically size to the entire screen during startup.
+         * When this flag is set width and height are ignored. */
+        ApplicationFlagWindowFullScreen = 0x8,
+    };
+
+    using ApplicationFlagBits = u8;
+
     struct ApplicationState
     {
         String name;
 
-        i32 x      = 0;
-        i32 y      = 0;
-        i32 width  = 0;
+        /** @brief The horizontal position of the window (can be negative for multi monitor setups). */
+        i32 x = 0;
+        /** @brief The vertical position of the window (can be negative for multi monitor setups). */
+        i32 y = 0;
+        /** @brief The width of the window. */
+        i32 width = 0;
+        /** @brief The height of the window. */
         i32 height = 0;
+        /** @brief Flags that indicate certain properties about this application. */
+        ApplicationFlagBits flags = ApplicationFlagNone;
 
         RendererPlugin* rendererPlugin = nullptr;
         FontSystemConfig fontConfig;
@@ -45,9 +68,9 @@ namespace C3D
         virtual bool OnBoot()                    = 0;
         virtual bool OnRun(FrameData& frameData) = 0;
 
-        virtual void OnUpdate(FrameData& frameData)                                    = 0;
-        virtual bool OnPrepareRenderPacket(RenderPacket& packet, FrameData& frameData) = 0;
-        virtual bool OnRender(RenderPacket& packet, FrameData& frameData)              = 0;
+        virtual void OnUpdate(FrameData& frameData)        = 0;
+        virtual bool OnPrepareRender(FrameData& frameData) = 0;
+        virtual bool OnRender(FrameData& frameData)        = 0;
 
         virtual void OnResize() = 0;
 
@@ -56,12 +79,16 @@ namespace C3D
         virtual void OnLibraryLoad()   = 0;
         virtual void OnLibraryUnload() = 0;
 
+        const SystemManager* GetSystemsManager() const { return m_pSystemsManager; }
+
         friend Engine;
 
     protected:
-        ApplicationState* m_appState           = nullptr;
+        ApplicationState* m_appState = nullptr;
+
         UIConsole* m_pConsole                  = nullptr;
         const SystemManager* m_pSystemsManager = nullptr;
+        const Engine* m_pEngine                = nullptr;
     };
 
     Application* CreateApplication();

@@ -43,7 +43,7 @@ namespace C3D
         void ResetScissor() override;
         void SetWinding(RendererWinding winding) override;
 
-        bool BeginRenderPass(RenderPass* pass, RenderTarget* target) override;
+        bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) override;
         bool EndRenderPass(RenderPass* pass) override;
 
         void DrawGeometry(const GeometryRenderData& data) override;
@@ -84,9 +84,8 @@ namespace C3D
 
         bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) override;
 
-        void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height,
-                                RenderTarget* outTarget) override;
-        void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) override;
+        void CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) override;
+        void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory) override;
 
         RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
         bool DestroyRenderPass(RenderPass* pass) override;

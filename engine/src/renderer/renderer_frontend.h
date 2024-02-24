@@ -69,12 +69,11 @@ namespace C3D
          * @brief Performs routines required to draw the frame, such as presentation.
          * @note This method should only be called if BeginFrame returned true
          *
-         * @param packet
          * @param frameData
          * @return true
          * @return false
          */
-        bool Present(const RenderPacket& packet, const FrameData& frameData) const;
+        bool Present(const FrameData& frameData) const;
 
         void SetViewport(const vec4& rect) const;
         void ResetViewport() const;
@@ -103,7 +102,7 @@ namespace C3D
 
         void DrawGeometry(const GeometryRenderData& data) const;
 
-        bool BeginRenderPass(RenderPass* pass, RenderTarget* target) const;
+        bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) const;
         bool EndRenderPass(RenderPass* pass) const;
 
         bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const;
@@ -126,9 +125,8 @@ namespace C3D
 
         bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) const;
 
-        void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height,
-                                RenderTarget* outTarget) const;
-        void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) const;
+        void CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) const;
+        void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory) const;
 
         [[nodiscard]] RenderPass* CreateRenderPass(const RenderPassConfig& config) const;
         bool DestroyRenderPass(RenderPass* pass) const;
@@ -153,9 +151,6 @@ namespace C3D
     private:
         u8 m_windowRenderTargetCount = 0;
         u32 m_frameBufferWidth = 1280, m_frameBufferHeight = 720;
-
-        bool m_resizing        = false;
-        u8 m_framesSinceResize = 0;
 
         RendererPlugin* m_backendPlugin  = nullptr;
         const Viewport* m_activeViewport = nullptr;

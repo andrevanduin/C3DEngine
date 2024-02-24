@@ -1,6 +1,7 @@
 
 #include "vulkan_renderpass.h"
 
+#include <core/frame_data.h>
 #include <core/logger.h>
 #include <core/random.h>
 #include <platform/platform.h>
@@ -195,6 +196,10 @@ namespace C3D
 
                 depthAttachmentDescriptions.PushBack(attachmentDescription);
             }
+            else
+            {
+                FATAL_LOG("Invalid attachmentConfig.type == '{}'", ToString(attachmentConfig.type));
+            }
 
             // Always push to the general array
             attachmentDescriptions.PushBack(attachmentDescription);
@@ -306,11 +311,13 @@ namespace C3D
         }
     }
 
-    void VulkanRenderPass::Begin(VulkanCommandBuffer* commandBuffer, const RenderTarget* target) const
+    void VulkanRenderPass::Begin(VulkanCommandBuffer* commandBuffer, const C3D::FrameData& frameData) const
     {
+        const auto& target = m_targets[frameData.renderTargetIndex];
+
         VkRenderPassBeginInfo beginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
         beginInfo.renderPass            = handle;
-        beginInfo.framebuffer           = static_cast<VkFramebuffer>(target->internalFrameBuffer);
+        beginInfo.framebuffer           = static_cast<VkFramebuffer>(target.internalFrameBuffer);
 
         const auto viewport = Renderer.GetActiveViewport();
         const auto rect     = viewport->GetRect2D();
@@ -342,9 +349,9 @@ namespace C3D
         }
         else
         {
-            for (u32 i = 0; i < target->attachmentCount; i++)
+            for (auto attachment : target.attachments)
             {
-                if (target->attachments[i].type == RenderTargetAttachmentType::Depth)
+                if (attachment.type == RenderTargetAttachmentType::Depth)
                 {
                     // If there is a depth attachment, make sure to add the clear count, but don't bother copying the
                     // data

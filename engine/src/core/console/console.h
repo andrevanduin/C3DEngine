@@ -4,8 +4,8 @@
 #include "containers/hash_map.h"
 #include "core/defines.h"
 #include "core/function/function.h"
-#include "renderer/render_view.h"
 #include "resources/ui_text.h"
+#include "systems/events/event_system.h"
 
 namespace C3D
 {
@@ -34,7 +34,7 @@ namespace C3D
         void OnShutDown();
 
         void OnUpdate();
-        void OnRender(UIPacketData& packet);
+        void OnPrepareRender(DynamicArray<UIText*, LinearAllocator>& texts);
 
         void RegisterCommand(const CommandName& name, const CommandCallback& func);
 

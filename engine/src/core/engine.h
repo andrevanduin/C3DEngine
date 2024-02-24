@@ -4,7 +4,6 @@
 #include "core/frame_data.h"
 #include "defines.h"
 #include "logger.h"
-#include "renderer/render_view.h"
 #include "renderer/renderer_types.h"
 #include "systems/fonts/font_system.h"
 
@@ -20,6 +19,11 @@ namespace C3D
         bool suspended   = false;
         bool initialized = false;
 
+        /** @brief Indicates if the window is currently being resized. */
+        bool resizing = false;
+        /** @brief The number of frames since last resize. Only set if resizing == true; Otherwise it's 0. */
+        u8 framesSinceResize = 0;
+
         f64 lastTime = 0;
     };
 
@@ -28,14 +32,14 @@ namespace C3D
     public:
         explicit Engine(Application* pApplication, UIConsole* pConsole);
 
-        void Init();
+        bool Init();
 
         void Run();
         void Quit();
+        void Shutdown();
 
         void OnUpdate();
-
-        void OnResize(u32 width, u32 height) const;
+        void OnResize(u32 width, u32 height);
 
         void GetFrameBufferSize(u32* width, u32* height) const;
 
@@ -43,15 +47,15 @@ namespace C3D
 
         void OnApplicationLibraryReload(Application* app);
 
-        const SystemManager* GetSystemsManager() { return &m_systemsManager; }
+        const SystemManager* GetSystemsManager() const { return &m_systemsManager; }
+
+        const LinearAllocator* GetFrameAllocator() const { return &m_frameAllocator; };
 
     protected:
         Application* m_application;
         UIConsole* m_pConsole;
 
     private:
-        void Shutdown();
-
         bool OnResizeEvent(u16 code, void* sender, const EventContext& context);
         bool OnQuitEvent(u16 code, void* sender, const EventContext& context);
 
@@ -64,7 +68,7 @@ namespace C3D
         SystemManager m_systemsManager;
         /** @brief Allocator used for allocating frame data. Gets cleared on every frame. */
         LinearAllocator m_frameAllocator;
-        /* @brief The data that is relevant for every frame. */
+        /** @brief The data that is relevant for every frame. */
         FrameData m_frameData;
         /** @brief A pointer to the systems manager (just used to ensure we can make macro calls in the engine.cpp). */
         const SystemManager* m_pSystemsManager;

@@ -1,9 +1,9 @@
 
 version = 1
-name = Shader.Builtin.Color3DShader
+name = Shader.Builtin.Color3D
 renderPass = RenderPass.Builtin.World
 stages = vertex, fragment
-stageFiles = Builtin.Color3DShader.vert.spv, Builtin.Color3DShader.frag.spv
+stageFiles = Builtin.Color3D.vert.spv, Builtin.Color3D.frag.spv
 depthTest = true
 depthWrite = true
 topology = lineList, triangleList

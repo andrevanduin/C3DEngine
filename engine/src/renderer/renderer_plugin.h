@@ -56,8 +56,8 @@ namespace C3D
         /** @brief Sets the Renderer's vertex winding direction. */
         virtual void SetWinding(RendererWinding winding) = 0;
 
-        virtual bool BeginRenderPass(RenderPass* pass, RenderTarget* target) = 0;
-        virtual bool EndRenderPass(RenderPass* pass)                         = 0;
+        virtual bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) = 0;
+        virtual bool EndRenderPass(RenderPass* pass)                                    = 0;
 
         virtual void CreateTexture(const u8* pixels, Texture* texture) = 0;
         virtual void CreateWritableTexture(Texture* texture)           = 0;
@@ -95,9 +95,8 @@ namespace C3D
 
         virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) = 0;
 
-        virtual void CreateRenderTarget(u8 attachmentCount, RenderTargetAttachment* attachments, RenderPass* pass, u32 width, u32 height,
-                                        RenderTarget* outTarget)                        = 0;
-        virtual void DestroyRenderTarget(RenderTarget* target, bool freeInternalMemory) = 0;
+        virtual void CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) = 0;
+        virtual void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory)                = 0;
 
         virtual RenderPass* CreateRenderPass(const RenderPassConfig& config) = 0;
         virtual bool DestroyRenderPass(RenderPass* pass)                     = 0;

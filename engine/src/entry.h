@@ -30,13 +30,14 @@ int main(int argc, char** argv)
     const auto engine = Memory.New<C3D::Engine>(C3D::MemoryType::Engine, application, &console);
 
     // Initialize our engine
-    engine->Init();
+    if (engine->Init())
+    {
+        // Init our application
+        InitApplication(engine);
 
-    // Init our application
-    InitApplication(engine);
-
-    // Run our engine's game loop
-    engine->Run();
+        // Run our engine's game loop
+        engine->Run();
+    }
 
     // Cleanup our engine
     Memory.Delete(engine);

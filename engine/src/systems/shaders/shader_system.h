@@ -54,8 +54,8 @@ namespace C3D
         bool AddSampler(Shader& shader, const ShaderUniformConfig& config);
 
         bool AddUniform(Shader& shader, const ShaderUniformConfig& config);
-        bool AddUniform(Shader& shader, const String& name, u16 size, ShaderUniformType type, ShaderScope scope,
-                        u16 setLocation, bool isSampler);
+        bool AddUniform(Shader& shader, const String& name, u16 size, ShaderUniformType type, ShaderScope scope, u16 setLocation,
+                        bool isSampler);
 
         void ShaderDestroy(Shader& shader) const;
 

@@ -55,7 +55,7 @@ namespace C3D
         return true;
     }
 
-    void* DynamicAllocator::AllocateBlock(const MemoryType type, u64 size, const u16 alignment)
+    void* DynamicAllocator::AllocateBlock(const MemoryType type, u64 size, const u16 alignment) const
     {
         std::lock_guard allocGuard(m_mutex);
 
@@ -65,7 +65,7 @@ namespace C3D
             return nullptr;
         }
 
-        /* NOTE: Our total required size for an allocation is as made up of the following:
+        /* NOTE: Our total required size for an allocation is made up of the following:
          *  - The user's requested size
          *	- The alignment required for the requested size
          *	- The size of the Alloc header
@@ -124,7 +124,7 @@ namespace C3D
         throw std::bad_alloc();
     }
 
-    void DynamicAllocator::Free(void* block)
+    void DynamicAllocator::Free(void* block) const
     {
         std::lock_guard freeGuard(m_mutex);
 

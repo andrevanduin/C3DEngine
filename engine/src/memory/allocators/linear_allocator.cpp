@@ -53,7 +53,7 @@ namespace C3D
         m_ownsMemory  = false;
     }
 
-    void* LinearAllocator::AllocateBlock(const MemoryType type, const u64 size, u16 alignment)
+    void* LinearAllocator::AllocateBlock(const MemoryType type, const u64 size, u16 alignment) const
     {
         if (m_memoryBlock)
         {
@@ -75,7 +75,7 @@ namespace C3D
         return nullptr;
     }
 
-    void LinearAllocator::Free(void* block) {}
+    void LinearAllocator::Free(void* block) const {}
 
     void LinearAllocator::FreeAll()
     {

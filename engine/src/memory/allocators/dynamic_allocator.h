@@ -34,9 +34,9 @@ namespace C3D
 
         bool Destroy();
 
-        void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override;
+        void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) const override;
 
-        void Free(void* block) override;
+        void Free(void* block) const override;
 
         /** @brief Obtains the size and alignment of a given block of memory.
          * Will fail if the provided block of memory is invalid.
@@ -67,7 +67,7 @@ namespace C3D
         // A pointer to the actual block of memory that this allocator manages
         char* m_memory = nullptr;
         // A mutex to ensure allocations happen in a thread-safe manor
-        std::mutex m_mutex;
+        mutable std::mutex m_mutex;
     };
 
     constexpr u64 DynamicAllocator::GetMemoryRequirements(const u64 usableSize)

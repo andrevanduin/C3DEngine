@@ -20,7 +20,7 @@ namespace C3D
 
         void Destroy() { FreeAll(); }
 
-        void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) override
+        void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) const override
         {
             if (m_allocated + size > Size)
             {
@@ -41,7 +41,7 @@ namespace C3D
             return dataPtr;
         }
 
-        void Free(void* block) override {}
+        void Free(void* block) const override {}
 
         void FreeAll()
         {
@@ -61,7 +61,7 @@ namespace C3D
         }
 
     private:
-        Array<char, Size> m_memory;
-        u64 m_allocated = 0;
+        mutable Array<char, Size> m_memory;
+        mutable u64 m_allocated = 0;
     };
 }  // namespace C3D

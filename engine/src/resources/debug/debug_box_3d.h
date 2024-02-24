@@ -38,7 +38,7 @@ namespace C3D
 
         mat4 GetModel() const { return m_transform.GetWorld(); }
 
-        Geometry* GetGeometry() { return &m_geometry; }
+        const Geometry* GetGeometry() const { return &m_geometry; }
 
         u32 GetUniqueId() const { return m_uniqueId; }
 
