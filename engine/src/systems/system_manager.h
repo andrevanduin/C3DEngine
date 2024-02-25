@@ -20,6 +20,7 @@
 #define Fonts m_pSystemsManager->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
 #define CVars m_pSystemsManager->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
 #define OS m_pSystemsManager->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType)
+#define UI2D m_pSystemsManager->GetSystem<C3D::UI2DSystem>(C3D::SystemType::UI2DSystemType)
 
 namespace C3D
 {
@@ -39,6 +40,7 @@ namespace C3D
         JobSystemType,
         CVarSystemType,
         PlatformSystemType,
+        UI2DSystemType,
         MaxKnownSystemType
     };
 

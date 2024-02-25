@@ -56,7 +56,7 @@ namespace C3D
 
         bool OnInit() override;
 
-        void OnUpdate(const FrameData& frameData) override;
+        bool OnUpdate(const FrameData& frameData) override;
 
         void ProcessKey(Keys key, InputState state);
         void ProcessButton(u8 button, InputState state);
@@ -92,7 +92,7 @@ namespace C3D
         MouseState m_mouseCurrent  = {};
         MouseState m_mousePrevious = {};
 
-        u8 m_downKeys[MAX_HELD_KEYS] = {};
+        u8 m_downKeys[MAX_HELD_KEYS]       = {};
         u8 m_downButtons[MAX_HELD_BUTTONS] = {};
     };
 }  // namespace C3D

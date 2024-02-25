@@ -36,9 +36,9 @@ namespace C3D
         return true;
     }
 
-    void InputSystem::OnUpdate(const FrameData& frameData)
+    bool InputSystem::OnUpdate(const FrameData& frameData)
     {
-        if (!m_initialized) return;
+        if (!m_initialized) return true;
 
         for (auto& index : m_downButtons)
         {
@@ -93,6 +93,7 @@ namespace C3D
 
         m_keyboardPrevious = m_keyboardCurrent;
         m_mousePrevious    = m_mouseCurrent;
+        return true;
     }
 
     void InputSystem::ProcessKey(const Keys key, const InputState state)

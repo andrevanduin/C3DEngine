@@ -30,7 +30,7 @@ namespace C3D
         bool OnInit(const JobSystemConfig& config) override;
         void OnShutdown() override;
 
-        void OnUpdate(const FrameData& frameData) override;
+        bool OnUpdate(const FrameData& frameData) override;
 
         C3D_API void Submit(JobInfo&& jobInfo);
 

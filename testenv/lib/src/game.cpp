@@ -61,13 +61,6 @@ bool TestEnv::OnBoot()
     m_state->fontConfig.maxBitmapFontCount = 101;
     m_state->fontConfig.maxSystemFontCount = 101;
 
-    /* Config our render views. TODO: Read this from a file
-    if (!ConfigureRenderViews())
-    {
-        ERROR_LOG("Failed to create render views.");
-        return false;
-    }*/
-
     if (!ConfigureRendergraph())
     {
         ERROR_LOG("Failed to create Rendergraph.");

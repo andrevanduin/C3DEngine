@@ -66,7 +66,7 @@ namespace C3D
         m_highPriorityQueue.Destroy();
     }
 
-    void JobSystem::OnUpdate(const FrameData& frameData)
+    bool JobSystem::OnUpdate(const FrameData& frameData)
     {
         // Process all our queues
         ProcessQueue(m_highPriorityQueue, m_highPriorityMutex);
@@ -92,6 +92,8 @@ namespace C3D
                 m_pendingResults.Erase(i);
             }
         }
+
+        return true;
     }
 
     void JobSystem::Submit(JobInfo&& jobInfo)

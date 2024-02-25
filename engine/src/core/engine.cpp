@@ -8,6 +8,7 @@
 #include "metrics/metrics.h"
 #include "platform/platform.h"
 #include "renderer/renderer_frontend.h"
+#include "systems/UI/2D/ui2d_system.h"
 #include "systems/cameras/camera_system.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/events/event_system.h"
@@ -159,10 +160,12 @@ namespace C3D
 
         constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
         constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
+        constexpr UI2DSystemConfig ui2dSystemConfig{};
 
         m_systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System
         m_systemsManager.RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig);  // Geometry System
         m_systemsManager.RegisterSystem<LightSystem>(LightSystemType);                              // Light System
+        m_systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);              // UI2D System
 
         m_state.initialized = true;
         m_state.lastTime    = 0;
