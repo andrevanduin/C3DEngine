@@ -3,7 +3,7 @@ version = 1.0
 name = Shader.Builtin.UI
 renderPass = RenderPass.Builtin.UI
 stages = vertex, fragment
-stageFiles = Builtin.UIShader.vert.spv, Builtin.UIShader.frag.spv
+stageFiles = shaders/Builtin.UIShader.vert, shaders/Builtin.UIShader.frag
 depthTest  = false
 depthWrite = false
 

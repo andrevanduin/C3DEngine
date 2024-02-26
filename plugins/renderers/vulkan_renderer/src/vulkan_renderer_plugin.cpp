@@ -9,9 +9,11 @@
 #include <renderer/geometry.h>
 #include <renderer/renderer_frontend.h>
 #include <renderer/vertex.h>
-#include <resources/loaders/binary_loader.h>
+#include <resources/loaders/text_loader.h>
 #include <resources/shaders/shader.h>
 #include <resources/textures/texture.h>
+#include <shaderc/shaderc.h>
+#include <shaderc/status.h>
 #include <systems/events/event_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
@@ -146,6 +148,13 @@ namespace C3D
             geometry.id = INVALID_ID;
         }
 
+        m_context.shaderCompiler = shaderc_compiler_initialize();
+        if (!m_context.shaderCompiler)
+        {
+            ERROR_LOG("Failed to initialize shaderc compiler.");
+            return false;
+        }
+
         INFO_LOG("Successfully Initialized.");
         return true;
     }
@@ -156,6 +165,12 @@ namespace C3D
 
         // Wait for our device to be finished with it's current frame
         m_context.device.WaitIdle();
+
+        if (m_context.shaderCompiler)
+        {
+            shaderc_compiler_release(m_context.shaderCompiler);
+            m_context.shaderCompiler = nullptr;
+        }
 
         // Destroy stuff in opposite order of creation
         m_context.stagingBuffer.Destroy();
@@ -1250,7 +1265,7 @@ namespace C3D
 
         for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
         {
-            if (!CreateModule(vulkanShader->config.stages[i], &vulkanShader->stages[i]))
+            if (!CreateShaderModule(vulkanShader->config.stages[i], &vulkanShader->stages[i]))
             {
                 ERROR_LOG("Unable to create '{}' shader module for '{}'. Shader will be destroyed.",
                           vulkanShader->config.stages[i].fileName, shader.name);
@@ -2010,26 +2025,108 @@ namespace C3D
         return true;
     }
 
-    bool VulkanRendererPlugin::CreateModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const
+    bool VulkanRendererPlugin::CreateShaderModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const
     {
         // Read the resource
-        BinaryResource res{};
-        if (!Resources.Load(config.fileName.Data(), res))
+        TextResource res{};
+        if (!Resources.Load(config.fileName, res))
         {
             ERROR_LOG("Unable to read Shader Module: '{}'.", config.fileName);
             return false;
         }
 
-        shaderStage->createInfo          = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-        shaderStage->createInfo.codeSize = res.size;
-        shaderStage->createInfo.pCode    = reinterpret_cast<u32*>(res.data);
+        shaderc_shader_kind shaderKind;
+        switch (config.stage)
+        {
+            case VK_SHADER_STAGE_VERTEX_BIT:
+                shaderKind = shaderc_glsl_default_vertex_shader;
+                break;
+            case VK_SHADER_STAGE_FRAGMENT_BIT:
+                shaderKind = shaderc_glsl_default_fragment_shader;
+                break;
+            case VK_SHADER_STAGE_COMPUTE_BIT:
+                shaderKind = shaderc_glsl_default_compute_shader;
+                break;
+            case VK_SHADER_STAGE_GEOMETRY_BIT:
+                shaderKind = shaderc_glsl_default_geometry_shader;
+                break;
+            default:
+                ERROR_LOG("Unsupported shader kind. Unable to create ShaderModule.");
+                return false;
+        }
 
-        VK_CHECK(vkCreateShaderModule(m_context.device.GetLogical(), &shaderStage->createInfo, m_context.allocator, &shaderStage->handle));
+        INFO_LOG("Compiling: '{}' Stage for ShaderModule: '{}'.", ToString(config.stage), config.fileName);
 
-        VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SHADER_MODULE, shaderStage->handle, res.name);
+        // Attempt to compile the shader
+        shaderc_compile_options_t compileOptions = shaderc_compile_options_initialize();
+        if (!compileOptions)
+        {
+            ERROR_LOG("Failed to initialize compile options for ShaderModuel: '{}'.", config.fileName);
+            return false;
+        }
+
+        shaderc_compile_options_set_optimization_level(compileOptions, shaderc_optimization_level_performance);
+
+        shaderc_compilation_result_t compilationResult = shaderc_compile_into_spv(
+            m_context.shaderCompiler, res.text.Data(), res.text.Size(), shaderKind, config.fileName.Data(), "main", compileOptions);
 
         // Release our resource
         Resources.Unload(res);
+
+        if (!compilationResult)
+        {
+            ERROR_LOG("Unknown error while trying to compile stage for ShaderModule: '{}'.", config.fileName);
+            return false;
+        }
+
+        shaderc_compilation_status status = shaderc_result_get_compilation_status(compilationResult);
+
+        // Handle errors if there are any
+        if (status != shaderc_compilation_status_success)
+        {
+            const char* errorMessage = shaderc_result_get_error_message(compilationResult);
+            u64 errorCount           = shaderc_result_get_num_errors(compilationResult);
+
+            ERROR_LOG("Compiling ShaderModule: '{}' failed with {} error(s).", config.fileName, errorCount);
+            ERROR_LOG("Errors:\n{}", errorMessage);
+
+            shaderc_result_release(compilationResult);
+            return false;
+        }
+
+        // Output warnings if there are any.
+        u64 warningCount = shaderc_result_get_num_warnings(compilationResult);
+        if (warningCount > 0)
+        {
+            // NOTE: Not sure this it the correct way to obtain warnings.
+            const char* warnings = shaderc_result_get_error_message(compilationResult);
+            WARN_LOG("Found: {} warnings while compiling ShaderModule: '{}':\n{}", warningCount, config.fileName, warnings);
+        }
+
+        // Extract the data from the result.
+        const char* bytes = shaderc_result_get_bytes(compilationResult);
+        u64 byteCount     = shaderc_result_get_length(compilationResult);
+
+        // Take a copy of the result data and cast it to a u32* as is required by Vulkan.
+        u32* code = Memory.Allocate<u32>(C3D::MemoryType::RenderSystem, byteCount);
+        std::memcpy(code, bytes, byteCount);
+
+        // Release the compilation result.
+        shaderc_result_release(compilationResult);
+
+        INFO_LOG("Successfully compiled: '{}' Stage consisting of {} bytes for ShaderModule: '{}'.", ToString(config.stage), byteCount,
+                 config.fileName);
+
+        shaderStage->createInfo          = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+        shaderStage->createInfo.codeSize = byteCount;
+        shaderStage->createInfo.pCode    = code;
+
+        VK_CHECK(vkCreateShaderModule(m_context.device.GetLogical(), &shaderStage->createInfo, m_context.allocator, &shaderStage->handle));
+
+        // Release our allocated memory again since the ShaderModule has been created
+        Memory.Free(code);
+
+        VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SHADER_MODULE, shaderStage->handle, res.name);
 
         // Shader stage info
         shaderStage->shaderStageCreateInfo        = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };

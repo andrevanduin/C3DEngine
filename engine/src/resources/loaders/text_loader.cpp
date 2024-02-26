@@ -39,7 +39,6 @@ namespace C3D
             return false;
         }
 
-        // TODO: should be using an allocator here
         resource.text.Reserve(fileSize);
         resource.name = name;
 

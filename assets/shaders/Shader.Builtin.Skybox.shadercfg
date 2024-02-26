@@ -4,7 +4,7 @@ cullMode = front
 name = Shader.Builtin.Skybox
 renderPass = RenderPass.Builtin.Skybox
 stages = vertex, fragment
-stageFiles = Builtin.SkyboxShader.vert.spv, Builtin.SkyboxShader.frag.spv
+stageFiles = shaders/Builtin.SkyboxShader.vert, shaders/Builtin.SkyboxShader.frag
 depthTest  = false
 depthWrite = false
 

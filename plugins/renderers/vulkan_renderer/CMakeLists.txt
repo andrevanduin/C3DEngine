@@ -12,7 +12,10 @@ target_compile_definitions(C3DVulkanRenderer PUBLIC C3D_EXPORT)
 target_link_libraries(C3DVulkanRenderer PUBLIC C3DEngine)
 
 find_package(Vulkan REQUIRED)
-target_link_libraries(C3DVulkanRenderer PUBLIC Vulkan::Vulkan)
+set(SHADERC_LIB "$ENV{VULKAN_SDK}/Lib/shaderc_shared.lib")
+
+target_link_libraries(C3DVulkanRenderer PUBLIC ${Vulkan_LIBRARIES} ${SHADERC_LIB})
 
 target_include_directories(C3DVulkanRenderer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_include_directories(C3DVulkanRenderer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(C3DVulkanRenderer PUBLIC ${Vulkan_INCLUDE_DIRS})

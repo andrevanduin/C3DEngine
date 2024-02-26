@@ -138,7 +138,10 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
             if (mesh.HasDebugBox())
             {
                 const auto box = mesh.GetDebugBox();
-                m_debugGeometries.EmplaceBack(box->GetModel(), box->GetGeometry(), box->GetUniqueId());
+                if (box->IsValid())
+                {
+                    m_debugGeometries.EmplaceBack(box->GetModel(), box->GetGeometry(), box->GetUniqueId());
+                }
             }
 
             for (const auto geometry : mesh.geometries)
@@ -174,7 +177,11 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
     // Debug geometry
     // Grid
     constexpr auto identity = mat4(1.0f);
-    m_debugGeometries.EmplaceBack(identity, scene.m_grid.GetGeometry(), INVALID_ID);
+    auto gridGeometry       = scene.m_grid.GetGeometry();
+    if (gridGeometry->generation != INVALID_ID_U16)
+    {
+        m_debugGeometries.EmplaceBack(identity, gridGeometry, INVALID_ID);
+    }
 
     // TODO: Directional lights
 
@@ -184,7 +191,7 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
         auto light = Lights.GetPointLight(name);
         auto debug = static_cast<LightDebugData*>(light->debugData);
 
-        if (debug && debug->box.IsValid())
+        if (debug)
         {
             m_debugGeometries.EmplaceBack(debug->box.GetModel(), debug->box.GetGeometry(), debug->box.GetUniqueId());
         }
@@ -323,6 +330,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
 
         // HACK: This should be handled better
         m_colorShader->frameNumber = frameData.frameNumber;
+        m_colorShader->drawIndex   = frameData.drawIndex;
     }
 
     if (!Renderer.EndRenderPass(m_pass))
