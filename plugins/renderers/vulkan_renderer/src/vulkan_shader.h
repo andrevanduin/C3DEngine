@@ -183,4 +183,21 @@ namespace C3D
         /** @brief The number of local non-sampler uniforms. */
         u8 localUniformCount = 0;
     };
+
+    static const char* ToString(VkShaderStageFlagBits stage)
+    {
+        switch (stage)
+        {
+            case VK_SHADER_STAGE_VERTEX_BIT:
+                return "VERTEX";
+            case VK_SHADER_STAGE_FRAGMENT_BIT:
+                return "FRAGMENT";
+            case VK_SHADER_STAGE_COMPUTE_BIT:
+                return "COMPUTE";
+            case VK_SHADER_STAGE_GEOMETRY_BIT:
+                return "GEOMETRY";
+            default:
+                return "UNKNOWN";
+        }
+    }
 }  // namespace C3D

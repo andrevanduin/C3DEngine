@@ -3,7 +3,7 @@ version= 1.0
 name = Shader.Builtin.Material
 renderPass = RenderPass.Builtin.World
 stages = vertex, fragment
-stageFiles = Builtin.MaterialShader.vert.spv, Builtin.MaterialShader.frag.spv
+stageFiles = shaders/Builtin.MaterialShader.vert, shaders/Builtin.MaterialShader.frag
 depthTest  = true
 depthWrite = true
 

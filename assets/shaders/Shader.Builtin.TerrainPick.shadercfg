@@ -3,7 +3,7 @@ version = 1.0
 name = Shader.Builtin.TerrainPick
 renderPass = RenderPass.Builtin.Pick
 stages = vertex, fragment
-stageFiles = Builtin.TerrainPickShader.vert.spv, Builtin.TerrainPickShader.frag.spv
+stageFiles = shaders/Builtin.TerrainPickShader.vert, shaders/Builtin.TerrainPickShader.frag
 depthTest = true
 depthWrite = true
 
