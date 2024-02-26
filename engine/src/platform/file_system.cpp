@@ -134,8 +134,8 @@ namespace C3D
         if (!isValid) return false;
         // If we have no size yet we get it
         if (m_size == 0) Size();
-        // We make sure our String is large enough to store all the bytes
-        outChars.Reserve(m_size);
+        // Prepare our string to accept the chars (this sets size, capacity and adds a \0 terminator)
+        outChars.PrepareForReadFromFile(m_size + 1);
         // Read the data
         m_file.read(outChars.Data(), static_cast<std::streamsize>(m_size));
 

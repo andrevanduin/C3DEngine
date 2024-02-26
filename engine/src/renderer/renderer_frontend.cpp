@@ -93,12 +93,12 @@ namespace C3D
 
     bool RenderSystem::Present(const FrameData& frameData) const
     {
-        bool result = m_backendPlugin->Present(frameData);
-        if (!result)
+        if (!m_backendPlugin->Present(frameData))
         {
             ERROR_LOG("Failed to present. Application is shutting down.");
+            return false;
         }
-        return result;
+        return true;
     }
 
     void RenderSystem::SetViewport(const vec4& rect) const { m_backendPlugin->SetViewport(rect); }

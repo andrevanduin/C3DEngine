@@ -415,7 +415,7 @@ namespace C3D
         {
             // Reserve enough space for the incoming text
             Reserve(capacity);
-            // Set the size so we can properly reaqd in the content from a file
+            // Set the size so we can properly read in the content from a file
             m_size = capacity - 1;
             // Ensure our string is still null-terminated
             m_data[m_size] = '\0';

@@ -14,6 +14,8 @@
         C3D_ASSERT((expr) == VK_SUCCESS) \
     }
 
+struct shaderc_compiler;
+
 namespace C3D
 {
     constexpr auto VULKAN_MAX_GEOMETRY_COUNT = 4096;
@@ -107,6 +109,9 @@ namespace C3D
 
         /** @brief A pointer to the currently bound shader. */
         const Shader* boundShader;
+
+        /** @brief The ShaderC lib to dynamically compile vulkan shaders. */
+        shaderc_compiler* shaderCompiler;
 
         /** @brief A reusable staging buffer to transfer data from a resource to the GPU-only buffer. */
         mutable VulkanBuffer stagingBuffer = VulkanBuffer(this, "VULKAN_STAGING_BUFFER");

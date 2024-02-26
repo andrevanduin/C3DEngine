@@ -3,7 +3,7 @@ version = 1.0
 name = Shader.Builtin.Terrain
 renderPass = RenderPass.Builtin.World
 stages = vertex, fragment
-stageFiles = Builtin.TerrainShader.vert.spv, Builtin.TerrainShader.frag.spv
+stageFiles = shaders/Builtin.TerrainShader.vert, shaders/Builtin.TerrainShader.frag
 depthTest  = true
 depthWrite = true
 

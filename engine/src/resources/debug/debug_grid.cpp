@@ -54,8 +54,7 @@ namespace C3D
 
         // Two vertices per line, one line per tile in each direction, plus one in the middle for each direction.
         // And two extra for the third axis.
-        const auto vertexCount =
-            (m_tileCountDim0 * 2 + 1) * 2 + (m_tileCountDim1 * 2 + 1) * 2 + (m_useThirdAxis ? 2 : 0);
+        const auto vertexCount = (m_tileCountDim0 * 2 + 1) * 2 + (m_tileCountDim1 * 2 + 1) * 2 + (m_useThirdAxis ? 2 : 0);
         m_vertices.Resize(vertexCount);
 
         return true;
@@ -176,8 +175,7 @@ namespace C3D
 
     bool DebugGrid::Load()
     {
-        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
-                                     0))
+        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0, 0))
         {
             Logger::Error("[DEBUG_GRID] - Load() - Failed to create geometry.");
             return false;
@@ -189,6 +187,7 @@ namespace C3D
             return false;
         }
 
+        m_geometry.generation++;
         return true;
     }
 

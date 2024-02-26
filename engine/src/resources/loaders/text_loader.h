@@ -10,7 +10,7 @@ namespace C3D
     };
 
     template <>
-    class ResourceLoader<TextResource> final : public IResourceLoader
+    class C3D_API ResourceLoader<TextResource> final : public IResourceLoader
     {
     public:
         explicit ResourceLoader(const SystemManager* pSystemsManager);
