@@ -56,7 +56,7 @@ namespace C3D
                 do
                 {
                     m_index++;
-                } while (m_index < m_ecs->m_entities.Size() && IsValid());
+                } while (m_index < m_ecs->m_entities.Size() && !IsValid());
                 return *this;
             }
 

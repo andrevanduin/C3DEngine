@@ -40,6 +40,14 @@ namespace C3D
         vec3 max = { 0, 0, 0 };
     };
 
+    struct Bounds
+    {
+        f32 x = 0.0f;
+        f32 y = 0.0f;
+        f32 width = 0.0f;
+        f32 height = 0.0f;
+    };
+
     struct Sphere
     {
         vec3 center;

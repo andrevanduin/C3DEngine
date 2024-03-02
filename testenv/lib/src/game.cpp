@@ -190,7 +190,8 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 
     m_state->texts.SetAllocator(frameData.allocator);
 
-    UI2D.AddPanel(512.0f, 512.0f);
+    UI2D.AddPanel(256, 512, 32, 32);
+    UI2D.AddButton(300, 80);
 
     return true;
 }

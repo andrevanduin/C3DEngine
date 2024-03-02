@@ -167,6 +167,10 @@ namespace C3D
                 Event.Fire(EventCodeMouseDraggedEnd, this, context);
                 currentButton.inDrag = false;
             }
+            else
+            {
+                Event.Fire(EventCodeButtonClicked, this, context);
+            }
         }
     }
 

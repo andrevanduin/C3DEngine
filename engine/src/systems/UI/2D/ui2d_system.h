@@ -5,9 +5,11 @@
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
 #include "core/ecs/ecs.h"
+#include "core/events/event_context.h"
 #include "memory/allocators/dynamic_allocator.h"
 #include "renderer/rendergraph/rendergraph_pass.h"
 #include "resources/textures/texture_map.h"
+#include "systems/events/event_system.h"
 #include "systems/system.h"
 
 namespace C3D
@@ -36,28 +38,18 @@ namespace C3D
         bool PrepareFrame(const FrameData& frameData, Viewport* viewport, Camera* camera, UIMesh* meshes,
                           const DynamicArray<UIText*, LinearAllocator>& texts);
 
-        EntityID AddPanel(f32 width, f32 height);
+        EntityID AddPanel(u16 width, u16 height, u16 cornerWidth, u16 cornerHeight);
+        EntityID AddButton(u16 width, u16 height);
 
         UI2DPass* GetPass() { return &m_pass; }
 
         void OnShutdown() override;
 
     private:
-        /** @brief The width and height of the entire nine slice in pixels. */
-        u16vec2 size;
-        /** @brief The width and height of the actual corner in pixels. */
-        u16vec2 cornerSize;
-        /** @brief The x and y min values in the atlas. */
-        u16vec2 atlasMin;
-        /** @brief The x and y max values in the atlas. */
-        u16vec2 atlasMax;
-        /** @brief The size of the atlas. */
-        u16vec2 atlasSize;
-        /** @brief The width and height of the corner in the atlas. */
-        u16vec2 cornerAtlasSize;
-
-        void AddNineSlice(EntityID entity, const u16vec2& size, const u16vec2& cornerSize, const u16vec2& atlasSize,
-                          const u16vec2& cornerAtlasSize, const u16vec2& atlasMin, const u16vec2& atlasMax);
+        /** @brief Handles OnClick events for all the components managed by the UI2D System.
+         * @return True if OnClick event is handled; false otherwise
+         */
+        bool OnClick(const EventContext& context);
 
         UI2DPass m_pass;
         Shader* m_shader;
@@ -65,6 +57,8 @@ namespace C3D
         DynamicArray<UIRenderData, LinearAllocator> m_renderData;
 
         TextureMap m_textureAtlas;
+
+        RegisteredEventCallback m_onClickEventRegisteredCallback;
 
         ECS m_ecs;
     };

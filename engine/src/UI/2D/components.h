@@ -12,7 +12,7 @@ namespace C3D
 {
     namespace UI_2D
     {
-        constexpr u32 COMPONENT_COUNT = 7;
+        constexpr u32 COMPONENT_COUNT = 8;
 
         struct IDComponent
         {
@@ -78,6 +78,13 @@ namespace C3D
             u16vec2 cornerAtlasSize;
 
             constexpr static ComponentID GetId() { return 6; }
+        };
+
+        struct ClickableComponent
+        {
+            Bounds bounds;
+
+            constexpr static ComponentID GetId() { return 7; }
         };
 
     }  // namespace UI_2D

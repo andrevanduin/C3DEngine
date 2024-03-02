@@ -157,7 +157,7 @@ namespace C3D::GeometryUtils
     {
         UIGeometryConfig config = {};
         config.vertices.Resize(4);
-        config.indices.Resize(6);
+        config.indices.Reserve(6);
 
         config.materialName = "";
         config.name         = name;
@@ -200,21 +200,22 @@ namespace C3D::GeometryUtils
         /** Create a geometry config for our nine slice which will look as follows
          * The 9 different quads are from here on refered to by the letters shown below.
          *
-         *  @ = vertex
-         *  - and | = edge
+         *  01       == vertex
+         *  - and || == edge
          *
-         * @ - @ - - - @ - @
-         * | A |   B   | C |
-         * @ - @ - - - @ - @
-         * | D |   E   | F |
-         * |   |       |   |
-         * @ - @ - - - @ - @
-         * | G |   H   | I |
-         * @ - @ - - - @ - @
+         * 00 - 01 - - - 02 - 03
+         * || A ||   B   || C ||
+         * 04 - 05 - - - 06 - 07
+         * ||   ||       ||   ||
+         * || D ||   E   || F ||
+         * ||   ||       ||   ||
+         * 08 - 09 - - - 10 - 11
+         * || G ||   H   || I ||
+         * 12 - 13 - - - 14 - 15
          */
         UIGeometryConfig config = {};
-        config.vertices.Resize(9 * 4);
-        config.indices.Resize(9 * 6);
+        config.vertices.Resize(16);
+        config.indices.Reserve(9 * 6);
 
         config.materialName = "";
         config.name         = name;
@@ -235,264 +236,134 @@ namespace C3D::GeometryUtils
 
         // Corner A
         const f32 aUMin = atlasMinU;
-        const f32 aVMin = atlasMinV;
         const f32 aUMax = atlasMinU + cornerAtlasSizeU;
-        const f32 aVMax = atlasMinV + cornerAtlasSizeV;
 
         // Corner C
         const f32 cUMin = atlasMaxU - cornerAtlasSizeU;
-        const f32 cVMin = atlasMinV;
         const f32 cUMax = atlasMaxU;
-        const f32 cVMax = atlasMinV + cornerAtlasSizeV;
 
-        // B
-        const f32 bUMin = aUMax;
-        const f32 bVMin = atlasMinV;
-        const f32 bUMax = cUMin;
-        const f32 bVMax = atlasMinV + cornerAtlasSizeV;
+        // Corner A + C
+        const f32 acVMin = atlasMinV;
+        const f32 acVMax = atlasMinV + cornerAtlasSizeV;
 
-        // D
-        const f32 dUMin = atlasMinU;
-        const f32 dVMin = atlasMinV + cornerAtlasSizeV;
-        const f32 dUMax = atlasMinU + cornerAtlasSizeU;
-        const f32 dVMax = atlasMaxV - cornerAtlasSizeV;
-
-        // E
-        const f32 eUMin = cornerAtlasSizeU;
-        const f32 eVMin = cornerAtlasSizeV;
-        const f32 eUMax = atlasMaxU - cornerAtlasSizeU;
-        const f32 eVMax = atlasMaxV - cornerAtlasSizeV;
-
-        // F
-        const f32 fUMin = atlasMaxU - cornerAtlasSizeU;
-        const f32 fVMin = cornerAtlasSizeV;
-        const f32 fUMax = atlasMaxU;
-        const f32 fVMax = atlasMaxV - cornerAtlasSizeV;
-
-        // G
+        // Corner G
         const f32 gUMin = atlasMinU;
-        const f32 gVMin = atlasMaxV - cornerAtlasSizeV;
         const f32 gUMax = atlasMinU + cornerAtlasSizeU;
-        const f32 gVMax = atlasMaxV;
 
-        // H
-        const f32 hUMin = cornerAtlasSizeU;
-        const f32 hVMin = atlasMaxV - cornerAtlasSizeV;
-        const f32 hUMax = atlasMaxU - cornerAtlasSizeU;
-        const f32 hVMax = atlasMaxV;
-
-        // I
+        // Corner I
         const f32 iUMin = atlasMaxU - cornerAtlasSizeU;
-        const f32 iVMin = atlasMaxV - cornerAtlasSizeV;
         const f32 iUMax = atlasMaxU;
-        const f32 iVMax = atlasMaxV;
 
-        // B and H quad sizes
-        const f32 bhWidth  = static_cast<f32>(size.x) - (cornerSize.x * 2.0f);
-        const f32 bhHeight = cornerSize.y;
+        // Corner G + I
+        const f32 giVMin = atlasMaxV - cornerAtlasSizeV;
+        const f32 giVMax = atlasMaxV;
 
-        // D and F quad sizes
-        const f32 dfWidth  = cornerSize.x;
-        const f32 dfHeight = static_cast<f32>(size.y) - (cornerSize.y * 2.0f);
-
-        // A
         config.vertices[0].position.x = 0.0f;
         config.vertices[0].position.y = 0.0f;
         config.vertices[0].texture.x  = aUMin;
-        config.vertices[0].texture.y  = aVMin;
+        config.vertices[0].texture.y  = acVMin;
 
         config.vertices[1].position.x = cornerSize.x;
-        config.vertices[1].position.y = cornerSize.y;
+        config.vertices[1].position.y = 0.0f;
         config.vertices[1].texture.x  = aUMax;
-        config.vertices[1].texture.y  = aVMax;
+        config.vertices[1].texture.y  = acVMin;
 
-        config.vertices[2].position.x = 0.0f;
-        config.vertices[2].position.y = cornerSize.y;
-        config.vertices[2].texture.x  = aUMin;
-        config.vertices[2].texture.y  = aVMax;
+        config.vertices[2].position.x = size.x - cornerSize.x;
+        config.vertices[2].position.y = 0.0f;
+        config.vertices[2].texture.x  = cUMin;
+        config.vertices[2].texture.y  = acVMin;
 
-        config.vertices[3].position.x = cornerSize.x;
+        config.vertices[3].position.x = size.x;
         config.vertices[3].position.y = 0.0f;
-        config.vertices[3].texture.x  = aUMax;
-        config.vertices[3].texture.y  = aVMin;
+        config.vertices[3].texture.x  = cUMax;
+        config.vertices[3].texture.y  = acVMin;
 
-        // B
-        config.vertices[4].position.x = cornerSize.x;
-        config.vertices[4].position.y = 0.0f;
-        config.vertices[4].texture.x  = bUMin;
-        config.vertices[4].texture.y  = bVMin;
+        config.vertices[4].position.x = 0.0f;
+        config.vertices[4].position.y = cornerSize.y;
+        config.vertices[4].texture.x  = aUMin;
+        config.vertices[4].texture.y  = acVMax;
 
-        config.vertices[5].position.x = cornerSize.x + bhWidth;
-        config.vertices[5].position.y = bhHeight;
-        config.vertices[5].texture.x  = bUMax;
-        config.vertices[5].texture.y  = bVMax;
+        config.vertices[5].position.x = cornerSize.x;
+        config.vertices[5].position.y = cornerSize.y;
+        config.vertices[5].texture.x  = aUMax;
+        config.vertices[5].texture.y  = acVMax;
 
-        config.vertices[6].position.x = cornerSize.x;
-        config.vertices[6].position.y = bhHeight;
-        config.vertices[6].texture.x  = bUMin;
-        config.vertices[6].texture.y  = bVMax;
+        config.vertices[6].position.x = size.x - cornerSize.x;
+        config.vertices[6].position.y = cornerSize.y;
+        config.vertices[6].texture.x  = cUMin;
+        config.vertices[6].texture.y  = acVMax;
 
-        config.vertices[7].position.x = cornerSize.x + bhWidth;
-        config.vertices[7].position.y = 0.0f;
-        config.vertices[7].texture.x  = bUMax;
-        config.vertices[7].texture.y  = bVMin;
+        config.vertices[7].position.x = size.x;
+        config.vertices[7].position.y = cornerSize.y;
+        config.vertices[7].texture.x  = cUMax;
+        config.vertices[7].texture.y  = acVMax;
 
-        // C
-        config.vertices[8].position.x = size.x - cornerSize.x;
-        config.vertices[8].position.y = 0.0f;
-        config.vertices[8].texture.x  = cUMin;
-        config.vertices[8].texture.y  = cVMin;
+        config.vertices[8].position.x = 0.0f;
+        config.vertices[8].position.y = size.y - cornerSize.y;
+        config.vertices[8].texture.x  = gUMin;
+        config.vertices[8].texture.y  = giVMin;
 
-        config.vertices[9].position.x = size.x;
-        config.vertices[9].position.y = cornerSize.y;
-        config.vertices[9].texture.x  = cUMax;
-        config.vertices[9].texture.y  = cVMax;
+        config.vertices[9].position.x = cornerSize.x;
+        config.vertices[9].position.y = size.y - cornerSize.y;
+        config.vertices[9].texture.x  = gUMax;
+        config.vertices[9].texture.y  = giVMin;
 
         config.vertices[10].position.x = size.x - cornerSize.x;
-        config.vertices[10].position.y = cornerSize.y;
-        config.vertices[10].texture.x  = cUMin;
-        config.vertices[10].texture.y  = cVMax;
+        config.vertices[10].position.y = size.y - cornerSize.y;
+        config.vertices[10].texture.x  = iUMin;
+        config.vertices[10].texture.y  = giVMin;
 
         config.vertices[11].position.x = size.x;
-        config.vertices[11].position.y = 0.0f;
-        config.vertices[11].texture.x  = cUMax;
-        config.vertices[11].texture.y  = cVMin;
+        config.vertices[11].position.y = size.y - cornerSize.y;
+        config.vertices[11].texture.x  = iUMax;
+        config.vertices[11].texture.y  = giVMin;
 
-        // D
         config.vertices[12].position.x = 0.0f;
-        config.vertices[12].position.y = cornerSize.y;
-        config.vertices[12].texture.x  = dUMin;
-        config.vertices[12].texture.y  = dVMin;
+        config.vertices[12].position.y = size.y;
+        config.vertices[12].texture.x  = gUMin;
+        config.vertices[12].texture.y  = giVMax;
 
-        config.vertices[13].position.x = dfWidth;
-        config.vertices[13].position.y = cornerSize.y + dfHeight;
-        config.vertices[13].texture.x  = dUMax;
-        config.vertices[13].texture.y  = dVMax;
+        config.vertices[13].position.x = cornerSize.x;
+        config.vertices[13].position.y = size.y;
+        config.vertices[13].texture.x  = gUMax;
+        config.vertices[13].texture.y  = giVMax;
 
-        config.vertices[14].position.x = 0.0f;
-        config.vertices[14].position.y = cornerSize.y + dfHeight;
-        config.vertices[14].texture.x  = dUMin;
-        config.vertices[14].texture.y  = dVMax;
+        config.vertices[14].position.x = size.x - cornerSize.x;
+        config.vertices[14].position.y = size.y;
+        config.vertices[14].texture.x  = iUMin;
+        config.vertices[14].texture.y  = giVMax;
 
-        config.vertices[15].position.x = dfWidth;
-        config.vertices[15].position.y = cornerSize.y;
-        config.vertices[15].texture.x  = dUMax;
-        config.vertices[15].texture.y  = dVMin;
+        config.vertices[15].position.x = size.x;
+        config.vertices[15].position.y = size.y;
+        config.vertices[15].texture.x  = iUMax;
+        config.vertices[15].texture.y  = giVMax;
 
-        // E
-        config.vertices[16].position.x = cornerSize.x;
-        config.vertices[16].position.y = cornerSize.y;
-        config.vertices[16].texture.x  = eUMin;
-        config.vertices[16].texture.y  = eVMin;
+        /*
+        Indices:
+            00, 04, 05 and 01, 00, 05
+            01, 05, 06 and 02, 01, 06
+            02, 06, 07 and 03, 02, 07
 
-        config.vertices[17].position.x = cornerSize.x + bhWidth;
-        config.vertices[17].position.y = cornerSize.y + dfHeight;
-        config.vertices[17].texture.x  = eUMax;
-        config.vertices[17].texture.y  = eVMax;
+            04, 08, 09 and 05, 04, 09
+            05, 09, 10 and 06, 05, 10
+            06, 10, 11 and 07, 06, 11
 
-        config.vertices[18].position.x = cornerSize.x;
-        config.vertices[18].position.y = cornerSize.y + dfHeight;
-        config.vertices[18].texture.x  = eUMin;
-        config.vertices[18].texture.y  = eVMax;
+            08, 12, 13 and 09, 08, 13
+            09, 13, 14 and 10, 09, 14
+            10, 14, 15 and 11, 10, 15
+        */
 
-        config.vertices[19].position.x = cornerSize.x + bhWidth;
-        config.vertices[19].position.y = cornerSize.y;
-        config.vertices[19].texture.x  = eUMax;
-        config.vertices[19].texture.y  = eVMin;
-
-        // F
-        config.vertices[20].position.x = size.x - cornerSize.x;
-        config.vertices[20].position.y = cornerSize.y;
-        config.vertices[20].texture.x  = fUMin;
-        config.vertices[20].texture.y  = fVMin;
-
-        config.vertices[21].position.x = size.x;
-        config.vertices[21].position.y = cornerSize.y + dfHeight;
-        config.vertices[21].texture.x  = fUMax;
-        config.vertices[21].texture.y  = fVMax;
-
-        config.vertices[22].position.x = size.x - cornerSize.x;
-        config.vertices[22].position.y = cornerSize.y + dfHeight;
-        config.vertices[22].texture.x  = fUMin;
-        config.vertices[22].texture.y  = fVMax;
-
-        config.vertices[23].position.x = size.x;
-        config.vertices[23].position.y = cornerSize.y;
-        config.vertices[23].texture.x  = fUMax;
-        config.vertices[23].texture.y  = fVMin;
-
-        // G
-        config.vertices[24].position.x = 0.0f;
-        config.vertices[24].position.y = size.y - cornerSize.y;
-        config.vertices[24].texture.x  = gUMin;
-        config.vertices[24].texture.y  = gVMin;
-
-        config.vertices[25].position.x = cornerSize.x;
-        config.vertices[25].position.y = size.y;
-        config.vertices[25].texture.x  = gUMax;
-        config.vertices[25].texture.y  = gVMax;
-
-        config.vertices[26].position.x = 0.0f;
-        config.vertices[26].position.y = size.y;
-        config.vertices[26].texture.x  = gUMin;
-        config.vertices[26].texture.y  = gVMax;
-
-        config.vertices[27].position.x = cornerSize.x;
-        config.vertices[27].position.y = size.y - cornerSize.y;
-        config.vertices[27].texture.x  = gUMax;
-        config.vertices[27].texture.y  = gVMin;
-
-        // H
-        config.vertices[28].position.x = cornerSize.x;
-        config.vertices[28].position.y = size.y - cornerSize.y;
-        config.vertices[28].texture.x  = hUMin;
-        config.vertices[28].texture.y  = hVMin;
-
-        config.vertices[29].position.x = size.x - cornerSize.x;
-        config.vertices[29].position.y = size.y;
-        config.vertices[29].texture.x  = hUMax;
-        config.vertices[29].texture.y  = hVMax;
-
-        config.vertices[30].position.x = cornerSize.x;
-        config.vertices[30].position.y = size.y;
-        config.vertices[30].texture.x  = hUMin;
-        config.vertices[30].texture.y  = hVMax;
-
-        config.vertices[31].position.x = size.x - cornerSize.x;
-        config.vertices[31].position.y = size.y - cornerSize.y;
-        config.vertices[31].texture.x  = hUMax;
-        config.vertices[31].texture.y  = hVMin;
-
-        // I
-        config.vertices[32].position.x = size.x - cornerSize.x;
-        config.vertices[32].position.y = size.y - cornerSize.y;
-        config.vertices[32].texture.x  = iUMin;
-        config.vertices[32].texture.y  = iVMin;
-
-        config.vertices[33].position.x = size.x;
-        config.vertices[33].position.y = size.y;
-        config.vertices[33].texture.x  = iUMax;
-        config.vertices[33].texture.y  = iVMax;
-
-        config.vertices[34].position.x = size.x - cornerSize.x;
-        config.vertices[34].position.y = size.y;
-        config.vertices[34].texture.x  = iUMin;
-        config.vertices[34].texture.y  = iVMax;
-
-        config.vertices[35].position.x = size.x;
-        config.vertices[35].position.y = size.y - cornerSize.y;
-        config.vertices[35].texture.x  = iUMax;
-        config.vertices[35].texture.y  = iVMin;
-
-        for (u8 i = 0; i <= 32; i += 4)
+        for (u8 j = 0; j <= 8; j += 4)
         {
-            // Counter-clockwise
-            config.indices.PushBack(2 + i);
-            config.indices.PushBack(1 + i);
-            config.indices.PushBack(0 + i);
-            config.indices.PushBack(3 + i);
-            config.indices.PushBack(0 + i);
-            config.indices.PushBack(1 + i);
+            for (u8 i = 0; i < 3; i++)
+            {
+                config.indices.PushBack(0 + j + i);
+                config.indices.PushBack(4 + j + i);
+                config.indices.PushBack(5 + j + i);
+                config.indices.PushBack(1 + j + i);
+                config.indices.PushBack(0 + j + i);
+                config.indices.PushBack(5 + j + i);
+            }
         }
 
         return config;
