@@ -9,7 +9,6 @@
 #include "containers/ring_queue_tests.h"
 #include "containers/stack_tests.h"
 #include "containers/string_tests.h"
-#include "core/identifier.h"
 #include "core/stack_function_tests.h"
 #include "memory/dynamic_allocator_tests.h"
 #include "memory/linear_allocator_tests.h"

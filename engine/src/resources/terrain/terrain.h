@@ -3,6 +3,7 @@
 
 #include "containers/string.h"
 #include "core/frame_data.h"
+#include "core/uuid.h"
 #include "math/math_types.h"
 #include "renderer/geometry.h"
 #include "renderer/transform.h"
@@ -41,7 +42,7 @@ namespace C3D
 
         void SetTransform(const Transform& t) { m_transform = t; }
 
-        u32 uniqueId = INVALID_ID;
+        UUID uuid;
 
     private:
         bool LoadFromResource();

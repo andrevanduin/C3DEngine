@@ -156,14 +156,13 @@ bool RenderViewWireframe::OnBuildPacket(const C3D::FrameData& frameData, const C
     // Iterate our world geometries
     for (const auto& gData : worldData.worldGeometries)
     {
-        outPacket->geometries.EmplaceBack(gData.model, gData.geometry, gData.uniqueId, gData.windingInverted);
+        outPacket->geometries.EmplaceBack(gData.model, gData.geometry, gData.uuid, gData.windingInverted);
     }
 
     // Iterate our terrain geometries
     for (const auto& terrainData : worldData.terrainGeometries)
     {
-        outPacket->terrainGeometries.EmplaceBack(terrainData.model, terrainData.geometry, terrainData.uniqueId,
-                                                 terrainData.windingInverted);
+        outPacket->terrainGeometries.EmplaceBack(terrainData.model, terrainData.geometry, terrainData.uuid, terrainData.windingInverted);
     }
 
     return true;
@@ -223,8 +222,7 @@ bool RenderViewWireframe::OnRender(const C3D::FrameData& frameData, const C3D::R
             // Set instance uniforms
 
             // Selecting the instance allows us to easily switch colors
-            WireframeColorInstance& instance =
-                geometry.uniqueId == m_selectedId ? shaderInfo->selectedInstance : shaderInfo->normalInstance;
+            WireframeColorInstance& instance = geometry.uuid == m_selectedId ? shaderInfo->selectedInstance : shaderInfo->normalInstance;
 
             // Bind our current instance
             Shaders.BindInstance(instance.id);

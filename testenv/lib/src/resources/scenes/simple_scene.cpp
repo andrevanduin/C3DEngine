@@ -654,18 +654,18 @@ bool SimpleScene::RayCast(const C3D::Ray& ray, C3D::RayCastResult& result)
         {
             // We have a hit
             vec3 position = ray.origin + (ray.direction * distance);
-            result.hits.EmplaceBack(C3D::RAY_CAST_HIT_TYPE_OBB, mesh.uniqueId, position, distance);
+            result.hits.EmplaceBack(C3D::RAY_CAST_HIT_TYPE_OBB, mesh.uuid, position, distance);
         }
     }
 
     return !result.hits.Empty();
 }
 
-C3D::Transform* SimpleScene::GetTransformById(u32 uniqueId)
+C3D::Transform* SimpleScene::GetTransformById(C3D::UUID uuid)
 {
     for (auto& mesh : m_meshes)
     {
-        if (mesh.uniqueId == uniqueId)
+        if (mesh.uuid == uuid)
         {
             return &mesh.transform;
         }
@@ -673,7 +673,7 @@ C3D::Transform* SimpleScene::GetTransformById(u32 uniqueId)
 
     for (auto& terrain : m_terrains)
     {
-        if (terrain.uniqueId == uniqueId)
+        if (terrain.uuid == uuid)
         {
             return terrain.GetTransform();
         }

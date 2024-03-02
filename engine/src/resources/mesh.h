@@ -1,6 +1,7 @@
 
 #pragma once
 #include "containers/string.h"
+#include "core/uuid.h"
 #include "loaders/mesh_loader.h"
 #include "renderer/transform.h"
 #include "resources/geometry_config.h"
@@ -52,7 +53,7 @@ namespace C3D
 
         const Extents3D& GetExtents() const { return m_extents; }
 
-        u32 uniqueId  = INVALID_ID;
+        UUID uuid;
         u8 generation = INVALID_ID_U8;
 
         DynamicArray<Geometry*> geometries;
@@ -83,7 +84,7 @@ namespace C3D
 
         bool Unload();
 
-        u32 uniqueId  = INVALID_ID;
+        UUID uuid;
         u8 generation = INVALID_ID_U8;
 
         DynamicArray<Geometry*> geometries;

@@ -224,14 +224,14 @@ bool RenderViewPick::OnBuildPacket(const C3D::FrameData& frameData, const C3D::V
     const auto& terrainData = *packetData->terrainData;
     for (const auto& terrain : terrainData)
     {
-        if (terrain.uniqueId == INVALID_ID) continue;
+        if (terrain.uuid == INVALID_ID) continue;
 
         outPacket->geometries.PushBack(terrain);
         packetData->terrainGeometryCount++;
 
-        if (terrain.uniqueId > highestInstanceId)
+        if (terrain.uuid > highestInstanceId)
         {
-            highestInstanceId = terrain.uniqueId;
+            highestInstanceId = terrain.uuid;
         }
     }
 
@@ -242,9 +242,9 @@ bool RenderViewPick::OnBuildPacket(const C3D::FrameData& frameData, const C3D::V
         outPacket->geometries.PushBack(geometry);
         packetData->worldGeometryCount++;
 
-        if (geometry.uniqueId > highestInstanceId)
+        if (geometry.uuid > highestInstanceId)
         {
-            highestInstanceId = geometry.uniqueId;
+            highestInstanceId = geometry.uuid;
         }
     }
 
@@ -253,22 +253,22 @@ bool RenderViewPick::OnBuildPacket(const C3D::FrameData& frameData, const C3D::V
     {
         for (const auto geometry : mesh->geometries)
         {
-            outPacket->geometries.EmplaceBack(mesh->transform.GetWorld(), geometry, mesh->uniqueId);
+            outPacket->geometries.EmplaceBack(mesh->transform.GetWorld(), geometry, mesh->uuid);
             packetData->uiGeometryCount++;
         }
 
-        if (mesh->uniqueId > highestInstanceId)
+        if (mesh->uuid > highestInstanceId)
         {
-            highestInstanceId = mesh->uniqueId;
+            highestInstanceId = mesh->uuid;
         }
     }
 
     // Iterate all UI texts
     for (const auto text : packetData->texts)
     {
-        if (text->uniqueId > highestInstanceId)
+        if (text->uuid > highestInstanceId)
         {
-            highestInstanceId = text->uniqueId;
+            highestInstanceId = text->uuid;
         }
     }
 
@@ -344,7 +344,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
             for (u32 i = terrainIndexStart; i < terrainIndexEnd; i++)
             {
                 auto& geo         = packet->geometries[i];
-                currentInstanceId = geo.uniqueId;
+                currentInstanceId = geo.uuid;
 
                 if (!Shaders.BindInstance(currentInstanceId))
                 {
@@ -352,7 +352,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
                 }
 
                 u32 r, g, b;
-                C3D::U32ToRgb(geo.uniqueId, &r, &g, &b);
+                C3D::U32ToRgb(geo.uuid, &r, &g, &b);
                 vec3 color = C3D::RgbToVec3(r, g, b);
 
                 if (!Shaders.SetUniformByIndex(m_terrainShaderInfo.idColorLocation, &color))
@@ -409,7 +409,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
             for (u32 i = worldIndexStart; i < worldIndexEnd; i++)
             {
                 auto& geo         = packet->geometries[i];
-                currentInstanceId = geo.uniqueId;
+                currentInstanceId = geo.uuid;
 
                 if (!Shaders.BindInstance(currentInstanceId))
                 {
@@ -417,7 +417,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
                 }
 
                 u32 r, g, b;
-                C3D::U32ToRgb(geo.uniqueId, &r, &g, &b);
+                C3D::U32ToRgb(geo.uuid, &r, &g, &b);
                 vec3 color = C3D::RgbToVec3(r, g, b);
 
                 if (!Shaders.SetUniformByIndex(m_worldShaderInfo.idColorLocation, &color))
@@ -485,7 +485,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
         for (u64 i = uiIndexStart; i < uiIndexEnd; i++)
         {
             auto& geo         = packet->geometries[i];
-            currentInstanceId = geo.uniqueId;
+            currentInstanceId = geo.uuid;
 
             if (!Shaders.BindInstance(currentInstanceId))
             {
@@ -493,7 +493,7 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
             }
 
             u32 r, g, b;
-            C3D::U32ToRgb(geo.uniqueId, &r, &g, &b);
+            C3D::U32ToRgb(geo.uuid, &r, &g, &b);
             vec3 color = C3D::RgbToVec3(r, g, b);
 
             if (!Shaders.SetUniformByIndex(m_uiShaderInfo.idColorLocation, &color))
@@ -518,14 +518,14 @@ bool RenderViewPick::OnRender(const C3D::FrameData& frameData, const C3D::Render
         // Draw bitmap text
         for (const auto text : packetData->texts)
         {
-            currentInstanceId = text->uniqueId;
+            currentInstanceId = text->uuid;
             if (!Shaders.BindInstance(currentInstanceId))
             {
                 ERROR_LOG("Failed to bind instance with id: {}.", currentInstanceId);
             }
 
             u32 r, g, b;
-            C3D::U32ToRgb(text->uniqueId, &r, &g, &b);
+            C3D::U32ToRgb(text->uuid, &r, &g, &b);
             vec3 color = C3D::RgbToVec3(r, g, b);
 
             if (!Shaders.SetUniformByIndex(m_uiShaderInfo.idColorLocation, &color))

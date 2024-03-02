@@ -2,7 +2,8 @@
 #pragma once
 #include <containers/dynamic_array.h>
 #include <core/defines.h>
-#include <renderer/render_view_types.h>
+#include <memory/allocators/linear_allocator.h>
+#include <renderer/renderer_types.h>
 #include <renderer/rendergraph/rendergraph_pass.h>
 
 #include "test_env_types.h"

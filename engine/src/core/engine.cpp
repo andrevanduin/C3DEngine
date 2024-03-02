@@ -91,6 +91,7 @@ namespace C3D
         const PlatformSystemConfig platformConfig{ windowName.Data(), appState->x, appState->y, appState->width, appState->height };
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
         const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled };
+        constexpr UI2DSystemConfig ui2dSystemConfig{ 1024, MebiBytes(16) };
 
         // Init before boot systems
         m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);                              // Event System
@@ -100,6 +101,7 @@ namespace C3D
         m_systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);  // Resource System
         m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);        // Shader System
         m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);        // Render System
+        m_systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);              // UI2D System
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
@@ -160,12 +162,10 @@ namespace C3D
 
         constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
         constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
-        constexpr UI2DSystemConfig ui2dSystemConfig{};
 
         m_systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System
         m_systemsManager.RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig);  // Geometry System
         m_systemsManager.RegisterSystem<LightSystem>(LightSystemType);                              // Light System
-        m_systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);              // UI2D System
 
         m_state.initialized = true;
         m_state.lastTime    = 0;
@@ -188,6 +188,8 @@ namespace C3D
         u8 frameCount                    = 0;
         constexpr f64 targetFrameSeconds = 1.0 / 60.0;
         f64 frameElapsedTime             = 0;
+
+        UI2D.OnRun();
 
         m_application->OnRun(m_frameData);
 

@@ -1,7 +1,6 @@
 
 #include "debug_box_3d.h"
 
-#include "core/identifier.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/system_manager.h"
 
@@ -12,9 +11,9 @@ namespace C3D
         m_pSystemsManager = systemsManager;
 
         // TODO: name?
-        m_size     = size;
-        m_uniqueId = Identifier::GetNewId(this);
-        m_color    = vec4(1.0f);  // Default = white
+        m_uuid.Generate();
+        m_size  = size;
+        m_color = vec4(1.0f);  // Default = white
 
         m_geometry.id         = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
@@ -30,9 +29,7 @@ namespace C3D
 
     void DebugBox3D::Destroy()
     {
-        Identifier::ReleaseId(m_uniqueId);
-        m_uniqueId = INVALID_ID;
-
+        m_uuid.Invalidate();
         m_vertices.Destroy();
     }
 
@@ -49,8 +46,7 @@ namespace C3D
 
     bool DebugBox3D::Load()
     {
-        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
-                                     0))
+        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0, 0))
         {
             Logger::Error("[DEBUG_BOX_3D] - Load() - Failed to create geometry.");
             return false;

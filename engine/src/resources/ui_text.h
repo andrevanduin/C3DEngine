@@ -2,6 +2,7 @@
 #pragma once
 #include "containers/string.h"
 #include "core/defines.h"
+#include "core/uuid.h"
 #include "renderer/render_buffer.h"
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
@@ -48,7 +49,7 @@ namespace C3D
 
         void Draw() const;
 
-        u32 uniqueId = INVALID_ID;
+        UUID uuid;
 
         UITextType type = UITextType::Unknown;
         FontData* data  = nullptr;

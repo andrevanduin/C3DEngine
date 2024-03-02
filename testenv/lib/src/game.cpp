@@ -6,11 +6,11 @@
 #include <core/console/console.h>
 #include <core/events/event_context.h>
 #include <core/frame_data.h>
-#include <core/identifier.h>
 #include <core/logger.h>
 #include <core/metrics/metrics.h>
 #include <renderer/renderer_types.h>
 #include <resources/skybox.h>
+#include <systems/UI/2D/ui2d_system.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/events/event_system.h>
 #include <systems/geometry/geometry_system.h>
@@ -26,7 +26,6 @@
 #include "passes/editor_pass.h"
 #include "passes/scene_pass.h"
 #include "passes/skybox_pass.h"
-#include "passes/ui_pass.h"
 #include "resources/debug/debug_box_3d.h"
 #include "resources/debug/debug_line_3d.h"
 #include "resources/loaders/simple_scene_loader.h"
@@ -188,6 +187,10 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
         ERROR_LOG("Failed to load Editor Gizmo.");
         return false;
     }
+
+    m_state->texts.SetAllocator(frameData.allocator);
+
+    UI2D.AddPanel(512.0f, 512.0f);
 
     return true;
 }
@@ -439,7 +442,7 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
     m_state->pas
     {
         RenderViewWireframeData wireframeData = {};
-        wireframeData.selectedId              = m_state->selectedObject.uniqueId;
+        wireframeData.selectedId              = m_state->selectedObject.uuid;
         wireframeData.worldGeometries         = packet.views[TEST_ENV_VIEW_WORLD].geometries;
         wireframeData.terrainGeometries       = packet.views[TEST_ENV_VIEW_WORLD].terrainGeometries;
 
@@ -453,11 +456,11 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
     }*/
 
     // Prepare the UI pass
-    C3D::DynamicArray<C3D::UIText*, C3D::LinearAllocator> texts(frameData.allocator);
-    texts.PushBack(&m_state->testText);
+    m_state->texts.Reset();
+    m_state->texts.PushBack(&m_state->testText);
 
-    m_pConsole->OnPrepareRender(texts);
-    m_state->uiPass.Prepare(&m_state->uiViewport, m_state->camera, m_state->uiMeshes, texts);
+    m_pConsole->OnPrepareRender(m_state->texts);
+    UI2D.PrepareFrame(frameData, &m_state->uiViewport, m_state->camera, m_state->uiMeshes, m_state->texts);
 
     // Pick
     /*
@@ -787,8 +790,7 @@ bool TestEnv::ConfigureRendergraph() const
     }
 
     // UI Pass
-    m_state->uiPass = UIPass(m_pSystemsManager);
-    if (!m_state->frameGraph.AddPass("UI", &m_state->uiPass))
+    if (!m_state->frameGraph.AddPass("UI", UI2D.GetPass()))
     {
         ERROR_LOG("Failed to add UI pass.");
         return false;
@@ -918,16 +920,16 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                     // Keep track of the hit that is closest
                     if (hit.distance < closestDistance)
                     {
-                        closestDistance                  = hit.distance;
-                        m_state->selectedObject.uniqueId = hit.uniqueId;
+                        closestDistance              = hit.distance;
+                        m_state->selectedObject.uuid = hit.uuid;
                     }
                 }
 
-                const auto id = m_state->selectedObject.uniqueId;
-                if (id != INVALID_ID)
+                const auto selectedUUID = m_state->selectedObject.uuid;
+                if (selectedUUID.IsValid())
                 {
-                    m_state->selectedObject.transform = m_state->simpleScene.GetTransformById(id);
-                    INFO_LOG("Selected object id = {}.", id);
+                    m_state->selectedObject.transform = m_state->simpleScene.GetTransformById(selectedUUID);
+                    INFO_LOG("Selected object id = {}.", selectedUUID);
                     m_state->gizmo.SetSelectedObjectTransform(m_state->selectedObject.transform);
                 }
             }
@@ -936,7 +938,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                 INFO_LOG("Ray MISSED!");
 
                 m_state->selectedObject.transform = nullptr;
-                m_state->selectedObject.uniqueId  = INVALID_ID;
+                m_state->selectedObject.uuid      = INVALID_ID;
                 m_state->gizmo.SetSelectedObjectTransform(nullptr);
 
                 // Create a debug line

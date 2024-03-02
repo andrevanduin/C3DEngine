@@ -3,7 +3,6 @@
 #include "core/defines.h"
 #include "core/logger.h"
 #include "render_buffer.h"
-#include "render_view_types.h"
 #include "renderer_types.h"
 
 namespace C3D

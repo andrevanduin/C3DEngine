@@ -1,6 +1,6 @@
 
 #pragma once
-#include "ecs.h"
+#include "defines.h"
 #include "entity_id.h"
 
 namespace C3D
@@ -24,6 +24,8 @@ namespace C3D
         void AddComponent(u32 componentId) { m_mask.set(componentId, true); }
 
         void RemoveComponent(u32 componentId) { m_mask.set(componentId, false); }
+
+        bool HasComponent(u32 componentId) const { return m_mask.test(componentId); }
 
         EntityID GetId() const { return m_id; }
         ComponentMask GetMask() const { return m_mask; }

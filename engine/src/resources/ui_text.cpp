@@ -2,7 +2,6 @@
 #include "ui_text.h"
 
 #include "core/engine.h"
-#include "core/identifier.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
 #include "systems/fonts/font_system.h"
@@ -17,7 +16,7 @@ namespace C3D
 
     UIText::~UIText()
     {
-        if (uniqueId != INVALID_ID)
+        if (uuid.IsValid())
         {
             Destroy();
         }
@@ -96,14 +95,14 @@ namespace C3D
 
         RegenerateGeometry();
 
-        uniqueId = Identifier::GetNewId(this);
+        uuid.Generate();
 
         return true;
     }
 
     void UIText::Destroy()
     {
-        Identifier::ReleaseId(uniqueId);
+        uuid.Invalidate();
 
         // Destroy our string
         m_text.Destroy();

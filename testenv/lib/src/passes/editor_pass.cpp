@@ -5,6 +5,7 @@
 #include <renderer/viewport.h>
 #include <systems/shaders/shader_system.h>
 #include <systems/system_manager.h>
+#include <renderer/renderpass.h>
 
 #include "editor/editor_gizmo.h"
 

@@ -1,7 +1,6 @@
 
 #include "debug_grid.h"
 
-#include "core/identifier.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/system_manager.h"
 
@@ -49,8 +48,8 @@ namespace C3D
                 break;
         }
 
-        m_origin   = vec3(0);
-        m_uniqueId = Identifier::GetNewId(this);
+        m_origin = vec3(0);
+        m_uuid.Generate();
 
         // Two vertices per line, one line per tile in each direction, plus one in the middle for each direction.
         // And two extra for the third axis.
@@ -60,11 +59,7 @@ namespace C3D
         return true;
     }
 
-    void DebugGrid::Destroy()
-    {
-        Identifier::ReleaseId(m_uniqueId);
-        m_uniqueId = INVALID_ID;
-    }
+    void DebugGrid::Destroy() { m_uuid.Invalidate(); }
 
     bool DebugGrid::Initialize()
     {
@@ -193,7 +188,7 @@ namespace C3D
 
     bool DebugGrid::Unload()
     {
-        if (m_uniqueId != INVALID_ID)
+        if (m_uuid.IsValid())
         {
             Renderer.DestroyGeometry(m_geometry);
         }

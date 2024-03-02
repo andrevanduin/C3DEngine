@@ -2,6 +2,8 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
+#include "core/uuid.h"
+#include "renderer/geometry.h"
 
 namespace C3D
 {
@@ -89,8 +91,36 @@ namespace C3D
     };
     using PrimitiveTopologyTypeBits = u16;
 
-    struct SkyboxPacketData
+    struct GeometryRenderData
     {
-        Skybox* box;
+        GeometryRenderData() {}
+
+        explicit GeometryRenderData(const Geometry* geometry) : geometry(geometry) {}
+
+        GeometryRenderData(const mat4& model, const Geometry* geometry, const UUID uuid, bool windingInverted = false)
+            : model(model), geometry(geometry), uuid(uuid), windingInverted(windingInverted)
+        {}
+
+        UUID uuid;
+        mat4 model;
+        const Geometry* geometry = nullptr;
+        bool windingInverted     = false;
+    };
+
+    struct UIProperties
+    {
+        vec4 diffuseColor;
+    };
+
+    struct UIRenderData
+    {
+        GeometryRenderData geometryData;
+        UIProperties properties;
+
+        u16 depth = 0;
+        u32 instanceId = INVALID_ID;
+
+        u64* pFrameNumber = nullptr;
+        u8* pDrawIndex    = nullptr;
     };
 }  // namespace C3D

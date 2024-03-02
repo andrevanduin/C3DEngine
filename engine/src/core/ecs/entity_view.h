@@ -5,11 +5,13 @@
 
 namespace C3D
 {
+    class ECS;
+
     template <typename... ComponentTypes>
     class EntityView
     {
     public:
-        EntityView(const DynamicArray<Entity>& entities) : m_pEntities(&entities)
+        EntityView(const ECS& ecs) : m_ecs(&ecs)
         {
             if (sizeof...(ComponentTypes) == 0)
             {
@@ -30,19 +32,18 @@ namespace C3D
         class Iterator
         {
         public:
-            Iterator(const DynamicArray<Entity>* pEntities, EntityIndex index, ComponentMask mask, bool all)
-                : m_pEntities(pEntities), m_index(index), m_mask(mask), m_all(all)
+            Iterator(const ECS* ecs, EntityIndex index, ComponentMask mask, bool all) : m_ecs(ecs), m_index(index), m_mask(mask), m_all(all)
             {}
 
             bool IsValid() const
             {
-                auto& entity = (*m_pEntities)[m_index];
+                auto& entity = m_ecs->m_entities[m_index];
                 return entity.IsValid() && (m_all || m_mask == (m_mask & entity.GetMask()));
             }
 
             EntityID operator*() const
             {
-                auto& entity = (*m_pEntities)[m_index];
+                auto& entity = m_ecs->m_entities[m_index];
                 return entity.GetId();
             }
 
@@ -55,7 +56,7 @@ namespace C3D
                 do
                 {
                     m_index++;
-                } while (m_index < m_pEntities->Size() && IsValid());
+                } while (m_index < m_ecs->m_entities.Size() && IsValid());
                 return *this;
             }
 
@@ -64,26 +65,26 @@ namespace C3D
             ComponentMask m_mask;
             bool m_all = false;
 
-            const DynamicArray<Entity>* m_pEntities;
+            const ECS* m_ecs;
         };
 
         const Iterator begin() const
         {
             EntityIndex first = 0;
-            while (first < m_pEntities->Size() &&
-                   (m_mask != (m_mask & (*m_pEntities)[first].GetMask()) || !(*m_pEntities)[first].IsValid()))
+            while (first < m_ecs->m_entities.Size() &&
+                   (m_mask != (m_mask & m_ecs->m_entities[first].GetMask()) || !m_ecs->m_entities[first].IsValid()))
             {
                 first++;
             }
-            return Iterator(m_pEntities, first, m_mask, m_all);
+            return Iterator(m_ecs, first, m_mask, m_all);
         }
 
-        const Iterator end() const { return Iterator(m_pEntities, m_pEntities->Size(), m_mask, m_all); }
+        const Iterator end() const { return Iterator(m_ecs, m_ecs->m_entities.Size(), m_mask, m_all); }
 
     private:
         ComponentMask m_mask;
         bool m_all = false;
 
-        const DynamicArray<Entity>* m_pEntities;
+        const ECS* m_ecs;
     };
 }  // namespace C3D

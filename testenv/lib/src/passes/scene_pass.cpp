@@ -158,7 +158,7 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
 
                 if (frustum.IntersectsWithAABB({ center, halfExtents }))
                 {
-                    m_geometries.EmplaceBack(model, geometry, mesh.uniqueId, windingInverted);
+                    m_geometries.EmplaceBack(model, geometry, mesh.uuid, windingInverted);
                     frameData.drawnMeshCount++;
                 }
             }
@@ -169,7 +169,7 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
     {
         // TODO: Check terrain generation
         // TODO: Frustum culling
-        m_terrains.EmplaceBack(terrain.GetModel(), terrain.GetGeometry(), terrain.uniqueId);
+        m_terrains.EmplaceBack(terrain.GetModel(), terrain.GetGeometry(), terrain.uuid);
         // TODO: Seperate counter for terrain meshes/geometry
         frameData.drawnMeshCount++;
     }

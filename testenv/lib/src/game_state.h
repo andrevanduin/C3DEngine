@@ -2,6 +2,7 @@
 #pragma once
 #include <core/application.h>
 #include <core/frame_data.h>
+#include <core/uuid.h>
 #include <renderer/rendergraph/rendergraph.h>
 #include <renderer/viewport.h>
 #include <resources/debug/debug_line_3d.h>
@@ -13,7 +14,6 @@
 #include "passes/editor_pass.h"
 #include "passes/scene_pass.h"
 #include "passes/skybox_pass.h"
-#include "passes/ui_pass.h"
 #include "resources/scenes/simple_scene.h"
 
 namespace C3D
@@ -33,7 +33,7 @@ enum class ReloadState
 
 struct SelectedObject
 {
-    u32 uniqueId              = INVALID_ID;
+    C3D::UUID uuid;
     C3D::Transform* transform = nullptr;
 };
 
@@ -53,6 +53,7 @@ struct GameState final : C3D::ApplicationState
 
     C3D::DynamicArray<C3D::DebugLine3D> testLines;
     C3D::DynamicArray<C3D::DebugBox3D> testBoxes;
+    C3D::DynamicArray<C3D::UIText*, C3D::LinearAllocator> texts;
 
     C3D::Viewport worldViewport;
     C3D::Viewport uiViewport;
@@ -62,7 +63,6 @@ struct GameState final : C3D::ApplicationState
     SkyboxPass skyboxPass;
     ScenePass scenePass;
     EditorPass editorPass;
-    UIPass uiPass;
 
     SelectedObject selectedObject;
 

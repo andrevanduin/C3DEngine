@@ -2,7 +2,7 @@
 #pragma once
 #include "containers/string.h"
 #include "core/defines.h"
-#include "ecs.h"
+#include "defines.h"
 
 namespace C3D
 {

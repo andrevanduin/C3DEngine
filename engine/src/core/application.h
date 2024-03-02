@@ -44,8 +44,6 @@ namespace C3D
         RendererPlugin* rendererPlugin = nullptr;
         FontSystemConfig fontConfig;
 
-        DynamicArray<RenderView*> renderViews;
-
         /** @brief The size that should be allocated for the per-frame allocator. */
         u64 frameAllocatorSize = 0;
         /** @brief The size required from the application-specific frame data. */

@@ -26,7 +26,8 @@ namespace C3D
 {
     enum SystemType
     {
-        FontSystemType = 0,
+        UI2DSystemType = 0,
+        FontSystemType,
         LightSystemType,
         CameraSystemType,
         GeometrySystemType,
@@ -40,7 +41,6 @@ namespace C3D
         JobSystemType,
         CVarSystemType,
         PlatformSystemType,
-        UI2DSystemType,
         MaxKnownSystemType
     };
 
