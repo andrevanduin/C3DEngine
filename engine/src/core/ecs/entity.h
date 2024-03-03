@@ -1,37 +1,55 @@
 
 #pragma once
+#include "containers/string.h"
+#include "core/defines.h"
 #include "defines.h"
-#include "entity_id.h"
 
 namespace C3D
 {
     class Entity
     {
     public:
-        Entity(EntityID id) : m_id(id) {}
+        Entity() {}
+        Entity(u32 index) : m_index(index) {}
 
-        EntityID Reuse(u32 index)
+        EntityIndex GetIndex() const { return m_index; }
+        EntityVersion GetVersion() const { return m_version; }
+
+        bool IsValid() const { return m_index != INVALID_ID; }
+
+        void Invalidate()
         {
-            m_id.Reuse(index);
-            m_mask.reset();
-            return m_id;
+            // Set index to INVALID_ID so we know this entity is no longer valid
+            m_index = INVALID_ID;
         }
 
-        bool IsValid() const { return m_id.IsValid(); }
+        void Reuse(u32 index)
+        {
+            m_index = index;
+            // Increment the version to ensure that this reused entity id is unique
+            m_version++;
+        }
 
-        void Deactivate() { m_id.Invalidate(); }
-
-        void AddComponent(u32 componentId) { m_mask.set(componentId, true); }
-
-        void RemoveComponent(u32 componentId) { m_mask.set(componentId, false); }
-
-        bool HasComponent(u32 componentId) const { return m_mask.test(componentId); }
-
-        EntityID GetId() const { return m_id; }
-        ComponentMask GetMask() const { return m_mask; }
+        static Entity Invalid() { return Entity(INVALID_ID); }
 
     private:
-        EntityID m_id;
-        ComponentMask m_mask;
+        EntityIndex m_index     = INVALID_ID;
+        EntityVersion m_version = 0;
     };
 }  // namespace C3D
+
+template <>
+struct fmt::formatter<C3D::Entity>
+{
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const C3D::Entity& entity, FormatContext& ctx)
+    {
+        return fmt::format_to(ctx.out(), "Entity(Index = {}, Version = {})", entity.GetIndex(), entity.GetVersion());
+    }
+};

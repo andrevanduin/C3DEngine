@@ -41,10 +41,10 @@ namespace C3D
                 return entity.IsValid() && (m_all || m_mask == (m_mask & entity.GetMask()));
             }
 
-            EntityID operator*() const
+            Entity operator*() const
             {
                 auto& entity = m_ecs->m_entities[m_index];
-                return entity.GetId();
+                return entity.Get();
             }
 
             bool operator==(const Iterator& other) const { return m_index == other.m_index; }

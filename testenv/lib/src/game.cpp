@@ -190,8 +190,15 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 
     m_state->texts.SetAllocator(frameData.allocator);
 
-    UI2D.AddPanel(256, 512, 32, 32);
-    UI2D.AddButton(300, 80);
+    m_state->panel  = UI2D.AddPanel(512, 0, 256, 512, 32, 32);
+    m_state->button = UI2D.AddButton(0, 0, 300, 80);
+
+    UI2D.SetParent(m_state->button, m_state->panel);
+
+    UI2D.AddOnClickHandler(m_state->button, [](const C3D::UI_2D::OnClickEventContext& ctx) {
+        INFO_LOG("Button Clickerino'ed at: ({}, {})", ctx.x, ctx.y);
+        return true;
+    });
 
     return true;
 }
@@ -339,6 +346,20 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         if (Input.IsKeyDown(C3D::KeyX))
         {
             m_state->camera->MoveDown(move_speed * deltaTime);
+        }
+
+        static u16 nSliceWidth = 256;
+
+        if (Input.IsKeyPressed(C3D::KeyNumpad1))
+        {
+            nSliceWidth -= 16;
+            UI2D.SetSize(m_state->panel, nSliceWidth, 512);
+        }
+
+        if (Input.IsKeyPressed(C3D::KeyNumpad2))
+        {
+            nSliceWidth += 16;
+            UI2D.SetSize(m_state->panel, nSliceWidth, 512);
         }
     }
 

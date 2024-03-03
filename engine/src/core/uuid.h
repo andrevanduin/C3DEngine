@@ -32,8 +32,6 @@ namespace C3D
 template <>
 struct fmt::formatter<C3D::UUID>
 {
-    formatter<u64> formatter;
-
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx)
     {

@@ -1,6 +1,7 @@
 
 #pragma once
 #include <core/application.h>
+#include <core/ecs/entity.h>
 #include <core/frame_data.h>
 #include <core/uuid.h>
 #include <renderer/rendergraph/rendergraph.h>
@@ -70,6 +71,8 @@ struct GameState final : C3D::ApplicationState
 
     C3D::UIMesh uiMeshes[10];
     C3D::UIText testText;
+
+    C3D::Entity panel, button;
 
     u32 hoveredObjectId = INVALID_ID;
 

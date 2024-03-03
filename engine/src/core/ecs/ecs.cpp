@@ -65,54 +65,54 @@ namespace C3D
         Memory.Free(m_memoryBlock);
     }
 
-    EntityID ECS::Register()
+    Entity ECS::Register()
     {
-        EntityID id;
+        Entity entity;
 
         if (!m_freeIndices.Empty())
         {
             // There are free indices available so let's use those instead
             auto index = m_freeIndices.PopBack();
-            id         = m_entities[index].Reuse(index);
+            entity     = m_entities[index].Reuse(index);
 
-            INFO_LOG("Registered entity with reused ID: {}.", ToString(id));
+            INFO_LOG("Registered entity with reused Description: {}.", entity);
         }
         else
         {
             // No free indices so we append an entity to the end
-            id = EntityID(m_entities.Size());
-            m_entities.EmplaceBack(id);
+            entity = Entity(m_entities.Size());
+            m_entities.EmplaceBack(entity);
 
-            INFO_LOG("Registered entity with new ID: {}.", ToString(id));
+            INFO_LOG("Registered entity with new Description: {}.", entity);
         }
 
-        return id;
+        return entity;
     }
 
-    bool ECS::Deactivate(EntityID id)
+    bool ECS::Deactivate(Entity entity)
     {
-        auto index = id.GetIndex();
-        if (id.IsValid())
-        {
-            ERROR_LOG("Provided id is invalid.");
-            return false;
-        }
-
-        if (index >= m_entities.Size())
-        {
-            ERROR_LOG("Provided id is invalid since it is outside the entity range.");
-            return false;
-        }
-
-        auto& entity = m_entities[index];
         if (entity.IsValid())
         {
-            ERROR_LOG("The entity at the provided id is invalid.");
+            ERROR_LOG("Provided entity is invalid.");
+            return false;
+        }
+
+        auto index = entity.GetIndex();
+        if (index >= m_entities.Size())
+        {
+            ERROR_LOG("Provided entity is invalid since it is outside the entity range.");
+            return false;
+        }
+
+        auto& entityDescription = m_entities[index];
+        if (entityDescription.IsValid())
+        {
+            ERROR_LOG("The EntityDescription at the provided Entity index is invalid.");
             return false;
         }
 
         // Entity is found and valid. Let's deactivate
-        entity.Deactivate();
+        entityDescription.Deactivate();
 
         // Mark this index as free
         m_freeIndices.PushBack(index);
@@ -121,7 +121,7 @@ namespace C3D
         // we start with the lowest indices first to ensure we minimize fragmentation
         std::sort(m_freeIndices.begin(), m_freeIndices.end(), std::greater<u32>());
 
-        INFO_LOG("Deactivated entity with id: '{}'.", ToString(id));
+        INFO_LOG("Deactivated Entity with id: '{}'.", entity);
 
         return true;
     }

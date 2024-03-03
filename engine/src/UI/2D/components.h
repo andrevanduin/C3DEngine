@@ -2,90 +2,87 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
-#include "core/ecs/entity_id.h"
+#include "core/ecs/entity.h"
 #include "core/uuid.h"
-#include "flags.h"
 #include "renderer/geometry.h"
 #include "renderer/transform.h"
+#include "ui2d_defines.h"
 
-namespace C3D
+namespace C3D::UI_2D
 {
-    namespace UI_2D
+    constexpr u32 COMPONENT_COUNT = 8;
+
+    struct IDComponent
     {
-        constexpr u32 COMPONENT_COUNT = 8;
+        UUID id;
 
-        struct IDComponent
-        {
-            UUID id;
+        constexpr static ComponentID GetId() { return 0; }
+    };
 
-            constexpr static ComponentID GetId() { return 0; }
-        };
+    struct NameComponent
+    {
+        String name;
 
-        struct NameComponent
-        {
-            String name;
+        constexpr static ComponentID GetId() { return 1; }
+    };
 
-            constexpr static ComponentID GetId() { return 1; }
-        };
+    struct TransformComponent
+    {
+        Transform transform;
+        u16 width  = 0;
+        u16 height = 0;
 
-        struct TransformComponent
-        {
-            Transform transform;
+        constexpr static ComponentID GetId() { return 2; }
+    };
 
-            constexpr static ComponentID GetId() { return 2; }
-        };
+    struct FlagsComponent
+    {
+        Flags flags;
 
-        struct FlagsComponent
-        {
-            Flags flags;
+        constexpr static ComponentID GetId() { return 3; }
+    };
 
-            constexpr static ComponentID GetId() { return 3; }
-        };
+    struct RenderableComponent
+    {
+        u32 instanceId  = INVALID_ID;
+        u64 frameNumber = INVALID_ID_U64;
+        u8 drawIndex    = INVALID_ID_U8;
 
-        struct RenderableComponent
-        {
-            u32 instanceId  = INVALID_ID;
-            u64 frameNumber = INVALID_ID_U64;
-            u8 drawIndex    = INVALID_ID_U8;
+        Geometry* geometry = nullptr;
+        vec4 diffuseColor  = vec4(1.0f);
+        u16 depth          = 0;
 
-            Geometry* geometry = nullptr;
-            vec4 diffuseColor  = vec4(1.0f);
-            u16 depth          = 0;
+        constexpr static ComponentID GetId() { return 4; }
+    };
 
-            constexpr static ComponentID GetId() { return 4; }
-        };
+    struct ParentComponent
+    {
+        DynamicArray<Entity> children;
 
-        struct ParentComponent
-        {
-            DynamicArray<EntityID> children;
+        constexpr static ComponentID GetId() { return 5; }
+    };
 
-            constexpr static ComponentID GetId() { return 5; }
-        };
+    struct NineSliceComponent
+    {
+        /** @brief The width and height of the actual corner in pixels. */
+        u16vec2 cornerSize;
+        /** @brief The x and y min values in the atlas. */
+        u16vec2 atlasMin;
+        /** @brief The x and y max values in the atlas. */
+        u16vec2 atlasMax;
+        /** @brief The size of the atlas. */
+        u16vec2 atlasSize;
+        /** @brief The width and height of the corner in the atlas. */
+        u16vec2 cornerAtlasSize;
 
-        struct NineSliceComponent
-        {
-            /** @brief The width and height of the entire nine slice in pixels. */
-            u16vec2 size;
-            /** @brief The width and height of the actual corner in pixels. */
-            u16vec2 cornerSize;
-            /** @brief The x and y min values in the atlas. */
-            u16vec2 atlasMin;
-            /** @brief The x and y max values in the atlas. */
-            u16vec2 atlasMax;
-            /** @brief The size of the atlas. */
-            u16vec2 atlasSize;
-            /** @brief The width and height of the corner in the atlas. */
-            u16vec2 cornerAtlasSize;
+        constexpr static ComponentID GetId() { return 6; }
+    };
 
-            constexpr static ComponentID GetId() { return 6; }
-        };
+    struct ClickableComponent
+    {
+        Bounds bounds;
+        OnClickEventHandler handler;
 
-        struct ClickableComponent
-        {
-            Bounds bounds;
-
-            constexpr static ComponentID GetId() { return 7; }
-        };
-
-    }  // namespace UI_2D
-}  // namespace C3D
+        constexpr static ComponentID GetId() { return 7; }
+    };
+}  // namespace C3D::UI_2D

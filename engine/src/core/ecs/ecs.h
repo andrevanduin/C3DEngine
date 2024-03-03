@@ -4,7 +4,7 @@
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
 #include "defines.h"
-#include "entity.h"
+#include "entity_description.h"
 
 namespace C3D
 {
@@ -30,14 +30,14 @@ namespace C3D
             return true;
         }
 
-        EntityID Register();
+        Entity Register();
 
-        bool Deactivate(EntityID id);
+        bool Deactivate(Entity entity);
 
         template <typename ComponentType>
-        ComponentType& AddComponent(EntityID id) const
+        ComponentType& AddComponent(Entity entity) const
         {
-            auto index       = id.GetIndex();
+            auto index       = entity.GetIndex();
             auto componentId = ComponentType::GetId();
             auto pComponent  = m_componentPools[componentId].Allocate<ComponentType>(index);
 
@@ -46,27 +46,27 @@ namespace C3D
         }
 
         template <typename ComponentType>
-        void RemoveComponent(EntityID id) const
+        void RemoveComponent(Entity entity) const
         {
-            auto index       = id.GetIndex();
+            auto index       = entity.GetIndex();
             auto componentId = ComponentType::GetId();
 
             m_entities[index].RemoveComponent(componentId);
         }
 
         template <typename ComponentType>
-        ComponentType& GetComponent(EntityID id)
+        ComponentType& GetComponent(Entity entity)
         {
-            auto index       = id.GetIndex();
+            auto index       = entity.GetIndex();
             auto componentId = ComponentType::GetId();
 
             return m_componentPools[componentId].Get<ComponentType>(index);
         }
 
         template <typename ComponentType>
-        bool HasComponent(EntityID id) const
+        bool HasComponent(Entity entity) const
         {
-            auto index       = id.GetIndex();
+            auto index       = entity.GetIndex();
             auto componentId = ComponentType::GetId();
 
             return m_entities[index].HasComponent(componentId);
@@ -76,7 +76,7 @@ namespace C3D
         u64 m_maxComponents = 0;
 
         DynamicArray<ComponentPool<DynamicAllocator>> m_componentPools;
-        mutable DynamicArray<Entity> m_entities;
+        mutable DynamicArray<EntityDescription> m_entities;
         DynamicArray<u32> m_freeIndices;
 
         DynamicAllocator m_allocator;

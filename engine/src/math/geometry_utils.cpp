@@ -197,6 +197,51 @@ namespace C3D::GeometryUtils
     UIGeometryConfig GenerateUINineSliceConfig(const char* name, const u16vec2& size, const u16vec2& cornerSize, const u16vec2& atlasSize,
                                                const u16vec2& cornerAtlasSize, const u16vec2& atlasMin, const u16vec2& atlasMax)
     {
+        // 4 Vertices per corner with 4 corners
+        // 6 indices per quad and nine quads in a nine slice
+        UIGeometryConfig config = {};
+        config.vertices.Resize(16);
+        config.indices.Reserve(9 * 6);
+
+        config.materialName = "";
+        config.name         = name;
+
+        RegenerateUINineSliceGeometry(config.vertices.GetData(), size, cornerSize, atlasSize, cornerAtlasSize, atlasMin, atlasMax);
+
+        /*
+        Indices:
+            00, 04, 05 and 01, 00, 05
+            01, 05, 06 and 02, 01, 06
+            02, 06, 07 and 03, 02, 07
+
+            04, 08, 09 and 05, 04, 09
+            05, 09, 10 and 06, 05, 10
+            06, 10, 11 and 07, 06, 11
+
+            08, 12, 13 and 09, 08, 13
+            09, 13, 14 and 10, 09, 14
+            10, 14, 15 and 11, 10, 15
+        */
+
+        for (u8 j = 0; j <= 8; j += 4)
+        {
+            for (u8 i = 0; i < 3; i++)
+            {
+                config.indices.PushBack(0 + j + i);
+                config.indices.PushBack(4 + j + i);
+                config.indices.PushBack(5 + j + i);
+                config.indices.PushBack(1 + j + i);
+                config.indices.PushBack(0 + j + i);
+                config.indices.PushBack(5 + j + i);
+            }
+        }
+
+        return config;
+    }
+
+    void RegenerateUINineSliceGeometry(Vertex2D* vertices, const u16vec2& size, const u16vec2& cornerSize, const u16vec2& atlasSize,
+                                       const u16vec2& cornerAtlasSize, const u16vec2& atlasMin, const u16vec2& atlasMax)
+    {
         /** Create a geometry config for our nine slice which will look as follows
          * The 9 different quads are from here on refered to by the letters shown below.
          *
@@ -213,14 +258,6 @@ namespace C3D::GeometryUtils
          * || G ||   H   || I ||
          * 12 - 13 - - - 14 - 15
          */
-        UIGeometryConfig config = {};
-        config.vertices.Resize(16);
-        config.indices.Reserve(9 * 6);
-
-        config.materialName = "";
-        config.name         = name;
-
-        // UV Coordinates
 
         // Min UV coordinates we will use in the atlas
         const f32 atlasMinU = static_cast<f32>(atlasMin.x) / atlasSize.x;
@@ -258,114 +295,84 @@ namespace C3D::GeometryUtils
         const f32 giVMin = atlasMaxV - cornerAtlasSizeV;
         const f32 giVMax = atlasMaxV;
 
-        config.vertices[0].position.x = 0.0f;
-        config.vertices[0].position.y = 0.0f;
-        config.vertices[0].texture.x  = aUMin;
-        config.vertices[0].texture.y  = acVMin;
+        vertices[0].position.x = 0.0f;
+        vertices[0].position.y = 0.0f;
+        vertices[0].texture.x  = aUMin;
+        vertices[0].texture.y  = acVMin;
 
-        config.vertices[1].position.x = cornerSize.x;
-        config.vertices[1].position.y = 0.0f;
-        config.vertices[1].texture.x  = aUMax;
-        config.vertices[1].texture.y  = acVMin;
+        vertices[1].position.x = cornerSize.x;
+        vertices[1].position.y = 0.0f;
+        vertices[1].texture.x  = aUMax;
+        vertices[1].texture.y  = acVMin;
 
-        config.vertices[2].position.x = size.x - cornerSize.x;
-        config.vertices[2].position.y = 0.0f;
-        config.vertices[2].texture.x  = cUMin;
-        config.vertices[2].texture.y  = acVMin;
+        vertices[2].position.x = size.x - cornerSize.x;
+        vertices[2].position.y = 0.0f;
+        vertices[2].texture.x  = cUMin;
+        vertices[2].texture.y  = acVMin;
 
-        config.vertices[3].position.x = size.x;
-        config.vertices[3].position.y = 0.0f;
-        config.vertices[3].texture.x  = cUMax;
-        config.vertices[3].texture.y  = acVMin;
+        vertices[3].position.x = size.x;
+        vertices[3].position.y = 0.0f;
+        vertices[3].texture.x  = cUMax;
+        vertices[3].texture.y  = acVMin;
 
-        config.vertices[4].position.x = 0.0f;
-        config.vertices[4].position.y = cornerSize.y;
-        config.vertices[4].texture.x  = aUMin;
-        config.vertices[4].texture.y  = acVMax;
+        vertices[4].position.x = 0.0f;
+        vertices[4].position.y = cornerSize.y;
+        vertices[4].texture.x  = aUMin;
+        vertices[4].texture.y  = acVMax;
 
-        config.vertices[5].position.x = cornerSize.x;
-        config.vertices[5].position.y = cornerSize.y;
-        config.vertices[5].texture.x  = aUMax;
-        config.vertices[5].texture.y  = acVMax;
+        vertices[5].position.x = cornerSize.x;
+        vertices[5].position.y = cornerSize.y;
+        vertices[5].texture.x  = aUMax;
+        vertices[5].texture.y  = acVMax;
 
-        config.vertices[6].position.x = size.x - cornerSize.x;
-        config.vertices[6].position.y = cornerSize.y;
-        config.vertices[6].texture.x  = cUMin;
-        config.vertices[6].texture.y  = acVMax;
+        vertices[6].position.x = size.x - cornerSize.x;
+        vertices[6].position.y = cornerSize.y;
+        vertices[6].texture.x  = cUMin;
+        vertices[6].texture.y  = acVMax;
 
-        config.vertices[7].position.x = size.x;
-        config.vertices[7].position.y = cornerSize.y;
-        config.vertices[7].texture.x  = cUMax;
-        config.vertices[7].texture.y  = acVMax;
+        vertices[7].position.x = size.x;
+        vertices[7].position.y = cornerSize.y;
+        vertices[7].texture.x  = cUMax;
+        vertices[7].texture.y  = acVMax;
 
-        config.vertices[8].position.x = 0.0f;
-        config.vertices[8].position.y = size.y - cornerSize.y;
-        config.vertices[8].texture.x  = gUMin;
-        config.vertices[8].texture.y  = giVMin;
+        vertices[8].position.x = 0.0f;
+        vertices[8].position.y = size.y - cornerSize.y;
+        vertices[8].texture.x  = gUMin;
+        vertices[8].texture.y  = giVMin;
 
-        config.vertices[9].position.x = cornerSize.x;
-        config.vertices[9].position.y = size.y - cornerSize.y;
-        config.vertices[9].texture.x  = gUMax;
-        config.vertices[9].texture.y  = giVMin;
+        vertices[9].position.x = cornerSize.x;
+        vertices[9].position.y = size.y - cornerSize.y;
+        vertices[9].texture.x  = gUMax;
+        vertices[9].texture.y  = giVMin;
 
-        config.vertices[10].position.x = size.x - cornerSize.x;
-        config.vertices[10].position.y = size.y - cornerSize.y;
-        config.vertices[10].texture.x  = iUMin;
-        config.vertices[10].texture.y  = giVMin;
+        vertices[10].position.x = size.x - cornerSize.x;
+        vertices[10].position.y = size.y - cornerSize.y;
+        vertices[10].texture.x  = iUMin;
+        vertices[10].texture.y  = giVMin;
 
-        config.vertices[11].position.x = size.x;
-        config.vertices[11].position.y = size.y - cornerSize.y;
-        config.vertices[11].texture.x  = iUMax;
-        config.vertices[11].texture.y  = giVMin;
+        vertices[11].position.x = size.x;
+        vertices[11].position.y = size.y - cornerSize.y;
+        vertices[11].texture.x  = iUMax;
+        vertices[11].texture.y  = giVMin;
 
-        config.vertices[12].position.x = 0.0f;
-        config.vertices[12].position.y = size.y;
-        config.vertices[12].texture.x  = gUMin;
-        config.vertices[12].texture.y  = giVMax;
+        vertices[12].position.x = 0.0f;
+        vertices[12].position.y = size.y;
+        vertices[12].texture.x  = gUMin;
+        vertices[12].texture.y  = giVMax;
 
-        config.vertices[13].position.x = cornerSize.x;
-        config.vertices[13].position.y = size.y;
-        config.vertices[13].texture.x  = gUMax;
-        config.vertices[13].texture.y  = giVMax;
+        vertices[13].position.x = cornerSize.x;
+        vertices[13].position.y = size.y;
+        vertices[13].texture.x  = gUMax;
+        vertices[13].texture.y  = giVMax;
 
-        config.vertices[14].position.x = size.x - cornerSize.x;
-        config.vertices[14].position.y = size.y;
-        config.vertices[14].texture.x  = iUMin;
-        config.vertices[14].texture.y  = giVMax;
+        vertices[14].position.x = size.x - cornerSize.x;
+        vertices[14].position.y = size.y;
+        vertices[14].texture.x  = iUMin;
+        vertices[14].texture.y  = giVMax;
 
-        config.vertices[15].position.x = size.x;
-        config.vertices[15].position.y = size.y;
-        config.vertices[15].texture.x  = iUMax;
-        config.vertices[15].texture.y  = giVMax;
-
-        /*
-        Indices:
-            00, 04, 05 and 01, 00, 05
-            01, 05, 06 and 02, 01, 06
-            02, 06, 07 and 03, 02, 07
-
-            04, 08, 09 and 05, 04, 09
-            05, 09, 10 and 06, 05, 10
-            06, 10, 11 and 07, 06, 11
-
-            08, 12, 13 and 09, 08, 13
-            09, 13, 14 and 10, 09, 14
-            10, 14, 15 and 11, 10, 15
-        */
-
-        for (u8 j = 0; j <= 8; j += 4)
-        {
-            for (u8 i = 0; i < 3; i++)
-            {
-                config.indices.PushBack(0 + j + i);
-                config.indices.PushBack(4 + j + i);
-                config.indices.PushBack(5 + j + i);
-                config.indices.PushBack(1 + j + i);
-                config.indices.PushBack(0 + j + i);
-                config.indices.PushBack(5 + j + i);
-            }
-        }
-
-        return config;
+        vertices[15].position.x = size.x;
+        vertices[15].position.y = size.y;
+        vertices[15].texture.x  = iUMax;
+        vertices[15].texture.y  = giVMax;
     }
 }  // namespace C3D::GeometryUtils

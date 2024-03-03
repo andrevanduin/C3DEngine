@@ -1,6 +1,5 @@
 #include "ui2d_system.h"
 
-#include "UI/2D/flags.h"
 #include "core/ecs/entity_view.h"
 #include "core/frame_data.h"
 #include "core/uuid.h"
@@ -90,18 +89,24 @@ namespace C3D
 
     bool UI2DSystem::OnClick(const EventContext& context)
     {
-        auto x = context.data.u16[1];
-        auto y = context.data.u16[2];
+        auto ctx = OnClickEventContext(context.data.u16[0], context.data.u16[1], context.data.u16[2]);
 
         for (auto entity : EntityView<ClickableComponent>(m_ecs))
         {
             // Iterate over all clickable entities and check if we are clicking them
-            auto& bounds = m_ecs.GetComponent<ClickableComponent>(entity).bounds;
+            auto& clickableComponent = m_ecs.GetComponent<ClickableComponent>(entity);
+            auto& bounds             = clickableComponent.bounds;
 
-            if (x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height)
+            auto& transformComponent = m_ecs.GetComponent<TransformComponent>(entity);
+            auto model               = transformComponent.transform.GetWorld();
+            auto inverse             = glm::inverse(model);
+
+            auto transformedPos = inverse * vec4(ctx.x, ctx.y, 0.0f, 1.0f);
+
+            if (transformedPos.x >= bounds.x && transformedPos.x <= bounds.x + bounds.width && transformedPos.y >= bounds.y &&
+                transformedPos.y <= bounds.y + bounds.height)
             {
-                INFO_LOG("Button clicked");
-                return true;  // Click handled
+                return clickableComponent.handler(ctx);
             }
         }
 
@@ -142,37 +147,260 @@ namespace C3D
         return true;
     }
 
-    EntityID UI2DSystem::AddPanel(u16 width, u16 height, u16 cornerWidth, u16 cornerHeight)
+    Entity UI2DSystem::AddPanel(u16 x, u16 y, u16 width, u16 height, u16 cornerWidth, u16 cornerHeight)
     {
         auto panel = m_ecs.Register();
 
-        auto& idComponent = m_ecs.AddComponent<IDComponent>(panel);
-        idComponent.id.Generate();
-
-        auto& nameComponent = m_ecs.AddComponent<NameComponent>(panel);
-        nameComponent.name  = "Panel";
-
-        auto& tComponent = m_ecs.AddComponent<TransformComponent>(panel);
-        tComponent.transform.SetPosition(vec3(50.0f, 50.0f, 0.0f));
+        SetupBaseComponent(panel, "Panel", x, y, width, height);
 
         // TODO: Get from config
         constexpr u16vec2 panelCornerAtlasSize = u16vec2(32, 32);  // Size of one corner of the panel nine slice
         constexpr u16vec2 panelAtlasMin        = u16vec2(0, 0);    // The min values for the panel in the UI atlas
         constexpr u16vec2 panelAtlasMax        = u16vec2(96, 96);  // The max values for the panel in the UI atlas
+        auto panelCornerSize                   = u16vec2(cornerWidth, cornerHeight);
 
-        auto& sliceComponent           = m_ecs.AddComponent<NineSliceComponent>(panel);
-        sliceComponent.size            = u16vec2(width, height);
-        sliceComponent.cornerSize      = u16vec2(cornerWidth, cornerHeight);
+        SetupNineSliceComponent(panel, panelCornerSize, panelCornerAtlasSize, panelAtlasMin, panelAtlasMax);
+
+        auto config = GeometryUtils::GenerateUINineSliceConfig("Panel_UI_Geometry", u16vec2(width, height), panelCornerSize, atlasSize,
+                                                               panelCornerAtlasSize, panelAtlasMin, panelAtlasMax);
+
+        if (!SetupRenderableComponent(panel, config))
+        {
+            ERROR_LOG("Failed to setup RenderableComponent.");
+            return Entity::Invalid();
+        }
+
+        return panel;
+    }
+
+    Entity UI2DSystem::AddButton(u16 x, u16 y, u16 width, u16 height)
+    {
+        auto button = m_ecs.Register();
+
+        SetupBaseComponent(button, "Button", x, y, width, height);
+
+        // TODO: Get from config
+        constexpr u16vec2 buttonCornerAtlasSize = u16vec2(8, 8);     // Size of one corner of the button nine slice
+        constexpr u16vec2 buttonAtlasMin        = u16vec2(120, 24);  // The min values for the button in the UI atlas
+        constexpr u16vec2 buttonAtlasMax        = u16vec2(168, 72);  // The max values for the button in the UI atlas
+        constexpr u16vec2 buttonCornerSize      = u16vec2(8, 8);
+
+        SetupNineSliceComponent(button, buttonCornerSize, buttonCornerAtlasSize, buttonAtlasMin, buttonAtlasMax);
+
+        auto config = GeometryUtils::GenerateUINineSliceConfig("Button_UI_Geometry", u16vec2(width, height), buttonCornerSize, atlasSize,
+                                                               buttonCornerAtlasSize, buttonAtlasMin, buttonAtlasMax);
+
+        if (!SetupRenderableComponent(button, config))
+        {
+            ERROR_LOG("Failed to setup RenderableComponent.");
+            return Entity::Invalid();
+        }
+
+        SetupClickableComponent(button, width, height);
+
+        return button;
+    }
+
+    bool UI2DSystem::SetParent(Entity child, Entity parent)
+    {
+        if (!child.IsValid())
+        {
+            ERROR_LOG("Provided child is not valid.");
+            return false;
+        }
+
+        if (!parent.IsValid())
+        {
+            ERROR_LOG("Provided parent is not valid.");
+            return false;
+        }
+
+        if (!m_ecs.HasComponent<ParentComponent>(parent))
+        {
+            INFO_LOG("Entity: '{}' does not yet have a ParentComponent. Adding it first.", parent);
+            m_ecs.AddComponent<ParentComponent>(parent);
+        }
+
+        auto& pComponent = m_ecs.GetComponent<ParentComponent>(parent);
+        pComponent.children.PushBack(child);
+
+        if (m_ecs.HasComponent<TransformComponent>(child) && m_ecs.HasComponent<TransformComponent>(parent))
+        {
+            INFO_LOG("Since both Child and Parent have a Transform component we will set the parent inside the child's Transform.");
+
+            auto& tcComponent = m_ecs.GetComponent<TransformComponent>(child);
+            auto& tpComponent = m_ecs.GetComponent<TransformComponent>(parent);
+
+            tcComponent.transform.SetParent(&tpComponent.transform);
+        }
+
+        return true;
+    }
+
+    bool UI2DSystem::SetPosition(Entity entity, const vec2& translation)
+    {
+        if (!entity.IsValid())
+        {
+            ERROR_LOG("Entity provided is not valid.");
+            return false;
+        }
+
+        if (!m_ecs.HasComponent<TransformComponent>(entity))
+        {
+            ERROR_LOG("Entity: '{}' does not have a transform component to translate.", entity);
+            return false;
+        }
+
+        m_ecs.GetComponent<TransformComponent>(entity).transform.SetPosition(vec3(translation, 0.0f));
+
+        return true;
+    }
+
+    bool UI2DSystem::SetSize(Entity entity, u16 width, u16 height)
+    {
+        if (!entity.IsValid())
+        {
+            ERROR_LOG("Entity provided is not valid.");
+            return false;
+        }
+
+        if (!m_ecs.HasComponent<TransformComponent>(entity))
+        {
+            ERROR_LOG("Entity: '{}' does not have a transform component to resize.", entity);
+            return false;
+        }
+
+        auto& tComponent  = m_ecs.GetComponent<TransformComponent>(entity);
+        tComponent.width  = width;
+        tComponent.height = height;
+
+        if (m_ecs.HasComponent<NineSliceComponent>(entity))
+        {
+            // If we have a nine slice component we should regenerate it
+            RegenerateNineSliceGeometry(entity);
+        }
+
+        return true;
+    }
+
+    bool UI2DSystem::SetRotation(Entity entity, f32 angle)
+    {
+        if (!entity.IsValid())
+        {
+            ERROR_LOG("Entity provided is not valid.");
+            return false;
+        }
+
+        if (!m_ecs.HasComponent<TransformComponent>(entity))
+        {
+            ERROR_LOG("Entity: '{}' does not have a transform component to rotate.", entity);
+            return false;
+        }
+
+        auto rotation = glm::rotate(quat(1.0f, 0.0f, 0.0f, 0.0f), angle, vec3(0.0f, 0.0f, 1.0f));
+        m_ecs.GetComponent<TransformComponent>(entity).transform.SetRotation(rotation);
+
+        return true;
+    }
+
+    bool UI2DSystem::MakeClickable(Entity entity)
+    {
+        if (!entity.IsValid())
+        {
+            ERROR_LOG("Entity provided is not valid.");
+            return false;
+        }
+
+        if (!m_ecs.HasComponent<TransformComponent>(entity))
+        {
+            ERROR_LOG("Entity: '{}' does not have a transform component to determine the bounds from. Please provide bounds manually.",
+                      entity);
+            return false;
+        }
+
+        auto& tComponent = m_ecs.GetComponent<TransformComponent>(entity);
+        return MakeClickable(entity, Bounds(0.0f, 0.0f, tComponent.width, tComponent.height));
+    }
+
+    bool UI2DSystem::MakeClickable(Entity entity, const Bounds& bounds)
+    {
+        if (!entity.IsValid())
+        {
+            ERROR_LOG("Entity provided is not valid.");
+            return false;
+        }
+
+        auto& cComponent  = m_ecs.AddComponent<ClickableComponent>(entity);
+        cComponent.bounds = bounds;
+
+        return true;
+    }
+
+    bool UI2DSystem::AddOnClickHandler(Entity entity, const OnClickEventHandler& handler)
+    {
+        if (!entity.IsValid())
+        {
+            ERROR_LOG("Entity provided is not valid.");
+            return false;
+        }
+
+        if (!m_ecs.HasComponent<ClickableComponent>(entity))
+        {
+            INFO_LOG("Entity: '{}' does not have a Clickable Component by default. Adding it first (with default bounds).", entity);
+            MakeClickable(entity);
+        }
+
+        auto& clickableComponent   = m_ecs.GetComponent<ClickableComponent>(entity);
+        clickableComponent.handler = handler;
+        return true;
+    }
+
+    void UI2DSystem::SetupBaseComponent(Entity entity, const char* name, u16 x, u16 y, u16 width, u16 height)
+    {
+        auto& idComponent = m_ecs.AddComponent<IDComponent>(entity);
+        idComponent.id.Generate();
+
+        auto& nameComponent = m_ecs.AddComponent<NameComponent>(entity);
+        nameComponent.name  = name;
+
+        auto& tComponent = m_ecs.AddComponent<TransformComponent>(entity);
+        tComponent.transform.SetPosition(vec3(x, y, 0.0f));
+        tComponent.width  = width;
+        tComponent.height = height;
+    }
+
+    void UI2DSystem::SetupNineSliceComponent(Entity entity, const u16vec2& cornerSize, const u16vec2& cornerAtlasSize,
+                                             const u16vec2& atlasMin, const u16vec2& atlasMax)
+    {
+        auto& sliceComponent           = m_ecs.AddComponent<NineSliceComponent>(entity);
+        sliceComponent.cornerSize      = cornerSize;
         sliceComponent.atlasSize       = atlasSize;
-        sliceComponent.cornerAtlasSize = panelCornerAtlasSize;
-        sliceComponent.atlasMin        = panelAtlasMin;
-        sliceComponent.atlasMax        = panelAtlasMax;
+        sliceComponent.cornerAtlasSize = cornerAtlasSize;
+        sliceComponent.atlasMin        = atlasMin;
+        sliceComponent.atlasMax        = atlasMax;
+    }
 
-        auto& renderableComponent = m_ecs.AddComponent<RenderableComponent>(panel);
-        renderableComponent.depth = 0;
+    void UI2DSystem::RegenerateNineSliceGeometry(Entity entity)
+    {
+        auto& transformComponent  = m_ecs.GetComponent<TransformComponent>(entity);
+        auto& sliceComponent      = m_ecs.GetComponent<NineSliceComponent>(entity);
+        auto& renderableComponent = m_ecs.GetComponent<RenderableComponent>(entity);
 
-        auto config = GeometryUtils::GenerateUINineSliceConfig("Panel_UI_Geometry", sliceComponent.size, sliceComponent.cornerSize,
-                                                               atlasSize, panelCornerAtlasSize, panelAtlasMin, panelAtlasMax);
+        auto& geometry = *renderableComponent.geometry;
+
+        GeometryUtils::RegenerateUINineSliceGeometry(reinterpret_cast<Vertex2D*>(geometry.vertices),
+                                                     u16vec2(transformComponent.width, transformComponent.height),
+                                                     sliceComponent.cornerSize, sliceComponent.atlasSize, sliceComponent.cornerAtlasSize,
+                                                     sliceComponent.atlasMin, sliceComponent.atlasMax);
+
+        Renderer.UpdateGeometryVertices(geometry, 0, geometry.vertexCount, geometry.vertices);
+    }
+
+    bool UI2DSystem::SetupRenderableComponent(Entity entity, const UIGeometryConfig& config)
+    {
+        auto& renderableComponent = m_ecs.AddComponent<RenderableComponent>(entity);
+        renderableComponent.depth = 1;
+
         // Acquire geometry
         renderableComponent.geometry = Geometric.AcquireFromConfig(config, true);
         if (!renderableComponent.geometry)
@@ -192,60 +420,13 @@ namespace C3D
         return true;
     }
 
-    EntityID UI2DSystem::AddButton(u16 width, u16 height)
+    void UI2DSystem::SetupClickableComponent(Entity entity, u16 width, u16 height)
     {
-        auto button = m_ecs.Register();
-
-        auto& idComponent = m_ecs.AddComponent<IDComponent>(button);
-        idComponent.id.Generate();
-
-        auto& nameComponent = m_ecs.AddComponent<NameComponent>(button);
-        nameComponent.name  = "Button";
-
-        auto& tComponent = m_ecs.AddComponent<TransformComponent>(button);
-        tComponent.transform.SetPosition(vec3(150.0f, 150.0f, 0.0f));
-
-        // TODO: Get from config
-        constexpr u16vec2 buttonCornerAtlasSize = u16vec2(8, 8);     // Size of one corner of the button nine slice
-        constexpr u16vec2 buttonAtlasMin        = u16vec2(120, 24);  // The min values for the button in the UI atlas
-        constexpr u16vec2 buttonAtlasMax        = u16vec2(168, 72);  // The max values for the button in the UI atlas
-
-        auto& sliceComponent           = m_ecs.AddComponent<NineSliceComponent>(button);
-        sliceComponent.size            = u16vec2(width, height);
-        sliceComponent.cornerSize      = u16vec2(8, 8);
-        sliceComponent.atlasSize       = atlasSize;
-        sliceComponent.cornerAtlasSize = buttonCornerAtlasSize;
-        sliceComponent.atlasMin        = buttonAtlasMin;
-        sliceComponent.atlasMax        = buttonAtlasMax;
-
-        auto& clickableComponent         = m_ecs.AddComponent<ClickableComponent>(button);
-        clickableComponent.bounds.x      = 150.0f;
-        clickableComponent.bounds.y      = 150.0f;
+        auto& clickableComponent         = m_ecs.AddComponent<ClickableComponent>(entity);
+        clickableComponent.bounds.x      = 0.0f;
+        clickableComponent.bounds.y      = 0.0f;
         clickableComponent.bounds.width  = width;
         clickableComponent.bounds.height = height;
-
-        auto& renderableComponent = m_ecs.AddComponent<RenderableComponent>(button);
-        renderableComponent.depth = 1;
-
-        auto config = GeometryUtils::GenerateUINineSliceConfig("Button_UI_Geometry", sliceComponent.size, sliceComponent.cornerSize,
-                                                               atlasSize, buttonCornerAtlasSize, buttonAtlasMin, buttonAtlasMax);
-        // Acquire geometry
-        renderableComponent.geometry = Geometric.AcquireFromConfig(config, true);
-        if (!renderableComponent.geometry)
-        {
-            ERROR_LOG("Failed to Acquire Geometry.");
-            return false;
-        }
-
-        // Acquire shader instance resources
-        TextureMap* textureMaps[1] = { &m_textureAtlas };
-        if (!Renderer.AcquireShaderInstanceResources(*m_shader, 1, textureMaps, &renderableComponent.instanceId))
-        {
-            ERROR_LOG("Failed to Acquire Shader Instance resources.");
-            return false;
-        }
-
-        return true;
     }
 
     void UI2DSystem::OnShutdown()

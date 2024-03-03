@@ -42,9 +42,12 @@ namespace C3D
 
     struct Bounds
     {
-        f32 x = 0.0f;
-        f32 y = 0.0f;
-        f32 width = 0.0f;
+        Bounds() {}
+        Bounds(f32 x, f32 y, f32 width, f32 height) : x(x), y(y), width(width), height(height) {}
+
+        f32 x      = 0.0f;
+        f32 y      = 0.0f;
+        f32 width  = 0.0f;
         f32 height = 0.0f;
     };
 
