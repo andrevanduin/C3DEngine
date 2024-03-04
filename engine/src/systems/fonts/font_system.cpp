@@ -74,7 +74,6 @@ namespace C3D
         }
 
         // Acquire the texture
-        // TODO: This only supports one page at the moment!
         lookup.resource.data.atlas.texture = Textures.Acquire(lookup.resource.pages[0].file.Data(), true);
 
         const bool result = SetupFontData(lookup.resource.data);

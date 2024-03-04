@@ -87,6 +87,7 @@ namespace C3D
         [[nodiscard]] i32 FindMemoryIndex(const u32 typeFilter, const u32 propertyFlags) const;
 
         VkDevice GetLogical() const { return m_logicalDevice; }
+        VkPhysicalDevice GetPhysical() const { return m_physicalDevice; }
 
         VkCommandPool GetGraphicsCommandPool() const { return m_graphicsCommandPool; }
 

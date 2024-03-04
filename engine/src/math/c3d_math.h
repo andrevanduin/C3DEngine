@@ -145,6 +145,30 @@ namespace C3D
     }
 
     /**
+     * @brief A method that returns the largest integer value less than or equal to x.
+     *
+     * @param x The number you want to floor
+     * @return the largest integer value less than or equal to x
+     */
+    template <typename T>
+    C3D_API C3D_INLINE T Floor(T x)
+    {
+        return std::floor(x);
+    }
+
+    /**
+     * @brief A method that returns the base-2 logarithm of input x.
+     *
+     * @param x The number you want to take the base-2 log of.
+     * @return How many times x can be divided by 2.
+     */
+    template <typename T>
+    C3D_API C3D_INLINE T Log2(T x)
+    {
+        return std::log2(x);
+    }
+
+    /**
      * @brief A method that returns the largest number that was provided as an argument.
      *
      * @param a The first number

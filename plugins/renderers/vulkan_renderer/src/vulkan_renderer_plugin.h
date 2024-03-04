@@ -81,6 +81,7 @@ namespace C3D
 
         bool AcquireTextureMapResources(TextureMap& map) override;
         void ReleaseTextureMapResources(TextureMap& map) override;
+        bool RefreshTextureMapResources(TextureMap& map) override;
 
         bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) override;
 
@@ -110,6 +111,8 @@ namespace C3D
         bool RecreateSwapChain();
 
         bool CreateShaderModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const;
+
+        VkSampler CreateSampler(TextureMap& map);
 
         VkSamplerAddressMode ConvertRepeatType(const char* axis, TextureRepeat repeat) const;
         VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;

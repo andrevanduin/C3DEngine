@@ -11,6 +11,10 @@ namespace C3D
         u8 channelCount;
         u32 width, height;
         u8* pixels;
+        /** @brief The amount of mip levels to be generated for this image resource.
+         * This value should always be atleast 1 since we will always have atleast the base image.
+         */
+        u8 mipLevels = 1;
     };
 
     struct ImageLoadParams
