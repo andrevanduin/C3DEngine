@@ -12,6 +12,8 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "VULKAN_SWAPCHAIN";
+
     VkSurfaceFormatKHR VulkanSwapChain::GetSurfaceFormat() const
     {
         const auto& formats = m_context->device.GetSurfaceFormats();
@@ -23,9 +25,7 @@ namespace C3D
             }
         }
 
-        Logger::Warn(
-            "[VULKAN_SWAP_CHAIN] - Could not find Preferred SwapChain ImageFormat. Falling back to first format in the "
-            "list");
+        WARN_LOG("Could not find Preferred SwapChain ImageFormat. Falling back to first format in the list.");
         return formats[0];
     }
 
@@ -74,7 +74,7 @@ namespace C3D
 
     void VulkanSwapChain::Destroy()
     {
-        Logger::Info("[VULKAN_SWAP_CHAIN] - Destroying SwapChain");
+        INFO_LOG("Destroying SwapChain.");
         DestroyInternal();
 
         // Since we don't destroy our depth and render textures in destroy internal (so we can re-use the textures on a
@@ -106,7 +106,7 @@ namespace C3D
         }
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         {
-            Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to acquire SwapChain image");
+            FATAL_LOG("Failed to acquire SwapChain image.");
             return false;
         }
         return true;
@@ -129,11 +129,11 @@ namespace C3D
             // Our SwapChain is out of date, suboptimal or a FrameBuffer resize has occurred.
             // We trigger a SwapChain recreation.
             Recreate(m_context->frameBufferWidth, m_context->frameBufferHeight, m_flags);
-            Logger::Debug("[VULKAN_SWAP_CHAIN] - Recreated because SwapChain returned out of date or suboptimal");
+            DEBUG_LOG("Recreated because SwapChain returned out of date or suboptimal.");
         }
         else if (result != VK_SUCCESS)
         {
-            Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to present SwapChain image");
+            FATAL_LOG("Failed to present SwapChain image.");
         }
 
         m_context->currentFrame = (m_context->currentFrame + 1) % maxFramesInFlight;
@@ -227,7 +227,7 @@ namespace C3D
 
                 if (!renderTextures[i].internalData)
                 {
-                    Logger::Fatal("[VULKAN_SWAP_CHAIN] Failed to generate new swapChain image texture.");
+                    FATAL_LOG("Failed to generate new swapChain image texture.");
                     return;
                 }
             }
@@ -273,7 +273,7 @@ namespace C3D
         // Detect depth resources
         if (!m_context->device.DetectDepthFormat())
         {
-            Logger::Fatal("[VULKAN_SWAP_CHAIN] - Failed to find a supported Depth Format");
+            FATAL_LOG("Failed to find a supported Depth Format.");
         }
 
         // If we do not have an array for our depth textures yet we allocate it
@@ -285,18 +285,18 @@ namespace C3D
         for (u32 i = 0; i < imageCount; i++)
         {
             // Create a depth image and it's view
-            const auto name  = String::FromFormat("swapchain_image_{}", i);
+            const auto name  = String::FromFormat("SWAPCHAIN_IMAGE_{}", i);
             const auto image = Memory.Allocate<VulkanImage>(MemoryType::Texture);
             image->Create(m_context, name, TextureType::Type2D, extent.width, extent.height, m_context->device.GetDepthFormat(),
                           VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true,
-                          VK_IMAGE_ASPECT_DEPTH_BIT);
+                          1, VK_IMAGE_ASPECT_DEPTH_BIT);
 
             // Wrap it in a texture
             Textures.WrapInternal("__C3D_default_depth_texture__", extent.width, extent.height, m_context->device.GetDepthChannelCount(),
                                   false, true, false, image, &depthTextures[i]);
         }
 
-        Logger::Info("[VULKAN_SWAP_CHAIN] - Successfully created");
+        INFO_LOG("Successfully created.");
     }
 
     void VulkanSwapChain::DestroyInternal() const

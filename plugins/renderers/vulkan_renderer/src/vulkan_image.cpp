@@ -10,6 +10,8 @@
 
 namespace C3D
 {
+    constexpr const char* INSTANCE_NAME = "VULKAN_IMAGE";
+
     VulkanImage::~VulkanImage() { Destroy(); }
 
     VkImageType GetVkImageType(const TextureType type)
@@ -37,24 +39,32 @@ namespace C3D
         return VK_IMAGE_VIEW_TYPE_2D;
     }
 
-    void VulkanImage::Create(const VulkanContext* context, const String& name, const TextureType type, const u32 _width, const u32 _height,
+    bool VulkanImage::Create(const VulkanContext* context, const String& name, const TextureType type, const u32 _width, const u32 _height,
                              const VkFormat format, const VkImageTiling tiling, const VkImageUsageFlags usage,
-                             const VkMemoryPropertyFlags memoryFlags, const bool createView, const VkImageAspectFlags viewAspectFlags)
+                             const VkMemoryPropertyFlags memoryFlags, const bool createView, u8 mipLevels,
+                             const VkImageAspectFlags viewAspectFlags)
     {
         m_context     = context;
         m_name        = name;
         width         = _width;
         height        = _height;
+        m_format      = format;
         m_memoryFlags = memoryFlags;
+        m_mipLevels   = mipLevels;
+
+        if (m_mipLevels < 1)
+        {
+            WARN_LOG("MipLevels must be >= 1 for: '{}'. Defaulting to 1.", m_name);
+            m_mipLevels = 1;
+        }
 
         VkImageCreateInfo imageCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
         imageCreateInfo.imageType         = GetVkImageType(type);
         imageCreateInfo.extent.width      = width;
         imageCreateInfo.extent.height     = height;
         // TODO: Support different depth.
-        imageCreateInfo.extent.depth = 1;
-        // TODO: Support MipMapping.
-        imageCreateInfo.mipLevels     = 4;
+        imageCreateInfo.extent.depth  = 1;
+        imageCreateInfo.mipLevels     = m_mipLevels;
         imageCreateInfo.arrayLayers   = type == TextureType::TypeCube ? 6 : 1;
         imageCreateInfo.format        = format;
         imageCreateInfo.tiling        = tiling;
@@ -80,8 +90,8 @@ namespace C3D
         const i32 memoryType = context->device.FindMemoryIndex(m_memoryRequirements.memoryTypeBits, memoryFlags);
         if (memoryType == -1)
         {
-            Logger::Error("[VULKAN_IMAGE ({})] - Required memory type not found. Image not valid.", m_name);
-            return;
+            ERROR_LOG("Required memory type not found for: '{}'. Image not valid.", m_name);
+            return false;
         }
 
         VkMemoryAllocateInfo memoryAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
@@ -103,21 +113,22 @@ namespace C3D
         if (createView)
         {
             view = nullptr;
-            CreateView(type, format, viewAspectFlags);
+            CreateView(type, viewAspectFlags);
         }
+
+        return true;
     }
 
-    void VulkanImage::CreateView(TextureType type, const VkFormat format, const VkImageAspectFlags aspectFlags)
+    void VulkanImage::CreateView(TextureType type, const VkImageAspectFlags aspectFlags)
     {
         VkImageViewCreateInfo viewCreateInfo       = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
         viewCreateInfo.image                       = handle;
         viewCreateInfo.viewType                    = GetVkImageViewType(type);
-        viewCreateInfo.format                      = format;
+        viewCreateInfo.format                      = m_format;
         viewCreateInfo.subresourceRange.aspectMask = aspectFlags;
 
-        // TODO: Make Configurable.
         viewCreateInfo.subresourceRange.baseMipLevel   = 0;
-        viewCreateInfo.subresourceRange.levelCount     = 1;
+        viewCreateInfo.subresourceRange.levelCount     = m_mipLevels;
         viewCreateInfo.subresourceRange.baseArrayLayer = 0;
         viewCreateInfo.subresourceRange.layerCount     = type == TextureType::TypeCube ? 6 : 1;
 
@@ -125,6 +136,104 @@ namespace C3D
 
         const auto viewName = m_name + "_view";
         VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_IMAGE_VIEW, view, viewName);
+    }
+
+    bool VulkanImage::CreateMipMaps(const VulkanCommandBuffer* commandBuffer)
+    {
+        if (m_mipLevels <= 1)
+        {
+            WARN_LOG("Attempted to create mips for image: '{}', that only requires 1 mip level.", m_name);
+            return true;
+        }
+
+        // Ensure the image format support linear blitting
+        VkFormatProperties formatProperties;
+        vkGetPhysicalDeviceFormatProperties(m_context->device.GetPhysical(), m_format, &formatProperties);
+
+        if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+        {
+            WARN_LOG("Texture image format for image: '{}', does not support linear blitting! Mipmaps can't be created.", m_name);
+            return false;
+        }
+
+        VkImageMemoryBarrier barrier            = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+        barrier.image                           = handle;
+        barrier.srcQueueFamilyIndex             = m_context->device.GetGraphicsQueueIndex();
+        barrier.dstQueueFamilyIndex             = m_context->device.GetGraphicsQueueIndex();
+        barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount     = 1;
+        barrier.subresourceRange.levelCount     = 1;
+
+        i32 mipWidth  = width;
+        i32 mipHeight = height;
+
+        // Iterate each sub-mip level, starting at 1 (since we can skip the original full res image).
+        // Each mip level uses the previous level as source material for the blitting operation
+        for (u32 i = 1; i < m_mipLevels; i++)
+        {
+            barrier.subresourceRange.baseMipLevel = i - 1;
+            barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.newLayout                     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            barrier.srcAccessMask                 = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask                 = VK_ACCESS_TRANSFER_READ_BIT;
+
+            // Transition the mip image subresource to a transfer layout.
+            vkCmdPipelineBarrier(commandBuffer->handle, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                                 nullptr, 1, &barrier);
+
+            // Setup the blit
+            VkImageBlit blit = {};
+            // Source offset is always the upper-left corner
+            blit.srcOffsets[0] = { 0, 0, 0 };
+            // The extents of our source mip level
+            blit.srcOffsets[1]             = { mipWidth, mipHeight, 1 };
+            blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            // Source is the previous mip level
+            blit.srcSubresource.mipLevel       = i - 1;
+            blit.srcSubresource.baseArrayLayer = 0;
+            blit.srcSubresource.layerCount     = 1;
+            // Destination offset is also always the upper-left corner
+            blit.dstOffsets[0] = { 0, 0, 0 };
+            // Next mips width and height is half the current mip width/height (unless current == 1)
+            i32 nextMipWidth               = mipWidth > 1 ? mipWidth / 2 : 1;
+            i32 nextMipHeight              = mipHeight > 1 ? mipHeight / 2 : 1;
+            blit.dstOffsets[1]             = { nextMipWidth, nextMipHeight, 1 };
+            blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            // The destination is the current mip level
+            blit.dstSubresource.mipLevel       = i;
+            blit.dstSubresource.baseArrayLayer = 0;
+            blit.dstSubresource.layerCount     = 1;
+
+            // Perform a blit for this layer
+            vkCmdBlitImage(commandBuffer->handle, handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, handle,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+
+            barrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            barrier.newLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            // Transition the previous mip layer's image subresource to a shader-readable layout
+            vkCmdPipelineBarrier(commandBuffer->handle, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0,
+                                 nullptr, 0, nullptr, 1, &barrier);
+
+            // Now our current width/height needs to be updated to the next width/height
+            mipWidth  = nextMipWidth;
+            mipHeight = nextMipHeight;
+        }
+
+        // Finally transition the last mipmap level to a shader-readable layout.
+        barrier.subresourceRange.baseMipLevel = m_mipLevels - 1;
+        barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout                     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask                 = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask                 = VK_ACCESS_SHADER_READ_BIT;
+
+        vkCmdPipelineBarrier(commandBuffer->handle, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0,
+                             nullptr, 1, &barrier);
+
+        return true;
     }
 
     void VulkanImage::TransitionLayout(const VulkanCommandBuffer* commandBuffer, const TextureType type, VkFormat format,
@@ -140,7 +249,7 @@ namespace C3D
         barrier.image                           = handle;
         barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         barrier.subresourceRange.baseMipLevel   = 0;
-        barrier.subresourceRange.levelCount     = 1;
+        barrier.subresourceRange.levelCount     = m_mipLevels;
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount     = type == TextureType::TypeCube ? 6 : 1;
 
@@ -187,7 +296,7 @@ namespace C3D
         }
         else
         {
-            Logger::Fatal("[VULKAN_IMAGE ({})] - Unsupported layout transition", m_name);
+            FATAL_LOG("Unsupported layout transition for: '{}'.", m_name);
             return;
         }
 

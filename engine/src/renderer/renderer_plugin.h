@@ -92,6 +92,7 @@ namespace C3D
 
         virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
         virtual void ReleaseTextureMapResources(TextureMap& map) = 0;
+        virtual bool RefreshTextureMapResources(TextureMap& map) = 0;
 
         virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) = 0;
 

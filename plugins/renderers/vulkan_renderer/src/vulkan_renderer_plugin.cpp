@@ -647,7 +647,7 @@ namespace C3D
         image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
                       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
+                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
 
         // Load the data
         WriteDataToTexture(texture, 0, static_cast<u32>(imageSize), pixels);
@@ -695,7 +695,7 @@ namespace C3D
         }
 
         image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
-                      usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, aspect);
+                      usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, aspect);
 
         texture->generation++;
     }
@@ -733,9 +733,13 @@ namespace C3D
         // Copy the data from the buffer.
         image->CopyFromBuffer(texture->type, m_context.stagingBuffer.handle, stagingOffset, &tempCommandBuffer);
 
-        // Transition from optimal for receiving data to shader-read-only optimal layout.
-        image->TransitionLayout(&tempCommandBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        if (texture->mipLevels <= 1 || !image->CreateMipMaps(&tempCommandBuffer))
+        {
+            // If we don't need mips or the generation of the mips fails we fallback to ordinary transition.
+            // Transition from optimal for receiving data to shader-read-only optimal layout.
+            image->TransitionLayout(&tempCommandBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        }
 
         tempCommandBuffer.EndSingleUse(&m_context, pool, queue);
 
@@ -751,11 +755,18 @@ namespace C3D
 
             const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
+            // Recalculate our mip levels
+            if (texture->mipLevels > 1)
+            {
+                // Take the base-2 log from the largest dimension floor it and add 1 for the base mip level.
+                texture->mipLevels = Floor(Log2(Max(newWidth, newHeight))) + 1;
+            }
+
             // TODO: Lot's of assumptions here
             image->Create(&m_context, texture->name, texture->type, newWidth, newHeight, imageFormat, VK_IMAGE_TILING_OPTIMAL,
                           VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
+                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
 
             texture->generation++;
         }
@@ -1670,7 +1681,7 @@ namespace C3D
                 for (u32 i = 0; i < totalSamplerCount; i++)
                 {
                     // TODO: only update in the list if actually needing an update
-                    const TextureMap* map = internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[i];
+                    TextureMap* map = internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[i];
                     if (!map->internalData)
                     {
                         // No valid sampler available so we skip this texture map.
@@ -1681,7 +1692,26 @@ namespace C3D
                     // Ensure the texture is valid.
                     if (!t || t->generation == INVALID_ID)
                     {
-                        t = Textures.GetDefault();
+                        // If we are using the default texture, invalidate the map's generation so it's updated next run.
+                        t               = Textures.GetDefault();
+                        map->generation = INVALID_ID;
+                    }
+                    else
+                    {
+                        // If the texture is valid, we ensure that the texture map's generation matches the texture.
+                        // If not, the texture map resources should be regenerated
+                        if (t->generation != map->generation)
+                        {
+                            bool refreshRequired = t->mipLevels != map->mipLevels;
+                            if (refreshRequired && !RefreshTextureMapResources(*map))
+                            {
+                                WARN_LOG("Failed to refresh texture map resources. This means the sampler settings could be out of date!");
+                            }
+                            else
+                            {
+                                map->generation = t->generation;
+                            }
+                        }
                     }
 
                     const auto internalData   = static_cast<VulkanTextureData*>(t->internalData);
@@ -1877,34 +1907,16 @@ namespace C3D
 
     bool VulkanRendererPlugin::AcquireTextureMapResources(TextureMap& map)
     {
-        VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+        VkSampler sampler = CreateSampler(map);
 
-        samplerInfo.minFilter = ConvertFilterType("min", map.minifyFilter);
-        samplerInfo.magFilter = ConvertFilterType("mag", map.magnifyFilter);
-
-        samplerInfo.addressModeU = ConvertRepeatType("U", map.repeatU);
-        samplerInfo.addressModeV = ConvertRepeatType("V", map.repeatV);
-        samplerInfo.addressModeW = ConvertRepeatType("W", map.repeatW);
-
-        // TODO: Configurable
-        samplerInfo.anisotropyEnable        = VK_TRUE;
-        samplerInfo.maxAnisotropy           = 16;
-        samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable           = VK_FALSE;
-        samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias              = 0.0f;
-        samplerInfo.minLod                  = 0.0f;
-        samplerInfo.maxLod                  = 0.0f;
-
-        const VkResult result = vkCreateSampler(m_context.device.GetLogical(), &samplerInfo, m_context.allocator,
-                                                reinterpret_cast<VkSampler*>(&map.internalData));
-        if (!VulkanUtils::IsSuccess(result))
+        if (!sampler)
         {
-            ERROR_LOG("Error creating texture sampler: '{}'.", VulkanUtils::ResultString(result));
+            ERROR_LOG("Failed to create Sampler.");
             return false;
         }
+
+        // Assign our sampler to the internal data of our texture map
+        map.internalData = sampler;
 
         const auto samplerName = map.texture->name + "_texture_map_sampler";
         VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SAMPLER, map.internalData, samplerName);
@@ -1914,10 +1926,35 @@ namespace C3D
 
     void VulkanRendererPlugin::ReleaseTextureMapResources(TextureMap& map)
     {
-        // NOTE: This ensures there's no way this is in use.
+        // Ensure there's no way this is in use.
         m_context.device.WaitIdle();
         vkDestroySampler(m_context.device.GetLogical(), static_cast<VkSampler>(map.internalData), m_context.allocator);
         map.internalData = nullptr;
+    }
+
+    bool VulkanRendererPlugin::RefreshTextureMapResources(TextureMap& map)
+    {
+        if (map.internalData)
+        {
+            // Create a new sampler first
+            VkSampler newSampler = CreateSampler(map);
+            if (!newSampler)
+            {
+                ERROR_LOG("Failed to create new Sampler.");
+                return false;
+            }
+
+            // Take a pointer to our old sampler
+            auto oldSampler = static_cast<VkSampler>(map.internalData);
+            // Ensure we are not using the current sampler first
+            m_context.device.WaitIdle();
+            // Assign our new sampler
+            map.internalData = newSampler;
+            // Destroy the old sampler
+            vkDestroySampler(m_context.device.GetLogical(), oldSampler, m_context.allocator);
+        }
+
+        return true;
     }
 
     bool VulkanRendererPlugin::SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value)
@@ -2136,6 +2173,45 @@ namespace C3D
         shaderStage->shaderStageCreateInfo.pName = "main";
 
         return true;
+    }
+
+    VkSampler VulkanRendererPlugin::CreateSampler(TextureMap& map)
+    {
+        VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+
+        // Sync mip levels between texture and texturemap
+        map.mipLevels = map.texture->mipLevels;
+
+        samplerInfo.minFilter = ConvertFilterType("min", map.minifyFilter);
+        samplerInfo.magFilter = ConvertFilterType("mag", map.magnifyFilter);
+
+        samplerInfo.addressModeU = ConvertRepeatType("U", map.repeatU);
+        samplerInfo.addressModeV = ConvertRepeatType("V", map.repeatV);
+        samplerInfo.addressModeW = ConvertRepeatType("W", map.repeatW);
+
+        // TODO: Configurable
+        samplerInfo.anisotropyEnable        = VK_TRUE;
+        samplerInfo.maxAnisotropy           = 16;
+        samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+        samplerInfo.compareEnable           = VK_FALSE;
+        samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias              = 0.0f;
+        // Use the full range of mips available
+        samplerInfo.minLod = 0.0f;
+        // samplerInfo.minLod = map.texture->mipLevels > 1 ? map.texture->mipLevels : 0.0f;
+        samplerInfo.maxLod = map.texture->mipLevels;
+
+        VkSampler sampler     = nullptr;
+        const VkResult result = vkCreateSampler(m_context.device.GetLogical(), &samplerInfo, m_context.allocator, &sampler);
+        if (!VulkanUtils::IsSuccess(result))
+        {
+            ERROR_LOG("Error creating texture sampler: '{}'.", VulkanUtils::ResultString(result));
+            return nullptr;
+        }
+
+        return sampler;
     }
 
     RendererPlugin* CreatePlugin() { return Memory.New<VulkanRendererPlugin>(MemoryType::RenderSystem); }

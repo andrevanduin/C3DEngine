@@ -2,6 +2,7 @@
 #include "image_loader.h"
 
 #include "core/logger.h"
+#include "math/c3d_math.h"
 #include "platform/file_system.h"
 #include "resources/resource_types.h"
 #include "systems/resources/resource_system.h"
@@ -107,6 +108,9 @@ namespace C3D
         resource.width        = width;
         resource.height       = height;
         resource.channelCount = requiredChannelCount;
+        // To determine how many mip levels we will have, we first take the largest dimension then we take the base-2 log to see how many
+        // times we can divide it by 2. Then we floor that value to ensure we are working on integer level and add 1 for the base level.
+        resource.mipLevels = Floor(Log2(Max(width, height))) + 1;
 
         return true;
     }

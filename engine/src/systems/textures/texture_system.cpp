@@ -443,6 +443,7 @@ namespace C3D
                 texture->flags        = 0;
                 texture->generation   = 0;
                 texture->name         = name;
+                texture->mipLevels    = 1;
 
                 imageSize = static_cast<u64>(texture->width) * texture->height * texture->channelCount;
                 pixels    = Memory.Allocate<u8>(MemoryType::Array, imageSize * 6);  // 6 textures one for every side of the cube
@@ -603,9 +604,11 @@ namespace C3D
             loadingTexture.tempTexture.width        = resourceData.width;
             loadingTexture.tempTexture.height       = resourceData.height;
             loadingTexture.tempTexture.channelCount = resourceData.channelCount;
+            loadingTexture.tempTexture.mipLevels    = resourceData.mipLevels;
 
             loadingTexture.currentGeneration      = loadingTexture.outTexture->generation;
             loadingTexture.outTexture->generation = INVALID_ID;
+            loadingTexture.outTexture->mipLevels  = resourceData.mipLevels;
 
             const u64 totalSize = static_cast<u64>(loadingTexture.tempTexture.width) * loadingTexture.tempTexture.height *
                                   loadingTexture.tempTexture.channelCount;

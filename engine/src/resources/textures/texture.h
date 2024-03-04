@@ -12,11 +12,11 @@ namespace C3D
     {
         Texture() = default;
 
-        Texture(const char* textureName, const TextureType type, const u32 width, const u32 height,
-                const u8 channelCount, const TextureFlagBits flags = 0);
+        Texture(const char* textureName, const TextureType type, const u32 width, const u32 height, const u8 channelCount,
+                const TextureFlagBits flags = 0);
 
-        void Set(TextureType _type, const char* _name, u32 _width, u32 _height, u8 _channelCount,
-                 TextureFlagBits _flags, void* _internalData = nullptr);
+        void Set(TextureType _type, const char* _name, u32 _width, u32 _height, u8 _channelCount, TextureFlagBits _flags,
+                 void* _internalData = nullptr);
 
         [[nodiscard]] bool IsWritable() const;
         [[nodiscard]] bool IsWrapped() const;
@@ -33,5 +33,10 @@ namespace C3D
 
         u32 generation     = INVALID_ID;
         void* internalData = nullptr;
+
+        /** @brief The amount of mip levels for this texture.
+         * This value should always be atleast 1 since we will always have atleast the base image.
+         */
+        u8 mipLevels = 1;
     };
 }  // namespace C3D
