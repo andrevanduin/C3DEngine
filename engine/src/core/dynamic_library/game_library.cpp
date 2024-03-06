@@ -5,8 +5,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "GAME_LIBRARY";
 
-    GameLibrary::GameLibrary() : DynamicLibrary("GAME_LIB") {}
-
     ApplicationState* GameLibrary::CreateState()
     {
         const auto createStateFunc = LoadFunction<ApplicationState* (*)()>("CreateApplicationState");

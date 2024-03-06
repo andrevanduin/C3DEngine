@@ -1,17 +1,15 @@
 
 #pragma once
-#include "dynamic_library.h"
 #include "core/application.h"
+#include "dynamic_library.h"
 
 namespace C3D
 {
-	class C3D_API GameLibrary final : public DynamicLibrary
-	{
-	public:
-		GameLibrary();
+    class C3D_API GameLibrary final : public DynamicLibrary
+    {
+    public:
+        ApplicationState* CreateState();
 
-		ApplicationState* CreateState();
-
-		Application* Create(ApplicationState* state);
-	};
-}
+        Application* Create(ApplicationState* state);
+    };
+}  // namespace C3D

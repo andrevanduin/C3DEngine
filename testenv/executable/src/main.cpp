@@ -1,6 +1,6 @@
 
 #include <core/exceptions.h>
-#include <core/plugin/plugin.h>
+#include <core/plugin/plugin_factory.h>
 #include <entry.h>
 #include <math/frustum.h>
 #include <resources/mesh.h>
@@ -14,7 +14,6 @@ namespace C3D
 
 C3D::FileWatchId applicationLibraryFile;
 
-C3D::Plugin rendererPlugin;
 C3D::GameLibrary applicationLib;
 
 C3D::Application* application;
@@ -103,7 +102,7 @@ C3D::Application* C3D::CreateApplication()
 
     // On the first start we need to create our state
     applicationState                 = applicationLib.CreateState();
-    applicationState->rendererPlugin = rendererPlugin.Create<RendererPlugin>();
+    applicationState->rendererPlugin = "C3DVulkanRenderer";
 
     application = applicationLib.Create(applicationState);
     return application;

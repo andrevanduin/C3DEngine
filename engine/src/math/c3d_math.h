@@ -1,5 +1,7 @@
 
 #pragma once
+#include <algorithm>
+
 #include "core/defines.h"
 #include "math_types.h"
 
@@ -145,6 +147,20 @@ namespace C3D
     }
 
     /**
+     * @brief A method that returns the provided value clamped in the range of [min, max]
+     *
+     * @param value The value you want to clamp
+     * @param min The minimal value (inclusive) that you want to clamp to
+     * @param max The maximum value (inclusive) that you want to clamp to
+     * @return The provided value but clamped between the min and max
+     */
+    template <typename T>
+    C3D_API C3D_INLINE T Clamp(T value, T min, T max)
+    {
+        return std::clamp(value, min, max);
+    }
+
+    /**
      * @brief A method that returns the largest integer value less than or equal to x.
      *
      * @param x The number you want to floor
@@ -242,7 +258,7 @@ namespace C3D
      */
     C3D_API C3D_INLINE f32 SmoothStep(f32 edge0, f32 edge1, f32 x)
     {
-        const f32 t = C3D_CLAMP((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+        const f32 t = Clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
         return t * t * (3.0 - 2.0 * t);
     }
 

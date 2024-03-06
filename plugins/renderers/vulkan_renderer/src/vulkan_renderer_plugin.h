@@ -17,16 +17,6 @@ namespace C3D
     class VulkanRendererPlugin final : public RendererPlugin
     {
     public:
-        VulkanRendererPlugin();
-
-        VulkanRendererPlugin(const VulkanRendererPlugin& other) = delete;
-        VulkanRendererPlugin(VulkanRendererPlugin&& other)      = delete;
-
-        VulkanRendererPlugin& operator=(const VulkanRendererPlugin& other) = delete;
-        VulkanRendererPlugin& operator=(VulkanRendererPlugin&& other)      = delete;
-
-        ~VulkanRendererPlugin() override = default;
-
         bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) override;
         void Shutdown() override;
 
