@@ -152,7 +152,7 @@ namespace C3D
      * @param value The value you want to clamp
      * @param min The minimal value (inclusive) that you want to clamp to
      * @param max The maximum value (inclusive) that you want to clamp to
-     * @return The provided value but clamped between the min and max
+     * @return The provided value but clamped between in range [min, max]
      */
     template <typename T>
     C3D_API C3D_INLINE T Clamp(T value, T min, T max)

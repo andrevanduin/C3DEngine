@@ -15,6 +15,6 @@ namespace C3D
 
         bool loop;
 
-        AudioFile* audioFile = nullptr;
+        AudioFile audio;
     };
 }  // namespace C3D

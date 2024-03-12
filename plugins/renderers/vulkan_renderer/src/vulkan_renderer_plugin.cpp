@@ -2216,4 +2216,6 @@ namespace C3D
 
     RendererPlugin* CreatePlugin() { return Memory.New<VulkanRendererPlugin>(MemoryType::RenderSystem); }
 
+    void DeletePlugin(RendererPlugin* plugin) { Memory.Delete(plugin); }
+
 }  // namespace C3D

@@ -1,6 +1,5 @@
 
 #include <core/exceptions.h>
-#include <core/plugin/plugin_factory.h>
 #include <entry.h>
 #include <math/frustum.h>
 #include <resources/mesh.h>
@@ -90,11 +89,6 @@ C3D::Application* C3D::CreateApplication()
 {
     TryCopyLib();
 
-    if (!rendererPlugin.Load("C3DVulkanRenderer"))
-    {
-        throw C3D::Exception("Failed to load Vulkan Renderer plugin");
-    }
-
     if (!applicationLib.Load(loadedLibPath.Data()))
     {
         throw C3D::Exception("Failed to load TestEnv library");
@@ -127,5 +121,4 @@ void C3D::DestroyApplication()
     Memory.Delete(application);
 
     applicationLib.Unload();
-    rendererPlugin.Unload();
 }

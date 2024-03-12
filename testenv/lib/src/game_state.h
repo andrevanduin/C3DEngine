@@ -1,6 +1,7 @@
 
 #pragma once
 #include <core/application.h>
+#include <core/audio/audio_types.h>
 #include <core/frame_data.h>
 #include <renderer/rendergraph/rendergraph.h>
 #include <renderer/viewport.h>
@@ -65,6 +66,8 @@ struct GameState final : C3D::ApplicationState
     UIPass uiPass;
 
     SelectedObject selectedObject;
+
+    C3D::AudioHandle testMusic;
 
     C3D::PointLight* pLights[4];
 

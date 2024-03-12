@@ -13,13 +13,8 @@ namespace C3D
         IResourceLoader(const SystemManager* pSystemsManager, MemoryType memoryType, ResourceType type, const char* customType,
                         const char* path);
 
-        IResourceLoader(const IResourceLoader& other) = delete;
-        IResourceLoader(IResourceLoader&& other)      = delete;
-
-        IResourceLoader& operator=(const IResourceLoader& other) = default;
-        IResourceLoader& operator=(IResourceLoader&& other)      = delete;
-
-        virtual ~IResourceLoader() = default;
+        virtual bool Init() { return true; }
+        virtual void Shutdown() {}
 
         u32 id = INVALID_ID;
         ResourceType type;

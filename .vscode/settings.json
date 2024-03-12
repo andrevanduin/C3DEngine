@@ -88,7 +88,9 @@
         "span": "cpp",
         "stack": "cpp",
         "typeindex": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "stb_vorbis.c": "cpp",
+        "future": "cpp"
     },
     "cmake.generator": "Ninja",
     "todohighlight.include": [

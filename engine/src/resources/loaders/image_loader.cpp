@@ -11,7 +11,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
 #include "core/engine.h"
-#include "stb_image.h"
+#include "stb/stb_image.h"
 
 namespace C3D
 {
@@ -49,15 +49,15 @@ namespace C3D
             }
         }
 
+        if (!found)
+        {
+            ERROR_LOG("Failed to find file: '{}' with any supported extension.", name);
+            return false;
+        }
+
         // Take a copy of the resource path and name
         resource.fullPath = fullPath;
         resource.name     = name;
-
-        if (!found)
-        {
-            ERROR_LOG("Failed to find file '{}' with any supported extension.", name);
-            return false;
-        }
 
         File f;
         f.Open(fullPath, FileModeRead | FileModeBinary);

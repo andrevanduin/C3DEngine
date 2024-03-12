@@ -1,22 +1,56 @@
 
 #pragma once
-#include <random>
-
 #include "defines.h"
 
 namespace C3D
 {
-    /** @brief A universally unique identifier (UUID). */
-    struct UUID
-    {
-        char value[37];
-    };
-
-    class C3D_API UUIDS
+    class C3D_API UUID
     {
     public:
-        static void Seed(u64 seed);
+        /** @brief Default UUID which starts off as invalid. */
+        UUID() = default;
+        /** @brief Create an UUID from an already existing 64-bit number */
+        UUID(u64 uuid);
+        UUID(const UUID&) = default;
 
-        static UUID Generate();
+        void Generate();
+
+        void Invalidate();
+
+        operator u64() const { return m_uuid; }
+        operator bool() const { return m_uuid != INVALID_ID_U64; }
+
+        bool operator==(const UUID& other) const { return m_uuid == other.m_uuid; }
+        bool operator!=(const UUID& other) const { return m_uuid != other.m_uuid; }
+
+        bool operator!() const { return m_uuid == INVALID_ID_U64; }
+
+    private:
+        u64 m_uuid = INVALID_ID_U64;
     };
 }  // namespace C3D
+
+template <>
+struct fmt::formatter<C3D::UUID>
+{
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const C3D::UUID& uuid, FormatContext& ctx)
+    {
+        return fmt::format_to(ctx.out(), "{}", (u64)uuid);
+    }
+};
+
+namespace std
+{
+    template <>
+    struct hash<C3D::UUID>
+    {
+        std::size_t operator()(const C3D::UUID& uuid) const { return hash<u64>()((u64)uuid); }
+    };
+}  // namespace std

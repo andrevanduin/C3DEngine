@@ -16,15 +16,26 @@ namespace C3D
         Stereo = 2
     };
 
-    enum class AudioHandleType
+    enum class AudioType
     {
+        Invalid,
         SoundEffect,
         MusicStream
     };
 
     struct AudioHandle
     {
-        AudioHandleType type;
+        AudioHandle() : type(AudioType::Invalid) {}
+        AudioHandle(AudioType type) : type(type) { uuid.Generate(); }
+        
+        AudioType type;
         UUID uuid;
+
+        bool operator!() const { return !uuid; }
+        operator bool() const { return uuid.operator bool(); }
+
+        static AudioHandle Invalid() { return AudioHandle(); }
     };
+
+    using EmitterHandle = UUID;
 }  // namespace C3D

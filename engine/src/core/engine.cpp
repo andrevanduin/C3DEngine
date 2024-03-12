@@ -8,6 +8,7 @@
 #include "metrics/metrics.h"
 #include "platform/platform.h"
 #include "renderer/renderer_frontend.h"
+#include "systems/audio/audio_system.h"
 #include "systems/cameras/camera_system.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/events/event_system.h"
@@ -90,6 +91,7 @@ namespace C3D
         const PlatformSystemConfig platformConfig{ windowName.Data(), appState->x, appState->y, appState->width, appState->height };
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
         const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled };
+        constexpr AudioSystemConfig audioSystemConfig{ "C3DOpenAL", 0, ChannelType::Stereo, 4096 * 16, 8 };
 
         // Init before boot systems
         m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);                              // Event System
@@ -99,6 +101,7 @@ namespace C3D
         m_systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);  // Resource System
         m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);        // Shader System
         m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);        // Render System
+        m_systemsManager.RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);           //  Audio System
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 

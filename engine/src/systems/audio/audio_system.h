@@ -1,5 +1,8 @@
 
 #pragma once
+#include "containers/hash_map.h"
+#include "core/audio/audio_emitter.h"
+#include "core/audio/audio_file.h"
 #include "core/audio/audio_types.h"
 #include "core/dynamic_library/dynamic_library.h"
 #include "math/math_types.h"
@@ -8,15 +11,14 @@
 namespace C3D
 {
     class AudioPlugin;
-    struct AudioEmitter;
 
     namespace
     {
         struct AudioChannel
         {
             f32 volume = 1.0f;
-            AudioHandle current;
-            AudioEmitter* emitter = nullptr;
+            AudioFile* current;
+            EmitterHandle emitter;
         };
     }  // namespace
 
@@ -54,9 +56,8 @@ namespace C3D
          * @param position The position of the listener in the world
          * @param forward The forward vector of the listener
          * @param up The up vector of the listener
-         * @return True if successful, otherwise false
          */
-        bool SetListenerOrientation(const vec3& position, const vec3& forward, const vec3& up);
+        void SetListenerOrientation(const vec3& position, const vec3& forward, const vec3& up) const;
 
         /**
          * @brief Loads an audio chunk with the provided name.
@@ -64,7 +65,7 @@ namespace C3D
          * @param name The name of the audio chunk you want to load
          * @return A handle to the loaded audio chunk
          */
-        AudioHandle LoadChunk(const char* name) const;
+        AudioHandle LoadChunk(const char* name);
 
         /**
          * @brief Loads an audio stream with the provided name.
@@ -72,13 +73,13 @@ namespace C3D
          * @param name The name of the audio stream you want to load
          * @return A handle to the loaded audio stream
          */
-        AudioHandle LoadStream(const char* name) const;
+        AudioHandle LoadStream(const char* name);
 
         /**
          * @brief Closes the provided audio handle. This frees all it's internal resources.
          * @param handle To the audio chunk/stream you want to close
          */
-        void Close(const AudioHandle& handle) const;
+        void Close(const AudioHandle& handle);
 
         /**
          * @brief Set the Master Volume. This will effect all channels equally.
@@ -95,7 +96,7 @@ namespace C3D
 
         /**
          * @brief Set the volume for a particular channel.
-         * @param channel The channel you want to set the volume for
+         * @param channelIndex The channel you want to set the volume for
          * @param volume The volume you want it set to in a range of [0.0 - 1.0]
          * @return True if successful, otherwise false
          */
@@ -103,14 +104,14 @@ namespace C3D
 
         /**
          * @brief Gets the volume at the provided channel.
-         * @param channel The channel you want to get the volume for
+         * @param channelIndex The channel you want to get the volume for
          * @return f32 The volume at that particular channel
          */
         f32 GetChannelVolume(u8 channelIndex) const;
 
         /**
          * @brief Plays the provided sound on the provided channel. This plays the sound globally (without any spatial effects.)
-         * @param channel The channel you want the sound to play on
+         * @param channelIndex The channel you want the sound to play on
          * @param handle The handle to the audio that you want to play
          * @param loop A boolean indicating if this audio should loop
          * @return True if successful, otherwise false
@@ -128,41 +129,60 @@ namespace C3D
 
         /**
          * @brief Plays the provided emitter on the provided channel. This plays the emitter spatially in the world.
-         * @param channel The channel you want the sound to play on
+         * @param channelIndex The channel you want the sound to play on
          * @param handle The handle to the audio emitter that you want to play
          * @return True if successful, otherwise false
          */
-        bool PlayEmitterOnChannel(u8 channelIndex, const AudioHandle& handle);
+        bool PlayEmitterOnChannel(u8 channelIndex, EmitterHandle handle);
 
         /**
          * @brief Plays the provided emitter on the first freely available channel. This plays the emitter spatially in the world.
          * @param handle The handle to the audio you want to play on the emitter
          * @return True if successful, otherwise false
          */
-        bool PlayEmitter(const AudioHandle& handle);
+        bool PlayEmitter(EmitterHandle handle);
 
         /** @brief Stop the audio that is playing on the provided channel.
          * This unassigns the audio from the channel and rewinds it.
-         * @param channel The channel you want to stop.
+         * @param channelIndex The channel you want to stop.
          */
-        void StopChannel(u8 channelIndex);
+        void StopChannel(u8 channelIndex) const;
+
+        /** @brief Stops the audio on all channels. */
+        void StopAllChannels() const;
 
         /** @brief Pause the audio that is playing on the provided channel.
          * This leaves the audio assigned to this channel and pauses it.
-         * @param channel The channel you want to pause.
+         * @param channelIndex The channel you want to pause.
          */
-        void PauseChannel(u8 channelIndex);
+        void PauseChannel(u8 channelIndex) const;
+
+        /** @brief Pauses the audio on all channels. */
+        void PauseAllChannels() const;
 
         /** @brief Resume the audio that is playing on the provided channel.
-         * @param channel The channel you want to resume.
+         * @param channelIndex The channel you want to resume.
          */
-        void ResumeChannel(u8 channelIndex);
+        void ResumeChannel(u8 channelIndex) const;
+
+        /** @brief Resumes the audio on all channels. */
+        void ResumeAllChannels() const;
 
     private:
+        /**
+         * @brief Closes the provided audio file. This frees all it's internal resources.
+         * @param file The audio file you want to close
+         */
+        void Close(AudioFile& file);
+
         f32 m_masterVolume = 1.0f;
 
         DynamicLibrary m_pluginLibrary;
         AudioPlugin* m_audioPlugin = nullptr;
+
         AudioChannel m_channels[MAX_AUDIO_CHANNELS];
+
+        HashMap<EmitterHandle, AudioEmitter> m_emitters;
+        HashMap<UUID, AudioFile> m_audioFiles;
     };
 }  // namespace C3D

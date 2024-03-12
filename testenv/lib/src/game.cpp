@@ -11,6 +11,7 @@
 #include <core/metrics/metrics.h>
 #include <renderer/renderer_types.h>
 #include <resources/skybox.h>
+#include <systems/audio/audio_system.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/events/event_system.h>
 #include <systems/geometry/geometry_system.h>
@@ -195,6 +196,10 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
         ERROR_LOG("Failed to load Editor Gizmo.");
         return false;
     }
+
+    m_state->testMusic = Audio.LoadStream("Woodland Fantasy");
+
+    Audio.Play(m_state->testMusic, true);
 
     return true;
 }
