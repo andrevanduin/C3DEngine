@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.13)
 
 set(CMAKE_CXX_STANDARD 23)
 
-file(GLOB_RECURSE C3DEngine_SRC "src/*.h" "src/*.cpp")
+file(GLOB_RECURSE C3DEngine_SRC "src/*.h" "src/*.cpp" "vendor/stb/*.c")
 
 add_library(C3DEngine SHARED ${C3DEngine_SRC})
 
@@ -21,8 +21,8 @@ if (UNIX)
     set(OS_SPECIFIC_LIBS xcb X11-xcb "${X11_LIBRARIES}")
 endif()
 
-target_link_libraries(C3DEngine PUBLIC fmt::fmt spdlog::spdlog glm::glm "${OS_SPECIFIC_LIBS}")
+target_link_libraries(C3DEngine PUBLIC fmt::fmt spdlog::spdlog glm::glm OpenAL::OpenAL "${OS_SPECIFIC_LIBS}")
 
-target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")
+target_include_directories(C3DEngine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/vendor" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")
 
-include_directories(SYSTEM "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")
+include_directories(SYSTEM "${CMAKE_CURRENT_SOURCE_DIR}/vendor" "${spdlog_SOURCE_DIR}/include" "${fmt_SOURCE_DIR}/include" "${glm_SOURCE_DIR}")

@@ -12,20 +12,13 @@ namespace C3D
 
     extern "C" {
     C3D_API RendererPlugin* CreatePlugin();
+    C3D_API void DeletePlugin(RendererPlugin* plugin);
     }
 
     class VulkanRendererPlugin final : public RendererPlugin
     {
     public:
         VulkanRendererPlugin();
-
-        VulkanRendererPlugin(const VulkanRendererPlugin& other) = delete;
-        VulkanRendererPlugin(VulkanRendererPlugin&& other)      = delete;
-
-        VulkanRendererPlugin& operator=(const VulkanRendererPlugin& other) = delete;
-        VulkanRendererPlugin& operator=(VulkanRendererPlugin&& other)      = delete;
-
-        ~VulkanRendererPlugin() override = default;
 
         bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) override;
         void Shutdown() override;

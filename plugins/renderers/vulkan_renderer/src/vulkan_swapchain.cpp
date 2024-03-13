@@ -3,6 +3,7 @@
 
 #include <core/engine.h>
 #include <core/logger.h>
+#include <math/c3d_math.h>
 #include <systems/system_manager.h>
 #include <systems/textures/texture_system.h>
 
@@ -159,8 +160,8 @@ namespace C3D
         const VkExtent2D min = capabilities.minImageExtent;
         const VkExtent2D max = capabilities.maxImageExtent;
 
-        extent.width  = C3D_CLAMP(extent.width, min.width, max.width);
-        extent.height = C3D_CLAMP(extent.height, min.height, max.height);
+        extent.width  = Clamp(extent.width, min.width, max.width);
+        extent.height = Clamp(extent.height, min.height, max.height);
 
         u32 imgCount = capabilities.minImageCount + 1;
         if (capabilities.maxImageCount > 0 && imgCount > capabilities.maxImageCount)

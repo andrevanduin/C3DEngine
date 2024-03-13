@@ -4,6 +4,7 @@
 #include "core/logger.h"
 
 // Default loaders
+#include "resources/loaders/audio_loader.h"
 #include "resources/loaders/binary_loader.h"
 #include "resources/loaders/bitmap_font_loader.h"
 #include "resources/loaders/image_loader.h"
@@ -28,6 +29,7 @@ namespace C3D
         m_loaderTypes[ToUnderlying(ResourceType::SystemFont)]  = "SystemFont";
         m_loaderTypes[ToUnderlying(ResourceType::SimpleScene)] = "SimpleScene";
         m_loaderTypes[ToUnderlying(ResourceType::Terrain)]     = "Terrain";
+        m_loaderTypes[ToUnderlying(ResourceType::AudioFile)]   = "Audio";
         m_loaderTypes[ToUnderlying(ResourceType::Custom)]      = "Custom";
     }
 
@@ -52,9 +54,10 @@ namespace C3D
         const auto meshLoader       = Memory.New<ResourceLoader<MeshResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto bitmapFontLoader = Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
         const auto terrainLoader    = Memory.New<ResourceLoader<TerrainConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
+        const auto audioLoader      = Memory.New<ResourceLoader<AudioFile>>(MemoryType::ResourceLoader, m_pSystemsManager);
 
-        for (IResourceLoader* loaders[8] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader, meshLoader,
-                                             bitmapFontLoader, terrainLoader };
+        for (IResourceLoader* loaders[9] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader, meshLoader,
+                                             bitmapFontLoader, terrainLoader, audioLoader };
              const auto loader : loaders)
         {
             if (!RegisterLoader(loader))

@@ -24,16 +24,6 @@ namespace C3D
     class RendererPlugin
     {
     public:
-        RendererPlugin() = default;
-
-        RendererPlugin(const RendererPlugin&) = delete;
-        RendererPlugin(RendererPlugin&&)      = delete;
-
-        RendererPlugin& operator=(const RendererPlugin&) = delete;
-        RendererPlugin& operator=(RendererPlugin&&)      = delete;
-
-        virtual ~RendererPlugin() = default;
-
         virtual bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) = 0;
         virtual void Shutdown()                                                               = 0;
 

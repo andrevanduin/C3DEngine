@@ -42,6 +42,7 @@ namespace C3D
                                                                                      "VulkanExternal",
                                                                                      "Direct3D",
                                                                                      "OpenGL",
+                                                                                     "Audio",
                                                                                      "BitmapFont",
                                                                                      "SystemFont",
                                                                                      "Terrain",

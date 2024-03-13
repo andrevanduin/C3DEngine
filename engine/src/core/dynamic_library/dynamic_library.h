@@ -9,14 +9,6 @@ namespace C3D
     class C3D_API DynamicLibrary
     {
     public:
-        DynamicLibrary(const String& name);
-
-        DynamicLibrary(const DynamicLibrary&) = delete;
-        DynamicLibrary(DynamicLibrary&&)      = delete;
-
-        DynamicLibrary& operator=(const DynamicLibrary&) = delete;
-        DynamicLibrary& operator=(DynamicLibrary&&)      = delete;
-
         ~DynamicLibrary();
 
         bool Load(const char* name);
@@ -28,9 +20,31 @@ namespace C3D
             return Platform::LoadDynamicLibraryFunction<Signature>(name, m_data);
         }
 
+        template <typename Plugin, typename... Args>
+        Plugin* CreatePlugin(Args&&... args)
+        {
+            const auto createPluginFunc = LoadFunction<Plugin* (*)(Args...)>("CreatePlugin");
+            if (!createPluginFunc)
+            {
+                INSTANCE_ERROR_LOG("PLUGIN", "Failed to load create function.");
+                return nullptr;
+            }
+            return createPluginFunc(args...);
+        }
+
+        template <typename Plugin>
+        void DeletePlugin(Plugin* plugin)
+        {
+            const auto deletePluginFunc = LoadFunction<void (*)(Plugin*)>("DeletePlugin");
+            if (!deletePluginFunc)
+            {
+                INSTANCE_ERROR_LOG("PLUGIN", "Failed to load delete function.");
+            }
+            deletePluginFunc(plugin);
+        }
+
     protected:
         String m_name;
-        String m_fileName;
 
         u64 m_dataSize = 0;
         void* m_data   = nullptr;

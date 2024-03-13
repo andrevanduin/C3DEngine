@@ -20,6 +20,7 @@
 #define Fonts m_pSystemsManager->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
 #define CVars m_pSystemsManager->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
 #define OS m_pSystemsManager->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType)
+#define Audio m_pSystemsManager->GetSystem<C3D::AudioSystem>(C3D::SystemType::AudioSystemType)
 
 namespace C3D
 {
@@ -33,6 +34,7 @@ namespace C3D
         TextureSystemType,
         ShaderSystemType,
         RenderSystemType,
+        AudioSystemType,
         ResourceSystemType,
         InputSystemType,
         EventSystemType,
