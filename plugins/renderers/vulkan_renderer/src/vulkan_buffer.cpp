@@ -17,9 +17,9 @@ namespace C3D
 
     VulkanBuffer::VulkanBuffer(const VulkanContext* context, const String& name) : RenderBuffer(name), m_context(context) {}
 
-    bool VulkanBuffer::Create(const RenderBufferType bufferType, const u64 size, const bool useFreelist)
+    bool VulkanBuffer::Create(const RenderBufferType bufferType, const u64 size, RenderBufferTrackType trackType)
     {
-        if (!RenderBuffer::Create(bufferType, size, useFreelist)) return false;
+        if (!RenderBuffer::Create(bufferType, size, trackType)) return false;
 
         u32 deviceLocalBits = 0;
         if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY_BIT))
@@ -251,7 +251,7 @@ namespace C3D
             // We use the read buffer to copy the data to it and read from that buffer
 
             VulkanBuffer read(m_context, "READ_BUFFER");
-            if (!read.Create(RenderBufferType::Read, size, false))
+            if (!read.Create(RenderBufferType::Read, size, RenderBufferTrackType::Linear))
             {
                 ERROR_LOG("Failed to create read buffer.");
                 return false;

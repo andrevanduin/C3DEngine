@@ -13,7 +13,7 @@ namespace C3D
     public:
         explicit VulkanBuffer(const VulkanContext* context, const String& name);
 
-        bool Create(RenderBufferType bufferType, u64 size, bool useFreelist) override;
+        bool Create(RenderBufferType bufferType, u64 size, RenderBufferTrackType trackType) override;
         void Destroy() override;
 
         bool Bind(u64 offset) override;

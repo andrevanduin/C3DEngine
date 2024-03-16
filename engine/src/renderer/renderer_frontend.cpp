@@ -305,9 +305,9 @@ namespace C3D
     u8 RenderSystem::GetWindowAttachmentCount() const { return m_backendPlugin->GetWindowAttachmentCount(); }
 
     RenderBuffer* RenderSystem::CreateRenderBuffer(const String& name, const RenderBufferType type, const u64 totalSize,
-                                                   const bool useFreelist) const
+                                                   RenderBufferTrackType trackType) const
     {
-        return m_backendPlugin->CreateRenderBuffer(name, type, totalSize, useFreelist);
+        return m_backendPlugin->CreateRenderBuffer(name, type, totalSize, trackType);
     }
 
     bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const { return m_backendPlugin->DestroyRenderBuffer(buffer); }

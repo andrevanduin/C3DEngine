@@ -43,8 +43,7 @@ void TestManager::RunTests()
     C3D::Platform platform;
     platform.OnInit(config);
 
-    C3D::Clock totalTime(&platform);
-    totalTime.Start();
+    C3D::Clock testTime(&platform);
 
     auto i = 0;
     for (auto& test : m_tests)
@@ -57,12 +56,12 @@ void TestManager::RunTests()
 
         i++;
 
-        C3D::Clock testTime(&platform);
-        testTime.Start();
+        testTime.Begin();
 
         const u8 result = test.func();
 
-        testTime.Update();
+        testTime.End();
+
         if (result == PASSED)
             passed++;
         else if (result == SKIPPED)
@@ -76,15 +75,12 @@ void TestManager::RunTests()
             failed++;
         }
 
-        totalTime.Update();
-
         auto status = failed ? "*** FAILED ***" : "SUCCESS";
         INFO_LOG("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total).", i, m_tests.size(), skipped, status,
-                 testTime.GetElapsed(), totalTime.GetElapsed());
+                 testTime.GetElapsed(), testTime.GetTotalElapsed());
     }
 
-    totalTime.Stop();
-    INFO_LOG("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec.", passed, failed, skipped, totalTime.GetElapsed());
+    INFO_LOG("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec.", passed, failed, skipped, testTime.GetTotalElapsed());
 
     platform.OnShutdown();
 }

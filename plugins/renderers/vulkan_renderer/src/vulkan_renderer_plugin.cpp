@@ -119,7 +119,7 @@ namespace C3D
 
         // Create and bind our buffers
         constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 4096 * 4096;
-        if (!m_objectVertexBuffer.Create(RenderBufferType::Vertex, vertexBufferSize, true))
+        if (!m_objectVertexBuffer.Create(RenderBufferType::Vertex, vertexBufferSize, RenderBufferTrackType::FreeList))
         {
             ERROR_LOG("Error creating vertex buffer.");
             return false;
@@ -127,7 +127,7 @@ namespace C3D
         m_objectVertexBuffer.Bind(0);
 
         constexpr u64 indexBufferSize = sizeof(u32) * 8192 * 8192;
-        if (!m_objectIndexBuffer.Create(RenderBufferType::Index, indexBufferSize, true))
+        if (!m_objectIndexBuffer.Create(RenderBufferType::Index, indexBufferSize, RenderBufferTrackType::FreeList))
         {
             ERROR_LOG("Error creating index buffer.");
             return false;
@@ -135,7 +135,7 @@ namespace C3D
         m_objectIndexBuffer.Bind(0);
 
         constexpr u64 stagingBufferSize = MebiBytes(256);
-        if (!m_context.stagingBuffer.Create(RenderBufferType::Staging, stagingBufferSize, true))
+        if (!m_context.stagingBuffer.Create(RenderBufferType::Staging, stagingBufferSize, RenderBufferTrackType::Linear))
         {
             ERROR_LOG("Error creating staging buffer.");
             return false;
@@ -309,6 +309,9 @@ namespace C3D
             return false;
         }
 
+        // Reset fences for next frame
+        VK_CHECK(vkResetFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame]));
+
         return true;
     }
 
@@ -316,15 +319,6 @@ namespace C3D
     {
         // We can begin recording commands
         const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-
-        // Wait for the execution of the current frame to complete.
-        const VkResult result =
-            vkWaitForFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
-        if (!VulkanUtils::IsSuccess(result))
-        {
-            FATAL_LOG("vkWaitForFences() failed: '{}'.", VulkanUtils::ResultString(result));
-            return false;
-        }
 
         commandBuffer->Reset();
         commandBuffer->Begin(false, false, false);
@@ -341,23 +335,6 @@ namespace C3D
         // End the CommandBuffer
         commandBuffer->End();
 
-        // Ensure that the previous frame is not using this image
-        if (m_context.imagesInFlight[m_context.imageIndex] != VK_NULL_HANDLE)
-        {
-            const VkResult result =
-                vkWaitForFences(m_context.device.GetLogical(), 1, &m_context.imagesInFlight[m_context.imageIndex], true, UINT64_MAX);
-            if (!VulkanUtils::IsSuccess(result))
-            {
-                FATAL_LOG("vkWaitForFences() failed: '{}'.", VulkanUtils::ResultString(result));
-            }
-        }
-
-        // Mark the image fence as in-use by this frame
-        m_context.imagesInFlight[m_context.imageIndex] = m_context.inFlightFences[m_context.currentFrame];
-
-        // Reset the fence for use on the next frame
-        VK_CHECK(vkResetFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame]));
-
         VkSubmitInfo submitInfo       = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers    = &commandBuffer->handle;
@@ -367,20 +344,14 @@ namespace C3D
         {
             submitInfo.signalSemaphoreCount = 1;
             submitInfo.pSignalSemaphores    = &m_context.queueCompleteSemaphores[m_context.currentFrame];
-        }
-        else
-        {
-            submitInfo.signalSemaphoreCount = 0;
-        }
 
-        // Wait semaphore ensures that the opration cannot begin until the image is available
-        if (drawIndex == 0)
-        {
             submitInfo.waitSemaphoreCount = 1;
             submitInfo.pWaitSemaphores    = &m_context.imageAvailableSemaphores[m_context.currentFrame];
         }
         else
         {
+            submitInfo.signalSemaphoreCount = 0;
+
             submitInfo.waitSemaphoreCount = 0;
         }
 
@@ -402,6 +373,10 @@ namespace C3D
 
         // Queue submission is done
         commandBuffer->UpdateSubmitted();
+
+        // For timing purposes, wait for the queue to complete.
+        // This gives an accurate picture of how long the render takes, including the work submitted to the actual queue.
+        vkWaitForFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
 
         return true;
     }
@@ -544,10 +519,10 @@ namespace C3D
     }
 
     RenderBuffer* VulkanRendererPlugin::CreateRenderBuffer(const String& name, const RenderBufferType bufferType, const u64 totalSize,
-                                                           const bool useFreelist)
+                                                           RenderBufferTrackType trackType)
     {
         const auto buffer = Memory.New<VulkanBuffer>(MemoryType::RenderSystem, &m_context, name);
-        if (!buffer->Create(bufferType, totalSize, useFreelist)) return nullptr;
+        if (!buffer->Create(bufferType, totalSize, trackType)) return nullptr;
         return buffer;
     }
 
@@ -780,7 +755,7 @@ namespace C3D
         // TODO: Add a global read buffer (with freelist) which is similar to staging buffer but meant for reading
         // Create a staging buffer and load data into it
         VulkanBuffer staging(&m_context, "TEXTURE_READ_STAGING");
-        if (!staging.Create(RenderBufferType::Read, size, false))
+        if (!staging.Create(RenderBufferType::Read, size, RenderBufferTrackType::Linear))
         {
             ERROR_LOG("Failed to create staging buffer.");
             return;
@@ -824,7 +799,7 @@ namespace C3D
 
         // Create a staging buffer and load data into it
         VulkanBuffer staging(&m_context, "READ_PIXEL_STAGING");
-        if (!staging.Create(RenderBufferType::Read, size, false))
+        if (!staging.Create(RenderBufferType::Read, size, RenderBufferTrackType::Linear))
         {
             ERROR_LOG("Failed to create staging buffer.");
             return;
@@ -1515,7 +1490,7 @@ namespace C3D
         // Uniform buffer
         // TODO: max count should be configurable, or perhaps long term support of buffer resizing
         const u64 totalBufferSize = shader.globalUboStride + shader.uboStride * VULKAN_MAX_MATERIAL_COUNT;
-        if (!vulkanShader->uniformBuffer.Create(RenderBufferType::Uniform, totalBufferSize, true))
+        if (!vulkanShader->uniformBuffer.Create(RenderBufferType::Uniform, totalBufferSize, RenderBufferTrackType::FreeList))
         {
             ERROR_LOG("Failed to create VulkanBuffer.");
             return false;

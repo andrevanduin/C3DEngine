@@ -92,8 +92,9 @@ namespace C3D
         virtual RenderPass* CreateRenderPass(const RenderPassConfig& config) = 0;
         virtual bool DestroyRenderPass(RenderPass* pass)                     = 0;
 
-        virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize, bool useFreelist) = 0;
-        virtual bool DestroyRenderBuffer(RenderBuffer* buffer)                                                               = 0;
+        virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
+                                                 RenderBufferTrackType trackType) = 0;
+        virtual bool DestroyRenderBuffer(RenderBuffer* buffer)                    = 0;
 
         virtual Texture* GetWindowAttachment(u8 index) = 0;
         virtual Texture* GetDepthAttachment(u8 index)  = 0;

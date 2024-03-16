@@ -137,7 +137,8 @@ namespace C3D
         [[nodiscard]] u8 GetWindowAttachmentIndex() const;
         [[nodiscard]] u8 GetWindowAttachmentCount() const;
 
-        [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize, bool useFreelist) const;
+        [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
+                                                       RenderBufferTrackType trackType) const;
         bool DestroyRenderBuffer(RenderBuffer* buffer) const;
 
         const Viewport* GetActiveViewport() const;

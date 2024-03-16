@@ -84,7 +84,7 @@ namespace C3D
         RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
         bool DestroyRenderPass(RenderPass* pass) override;
 
-        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
+        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize, RenderBufferTrackType trackType) override;
         bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
         Texture* GetWindowAttachment(u8 index) override;

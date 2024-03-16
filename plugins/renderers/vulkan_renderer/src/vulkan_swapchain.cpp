@@ -124,6 +124,10 @@ namespace C3D
         presentInfo.pImageIndices      = &presentImageIndex;
         presentInfo.pResults           = nullptr;
 
+        // HACK: Waiting here for the present queue prevents us from crashing the application
+        // after it has been running for a while even though we are using the present queue here...
+        vkQueueWaitIdle(m_context->device.GetTransferQueue());
+
         const auto result = vkQueuePresentKHR(presentQueue, &presentInfo);
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
         {

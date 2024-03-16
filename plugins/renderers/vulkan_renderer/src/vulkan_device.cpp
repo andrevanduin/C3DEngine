@@ -46,7 +46,7 @@ namespace C3D
         }
 
         VkDeviceQueueCreateInfo queueCreateInfos[8];
-        f32 queuePriority = 1.0f;
+        f32 queuePriorities[2] = { 0.9f, 1.0f };
         for (u32 i = 0; i < indexCount; i++)
         {
             auto& queueCreateInfo = queueCreateInfos[i];
@@ -55,11 +55,16 @@ namespace C3D
             queueCreateInfo.queueFamilyIndex = indices[i];
             queueCreateInfo.queueCount       = 1;
 
+            if (m_graphicsQueueIndex == m_presentQueueIndex && indices[i] == m_presentQueueIndex)
+            {
+                queueCreateInfo.queueCount = 2;
+            }
+
             // TODO: Future enhancement with multiple graphics queue count
 
             queueCreateInfo.flags            = 0;
             queueCreateInfo.pNext            = nullptr;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
+            queueCreateInfo.pQueuePriorities = queuePriorities;
         }
 
         VkPhysicalDeviceFeatures deviceFeatures = {};
@@ -141,7 +146,7 @@ namespace C3D
         INFO_LOG("Logical Device created.");
 
         vkGetDeviceQueue(m_logicalDevice, m_graphicsQueueIndex, 0, &m_graphicsQueue);
-        vkGetDeviceQueue(m_logicalDevice, m_presentQueueIndex, 0, &m_presentQueue);
+        vkGetDeviceQueue(m_logicalDevice, m_presentQueueIndex, m_graphicsQueueIndex == m_presentQueueIndex ? 1 : 0, &m_presentQueue);
         vkGetDeviceQueue(m_logicalDevice, m_transferQueueIndex, 0, &m_transferQueue);
 
         VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_QUEUE, m_graphicsQueue, "VULKAN_GRAHPICS_QUEUE");

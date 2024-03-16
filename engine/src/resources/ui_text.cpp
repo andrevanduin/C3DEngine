@@ -66,7 +66,8 @@ namespace C3D
 
         const auto vertexBufferName = name + "_VERTEX_BUFFER";
 
-        m_vertexBuffer = Renderer.CreateRenderBuffer(vertexBufferName, RenderBufferType::Vertex, textSize * quad_size, false);
+        m_vertexBuffer =
+            Renderer.CreateRenderBuffer(vertexBufferName, RenderBufferType::Vertex, textSize * quad_size, RenderBufferTrackType::Linear);
         if (!m_vertexBuffer)
         {
             ERROR_LOG("Failed to create vertex buffer.");
@@ -79,7 +80,8 @@ namespace C3D
 
         const auto indexBufferName = name + "_INDEX_BUFFER";
 
-        m_indexBuffer = Renderer.CreateRenderBuffer(indexBufferName, RenderBufferType::Index, textSize * index_size, false);
+        m_indexBuffer =
+            Renderer.CreateRenderBuffer(indexBufferName, RenderBufferType::Index, textSize * index_size, RenderBufferTrackType::Linear);
         if (!m_indexBuffer)
         {
             ERROR_LOG("Failed to create index buffer.");

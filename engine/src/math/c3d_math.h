@@ -22,9 +22,11 @@ namespace C3D
     constexpr auto DEG_2_RAD_MULTIPLIER = PI / 180.0f;
     constexpr auto RAD_2_DEG_MULTIPLIER = 180.0f / PI;
 
-    constexpr auto SEC_TO_MS_MULTIPLIER = 1000.0f;
+    constexpr auto SEC_TO_MS_MULTIPLIER = 1000.0;
+    constexpr auto SEC_TO_US_MULTIPLIER = 1000000.0;
 
-    constexpr auto MS_TO_SEC_MULTIPLIER = 0.001f;
+    constexpr auto MS_TO_SEC_MULTIPLIER = 0.001;
+    constexpr auto US_TO_SEC_MULTIPLIER = 0.000001;
 
     constexpr auto INF = 1e30f;
 
