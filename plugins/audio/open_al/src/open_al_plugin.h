@@ -20,7 +20,7 @@ namespace C3D
     public:
         bool Init(const AudioPluginConfig& config) override;
         void Shutdown() override;
-        void OnUpdate(const FrameData& frameData) override;
+        bool OnUpdate(const FrameData& frameData) override;
 
         bool LoadChunk(AudioFile& audio) override;
         bool LoadStream(AudioFile& audio) override;

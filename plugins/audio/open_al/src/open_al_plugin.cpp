@@ -182,7 +182,7 @@ namespace C3D
         m_freeBuffers.Destroy();
     }
 
-    void OpenALPlugin::OnUpdate(const FrameData& frameData) {}
+    bool OpenALPlugin::OnUpdate(const FrameData& frameData) { return true; }
 
     vec3 OpenALPlugin::GetListenerPosition() const { return m_listenerPosition; }
 

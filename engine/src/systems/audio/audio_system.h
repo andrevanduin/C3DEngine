@@ -48,7 +48,7 @@ namespace C3D
         bool OnInit(const AudioSystemConfig& config) override;
         void OnShutdown() override;
 
-        void OnUpdate(const FrameData& frameData) override;
+        bool OnUpdate(const FrameData& frameData) override;
 
         /**
          * @brief Sets the orientation of the current listener. Usually this will be the current camera in the world.

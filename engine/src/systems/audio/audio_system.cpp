@@ -54,7 +54,7 @@ namespace C3D
         return true;
     }
 
-    void AudioSystem::OnUpdate(const FrameData& frameData)
+    bool AudioSystem::OnUpdate(const FrameData& frameData)
     {
         for (u32 i = 0; i < m_config.numAudioChannels; i++)
         {

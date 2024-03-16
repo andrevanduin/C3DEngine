@@ -41,7 +41,7 @@ namespace C3D
 
         const Geometry* GetGeometry() const { return &m_geometry; }
 
-        u32 GetUniqueId() const { return m_uuid; }
+        UUID GetUniqueId() const { return m_uuid; }
 
     private:
         void UpdateVertexColor();
