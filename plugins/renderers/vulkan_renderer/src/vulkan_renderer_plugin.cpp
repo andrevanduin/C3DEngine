@@ -119,7 +119,7 @@ namespace C3D
 
         // Create and bind our buffers
         constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 4096 * 4096;
-        if (!m_objectVertexBuffer.Create(RenderBufferType::Vertex, vertexBufferSize, true))
+        if (!m_objectVertexBuffer.Create(RenderBufferType::Vertex, vertexBufferSize, RenderBufferTrackType::FreeList))
         {
             ERROR_LOG("Error creating vertex buffer.");
             return false;
@@ -127,7 +127,7 @@ namespace C3D
         m_objectVertexBuffer.Bind(0);
 
         constexpr u64 indexBufferSize = sizeof(u32) * 8192 * 8192;
-        if (!m_objectIndexBuffer.Create(RenderBufferType::Index, indexBufferSize, true))
+        if (!m_objectIndexBuffer.Create(RenderBufferType::Index, indexBufferSize, RenderBufferTrackType::FreeList))
         {
             ERROR_LOG("Error creating index buffer.");
             return false;
@@ -135,7 +135,7 @@ namespace C3D
         m_objectIndexBuffer.Bind(0);
 
         constexpr u64 stagingBufferSize = MebiBytes(256);
-        if (!m_context.stagingBuffer.Create(RenderBufferType::Staging, stagingBufferSize, true))
+        if (!m_context.stagingBuffer.Create(RenderBufferType::Staging, stagingBufferSize, RenderBufferTrackType::Linear))
         {
             ERROR_LOG("Error creating staging buffer.");
             return false;
@@ -309,6 +309,9 @@ namespace C3D
             return false;
         }
 
+        // Reset fences for next frame
+        VK_CHECK(vkResetFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame]));
+
         return true;
     }
 
@@ -316,15 +319,6 @@ namespace C3D
     {
         // We can begin recording commands
         const auto commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-
-        // Wait for the execution of the current frame to complete.
-        const VkResult result =
-            vkWaitForFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
-        if (!VulkanUtils::IsSuccess(result))
-        {
-            FATAL_LOG("vkWaitForFences() failed: '{}'.", VulkanUtils::ResultString(result));
-            return false;
-        }
 
         commandBuffer->Reset();
         commandBuffer->Begin(false, false, false);
@@ -341,23 +335,6 @@ namespace C3D
         // End the CommandBuffer
         commandBuffer->End();
 
-        // Ensure that the previous frame is not using this image
-        if (m_context.imagesInFlight[m_context.imageIndex] != VK_NULL_HANDLE)
-        {
-            const VkResult result =
-                vkWaitForFences(m_context.device.GetLogical(), 1, &m_context.imagesInFlight[m_context.imageIndex], true, UINT64_MAX);
-            if (!VulkanUtils::IsSuccess(result))
-            {
-                FATAL_LOG("vkWaitForFences() failed: '{}'.", VulkanUtils::ResultString(result));
-            }
-        }
-
-        // Mark the image fence as in-use by this frame
-        m_context.imagesInFlight[m_context.imageIndex] = m_context.inFlightFences[m_context.currentFrame];
-
-        // Reset the fence for use on the next frame
-        VK_CHECK(vkResetFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame]));
-
         VkSubmitInfo submitInfo       = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers    = &commandBuffer->handle;
@@ -367,20 +344,14 @@ namespace C3D
         {
             submitInfo.signalSemaphoreCount = 1;
             submitInfo.pSignalSemaphores    = &m_context.queueCompleteSemaphores[m_context.currentFrame];
-        }
-        else
-        {
-            submitInfo.signalSemaphoreCount = 0;
-        }
 
-        // Wait semaphore ensures that the opration cannot begin until the image is available
-        if (drawIndex == 0)
-        {
             submitInfo.waitSemaphoreCount = 1;
             submitInfo.pWaitSemaphores    = &m_context.imageAvailableSemaphores[m_context.currentFrame];
         }
         else
         {
+            submitInfo.signalSemaphoreCount = 0;
+
             submitInfo.waitSemaphoreCount = 0;
         }
 
@@ -402,6 +373,10 @@ namespace C3D
 
         // Queue submission is done
         commandBuffer->UpdateSubmitted();
+
+        // For timing purposes, wait for the queue to complete.
+        // This gives an accurate picture of how long the render takes, including the work submitted to the actual queue.
+        vkWaitForFences(m_context.device.GetLogical(), 1, &m_context.inFlightFences[m_context.currentFrame], true, UINT64_MAX);
 
         return true;
     }
@@ -544,10 +519,10 @@ namespace C3D
     }
 
     RenderBuffer* VulkanRendererPlugin::CreateRenderBuffer(const String& name, const RenderBufferType bufferType, const u64 totalSize,
-                                                           const bool useFreelist)
+                                                           RenderBufferTrackType trackType)
     {
         const auto buffer = Memory.New<VulkanBuffer>(MemoryType::RenderSystem, &m_context, name);
-        if (!buffer->Create(bufferType, totalSize, useFreelist)) return nullptr;
+        if (!buffer->Create(bufferType, totalSize, trackType)) return nullptr;
         return buffer;
     }
 
@@ -647,7 +622,7 @@ namespace C3D
         image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
                       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
+                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
 
         // Load the data
         WriteDataToTexture(texture, 0, static_cast<u32>(imageSize), pixels);
@@ -695,7 +670,7 @@ namespace C3D
         }
 
         image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, imageFormat, VK_IMAGE_TILING_OPTIMAL,
-                      usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, aspect);
+                      usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, aspect);
 
         texture->generation++;
     }
@@ -733,9 +708,13 @@ namespace C3D
         // Copy the data from the buffer.
         image->CopyFromBuffer(texture->type, m_context.stagingBuffer.handle, stagingOffset, &tempCommandBuffer);
 
-        // Transition from optimal for receiving data to shader-read-only optimal layout.
-        image->TransitionLayout(&tempCommandBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        if (texture->mipLevels <= 1 || !image->CreateMipMaps(&tempCommandBuffer))
+        {
+            // If we don't need mips or the generation of the mips fails we fallback to ordinary transition.
+            // Transition from optimal for receiving data to shader-read-only optimal layout.
+            image->TransitionLayout(&tempCommandBuffer, texture->type, imageFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        }
 
         tempCommandBuffer.EndSingleUse(&m_context, pool, queue);
 
@@ -751,11 +730,18 @@ namespace C3D
 
             const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
+            // Recalculate our mip levels
+            if (texture->mipLevels > 1)
+            {
+                // Take the base-2 log from the largest dimension floor it and add 1 for the base mip level.
+                texture->mipLevels = Floor(Log2(Max(newWidth, newHeight))) + 1;
+            }
+
             // TODO: Lot's of assumptions here
             image->Create(&m_context, texture->name, texture->type, newWidth, newHeight, imageFormat, VK_IMAGE_TILING_OPTIMAL,
                           VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, VK_IMAGE_ASPECT_COLOR_BIT);
+                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
 
             texture->generation++;
         }
@@ -769,7 +755,7 @@ namespace C3D
         // TODO: Add a global read buffer (with freelist) which is similar to staging buffer but meant for reading
         // Create a staging buffer and load data into it
         VulkanBuffer staging(&m_context, "TEXTURE_READ_STAGING");
-        if (!staging.Create(RenderBufferType::Read, size, false))
+        if (!staging.Create(RenderBufferType::Read, size, RenderBufferTrackType::Linear))
         {
             ERROR_LOG("Failed to create staging buffer.");
             return;
@@ -813,7 +799,7 @@ namespace C3D
 
         // Create a staging buffer and load data into it
         VulkanBuffer staging(&m_context, "READ_PIXEL_STAGING");
-        if (!staging.Create(RenderBufferType::Read, size, false))
+        if (!staging.Create(RenderBufferType::Read, size, RenderBufferTrackType::Linear))
         {
             ERROR_LOG("Failed to create staging buffer.");
             return;
@@ -1504,7 +1490,7 @@ namespace C3D
         // Uniform buffer
         // TODO: max count should be configurable, or perhaps long term support of buffer resizing
         const u64 totalBufferSize = shader.globalUboStride + shader.uboStride * VULKAN_MAX_MATERIAL_COUNT;
-        if (!vulkanShader->uniformBuffer.Create(RenderBufferType::Uniform, totalBufferSize, true))
+        if (!vulkanShader->uniformBuffer.Create(RenderBufferType::Uniform, totalBufferSize, RenderBufferTrackType::FreeList))
         {
             ERROR_LOG("Failed to create VulkanBuffer.");
             return false;
@@ -1670,7 +1656,7 @@ namespace C3D
                 for (u32 i = 0; i < totalSamplerCount; i++)
                 {
                     // TODO: only update in the list if actually needing an update
-                    const TextureMap* map = internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[i];
+                    TextureMap* map = internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[i];
                     if (!map->internalData)
                     {
                         // No valid sampler available so we skip this texture map.
@@ -1681,7 +1667,26 @@ namespace C3D
                     // Ensure the texture is valid.
                     if (!t || t->generation == INVALID_ID)
                     {
-                        t = Textures.GetDefault();
+                        // If we are using the default texture, invalidate the map's generation so it's updated next run.
+                        t               = Textures.GetDefault();
+                        map->generation = INVALID_ID;
+                    }
+                    else
+                    {
+                        // If the texture is valid, we ensure that the texture map's generation matches the texture.
+                        // If not, the texture map resources should be regenerated
+                        if (t->generation != map->generation)
+                        {
+                            bool refreshRequired = t->mipLevels != map->mipLevels;
+                            if (refreshRequired && !RefreshTextureMapResources(*map))
+                            {
+                                WARN_LOG("Failed to refresh texture map resources. This means the sampler settings could be out of date!");
+                            }
+                            else
+                            {
+                                map->generation = t->generation;
+                            }
+                        }
                     }
 
                     const auto internalData   = static_cast<VulkanTextureData*>(t->internalData);
@@ -1877,34 +1882,16 @@ namespace C3D
 
     bool VulkanRendererPlugin::AcquireTextureMapResources(TextureMap& map)
     {
-        VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+        VkSampler sampler = CreateSampler(map);
 
-        samplerInfo.minFilter = ConvertFilterType("min", map.minifyFilter);
-        samplerInfo.magFilter = ConvertFilterType("mag", map.magnifyFilter);
-
-        samplerInfo.addressModeU = ConvertRepeatType("U", map.repeatU);
-        samplerInfo.addressModeV = ConvertRepeatType("V", map.repeatV);
-        samplerInfo.addressModeW = ConvertRepeatType("W", map.repeatW);
-
-        // TODO: Configurable
-        samplerInfo.anisotropyEnable        = VK_TRUE;
-        samplerInfo.maxAnisotropy           = 16;
-        samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable           = VK_FALSE;
-        samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias              = 0.0f;
-        samplerInfo.minLod                  = 0.0f;
-        samplerInfo.maxLod                  = 0.0f;
-
-        const VkResult result = vkCreateSampler(m_context.device.GetLogical(), &samplerInfo, m_context.allocator,
-                                                reinterpret_cast<VkSampler*>(&map.internalData));
-        if (!VulkanUtils::IsSuccess(result))
+        if (!sampler)
         {
-            ERROR_LOG("Error creating texture sampler: '{}'.", VulkanUtils::ResultString(result));
+            ERROR_LOG("Failed to create Sampler.");
             return false;
         }
+
+        // Assign our sampler to the internal data of our texture map
+        map.internalData = sampler;
 
         const auto samplerName = map.texture->name + "_texture_map_sampler";
         VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SAMPLER, map.internalData, samplerName);
@@ -1914,10 +1901,35 @@ namespace C3D
 
     void VulkanRendererPlugin::ReleaseTextureMapResources(TextureMap& map)
     {
-        // NOTE: This ensures there's no way this is in use.
+        // Ensure there's no way this is in use.
         m_context.device.WaitIdle();
         vkDestroySampler(m_context.device.GetLogical(), static_cast<VkSampler>(map.internalData), m_context.allocator);
         map.internalData = nullptr;
+    }
+
+    bool VulkanRendererPlugin::RefreshTextureMapResources(TextureMap& map)
+    {
+        if (map.internalData)
+        {
+            // Create a new sampler first
+            VkSampler newSampler = CreateSampler(map);
+            if (!newSampler)
+            {
+                ERROR_LOG("Failed to create new Sampler.");
+                return false;
+            }
+
+            // Take a pointer to our old sampler
+            auto oldSampler = static_cast<VkSampler>(map.internalData);
+            // Ensure we are not using the current sampler first
+            m_context.device.WaitIdle();
+            // Assign our new sampler
+            map.internalData = newSampler;
+            // Destroy the old sampler
+            vkDestroySampler(m_context.device.GetLogical(), oldSampler, m_context.allocator);
+        }
+
+        return true;
     }
 
     bool VulkanRendererPlugin::SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value)
@@ -2138,6 +2150,47 @@ namespace C3D
         return true;
     }
 
+    VkSampler VulkanRendererPlugin::CreateSampler(TextureMap& map)
+    {
+        VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+
+        // Sync mip levels between texture and texturemap
+        map.mipLevels = map.texture->mipLevels;
+
+        samplerInfo.minFilter = ConvertFilterType("min", map.minifyFilter);
+        samplerInfo.magFilter = ConvertFilterType("mag", map.magnifyFilter);
+
+        samplerInfo.addressModeU = ConvertRepeatType("U", map.repeatU);
+        samplerInfo.addressModeV = ConvertRepeatType("V", map.repeatV);
+        samplerInfo.addressModeW = ConvertRepeatType("W", map.repeatW);
+
+        // TODO: Configurable
+        samplerInfo.anisotropyEnable        = VK_TRUE;
+        samplerInfo.maxAnisotropy           = 16;
+        samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+        samplerInfo.compareEnable           = VK_FALSE;
+        samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipLodBias              = 0.0f;
+        // Use the full range of mips available
+        samplerInfo.minLod = 0.0f;
+        // samplerInfo.minLod = map.texture->mipLevels > 1 ? map.texture->mipLevels : 0.0f;
+        samplerInfo.maxLod = map.texture->mipLevels;
+
+        VkSampler sampler     = nullptr;
+        const VkResult result = vkCreateSampler(m_context.device.GetLogical(), &samplerInfo, m_context.allocator, &sampler);
+        if (!VulkanUtils::IsSuccess(result))
+        {
+            ERROR_LOG("Error creating texture sampler: '{}'.", VulkanUtils::ResultString(result));
+            return nullptr;
+        }
+
+        return sampler;
+    }
+
     RendererPlugin* CreatePlugin() { return Memory.New<VulkanRendererPlugin>(MemoryType::RenderSystem); }
+
+    void DeletePlugin(RendererPlugin* plugin) { Memory.Delete(plugin); }
 
 }  // namespace C3D

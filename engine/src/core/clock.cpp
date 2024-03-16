@@ -6,35 +6,38 @@
 
 namespace C3D
 {
-    Clock::Clock(const Platform* os) : m_elapsedTime(0), m_startTime(0), m_operatingSystem(os) {}
+    Clock::Clock() {}
 
-    void Clock::Update()
+    Clock::Clock(const Platform* os) : m_operatingSystem(os) {}
+
+    void Clock::SetPlatform(const Platform* os) { m_operatingSystem = os; }
+
+    void Clock::Begin() { m_startTime = m_operatingSystem->GetAbsoluteTime(); }
+
+    void Clock::End()
     {
-        if (m_startTime != 0.0)
-        {
-            m_elapsedTime = m_operatingSystem->GetAbsoluteTime() - m_startTime;
-        }
+        m_elapsedTime = m_operatingSystem->GetAbsoluteTime() - m_startTime;
+        m_totalElapsedTime += m_elapsedTime;
     }
 
-    void Clock::Start()
+    void Clock::Reset()
     {
-        m_startTime   = m_operatingSystem->GetAbsoluteTime();
-        m_elapsedTime = 0;
+        m_startTime        = 0;
+        m_elapsedTime      = 0;
+        m_totalElapsedTime = 0;
     }
 
-    void Clock::Stop() { m_startTime = 0; }
+    void Clock::ResetTotal() { m_totalElapsedTime = 0; }
 
-    /** @brief Returns the elepased time in seconds since clock.Start(). */
-    f64 Clock::GetElapsed()
-    {
-        Update();
-        return m_elapsedTime;
-    }
+    f64 Clock::GetElapsed() const { return m_elapsedTime; }
 
-    /** @brief Returns the elepased time in milliseconds since clock.Start(). */
-    f64 Clock::GetElapsedMs()
-    {
-        Update();
-        return m_elapsedTime * 1000;
-    }
+    f64 Clock::GetElapsedMs() const { return m_elapsedTime * 1000; }
+
+    f64 Clock::GetElapsedUs() const { return m_elapsedTime * 1000000; }
+
+    f64 Clock::GetTotalElapsed() const { return m_totalElapsedTime; }
+
+    f64 Clock::GetTotalElapsedMs() const { return m_totalElapsedTime * 1000; }
+
+    f64 Clock::GetTotalElapsedUs() const { return m_totalElapsedTime * 1000000; }
 }  // namespace C3D

@@ -91,7 +91,7 @@ namespace C3D
     bool ResourceLoader<MeshResource>::LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const
     {
         Clock clock(m_pSystemsManager->GetSystemPtr<Platform>(PlatformSystemType));
-        clock.Start();
+        clock.Begin();
 
         // Version
         u16 version = 0;
@@ -152,7 +152,7 @@ namespace C3D
             outGeometries.PushBack(g);
         }
 
-        clock.Update();
+        clock.End();
         INSTANCE_INFO_LOG("MESH_LOADER", "{} Bytes read from file {} in {:.4f} ms.", file.bytesRead, file.currentPath,
                           clock.GetElapsedMs());
         file.Close();

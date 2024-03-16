@@ -23,16 +23,6 @@ namespace C3D
     class RendererPlugin
     {
     public:
-        RendererPlugin() = default;
-
-        RendererPlugin(const RendererPlugin&) = delete;
-        RendererPlugin(RendererPlugin&&)      = delete;
-
-        RendererPlugin& operator=(const RendererPlugin&) = delete;
-        RendererPlugin& operator=(RendererPlugin&&)      = delete;
-
-        virtual ~RendererPlugin() = default;
-
         virtual bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) = 0;
         virtual void Shutdown()                                                               = 0;
 
@@ -91,6 +81,7 @@ namespace C3D
 
         virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
         virtual void ReleaseTextureMapResources(TextureMap& map) = 0;
+        virtual bool RefreshTextureMapResources(TextureMap& map) = 0;
 
         virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) = 0;
 
@@ -100,8 +91,9 @@ namespace C3D
         virtual RenderPass* CreateRenderPass(const RenderPassConfig& config) = 0;
         virtual bool DestroyRenderPass(RenderPass* pass)                     = 0;
 
-        virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize, bool useFreelist) = 0;
-        virtual bool DestroyRenderBuffer(RenderBuffer* buffer)                                                               = 0;
+        virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
+                                                 RenderBufferTrackType trackType) = 0;
+        virtual bool DestroyRenderBuffer(RenderBuffer* buffer)                    = 0;
 
         virtual Texture* GetWindowAttachment(u8 index) = 0;
         virtual Texture* GetDepthAttachment(u8 index)  = 0;

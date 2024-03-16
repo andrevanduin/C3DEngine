@@ -2,6 +2,7 @@
 #include "image_loader.h"
 
 #include "core/logger.h"
+#include "math/c3d_math.h"
 #include "platform/file_system.h"
 #include "resources/resource_types.h"
 #include "systems/resources/resource_system.h"
@@ -10,7 +11,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
 #include "core/engine.h"
-#include "stb_image.h"
+#include "stb/stb_image.h"
 
 namespace C3D
 {
@@ -48,15 +49,15 @@ namespace C3D
             }
         }
 
+        if (!found)
+        {
+            ERROR_LOG("Failed to find file: '{}' with any supported extension.", name);
+            return false;
+        }
+
         // Take a copy of the resource path and name
         resource.fullPath = fullPath;
         resource.name     = name;
-
-        if (!found)
-        {
-            ERROR_LOG("Failed to find file '{}' with any supported extension.", name);
-            return false;
-        }
 
         File f;
         f.Open(fullPath, FileModeRead | FileModeBinary);
@@ -107,6 +108,9 @@ namespace C3D
         resource.width        = width;
         resource.height       = height;
         resource.channelCount = requiredChannelCount;
+        // To determine how many mip levels we will have, we first take the largest dimension then we take the base-2 log to see how many
+        // times we can divide it by 2. Then we floor that value to ensure we are working on integer level and add 1 for the base level.
+        resource.mipLevels = Floor(Log2(Max(width, height))) + 1;
 
         return true;
     }

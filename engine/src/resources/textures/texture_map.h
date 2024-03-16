@@ -37,5 +37,12 @@ namespace C3D
         TextureRepeat repeatW = TextureRepeat::Repeat;
         /** @brief A pointer to internal, render API-specific data. Typically the internal sampler. */
         void* internalData = nullptr;
+        /** @brief The amount of mip levels for this texture map.
+         * This value should always be atleast 1 since we will always have atleast the base image.
+         */
+        u8 mipLevels = 1;
+        /** @brief The generation for the assigned texture. Used to determine if we need to regenerate resources for this texture map.
+         * For example when the mip level changes. */
+        u32 generation = INVALID_ID;
     };
 }  // namespace C3D

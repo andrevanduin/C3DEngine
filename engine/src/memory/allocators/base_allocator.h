@@ -63,6 +63,21 @@ namespace C3D
             Free(instance);
         }
 
+        template <class T>
+        C3D_INLINE T* NewArray(const MemoryType type, const u64 count) const
+        {
+            T* elements = static_cast<T*>(AllocateBlock(type, sizeof(T) * count, alignof(T)));
+            std::uninitialized_default_construct_n(elements, count);
+            return elements;
+        }
+
+        template <class T>
+        void DeleteArray(T* array, const u64 count) const
+        {
+            std::destroy_n(array, count);
+            Free(array);
+        }
+
         [[nodiscard]] void* GetMemory() const { return m_memoryBlock; }
 
         [[nodiscard]] u8 GetId() const { return m_id; }

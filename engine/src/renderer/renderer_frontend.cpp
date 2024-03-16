@@ -20,11 +20,15 @@ namespace C3D
 
     bool RenderSystem::OnInit(const RenderSystemConfig& config)
     {
-        m_config        = config;
-        m_backendPlugin = config.rendererPlugin;
+        m_config = config;
+
+        // Load the backend plugin
+        m_backendDynamicLibrary.Load(m_config.rendererPlugin);
+
+        m_backendPlugin = m_backendDynamicLibrary.CreatePlugin<RendererPlugin>();
         if (!m_backendPlugin)
         {
-            FATAL_LOG("No valid renderer plugin provided.");
+            FATAL_LOG("Failed to create valid renderer plugin.");
             return false;
         }
 
@@ -49,9 +53,15 @@ namespace C3D
     void RenderSystem::OnShutdown()
     {
         INFO_LOG("Shutting down.");
-
+        // Shutdown our plugin
         m_backendPlugin->Shutdown();
-        Memory.Delete(m_backendPlugin);
+        // Delete the plugin
+        m_backendDynamicLibrary.DeletePlugin(m_backendPlugin);
+        // Unload the library
+        if (!m_backendDynamicLibrary.Unload())
+        {
+            ERROR_LOG("Failed to unload backend plugin dynamic library.");
+        }
     }
 
     void RenderSystem::OnResize(const u32 width, const u32 height)
@@ -295,9 +305,9 @@ namespace C3D
     u8 RenderSystem::GetWindowAttachmentCount() const { return m_backendPlugin->GetWindowAttachmentCount(); }
 
     RenderBuffer* RenderSystem::CreateRenderBuffer(const String& name, const RenderBufferType type, const u64 totalSize,
-                                                   const bool useFreelist) const
+                                                   RenderBufferTrackType trackType) const
     {
-        return m_backendPlugin->CreateRenderBuffer(name, type, totalSize, useFreelist);
+        return m_backendPlugin->CreateRenderBuffer(name, type, totalSize, trackType);
     }
 
     bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const { return m_backendPlugin->DestroyRenderBuffer(buffer); }

@@ -214,7 +214,7 @@ namespace C3D
         // Clamp to avoid Gimball lock
         static constexpr f32 limit = DegToRad(89.0f);
 
-        m_eulerRotation.x = C3D_CLAMP(m_eulerRotation.x, -limit, limit);
+        m_eulerRotation.x = Clamp(m_eulerRotation.x, -limit, limit);
         m_needsUpdate     = true;
     }
 
@@ -225,7 +225,7 @@ namespace C3D
         // Clamp to avoid Gimball lock
         static constexpr f32 limit = DegToRad(89.0f);
 
-        m_eulerRotation.x = C3D_CLAMP(m_eulerRotation.x, -limit, limit);
+        m_eulerRotation.x = Clamp(m_eulerRotation.x, -limit, limit);
         m_needsUpdate     = true;
     }
 }  // namespace C3D

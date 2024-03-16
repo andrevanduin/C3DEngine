@@ -20,9 +20,12 @@ namespace C3D
         bool IsValid() const { return m_uuid != INVALID_ID_U64; }
 
         operator u64() const { return m_uuid; }
+        operator bool() const { return m_uuid != INVALID_ID_U64; }
 
         bool operator==(const UUID& other) const { return m_uuid == other.m_uuid; }
         bool operator!=(const UUID& other) const { return m_uuid != other.m_uuid; }
+
+        bool operator!() const { return m_uuid == INVALID_ID_U64; }
 
     private:
         u64 m_uuid = INVALID_ID_U64;

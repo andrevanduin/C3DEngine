@@ -8,20 +8,27 @@ namespace C3D
 {
     enum class RenderBufferType
     {
-        /* @brief Buffer with unknown use. Default but will almost always be invalid. */
+        /** @brief Buffer with unknown use. Default but will almost always be invalid. */
         Unknown,
-        /* @brief Buffer used for vertex data. */
+        /** @brief Buffer used for vertex data. */
         Vertex,
-        /* @brief Buffer used for index data. */
+        /** @brief Buffer used for index data. */
         Index,
-        /* @brief Buffer used for uniform data. */
+        /** @brief Buffer used for uniform data. */
         Uniform,
-        /* @brief Buffer used for staging  (i.e. host-visible to device-local memory). */
+        /** @brief Buffer used for staging  (i.e. host-visible to device-local memory). */
         Staging,
-        /* @brief Buffer used for reading only. */
+        /** @brief Buffer used for reading only. */
         Read,
-        /* @brief Buffer used for data storage. */
+        /** @brief Buffer used for data storage. */
         Storage,
+    };
+
+    enum class RenderBufferTrackType
+    {
+        None,
+        FreeList,
+        Linear,
     };
 
     class C3D_API RenderBuffer
@@ -36,7 +43,7 @@ namespace C3D
 
         virtual ~RenderBuffer() = default;
 
-        virtual bool Create(RenderBufferType bufferType, u64 size, bool useFreelist);
+        virtual bool Create(RenderBufferType bufferType, u64 size, RenderBufferTrackType trackType);
         virtual void Destroy();
 
         virtual bool Bind(u64 offset);
@@ -64,7 +71,13 @@ namespace C3D
     protected:
         String m_name;
 
-        u64 m_freeListMemoryRequirement = 0;
+        /** @brief The type of memory tracking this renderbuffer uses. */
+        RenderBufferTrackType m_trackType = RenderBufferTrackType::None;
+
+        // Linear allocation
+        u64 m_offset = 0;
+
+        // Freelist allocation
         FreeList m_freeList;
         void* m_freeListBlock = nullptr;
     };

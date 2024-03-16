@@ -16,11 +16,13 @@ namespace C3D
     public:
         ~VulkanImage();
 
-        void Create(const VulkanContext* context, const String& name, TextureType type, u32 _width, u32 _height, VkFormat format,
-                    VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags, bool createView,
+        bool Create(const VulkanContext* context, const String& name, TextureType type, u32 _width, u32 _height, VkFormat format,
+                    VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags, bool createView, u8 mipLevels,
                     VkImageAspectFlags viewAspectFlags);
 
-        void CreateView(TextureType type, VkFormat format, VkImageAspectFlags aspectFlags);
+        bool CreateMipMaps(const VulkanCommandBuffer* commandBuffer);
+
+        void CreateView(TextureType type, VkImageAspectFlags aspectFlags);
 
         void TransitionLayout(const VulkanCommandBuffer* commandBuffer, TextureType type, VkFormat format, VkImageLayout oldLayout,
                               VkImageLayout newLayout) const;
@@ -41,6 +43,9 @@ namespace C3D
         VkDeviceMemory m_memory = nullptr;
         VkMemoryRequirements m_memoryRequirements;
         VkMemoryPropertyFlags m_memoryFlags = 0;
+        VkFormat m_format;
+
+        u8 m_mipLevels;
 
         const VulkanContext* m_context = nullptr;
     };

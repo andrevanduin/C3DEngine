@@ -1,6 +1,5 @@
 
 #include <core/exceptions.h>
-#include <core/plugin/plugin.h>
 #include <entry.h>
 #include <math/frustum.h>
 #include <resources/mesh.h>
@@ -14,7 +13,6 @@ namespace C3D
 
 C3D::FileWatchId applicationLibraryFile;
 
-C3D::Plugin rendererPlugin;
 C3D::GameLibrary applicationLib;
 
 C3D::Application* application;
@@ -91,11 +89,6 @@ C3D::Application* C3D::CreateApplication()
 {
     TryCopyLib();
 
-    if (!rendererPlugin.Load("C3DVulkanRenderer"))
-    {
-        throw C3D::Exception("Failed to load Vulkan Renderer plugin");
-    }
-
     if (!applicationLib.Load(loadedLibPath.Data()))
     {
         throw C3D::Exception("Failed to load TestEnv library");
@@ -103,7 +96,7 @@ C3D::Application* C3D::CreateApplication()
 
     // On the first start we need to create our state
     applicationState                 = applicationLib.CreateState();
-    applicationState->rendererPlugin = rendererPlugin.Create<RendererPlugin>();
+    applicationState->rendererPlugin = "C3DVulkanRenderer";
 
     application = applicationLib.Create(applicationState);
     return application;
@@ -128,5 +121,4 @@ void C3D::DestroyApplication()
     Memory.Delete(application);
 
     applicationLib.Unload();
-    rendererPlugin.Unload();
 }

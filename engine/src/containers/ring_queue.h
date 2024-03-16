@@ -9,12 +9,9 @@ namespace C3D
     class RingQueue
     {
     public:
-        RingQueue() : m_elements(nullptr), m_count(0), m_capacity(0), m_head(0), m_tail(-1) {}
+        RingQueue() = default;
 
-        explicit RingQueue(const u64 initialCapacity) : m_elements(nullptr), m_count(0), m_capacity(0), m_head(0), m_tail(-1)
-        {
-            Create(initialCapacity);
-        }
+        explicit RingQueue(const u64 initialCapacity) { Create(initialCapacity); }
 
         RingQueue(const RingQueue&) = delete;
         RingQueue(RingQueue&&)      = delete;
@@ -131,15 +128,15 @@ namespace C3D
         [[nodiscard]] bool Empty() const noexcept { return m_count == 0; }
 
     private:
-        /* Pointer to the elements in this RingQueue. */
-        T* m_elements;
-        /* @brief The amount of elements currently contained in this RingQueue. */
-        u64 m_count;
-        /* @brief The amount of elements this RingQueue can store in total. */
-        u64 m_capacity;
-        /* @brief The index into the list where the head is currently. */
-        u64 m_head;
-        /* @brief The index into the list where the tail is currently. */
-        u64 m_tail;
+        /** @brief Pointer to the elements in this RingQueue. */
+        T* m_elements = nullptr;
+        /** @brief The amount of elements currently contained in this RingQueue. */
+        u64 m_count = 0;
+        /** @brief The amount of elements this RingQueue can store in total. */
+        u64 m_capacity = 0;
+        /** @brief The index into the list where the head is currently. */
+        u64 m_head = 0;
+        /** @brief The index into the list where the tail is currently. */
+        u64 m_tail = INVALID_ID_U64;
     };
 }  // namespace C3D

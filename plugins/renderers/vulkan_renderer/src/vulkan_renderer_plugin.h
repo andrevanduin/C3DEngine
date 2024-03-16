@@ -12,20 +12,13 @@ namespace C3D
 
     extern "C" {
     C3D_API RendererPlugin* CreatePlugin();
+    C3D_API void DeletePlugin(RendererPlugin* plugin);
     }
 
     class VulkanRendererPlugin final : public RendererPlugin
     {
     public:
         VulkanRendererPlugin();
-
-        VulkanRendererPlugin(const VulkanRendererPlugin& other) = delete;
-        VulkanRendererPlugin(VulkanRendererPlugin&& other)      = delete;
-
-        VulkanRendererPlugin& operator=(const VulkanRendererPlugin& other) = delete;
-        VulkanRendererPlugin& operator=(VulkanRendererPlugin&& other)      = delete;
-
-        ~VulkanRendererPlugin() override = default;
 
         bool Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount) override;
         void Shutdown() override;
@@ -81,6 +74,7 @@ namespace C3D
 
         bool AcquireTextureMapResources(TextureMap& map) override;
         void ReleaseTextureMapResources(TextureMap& map) override;
+        bool RefreshTextureMapResources(TextureMap& map) override;
 
         bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) override;
 
@@ -90,7 +84,7 @@ namespace C3D
         RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
         bool DestroyRenderPass(RenderPass* pass) override;
 
-        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize, bool useFreelist) override;
+        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize, RenderBufferTrackType trackType) override;
         bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
         Texture* GetWindowAttachment(u8 index) override;
@@ -110,6 +104,8 @@ namespace C3D
         bool RecreateSwapChain();
 
         bool CreateShaderModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const;
+
+        VkSampler CreateSampler(TextureMap& map);
 
         VkSamplerAddressMode ConvertRepeatType(const char* axis, TextureRepeat repeat) const;
         VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;

@@ -13,20 +13,31 @@ namespace C3D
 
     RenderBuffer::RenderBuffer(const String& name) : m_name(name) {}
 
-    bool RenderBuffer::Create(const RenderBufferType bufferType, const u64 size, const bool useFreelist)
+    bool RenderBuffer::Create(const RenderBufferType bufferType, const u64 size, RenderBufferTrackType trackType)
     {
-        type      = bufferType;
-        totalSize = size;
+        type        = bufferType;
+        m_trackType = trackType;
+        totalSize   = size;
 
-        if (useFreelist)
+        if (m_trackType == RenderBufferTrackType::FreeList)
         {
             // Get the memory requirements for our freelist
-            m_freeListMemoryRequirement = FreeList::GetMemoryRequirement(totalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
+            auto freeListMemoryRequirement = FreeList::GetMemoryRequirement(totalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
             // Allocate enough space for our freelist
-            m_freeListBlock = Memory.AllocateBlock(MemoryType::RenderSystem, m_freeListMemoryRequirement);
+            m_freeListBlock = Memory.AllocateBlock(MemoryType::RenderSystem, freeListMemoryRequirement);
             // Create the freelist
-            m_freeList.Create(m_freeListBlock, m_freeListMemoryRequirement, SMALLEST_POSSIBLE_FREELIST_ALLOCATION, totalSize);
+            m_freeList.Create(m_freeListBlock, freeListMemoryRequirement, SMALLEST_POSSIBLE_FREELIST_ALLOCATION, totalSize);
         }
+        else if (m_trackType == RenderBufferTrackType::Linear)
+        {
+            m_offset = 0;
+        }
+        else
+        {
+            ERROR_LOG("Invalid RenderBufferTrackType provided.");
+            return false;
+        }
+
         return true;
     }
 
@@ -34,12 +45,11 @@ namespace C3D
     {
         m_name.Destroy();
 
-        if (m_freeListMemoryRequirement > 0)
+        if (m_trackType == RenderBufferTrackType::FreeList)
         {
             // We are using a freelist
             m_freeList.Destroy();
             Memory.Free(m_freeListBlock);
-            m_freeListMemoryRequirement = 0;
         }
     }
 
@@ -61,7 +71,7 @@ namespace C3D
             return false;
         }
 
-        if (m_freeListMemoryRequirement > 0)
+        if (m_trackType == RenderBufferTrackType::FreeList)
         {
             // We are using a freelist so we should resize it first.
             const u64 newMemoryRequirement = FreeList::GetMemoryRequirement(newTotalSize, SMALLEST_POSSIBLE_FREELIST_ALLOCATION);
@@ -80,8 +90,7 @@ namespace C3D
 
             // Free our old memory and store our new info
             Memory.Free(oldMemory);
-            m_freeListMemoryRequirement = newMemoryRequirement;
-            m_freeListBlock             = newMemory;
+            m_freeListBlock = newMemory;
         }
 
         return true;
@@ -95,14 +104,22 @@ namespace C3D
             return false;
         }
 
-        if (m_freeListMemoryRequirement == 0)
+        if (m_trackType == RenderBufferTrackType::None)
         {
-            WARN_LOG("Called on a buffer that is not using Freelists. Offset will not be valid! Call LoadRange() instead.");
+            WARN_LOG("Called on a buffer that has TrackType == None. Offset will not be valid! Call LoadRange() instead.");
             *outOffset = 0;
+            return false;
+        }
+        else if (m_trackType == RenderBufferTrackType::Linear)
+        {
+            *outOffset = m_offset;
+            m_offset += size;
             return true;
         }
-
-        return m_freeList.AllocateBlock(size, outOffset);
+        else
+        {
+            return m_freeList.AllocateBlock(size, outOffset);
+        }
     }
 
     bool RenderBuffer::Free(const u64 size, const u64 offset)
@@ -113,13 +130,13 @@ namespace C3D
             return false;
         }
 
-        if (m_freeListMemoryRequirement == 0)
+        if (m_trackType == RenderBufferTrackType::FreeList)
         {
-            WARN_LOG("Called on a buffer that is not using Freelists. Nothing was done.");
-            return true;
+            return m_freeList.FreeBlock(size, offset);
         }
 
-        return m_freeList.FreeBlock(size, offset);
+        WARN_LOG("Called on a buffer that is not using Freelists. Nothing was done.");
+        return true;
     }
 
     bool RenderBuffer::Clear(bool zeroMemory)
@@ -131,11 +148,17 @@ namespace C3D
             return false;
         }
 
-        if (!m_freeList.Clear())
+        if (m_trackType == RenderBufferTrackType::FreeList)
         {
-            ERROR_LOG("Failed to Clear the freelist.");
-            return false;
+            if (!m_freeList.Clear())
+            {
+                ERROR_LOG("Failed to Clear the freelist.");
+                return false;
+            }
+            return true;
         }
+
+        m_offset = 0;
         return true;
     }
 

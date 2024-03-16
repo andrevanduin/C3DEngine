@@ -11,6 +11,7 @@
 #include <renderer/renderer_types.h>
 #include <resources/skybox.h>
 #include <systems/UI/2D/ui2d_system.h>
+#include <systems/audio/audio_system.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/events/event_system.h>
 #include <systems/geometry/geometry_system.h>
@@ -200,6 +201,12 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
         return true;
     });
 
+    m_state->testMusic = Audio.LoadStream("Woodland Fantasy");
+
+    Audio.Play(m_state->testMusic, true);
+
+    OnResize();
+
     return true;
 }
 
@@ -212,7 +219,7 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     const u64 prevAllocCount = allocCount;
     allocCount               = Metrics.GetAllocCount();
 
-    const auto deltaTime = frameData.deltaTime;
+    const auto deltaTime = frameData.timeData.delta;
     if (!m_pConsole->IsOpen())
     {
         if (Input.IsKeyPressed(C3D::KeyM))
@@ -429,14 +436,17 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         hoveredBuffer = "None";
     }
 
-    C3D::CString<320> buffer;
+    C3D::CString<512> buffer;
     buffer.FromFormat(
         "{:<10} : Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\n"
         "{:<10} : Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}\n"
-        "{:<10} : DrawCount: {} FPS: {} FrameTime: {:.3f}ms VSync: {}",
+        "{:<10} : DrawCount: {} FPS: {} VSync: {}\n"
+        "{:<10} : Prepare: {:.4f} Render: {:.4f} Present: {:.4f} Update: {:.4f} Total: {:.4f}",
         "Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), "Mouse", mouseNdcX, mouseNdcY,
         leftButton, middleButton, rightButton, hoveredBuffer, "Renderer", frameData.drawnMeshCount, Metrics.GetFps(),
-        Metrics.GetFrameTime(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No");
+        Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No", "Timings", frameData.timeData.avgPrepareFrameTimeMs,
+        frameData.timeData.avgRenderTimeMs, frameData.timeData.avgPresentTimeMs, frameData.timeData.avgUpdateTimeMs,
+        frameData.timeData.avgRunTimeMs);
 
     m_state->testText.SetText(buffer.Data());
 }
@@ -460,45 +470,12 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
         m_state->editorPass.Prepare(&m_state->worldViewport, m_state->camera, &m_state->gizmo);
     }
 
-    /* Wireframe
-    m_state->pas
-    {
-        RenderViewWireframeData wireframeData = {};
-        wireframeData.selectedId              = m_state->selectedObject.uuid;
-        wireframeData.worldGeometries         = packet.views[TEST_ENV_VIEW_WORLD].geometries;
-        wireframeData.terrainGeometries       = packet.views[TEST_ENV_VIEW_WORLD].terrainGeometries;
-
-        auto& wireframeViewPacket = packet.views[TEST_ENV_VIEW_WIREFRAME];
-        if (!Views.BuildPacket(wireframeViewPacket.view, frameData, m_state->wireframeViewport, m_state->wireframeCamera, &wireframeData,
-                               &wireframeViewPacket))
-        {
-            ERROR_LOG("Failed to build packet for view: 'Wireframe'.");
-            return false;
-        }
-    }*/
-
     // Prepare the UI pass
     m_state->texts.Reset();
     m_state->texts.PushBack(&m_state->testText);
 
     m_pConsole->OnPrepareRender(m_state->texts);
     UI2D.PrepareFrame(frameData, &m_state->uiViewport, m_state->camera, m_state->uiMeshes, m_state->texts);
-
-    // Pick
-    /*
-    C3D::PickPacketData pickPacket = {};
-    pickPacket.uiMeshData          = uiPacket.meshData;
-    pickPacket.worldMeshData       = &packet.views[TEST_ENV_VIEW_WORLD].geometries;
-    pickPacket.terrainData         = &packet.views[TEST_ENV_VIEW_WORLD].terrainGeometries;
-    pickPacket.texts               = uiPacket.texts;
-
-    auto& pickViewPacket = packet.views[TEST_ENV_VIEW_PICK];
-    if (!Views.BuildPacket(pickViewPacket.view, frameData.allocator, &pickPacket, &pickViewPacket))
-    {
-        m_logger.Error("OnRender() - Failed to build packet for view: 'pick'.");
-        return false;
-    }
-    */
 
     return true;
 }
@@ -523,12 +500,6 @@ bool TestEnv::OnRender(C3D::FrameData& frameData)
         return false;
     }
 
-    if (!Renderer.Present(frameData))
-    {
-        ERROR_LOG("Failed to present the Renderer.");
-        return false;
-    }
-
     return true;
 }
 
@@ -546,7 +517,7 @@ void TestEnv::OnResize()
     C3D::Rect2D uiViewportRect = { 0.0f, 0.0f, static_cast<f32>(m_state->width), static_cast<f32>(m_state->height) };
     m_state->uiViewport.Resize(uiViewportRect);
 
-    m_state->testText.SetPosition({ 10, m_state->height - 80, 0 });
+    m_state->testText.SetPosition({ 10, m_state->height - 100, 0 });
     m_state->uiMeshes[0].transform.SetPosition({ m_state->width - 130, 10, 0 });
 
     m_state->frameGraph.OnResize(m_state->width, m_state->height);

@@ -1,6 +1,7 @@
 
 #include "metrics.h"
 
+#include "core/engine.h"
 #include "core/logger.h"
 #include "math/c3d_math.h"
 #include "platform/platform.h"
@@ -42,6 +43,7 @@ namespace C3D
                                                                                      "VulkanExternal",
                                                                                      "Direct3D",
                                                                                      "OpenGL",
+                                                                                     "Audio",
                                                                                      "BitmapFont",
                                                                                      "SystemFont",
                                                                                      "Terrain",
@@ -68,37 +70,31 @@ namespace C3D
         m_memoryStats[DYNAMIC_ALLOCATOR_ID].type = AllocatorType::Dynamic;
     }
 
-    void MetricSystem::Update(const f64 elapsedTime)
+    void MetricSystem::Update(FrameData& frameData, Clocks& clocks)
     {
         // Calculate ms per frame average
-        const f64 frameMs                = elapsedTime * 1000.0;
-        m_msTimes[m_frameAverageCounter] = frameMs;
-
-        if (m_frameAverageCounter == AVG_COUNT - 1)
-        {
-            for (const auto msTime : m_msTimes)
-            {
-                m_msAverage += msTime;
-            }
-
-            m_msAverage /= AVG_COUNT;
-        }
-
-        m_frameAverageCounter++;
-        m_frameAverageCounter %= AVG_COUNT;
-
-        // Calculate average frames per second
-        m_accumulatedFrameMs += frameMs;
-        if (m_accumulatedFrameMs > 1000)
+        m_accumulatedTime += frameData.timeData.delta;
+        if (m_accumulatedTime >= 1.0)
         {
             // At least 1 second has passed
-            m_fps = m_frames;
-            m_accumulatedFrameMs -= 1000;
-            m_frames = 0;
+            frameData.timeData.avgPrepareFrameTimeMs = (clocks.prepareFrame.GetTotalElapsed() / m_counter) * C3D::SEC_TO_MS_MULTIPLIER;
+            frameData.timeData.avgPresentTimeMs      = (clocks.present.GetTotalElapsed() / m_counter) * C3D::SEC_TO_MS_MULTIPLIER;
+            frameData.timeData.avgRenderTimeMs       = (clocks.onRender.GetTotalElapsed() / m_counter) * C3D::SEC_TO_MS_MULTIPLIER;
+            frameData.timeData.avgUpdateTimeMs       = (clocks.onUpdate.GetTotalElapsed() / m_counter) * C3D::SEC_TO_MS_MULTIPLIER;
+            frameData.timeData.avgRunTimeMs          = (clocks.total.GetTotalElapsed() / m_counter) * C3D::SEC_TO_MS_MULTIPLIER;
+
+            clocks.prepareFrame.ResetTotal();
+            clocks.present.ResetTotal();
+            clocks.onRender.ResetTotal();
+            clocks.onUpdate.ResetTotal();
+            clocks.total.ResetTotal();
+
+            m_fps             = m_counter;
+            m_counter         = 0;
+            m_accumulatedTime = 0;
         }
 
-        // Count all frames
-        m_frames++;
+        m_counter++;
     }
 
     u8 SetMemoryStats(const char* name, MemoryStats& stats, const AllocatorType type, const u64 availableSpace, const u8 i)

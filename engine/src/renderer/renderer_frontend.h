@@ -1,6 +1,7 @@
 
 #pragma once
 #include "core/defines.h"
+#include "core/dynamic_library/dynamic_library.h"
 #include "render_buffer.h"
 #include "renderer_plugin.h"
 #include "renderer_types.h"
@@ -22,8 +23,7 @@ namespace C3D
     struct RenderSystemConfig
     {
         const char* applicationName;
-
-        RendererPlugin* rendererPlugin;
+        const char* rendererPlugin;
         RendererConfigFlags flags;
     };
 
@@ -137,7 +137,8 @@ namespace C3D
         [[nodiscard]] u8 GetWindowAttachmentIndex() const;
         [[nodiscard]] u8 GetWindowAttachmentCount() const;
 
-        [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize, bool useFreelist) const;
+        [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
+                                                       RenderBufferTrackType trackType) const;
         bool DestroyRenderBuffer(RenderBuffer* buffer) const;
 
         const Viewport* GetActiveViewport() const;
@@ -152,7 +153,9 @@ namespace C3D
         u8 m_windowRenderTargetCount = 0;
         u32 m_frameBufferWidth = 1280, m_frameBufferHeight = 720;
 
-        RendererPlugin* m_backendPlugin  = nullptr;
+        DynamicLibrary m_backendDynamicLibrary;
+        RendererPlugin* m_backendPlugin = nullptr;
+
         const Viewport* m_activeViewport = nullptr;
     };
 }  // namespace C3D

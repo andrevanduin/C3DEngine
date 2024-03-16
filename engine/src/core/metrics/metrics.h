@@ -1,11 +1,12 @@
 
 #pragma once
 #ifdef C3D_MEMORY_METRICS_STACKTRACE
-    #include <stacktrace>
+#include <stacktrace>
 #endif
 
 #include "containers/array.h"
 #include "core/defines.h"
+#include "core/frame_data.h"
 #include "types.h"
 
 namespace C3D
@@ -14,8 +15,7 @@ namespace C3D
 
 #ifdef C3D_MEMORY_METRICS
 #ifdef C3D_MEMORY_METRICS_POINTERS
-#define MetricsAllocate(id, type, requested, required, ptr) \
-    Metrics.Allocate(id, Allocation(type, ptr, requested, required))
+#define MetricsAllocate(id, type, requested, required, ptr) Metrics.Allocate(id, Allocation(type, ptr, requested, required))
 
 #define MetricsFree(id, type, requested, required, ptr) Metrics.Free(id, DeAllocation(type, ptr))
 #else
@@ -28,11 +28,12 @@ namespace C3D
 #define MetricsFree(id, type, requested, required, ptr)
 #endif
 
-    constexpr auto AVG_COUNT     = 30;
     constexpr auto METRICS_COUNT = 16;
 
     constexpr u8 DYNAMIC_ALLOCATOR_ID = 0;
     constexpr u8 GPU_ALLOCATOR_ID     = 1;
+
+    struct Clocks;
 
     class C3D_API MetricSystem
     {
@@ -43,7 +44,7 @@ namespace C3D
 
         void Init();
 
-        void Update(f64 elapsedTime);
+        void Update(FrameData& frameData, Clocks& clocks);
 
         /*
          * @brief Creates an internal metrics object used for tracking allocators
@@ -83,24 +84,18 @@ namespace C3D
 
         static MetricSystem& GetInstance();
 
-        [[nodiscard]] f64 GetFps() const { return m_fps; }
-        [[nodiscard]] f64 GetFrameTime() const { return m_msAverage; }
+        [[nodiscard]] u16 GetFps() const { return m_fps; }
 
     private:
         static const char* SizeToText(u64 size, f64* outAmount);
-        static void SprintfAllocation(const MemoryAllocations& allocation, int index, char* buffer, int& bytesWritten,
-                                      int offset, bool debugLines);
+        static void SprintfAllocation(const MemoryAllocations& allocation, int index, char* buffer, int& bytesWritten, int offset,
+                                      bool debugLines);
         std::string m_stacktrace;
 
-        u8 m_frameAverageCounter = 0;
+        f64 m_accumulatedTime = 0.0;
 
-        f64 m_msTimes[AVG_COUNT]{};
-        f64 m_msAverage = 0.0;
-
-        i32 m_frames = 0;
-
-        f64 m_accumulatedFrameMs = 0.0;
-        f64 m_fps                = 0.0;
+        u16 m_counter = 0;
+        u16 m_fps     = 0;
 
         // The memory stats for all our different allocators
         Array<MemoryStats, METRICS_COUNT> m_memoryStats;

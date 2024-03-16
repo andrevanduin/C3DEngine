@@ -1,6 +1,7 @@
 
 #pragma once
 #include "application.h"
+#include "core/clock.h"
 #include "core/frame_data.h"
 #include "defines.h"
 #include "logger.h"
@@ -13,11 +14,24 @@ namespace C3D
     class UIConsole;
     struct EventContext;
 
+    struct Clocks
+    {
+        Clock prepareFrame;
+        Clock onUpdate;
+        Clock prepareRender;
+        Clock onRender;
+        Clock present;
+        Clock total;
+    };
+
     struct EngineState
     {
         bool running     = false;
         bool suspended   = false;
         bool initialized = false;
+
+        /** @brief Struct containing all the different clocks we need to keep track off. */
+        Clocks clocks;
 
         /** @brief Indicates if the window is currently being resized. */
         bool resizing = false;

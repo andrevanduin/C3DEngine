@@ -40,8 +40,8 @@ namespace C3D
         i32 height = 0;
         /** @brief Flags that indicate certain properties about this application. */
         ApplicationFlagBits flags = ApplicationFlagNone;
-
-        RendererPlugin* rendererPlugin = nullptr;
+        /** @brief The name of the Rendering plugin that you want to use. */
+        const char* rendererPlugin;
         FontSystemConfig fontConfig;
 
         /** @brief The size that should be allocated for the per-frame allocator. */

@@ -9,6 +9,7 @@
 #include "platform/platform.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/UI/2D/ui2d_system.h"
+#include "systems/audio/audio_system.h"
 #include "systems/cameras/camera_system.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/events/event_system.h"
@@ -92,6 +93,7 @@ namespace C3D
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
         const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled };
         constexpr UI2DSystemConfig ui2dSystemConfig{ 1024, MebiBytes(16) };
+        constexpr AudioSystemConfig audioSystemConfig{ "C3DOpenAL", 0, ChannelType::Stereo, 4096 * 16, 8 };
 
         // Init before boot systems
         m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);                              // Event System
@@ -102,6 +104,7 @@ namespace C3D
         m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);        // Shader System
         m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);        // Render System
         m_systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);              // UI2D System
+        m_systemsManager.RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);           //  Audio System
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
@@ -176,18 +179,16 @@ namespace C3D
 
     void Engine::Run()
     {
-        m_state.running = true;
+        m_state.running  = true;
+        m_state.lastTime = OS.GetAbsoluteTime();
 
-        Clock clock(m_systemsManager.GetSystemPtr<Platform>(PlatformSystemType));
-
-        clock.Start();
-        clock.Update();
-
-        m_state.lastTime = clock.GetElapsed();
-
-        u8 frameCount                    = 0;
-        constexpr f64 targetFrameSeconds = 1.0 / 60.0;
-        f64 frameElapsedTime             = 0;
+        auto os = m_systemsManager.GetSystemPtr<Platform>(PlatformSystemType);
+        m_state.clocks.onRender.SetPlatform(os);
+        m_state.clocks.onUpdate.SetPlatform(os);
+        m_state.clocks.prepareFrame.SetPlatform(os);
+        m_state.clocks.prepareRender.SetPlatform(os);
+        m_state.clocks.present.SetPlatform(os);
+        m_state.clocks.total.SetPlatform(os);
 
         UI2D.OnRun();
 
@@ -204,19 +205,19 @@ namespace C3D
 
             if (!m_state.suspended)
             {
-                clock.Update();
-                const f64 currentTime    = clock.GetElapsed();
-                const f64 delta          = currentTime - m_state.lastTime;
-                const f64 frameStartTime = OS.GetAbsoluteTime();
+                m_state.clocks.total.Begin();
 
-                m_frameData.totalTime = currentTime;
-                m_frameData.deltaTime = delta;
+                const f64 currentTime = OS.GetAbsoluteTime();
+                const f64 delta       = currentTime - m_state.lastTime;
+
+                m_frameData.timeData.total += delta;
+                m_frameData.timeData.delta = delta;
 
                 // Reset our frame allocator (freeing all memory used previous frame)
                 m_frameData.allocator->FreeAll();
 
                 Jobs.OnUpdate(m_frameData);
-                Metrics.Update(frameElapsedTime);
+                Metrics.Update(m_frameData, m_state.clocks);
                 OS.WatchFiles();
 
                 if (m_state.resizing)
@@ -238,6 +239,8 @@ namespace C3D
                     continue;
                 }
 
+                m_state.clocks.prepareFrame.Begin();
+
                 if (!Renderer.PrepareFrame(m_frameData))
                 {
                     // If we fail to prepare the frame we just skip this frame since we are propabably just done resizing
@@ -247,10 +250,18 @@ namespace C3D
                     continue;
                 }
 
+                m_state.clocks.prepareFrame.End();
+
+                m_state.clocks.onUpdate.Begin();
+
                 OnUpdate();
+
+                m_state.clocks.onUpdate.End();
 
                 // Reset our drawn mesh count for the next frame
                 m_frameData.drawnMeshCount = 0;
+
+                m_state.clocks.prepareRender.Begin();
 
                 // Let the application prepare all the data for the next frame
                 if (!m_application->OnPrepareRender(m_frameData))
@@ -258,6 +269,10 @@ namespace C3D
                     // We skip this frame since we failed to prepare our render
                     continue;
                 }
+
+                m_state.clocks.prepareRender.End();
+
+                m_state.clocks.onRender.Begin();
 
                 // Call the game's render routine
                 if (!m_application->OnRender(m_frameData))
@@ -267,24 +282,22 @@ namespace C3D
                     break;
                 }
 
-                const f64 frameEndTime = OS.GetAbsoluteTime();
-                frameElapsedTime       = frameEndTime - frameStartTime;
+                m_state.clocks.onRender.End();
 
-                if (const f64 remainingSeconds = targetFrameSeconds - frameElapsedTime; remainingSeconds > 0)
+                m_state.clocks.present.Begin();
+
+                if (!Renderer.Present(m_frameData))
                 {
-                    const u64 remainingMs = static_cast<u64>(remainingSeconds) * 1000;
-
-                    constexpr bool limitFrames = true;
-                    if (remainingMs > 0 && limitFrames)
-                    {
-                        Platform::SleepMs(remainingMs - 1);
-                    }
-
-                    frameCount++;
+                    ERROR_LOG("Failed to present the Renderer.");
+                    m_state.running = false;
+                    break;
                 }
+
+                m_state.clocks.present.End();
 
                 Input.OnUpdate(m_frameData);
 
+                m_state.clocks.total.End();
                 m_state.lastTime = currentTime;
             }
         }
