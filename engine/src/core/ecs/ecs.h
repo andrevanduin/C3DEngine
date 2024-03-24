@@ -64,6 +64,15 @@ namespace C3D
         }
 
         template <typename ComponentType>
+        const ComponentType& GetComponent(Entity entity) const
+        {
+            auto index       = entity.GetIndex();
+            auto componentId = ComponentType::GetId();
+
+            return m_componentPools[componentId].Get<ComponentType>(index);
+        }
+
+        template <typename ComponentType>
         bool HasComponent(Entity entity) const
         {
             auto index       = entity.GetIndex();

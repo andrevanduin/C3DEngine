@@ -51,9 +51,15 @@ namespace C3D
 
         bool SetParent(Entity child, Entity parent);
 
+        const vec2& GetPosition(Entity entity) const;
+
         bool SetPosition(Entity entity, const vec2& translation);
 
+        vec2 GetSize(Entity entity) const;
+
         bool SetSize(Entity entity, u16 width, u16 height);
+
+        f32 GetRotation(Entity entity) const;
 
         bool SetRotation(Entity entity, f32 angle);
 
@@ -84,6 +90,41 @@ namespace C3D
          */
         bool AddOnClickHandler(Entity entity, const UI_2D::OnClickEventHandler& handler);
 
+        /**
+         * @brief Makes the provided entity hoverable.
+         *
+         * @param entity The entity that you want to make hoverable.
+         * @return True if successful; false otherwise.
+         */
+        bool MakeHoverable(Entity entity);
+
+        /**
+         * @brief Makes the provided entity hoverable within the provided bounds.
+         *
+         * @param entity The entity that you want to make hoverable.
+         * @param bounds The bounds within the entity that you want to make hoverable.
+         * @return True if successful; false otherwise.
+         */
+        bool MakeHoverable(Entity entity, const Bounds& bounds);
+
+        /**
+         * @brief Add a OnHoverStartHandler to the provided Entity.
+         *
+         * @param entity The entity that you want to add the OnHoverStart handler to.
+         * @param handler The handler function that needs to be called when hover starts.
+         * @return True if successful; false otherwise.
+         */
+        bool AddOnHoverStartHandler(Entity entity, const UI_2D::OnHoverStartEventHandler& handler);
+
+        /**
+         * @brief Add a OnHoverEndHandler to the provided Entity.
+         *
+         * @param entity The entity that you want to add the OnHoverEnd handler to.
+         * @param handler The handler function that needs to be called when hover ends.
+         * @return True if successful; false otherwise.
+         */
+        bool AddOnHoverEndHandler(Entity entity, const UI_2D::OnHoverEndEventHandler& handler);
+
         /* ------- Generic Handlers End -------  */
 
         UI2DPass* GetPass() { return &m_pass; }
@@ -96,10 +137,15 @@ namespace C3D
          */
         bool OnClick(const EventContext& context);
 
+        /** @brief Handles OnMouseMoved events for all components managed by the UI2D System. */
+        bool OnMouseMoved(const EventContext& context);
+
         void SetupBaseComponent(Entity entity, const char* name, u16 x, u16 y, u16 width, u16 height);
 
-        void SetupNineSliceComponent(Entity entity, const u16vec2& cornerSize, const u16vec2& cornerAtlasSize, const u16vec2& atlasMin,
-                                     const u16vec2& atlasMax);
+        void SetupNineSliceComponent(Entity entity, const u16vec2& cornerSize, const u16vec2& cornerAtlasSize,
+                                     const u16vec2& atlasMinDefault, const u16vec2& atlasMaxDefault, const u16vec2& atlasMinHover,
+                                     const u16vec2& atlasMaxHover);
+
         void RegenerateNineSliceGeometry(Entity entity);
 
         bool SetupRenderableComponent(Entity entity, const UIGeometryConfig& config);
@@ -114,6 +160,7 @@ namespace C3D
         TextureMap m_textureAtlas;
 
         RegisteredEventCallback m_onClickEventRegisteredCallback;
+        RegisteredEventCallback m_onMouseMoveEventRegisteredCallback;
 
         ECS m_ecs;
     };

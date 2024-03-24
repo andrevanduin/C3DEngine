@@ -9,7 +9,11 @@ namespace C3D
     static std::mt19937_64 sRandomEngine(sRandomDevice());
     static std::uniform_int_distribution<u64> sUniformDistribution;
 
+    UUID::UUID() {}
+
     UUID::UUID(u64 uuid) : m_uuid(uuid) {}
+
+    UUID::UUID(const UUID& other) : m_uuid(other.m_uuid) {}
 
     void UUID::Generate() { m_uuid = sUniformDistribution(sRandomEngine); }
 

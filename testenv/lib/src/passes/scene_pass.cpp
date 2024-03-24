@@ -264,6 +264,8 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
     }
 
+    u32 currentMaterialId = INVALID_ID;
+
     // Static geometry
     if (!m_geometries.Empty())
     {
@@ -283,17 +285,21 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         for (const auto& data : m_geometries)
         {
             C3D::Material* m = data.geometry->material ? data.geometry->material : Materials.GetDefault();
-
-            bool needsUpdate = m->renderFrameNumber != frameData.frameNumber || m->renderDrawIndex != frameData.drawIndex;
-            if (!Materials.ApplyInstance(m, frameData, needsUpdate))
+            if (m->internalId != currentMaterialId)
             {
-                WARN_LOG("Failed to apply Terrain Material: '{}'. Skipping.", m->name);
-                continue;
-            }
+                bool needsUpdate = m->renderFrameNumber != frameData.frameNumber || m->renderDrawIndex != frameData.drawIndex;
+                if (!Materials.ApplyInstance(m, frameData, needsUpdate))
+                {
+                    WARN_LOG("Failed to apply Terrain Material: '{}'. Skipping.", m->name);
+                    continue;
+                }
 
-            // Sync the frame number and draw index
-            m->renderFrameNumber = frameData.frameNumber;
-            m->renderDrawIndex   = frameData.drawIndex;
+                // Sync the frame number and draw index
+                m->renderFrameNumber = frameData.frameNumber;
+                m->renderDrawIndex   = frameData.drawIndex;
+
+                currentMaterialId = m->internalId;
+            }
 
             // Apply the locals
             Materials.ApplyLocal(m, &data.model);

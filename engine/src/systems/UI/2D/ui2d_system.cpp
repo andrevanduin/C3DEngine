@@ -11,6 +11,13 @@
 #include "systems/shaders/shader_system.h"
 #include "systems/textures/texture_system.h"
 
+#define ASSERT_VALID(entity)                        \
+    if (!entity.IsValid())                          \
+    {                                               \
+        ERROR_LOG("Entity provided is not valid."); \
+        return false;                               \
+    }
+
 namespace C3D
 {
     using namespace UI_2D;
@@ -51,11 +58,14 @@ namespace C3D
         m_ecs.AddComponentPool<ParentComponent>("ParentComponentPool");
         m_ecs.AddComponentPool<NineSliceComponent>("NineSliceComponentPool");
         m_ecs.AddComponentPool<ClickableComponent>("ClickableComponentPool");
+        m_ecs.AddComponentPool<HoverableComponent>("HoverableComponentPool");
 
         m_pass = UI2DPass(m_pSystemsManager);
 
         m_onClickEventRegisteredCallback = Event.Register(
             EventCodeButtonClicked, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnClick(context); });
+        m_onClickEventRegisteredCallback = Event.Register(
+            EventCodeMouseMoved, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnMouseMoved(context); });
 
         return true;
     }
@@ -89,7 +99,7 @@ namespace C3D
 
     bool UI2DSystem::OnClick(const EventContext& context)
     {
-        auto ctx = OnClickEventContext(context.data.u16[0], context.data.u16[1], context.data.u16[2]);
+        auto ctx = MouseButtonEventContext(context.data.u16[0], context.data.u16[1], context.data.u16[2]);
 
         for (auto entity : EntityView<ClickableComponent>(m_ecs))
         {
@@ -103,14 +113,73 @@ namespace C3D
 
             auto transformedPos = inverse * vec4(ctx.x, ctx.y, 0.0f, 1.0f);
 
-            if (transformedPos.x >= bounds.x && transformedPos.x <= bounds.x + bounds.width && transformedPos.y >= bounds.y &&
-                transformedPos.y <= bounds.y + bounds.height)
+            if (bounds.Contains(transformedPos))
             {
-                return clickableComponent.handler(ctx);
+                if (clickableComponent.onClick)
+                {
+                    return clickableComponent.onClick(ctx);
+                }
             }
         }
 
         // Let's return false since if we reach this point the click event was not handled yet
+        return false;
+    }
+
+    bool UI2DSystem::OnMouseMoved(const EventContext& context)
+    {
+        auto ctx = OnHoverEventContext(context.data.u16[0], context.data.u16[1]);
+
+        for (auto entity : EntityView<HoverableComponent>(m_ecs))
+        {
+            auto& hComponent = m_ecs.GetComponent<HoverableComponent>(entity);
+            auto& bounds     = hComponent.bounds;
+
+            auto& tComponent = m_ecs.GetComponent<TransformComponent>(entity);
+            auto model       = tComponent.transform.GetWorld();
+            auto inverse     = glm::inverse(model);
+
+            auto& fComponent = m_ecs.GetComponent<FlagsComponent>(entity);
+            auto& flags      = fComponent.flags;
+
+            auto transformedPos = inverse * vec4(ctx.x, ctx.y, 0.0f, 1.0f);
+
+            if (flags & FlagBit::FlagHovered)
+            {
+                // Already hovering this component
+                if (!bounds.Contains(transformedPos))
+                {
+                    // Unset the flag since we stopped hovering
+                    flags &= ~FlagBit::FlagHovered;
+
+                    auto& nComponent    = m_ecs.GetComponent<NineSliceComponent>(entity);
+                    nComponent.atlasMin = nComponent.atlasMinDefault;
+                    nComponent.atlasMax = nComponent.atlasMaxDefault;
+                    RegenerateNineSliceGeometry(entity);
+
+                    if (hComponent.onHoverEnd)
+                    {
+                        return hComponent.onHoverEnd(ctx);
+                    }
+                }
+            }
+            else if (bounds.Contains(transformedPos))
+            {
+                // Not hovering yet and we are inside the component so set the flag since we are hovering now
+                flags |= FlagBit::FlagHovered;
+
+                auto& nComponent    = m_ecs.GetComponent<NineSliceComponent>(entity);
+                nComponent.atlasMin = nComponent.atlasMinHover;
+                nComponent.atlasMax = nComponent.atlasMaxHover;
+                RegenerateNineSliceGeometry(entity);
+
+                if (hComponent.onHoverStart)
+                {
+                    return hComponent.onHoverStart(ctx);
+                }
+            }
+        }
+
         return false;
     }
 
@@ -159,7 +228,7 @@ namespace C3D
         constexpr u16vec2 panelAtlasMax        = u16vec2(96, 96);  // The max values for the panel in the UI atlas
         auto panelCornerSize                   = u16vec2(cornerWidth, cornerHeight);
 
-        SetupNineSliceComponent(panel, panelCornerSize, panelCornerAtlasSize, panelAtlasMin, panelAtlasMax);
+        SetupNineSliceComponent(panel, panelCornerSize, panelCornerAtlasSize, panelAtlasMin, panelAtlasMax, panelAtlasMax, panelAtlasMax);
 
         auto config = GeometryUtils::GenerateUINineSliceConfig("Panel_UI_Geometry", u16vec2(width, height), panelCornerSize, atlasSize,
                                                                panelCornerAtlasSize, panelAtlasMin, panelAtlasMax);
@@ -181,11 +250,14 @@ namespace C3D
 
         // TODO: Get from config
         constexpr u16vec2 buttonCornerAtlasSize = u16vec2(8, 8);     // Size of one corner of the button nine slice
-        constexpr u16vec2 buttonAtlasMin        = u16vec2(120, 24);  // The min values for the button in the UI atlas
-        constexpr u16vec2 buttonAtlasMax        = u16vec2(168, 72);  // The max values for the button in the UI atlas
+        constexpr u16vec2 buttonAtlasMin        = u16vec2(96, 0);    // The min values for the button in the UI atlas
+        constexpr u16vec2 buttonAtlasMinHover   = u16vec2(96, 18);   // The min values for the button on hover in the UI atlas
+        constexpr u16vec2 buttonAtlasMax        = u16vec2(112, 17);  // The max values for the button in the UI atlas
+        constexpr u16vec2 buttonAtlasMaxHover   = u16vec2(112, 35);  // The max values for the button on hover in the UI atlas
         constexpr u16vec2 buttonCornerSize      = u16vec2(8, 8);
 
-        SetupNineSliceComponent(button, buttonCornerSize, buttonCornerAtlasSize, buttonAtlasMin, buttonAtlasMax);
+        SetupNineSliceComponent(button, buttonCornerSize, buttonCornerAtlasSize, buttonAtlasMin, buttonAtlasMax, buttonAtlasMinHover,
+                                buttonAtlasMaxHover);
 
         auto config = GeometryUtils::GenerateUINineSliceConfig("Button_UI_Geometry", u16vec2(width, height), buttonCornerSize, atlasSize,
                                                                buttonCornerAtlasSize, buttonAtlasMin, buttonAtlasMax);
@@ -203,17 +275,8 @@ namespace C3D
 
     bool UI2DSystem::SetParent(Entity child, Entity parent)
     {
-        if (!child.IsValid())
-        {
-            ERROR_LOG("Provided child is not valid.");
-            return false;
-        }
-
-        if (!parent.IsValid())
-        {
-            ERROR_LOG("Provided parent is not valid.");
-            return false;
-        }
+        ASSERT_VALID(child);
+        ASSERT_VALID(parent);
 
         if (!m_ecs.HasComponent<ParentComponent>(parent))
         {
@@ -237,13 +300,18 @@ namespace C3D
         return true;
     }
 
+    const vec2& UI2DSystem::GetPosition(Entity entity) const
+    {
+        if (m_ecs.HasComponent<TransformComponent>(entity))
+        {
+            return m_ecs.GetComponent<TransformComponent>(entity).transform.GetPosition();
+        }
+        return VEC2_ZERO;
+    }
+
     bool UI2DSystem::SetPosition(Entity entity, const vec2& translation)
     {
-        if (!entity.IsValid())
-        {
-            ERROR_LOG("Entity provided is not valid.");
-            return false;
-        }
+        ASSERT_VALID(entity);
 
         if (!m_ecs.HasComponent<TransformComponent>(entity))
         {
@@ -256,13 +324,19 @@ namespace C3D
         return true;
     }
 
+    vec2 UI2DSystem::GetSize(Entity entity) const
+    {
+        if (m_ecs.HasComponent<TransformComponent>(entity))
+        {
+            auto& tComponent = m_ecs.GetComponent<TransformComponent>(entity);
+            return vec2(tComponent.width, tComponent.height);
+        }
+        return VEC2_ZERO;
+    }
+
     bool UI2DSystem::SetSize(Entity entity, u16 width, u16 height)
     {
-        if (!entity.IsValid())
-        {
-            ERROR_LOG("Entity provided is not valid.");
-            return false;
-        }
+        ASSERT_VALID(entity);
 
         if (!m_ecs.HasComponent<TransformComponent>(entity))
         {
@@ -283,13 +357,19 @@ namespace C3D
         return true;
     }
 
+    f32 UI2DSystem::GetRotation(Entity entity) const
+    {
+        if (m_ecs.HasComponent<TransformComponent>(entity))
+        {
+            // TODO: add this stuff
+            return 0;
+        }
+        return 0;
+    }
+
     bool UI2DSystem::SetRotation(Entity entity, f32 angle)
     {
-        if (!entity.IsValid())
-        {
-            ERROR_LOG("Entity provided is not valid.");
-            return false;
-        }
+        ASSERT_VALID(entity);
 
         if (!m_ecs.HasComponent<TransformComponent>(entity))
         {
@@ -305,11 +385,7 @@ namespace C3D
 
     bool UI2DSystem::MakeClickable(Entity entity)
     {
-        if (!entity.IsValid())
-        {
-            ERROR_LOG("Entity provided is not valid.");
-            return false;
-        }
+        ASSERT_VALID(entity);
 
         if (!m_ecs.HasComponent<TransformComponent>(entity))
         {
@@ -324,11 +400,7 @@ namespace C3D
 
     bool UI2DSystem::MakeClickable(Entity entity, const Bounds& bounds)
     {
-        if (!entity.IsValid())
-        {
-            ERROR_LOG("Entity provided is not valid.");
-            return false;
-        }
+        ASSERT_VALID(entity);
 
         auto& cComponent  = m_ecs.AddComponent<ClickableComponent>(entity);
         cComponent.bounds = bounds;
@@ -338,11 +410,7 @@ namespace C3D
 
     bool UI2DSystem::AddOnClickHandler(Entity entity, const OnClickEventHandler& handler)
     {
-        if (!entity.IsValid())
-        {
-            ERROR_LOG("Entity provided is not valid.");
-            return false;
-        }
+        ASSERT_VALID(entity);
 
         if (!m_ecs.HasComponent<ClickableComponent>(entity))
         {
@@ -351,7 +419,62 @@ namespace C3D
         }
 
         auto& clickableComponent   = m_ecs.GetComponent<ClickableComponent>(entity);
-        clickableComponent.handler = handler;
+        clickableComponent.onClick = handler;
+        return true;
+    }
+
+    bool UI2DSystem::MakeHoverable(Entity entity)
+    {
+        ASSERT_VALID(entity);
+
+        if (!m_ecs.HasComponent<TransformComponent>(entity))
+        {
+            ERROR_LOG("Entity: '{}' does not have a transform component to determine the bounds from. Please provide bounds manually.",
+                      entity);
+            return false;
+        }
+
+        auto& tComponent = m_ecs.GetComponent<TransformComponent>(entity);
+        return MakeHoverable(entity, Bounds(0.0f, 0.0f, tComponent.width, tComponent.height));
+    }
+
+    bool UI2DSystem::MakeHoverable(Entity entity, const Bounds& bounds)
+    {
+        ASSERT_VALID(entity);
+
+        auto& hComponent  = m_ecs.AddComponent<HoverableComponent>(entity);
+        hComponent.bounds = bounds;
+
+        return true;
+    }
+
+    bool UI2DSystem::AddOnHoverStartHandler(Entity entity, const UI_2D::OnHoverStartEventHandler& handler)
+    {
+        ASSERT_VALID(entity);
+
+        if (!m_ecs.HasComponent<HoverableComponent>(entity))
+        {
+            INFO_LOG("Entity: '{}' does not have a Hoverable Component by default. Adding it first (with default bounds).", entity);
+            MakeHoverable(entity);
+        }
+
+        auto& hComponent        = m_ecs.GetComponent<HoverableComponent>(entity);
+        hComponent.onHoverStart = handler;
+        return true;
+    }
+
+    bool UI2DSystem::AddOnHoverEndHandler(Entity entity, const UI_2D::OnHoverEndEventHandler& handler)
+    {
+        ASSERT_VALID(entity);
+
+        if (!m_ecs.HasComponent<HoverableComponent>(entity))
+        {
+            INFO_LOG("Entity: '{}' does not have a Hoverable Component by default. Adding it first (with default bounds).", entity);
+            MakeHoverable(entity);
+        }
+
+        auto& hComponent      = m_ecs.GetComponent<HoverableComponent>(entity);
+        hComponent.onHoverEnd = handler;
         return true;
     }
 
@@ -367,17 +490,26 @@ namespace C3D
         tComponent.transform.SetPosition(vec3(x, y, 0.0f));
         tComponent.width  = width;
         tComponent.height = height;
+
+        m_ecs.AddComponent<FlagsComponent>(entity);
     }
 
     void UI2DSystem::SetupNineSliceComponent(Entity entity, const u16vec2& cornerSize, const u16vec2& cornerAtlasSize,
-                                             const u16vec2& atlasMin, const u16vec2& atlasMax)
+                                             const u16vec2& atlasMinDefault, const u16vec2& atlasMaxDefault, const u16vec2& atlasMinHover,
+                                             const u16vec2& atlasMaxHover)
     {
         auto& sliceComponent           = m_ecs.AddComponent<NineSliceComponent>(entity);
         sliceComponent.cornerSize      = cornerSize;
         sliceComponent.atlasSize       = atlasSize;
         sliceComponent.cornerAtlasSize = cornerAtlasSize;
-        sliceComponent.atlasMin        = atlasMin;
-        sliceComponent.atlasMax        = atlasMax;
+
+        sliceComponent.atlasMin        = atlasMinDefault;
+        sliceComponent.atlasMinDefault = atlasMinDefault;
+        sliceComponent.atlasMinHover   = atlasMinHover;
+
+        sliceComponent.atlasMax        = atlasMaxDefault;
+        sliceComponent.atlasMaxDefault = atlasMaxDefault;
+        sliceComponent.atlasMaxHover   = atlasMaxHover;
     }
 
     void UI2DSystem::RegenerateNineSliceGeometry(Entity entity)
@@ -434,6 +566,7 @@ namespace C3D
         INFO_LOG("Shutting down UI2D System.");
 
         Event.Unregister(m_onClickEventRegisteredCallback);
+        Event.Unregister(m_onMouseMoveEventRegisteredCallback);
 
         if (m_textureAtlas.texture)
         {

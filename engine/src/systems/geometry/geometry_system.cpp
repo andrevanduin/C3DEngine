@@ -25,7 +25,6 @@ namespace C3D
         for (u32 i = 0; i < count; i++)
         {
             m_registeredGeometries[i].geometry.id         = INVALID_ID;
-            m_registeredGeometries[i].geometry.internalId = INVALID_ID;
             m_registeredGeometries[i].geometry.generation = INVALID_ID_U16;
         }
 
@@ -364,7 +363,6 @@ namespace C3D
     void GeometrySystem::DestroyGeometry(Geometry* g) const
     {
         Renderer.DestroyGeometry(*g);
-        g->internalId = INVALID_ID;
         g->generation = INVALID_ID_U16;
         g->id         = INVALID_ID;
         g->name.Clear();
@@ -408,7 +406,6 @@ namespace C3D
         constexpr u32 indexCount      = 6;
         const u32 indices[indexCount] = { 0, 1, 2, 0, 3, 1 };
 
-        m_defaultGeometry.internalId = INVALID_ID;
         if (!Renderer.CreateGeometry(m_defaultGeometry, sizeof(Vertex3D), vertexCount, vertices, sizeof(u32), indexCount, indices))
         {
             FATAL_LOG("Failed to create default geometry.");
@@ -450,7 +447,6 @@ namespace C3D
         // Indices (NOTE: counter-clockwise)
         const u32 indices2d[indexCount] = { 2, 1, 0, 3, 0, 1 };
 
-        m_default2DGeometry.internalId = INVALID_ID;
         if (!Renderer.CreateGeometry(m_default2DGeometry, sizeof(Vertex2D), vertexCount, vertices2d, sizeof(u32), indexCount, indices2d))
         {
             FATAL_LOG("Failed to create default 2d geometry.");

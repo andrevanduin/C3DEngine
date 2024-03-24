@@ -26,6 +26,16 @@ namespace C3D
         GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &m_stdOutputConsoleScreenBufferInfo);
         GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &m_stdErrorConsoleScreenBufferInfo);
 
+        // NOTE: This is only available in Creators update of windows 10+ so we fallback to V1 if this call fails
+        if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
+        {
+            WARN_LOG(
+                "The following error occured: '{}' while trying to set ProcessDpiAwarenessContext to: "
+                "'DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2'. Falling back to V1.",
+                GetLastErrorMsg());
+            SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+        }
+
         if (config.makeWindow)
         {
             // Setup and register our window class
@@ -287,13 +297,15 @@ namespace C3D
 
     u64 Platform::GetThreadId() { return GetCurrentThreadId(); }
 
-    int Platform::GetPrimaryScreenWidth() { return GetSystemMetrics(SM_CXSCREEN); }
+    i32 Platform::GetPrimaryScreenWidth() { return GetSystemMetrics(SM_CXSCREEN); }
 
-    int Platform::GetPrimaryScreenHeight() { return GetSystemMetrics(SM_CYSCREEN); }
+    i32 Platform::GetPrimaryScreenHeight() { return GetSystemMetrics(SM_CYSCREEN); }
 
-    int Platform::GetVirtualScreenWidth() { return GetSystemMetrics(SM_CXVIRTUALSCREEN); }
+    i32 Platform::GetVirtualScreenWidth() { return GetSystemMetrics(SM_CXVIRTUALSCREEN); }
 
-    int Platform::GetVirtualScreenHeight() { return GetSystemMetrics(SM_CYVIRTUALSCREEN); }
+    i32 Platform::GetVirtualScreenHeight() { return GetSystemMetrics(SM_CYVIRTUALSCREEN); }
+
+    f32 Platform::GetDevicePixelRatio() { return m_devicePixelRatio; }
 
     bool Platform::LoadDynamicLibrary(const char* name, void** libraryData, u64& size)
     {
@@ -331,7 +343,7 @@ namespace C3D
         if (FreeLibrary(library) == 0)
         {
             const auto errorMsg = GetLastErrorMsg();
-            printf("[PLATFORM] - UnloadDynamicLibrary() Failed - %s", errorMsg.data());
+            printf("[PLATFORM] - UnloadDynamicLibrary() Failed - %s.", errorMsg.data());
             return false;
         }
 
@@ -368,6 +380,15 @@ namespace C3D
                 PostQuitMessage(0);
                 return 0;
             }
+            case WM_DPICHANGED:
+            {
+                // Since x and y DPI are always the same we can take either one
+                i32 dpi = GET_X_LPARAM(wParam);
+                // Store the device pixel ratio in our state
+                m_devicePixelRatio = static_cast<f32>(dpi) / USER_DEFAULT_SCREEN_DPI;
+                INFO_LOG("Display device pixel ratio changed to: '{}'.", m_devicePixelRatio);
+                return 0;
+            }
             case WM_SIZE:
             {
                 // Window resize, let's get the updated size
@@ -375,6 +396,18 @@ namespace C3D
                 GetClientRect(hwnd, &r);
                 u32 width  = r.right - r.left;
                 u32 height = r.bottom - r.top;
+
+                {
+                    HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+
+                    MONITORINFO monitorInfo = {};
+                    monitorInfo.cbSize      = sizeof(MONITORINFO);
+                    if (!GetMonitorInfo(monitor, &monitorInfo))
+                    {
+                        WARN_LOG("Failed to get Monitor Info.");
+                    }
+                    INFO_LOG("Monitor: {}", monitorInfo.rcMonitor.left);
+                }
 
                 // Fire a resize event
                 EventContext context = {};

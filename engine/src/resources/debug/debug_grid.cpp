@@ -164,7 +164,6 @@ namespace C3D
             j++;
         }
 
-        m_geometry.internalId = INVALID_ID;
         return true;
     }
 

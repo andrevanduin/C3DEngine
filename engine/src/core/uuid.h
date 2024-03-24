@@ -8,10 +8,10 @@ namespace C3D
     {
     public:
         /** @brief Default UUID which starts off as invalid. */
-        UUID() = default;
-        /** @brief Create an UUID from an already existing 64-bit number */
+        UUID();
+        /** @brief Create an UUID from an already existing 64-bit number. */
         UUID(u64 uuid);
-        UUID(const UUID&) = default;
+        UUID(const UUID&);
 
         void Generate();
 

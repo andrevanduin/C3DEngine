@@ -10,7 +10,7 @@
 
 namespace C3D::UI_2D
 {
-    constexpr u32 COMPONENT_COUNT = 8;
+    constexpr u32 COMPONENT_COUNT = 9;
 
     struct IDComponent
     {
@@ -67,9 +67,11 @@ namespace C3D::UI_2D
         /** @brief The width and height of the actual corner in pixels. */
         u16vec2 cornerSize;
         /** @brief The x and y min values in the atlas. */
-        u16vec2 atlasMin;
+        u16vec2 atlasMin, atlasMinDefault, atlasMinHover;
         /** @brief The x and y max values in the atlas. */
-        u16vec2 atlasMax;
+        u16vec2 atlasMax, atlasMaxDefault, altlasMaxHover;
+        /** @brief The x and y max values in the atlas on hover. */
+        u16vec2 atlasMaxHover;
         /** @brief The size of the atlas. */
         u16vec2 atlasSize;
         /** @brief The width and height of the corner in the atlas. */
@@ -81,8 +83,21 @@ namespace C3D::UI_2D
     struct ClickableComponent
     {
         Bounds bounds;
-        OnClickEventHandler handler;
+        OnClickEventHandler onClick;
+        OnMouseDownEventHandler onMouseDown;
+        OnMouseUpEventHandler onMouseUp;
 
         constexpr static ComponentID GetId() { return 7; }
+    };
+
+    constexpr auto jan = sizeof(OnClickEventHandler);
+
+    struct HoverableComponent
+    {
+        Bounds bounds;
+        OnHoverStartEventHandler onHoverStart;
+        OnHoverEndEventHandler onHoverEnd;
+
+        constexpr static ComponentID GetId() { return 8; }
     };
 }  // namespace C3D::UI_2D

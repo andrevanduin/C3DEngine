@@ -192,17 +192,27 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     m_state->texts.SetAllocator(frameData.allocator);
 
     m_state->panel  = UI2D.AddPanel(512, 0, 256, 512, 32, 32);
-    m_state->button = UI2D.AddButton(0, 0, 300, 80);
+    m_state->button = UI2D.AddButton(0, 0, 150, 60);
 
     UI2D.SetParent(m_state->button, m_state->panel);
 
-    UI2D.AddOnClickHandler(m_state->button, [](const C3D::UI_2D::OnClickEventContext& ctx) {
-        INFO_LOG("Button Clickerino'ed at: ({}, {})", ctx.x, ctx.y);
+    UI2D.AddOnClickHandler(m_state->button, [](const C3D::UI_2D::MouseButtonEventContext& ctx) {
+        INFO_LOG("Button Clickerino'ed at: ({}, {}).", ctx.x, ctx.y);
+        return true;
+    });
+
+    UI2D.AddOnHoverStartHandler(m_state->button, [](const C3D::UI_2D::OnHoverEventContext& ctx) {
+        INFO_LOG("Button hover started at: ({}, {}).", ctx.x, ctx.y);
+        return true;
+    });
+    UI2D.AddOnHoverEndHandler(m_state->button, [](const C3D::UI_2D::OnHoverEventContext& ctx) {
+        INFO_LOG("Button hover ended at: ({}, {}).", ctx.x, ctx.y);
         return true;
     });
 
     m_state->testMusic = Audio.LoadStream("Woodland Fantasy");
 
+    Audio.SetMasterVolume(0.1f);
     Audio.Play(m_state->testMusic, true);
 
     OnResize();
@@ -521,6 +531,9 @@ void TestEnv::OnResize()
     m_state->uiMeshes[0].transform.SetPosition({ m_state->width - 130, 10, 0 });
 
     m_state->frameGraph.OnResize(m_state->width, m_state->height);
+
+    auto size = UI2D.GetSize(m_state->panel);
+    UI2D.SetPosition(m_state->panel, vec2(m_state->width - size.x, 0));
 }
 
 void TestEnv::OnShutdown()

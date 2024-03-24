@@ -28,6 +28,8 @@ namespace C3D
         u32 indexCount = 0;
         u32 indices[8];
 
+        bool presentMustShareGraphics = false;
+
         // We always need at least the graphics queue
         indices[indexCount] = m_graphicsQueueIndex;
         indexCount++;
@@ -47,6 +49,12 @@ namespace C3D
 
         VkDeviceQueueCreateInfo queueCreateInfos[8];
         f32 queuePriorities[2] = { 0.9f, 1.0f };
+
+        VkQueueFamilyProperties queueFamilyProperties[32];
+        u32 propCount;
+        vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &propCount, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &propCount, queueFamilyProperties);
+
         for (u32 i = 0; i < indexCount; i++)
         {
             auto& queueCreateInfo = queueCreateInfos[i];
@@ -57,7 +65,16 @@ namespace C3D
 
             if (m_graphicsQueueIndex == m_presentQueueIndex && indices[i] == m_presentQueueIndex)
             {
-                queueCreateInfo.queueCount = 2;
+                if (queueFamilyProperties[m_presentQueueIndex].queueCount > 1)
+                {
+                    // If the same family is shared between graphics and presentation, we get 2 queues from that same family
+                    queueCreateInfo.queueCount = 2;
+                }
+                else
+                {
+                    // We only have 1 queue in this family so we must share them
+                    presentMustShareGraphics = true;
+                }
             }
 
             // TODO: Future enhancement with multiple graphics queue count
@@ -146,7 +163,8 @@ namespace C3D
         INFO_LOG("Logical Device created.");
 
         vkGetDeviceQueue(m_logicalDevice, m_graphicsQueueIndex, 0, &m_graphicsQueue);
-        vkGetDeviceQueue(m_logicalDevice, m_presentQueueIndex, m_graphicsQueueIndex == m_presentQueueIndex ? 1 : 0, &m_presentQueue);
+        vkGetDeviceQueue(m_logicalDevice, m_presentQueueIndex,
+                         presentMustShareGraphics ? 0 : (m_graphicsQueueIndex == m_presentQueueIndex ? 1 : 0), &m_presentQueue);
         vkGetDeviceQueue(m_logicalDevice, m_transferQueueIndex, 0, &m_transferQueue);
 
         VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_QUEUE, m_graphicsQueue, "VULKAN_GRAHPICS_QUEUE");

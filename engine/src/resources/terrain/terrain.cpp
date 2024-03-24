@@ -21,7 +21,6 @@ namespace C3D
         m_name            = config.name;
 
         m_geometry.id         = INVALID_ID;
-        m_geometry.internalId = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
 
         return true;
@@ -75,7 +74,6 @@ namespace C3D
         uuid.Invalidate();
 
         m_geometry.id         = INVALID_ID;
-        m_geometry.internalId = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
         m_geometry.name.Clear();
 

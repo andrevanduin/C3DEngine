@@ -34,9 +34,7 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "VULKAN_RENDERER";
 
-    VulkanRendererPlugin::VulkanRendererPlugin()
-        : m_objectVertexBuffer(&m_context, "VERTEX_BUFFER_GLOBAL_GEOMETRY"), m_objectIndexBuffer(&m_context, "INDEX_BUFFER_GLOBAL_GEOMETRY")
-    {}
+    VulkanRendererPlugin::VulkanRendererPlugin() {}
 
     bool VulkanRendererPlugin::Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount)
     {
@@ -117,23 +115,6 @@ namespace C3D
             m_context.imagesInFlight[i] = nullptr;
         }
 
-        // Create and bind our buffers
-        constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 4096 * 4096;
-        if (!m_objectVertexBuffer.Create(RenderBufferType::Vertex, vertexBufferSize, RenderBufferTrackType::FreeList))
-        {
-            ERROR_LOG("Error creating vertex buffer.");
-            return false;
-        }
-        m_objectVertexBuffer.Bind(0);
-
-        constexpr u64 indexBufferSize = sizeof(u32) * 8192 * 8192;
-        if (!m_objectIndexBuffer.Create(RenderBufferType::Index, indexBufferSize, RenderBufferTrackType::FreeList))
-        {
-            ERROR_LOG("Error creating index buffer.");
-            return false;
-        }
-        m_objectIndexBuffer.Bind(0);
-
         constexpr u64 stagingBufferSize = MebiBytes(256);
         if (!m_context.stagingBuffer.Create(RenderBufferType::Staging, stagingBufferSize, RenderBufferTrackType::Linear))
         {
@@ -141,12 +122,6 @@ namespace C3D
             return false;
         }
         m_context.stagingBuffer.Bind(0);
-
-        // Mark all the geometry as invalid
-        for (auto& geometry : m_geometries)
-        {
-            geometry.id = INVALID_ID;
-        }
 
         m_context.shaderCompiler = shaderc_compiler_initialize();
         if (!m_context.shaderCompiler)
@@ -174,8 +149,6 @@ namespace C3D
 
         // Destroy stuff in opposite order of creation
         m_context.stagingBuffer.Destroy();
-        m_objectVertexBuffer.Destroy();
-        m_objectIndexBuffer.Destroy();
 
         INFO_LOG("Destroying Semaphores and Fences.");
         auto logicalDevice = m_context.device.GetLogical();
@@ -585,29 +558,6 @@ namespace C3D
         return true;
     }
 
-    void VulkanRendererPlugin::DrawGeometry(const GeometryRenderData& data)
-    {
-        // Simply ignore if there is no geometry to draw
-        if (!data.geometry || data.geometry->internalId == INVALID_ID) return;
-
-        const auto bufferData        = &m_geometries[data.geometry->internalId];
-        const bool includesIndexData = data.geometry->indexCount > 0;
-
-        if (!m_objectVertexBuffer.Draw(bufferData->vertexBufferOffset, data.geometry->vertexCount, includesIndexData))
-        {
-            ERROR_LOG("Failed to draw vertex buffer.");
-            return;
-        }
-
-        if (includesIndexData)
-        {
-            if (!m_objectIndexBuffer.Draw(bufferData->indexBufferOffset, data.geometry->indexCount, false))
-            {
-                ERROR_LOG("Failed to draw index buffer.");
-            }
-        }
-    }
-
     void VulkanRendererPlugin::CreateTexture(const u8* pixels, Texture* texture)
     {
         // Internal data creation
@@ -843,135 +793,6 @@ namespace C3D
             image->Destroy();
             Memory.Delete(texture->internalData);
             texture->internalData = nullptr;
-        }
-    }
-
-    // NOTE: Nothing needs to happen for Vulkan at this stage
-    bool VulkanRendererPlugin::CreateGeometry(Geometry& geometry) { return true; }
-
-    bool VulkanRendererPlugin::UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset, u32 indexSize)
-    {
-        // Check if this is a reupload. If it is we don't need to allocate
-        bool isReupload = geometry.internalId != INVALID_ID;
-
-        VulkanGeometryData* internalData;
-        if (isReupload)
-        {
-            internalData = &m_geometries[geometry.internalId];
-        }
-        else
-        {
-            for (u32 i = 0; i < VULKAN_MAX_GEOMETRY_COUNT; i++)
-            {
-                if (m_geometries[i].id == INVALID_ID)
-                {
-                    // We have found a free index
-                    geometry.internalId = i;
-                    m_geometries[i].id  = i;
-                    internalData        = &m_geometries[i];
-                    break;
-                }
-            }
-        }
-
-        if (!internalData)
-        {
-            FATAL_LOG("Failed to find a free geometry index for the upload. Adjust your config to allow for more.");
-            return false;
-        }
-
-        if (!isReupload)
-        {
-            // Allocate space in the buffer.
-            if (!m_objectVertexBuffer.Allocate(geometry.vertexElementSize * geometry.vertexCount, &internalData->vertexBufferOffset))
-            {
-                ERROR_LOG("Failed to allocate memory frome the vertex buffer.");
-                return false;
-            }
-        }
-
-        // Load the data
-        const char* vertices = static_cast<char*>(geometry.vertices) + vertexOffset;
-        if (!m_objectVertexBuffer.LoadRange(internalData->vertexBufferOffset + vertexOffset, vertexSize, vertices))
-        {
-            ERROR_LOG("Failed to upload to the vertex buffer.");
-            return false;
-        }
-
-        if (geometry.indexCount && geometry.indices && indexSize)
-        {
-            if (!isReupload)
-            {
-                // Allocate space in the buffer.
-                if (!m_objectIndexBuffer.Allocate(geometry.indexElementSize * geometry.indexCount, &internalData->indexBufferOffset))
-                {
-                    ERROR_LOG("Failed to allocate memory frome the index buffer.");
-                    return false;
-                }
-            }
-
-            // Load the data
-            const char* indices = static_cast<char*>(geometry.indices) + indexOffset;
-            if (!m_objectIndexBuffer.LoadRange(internalData->indexBufferOffset + indexOffset, indexSize, indices))
-            {
-                ERROR_LOG("Failed to upload to the index buffer.");
-                return false;
-            }
-        }
-
-        internalData->generation++;
-
-        return true;
-    }
-
-    void VulkanRendererPlugin::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices)
-    {
-        VulkanGeometryData& internalData = m_geometries[geometry.internalId];
-        if (vertexCount > geometry.vertexCount)
-        {
-            // TODO: Implement realloc here
-            FATAL_LOG("Realloc is not supported.");
-            return;
-        }
-
-        u32 totalSize = vertexCount * geometry.vertexElementSize;
-
-        // Load the data
-        const char* v = static_cast<const char*>(vertices) + offset;
-        if (!m_objectVertexBuffer.LoadRange(internalData.vertexBufferOffset + offset, totalSize, v))
-        {
-            ERROR_LOG("Failed to upload vertices to the vertex buffer.");
-        }
-    }
-
-    void VulkanRendererPlugin::DestroyGeometry(Geometry& geometry)
-    {
-        if (geometry.internalId != INVALID_ID)
-        {
-            m_context.device.WaitIdle();
-
-            VulkanGeometryData& internalData = m_geometries[geometry.internalId];
-
-            // Free vertex data
-            if (!m_objectVertexBuffer.Free(geometry.vertexElementSize * geometry.vertexCount, internalData.vertexBufferOffset))
-            {
-                ERROR_LOG("Failed to free vertex buffer range.");
-            }
-
-            // Free index data, if applicable
-            if (geometry.indexElementSize > 0)
-            {
-                if (!m_objectIndexBuffer.Free(geometry.indexElementSize * geometry.indexCount, internalData.indexBufferOffset))
-                {
-                    ERROR_LOG("Failed to free index buffer range.");
-                }
-            }
-
-            // Clean up data
-            std::memset(&internalData, 0, sizeof(VulkanGeometryData));
-            internalData.id         = INVALID_ID;
-            internalData.generation = INVALID_ID;
-            geometry.internalId     = INVALID_ID;
         }
     }
 
@@ -1657,7 +1478,7 @@ namespace C3D
                 {
                     // TODO: only update in the list if actually needing an update
                     TextureMap* map = internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[i];
-                    if (!map->internalData)
+                    if (map->internalId == INVALID_ID)
                     {
                         // No valid sampler available so we skip this texture map.
                         continue;
@@ -1692,7 +1513,7 @@ namespace C3D
                     const auto internalData   = static_cast<VulkanTextureData*>(t->internalData);
                     imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     imageInfos[i].imageView   = internalData->image.view;
-                    imageInfos[i].sampler     = static_cast<VkSampler>(map->internalData);
+                    imageInfos[i].sampler     = m_context.samplers[map->internalId];
 
                     // TODO: change up descriptor state to handle this properly.
                     // Sync frame generation if not using a default texture.
@@ -1882,34 +1703,57 @@ namespace C3D
 
     bool VulkanRendererPlugin::AcquireTextureMapResources(TextureMap& map)
     {
-        VkSampler sampler = CreateSampler(map);
+        u32 selectedSamplerIndex = INVALID_ID;
+        // Find a free sampler slot
+        for (u32 i = 0; i < m_context.samplers.Size(); i++)
+        {
+            if (!m_context.samplers[i])
+            {
+                // We have found an empty slot
+                selectedSamplerIndex = i;
+            }
+        }
 
-        if (!sampler)
+        if (selectedSamplerIndex == INVALID_ID)
+        {
+            // We could not find an empty sampler slot so we add a new one
+            selectedSamplerIndex = m_context.samplers.Size();
+            m_context.samplers.PushBack(nullptr);
+        }
+
+        // Create our sampler at the selected index
+        m_context.samplers[selectedSamplerIndex] = CreateSampler(map);
+        if (!m_context.samplers[selectedSamplerIndex])
         {
             ERROR_LOG("Failed to create Sampler.");
             return false;
         }
 
-        // Assign our sampler to the internal data of our texture map
-        map.internalData = sampler;
-
         const auto samplerName = map.texture->name + "_texture_map_sampler";
-        VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SAMPLER, map.internalData, samplerName);
+        VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SAMPLER, m_context.samplers[selectedSamplerIndex], samplerName);
 
+        // Assign our sampler index to the internal id of our texture map so we can find the sampler later for use
+        map.internalId = selectedSamplerIndex;
         return true;
     }
 
     void VulkanRendererPlugin::ReleaseTextureMapResources(TextureMap& map)
     {
-        // Ensure there's no way this is in use.
-        m_context.device.WaitIdle();
-        vkDestroySampler(m_context.device.GetLogical(), static_cast<VkSampler>(map.internalData), m_context.allocator);
-        map.internalData = nullptr;
+        if (map.internalId != INVALID_ID)
+        {  // Ensure there's the texture map resources (sampler) is in use
+            m_context.device.WaitIdle();
+            // Destroy our sampler
+            vkDestroySampler(m_context.device.GetLogical(), m_context.samplers[map.internalId], m_context.allocator);
+            // Free up the sampler slot in our array
+            m_context.samplers[map.internalId] = nullptr;
+            // Ensure that the texture map no longer links to the sampler that we just destroyed
+            map.internalId = INVALID_ID;
+        }
     }
 
     bool VulkanRendererPlugin::RefreshTextureMapResources(TextureMap& map)
     {
-        if (map.internalData)
+        if (map.internalId != INVALID_ID)
         {
             // Create a new sampler first
             VkSampler newSampler = CreateSampler(map);
@@ -1919,12 +1763,12 @@ namespace C3D
                 return false;
             }
 
-            // Take a pointer to our old sampler
-            auto oldSampler = static_cast<VkSampler>(map.internalData);
+            // Take a copy of the old sampler
+            auto oldSampler = m_context.samplers[map.internalId];
             // Ensure we are not using the current sampler first
             m_context.device.WaitIdle();
             // Assign our new sampler
-            map.internalData = newSampler;
+            m_context.samplers[map.internalId] = newSampler;
             // Destroy the old sampler
             vkDestroySampler(m_context.device.GetLogical(), oldSampler, m_context.allocator);
         }

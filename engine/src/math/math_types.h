@@ -45,6 +45,10 @@ namespace C3D
         Bounds() {}
         Bounds(f32 x, f32 y, f32 width, f32 height) : x(x), y(y), width(width), height(height) {}
 
+        bool Contains(f32 xPos, f32 yPos) const { return xPos >= x && xPos <= x + width && yPos >= y && yPos <= y + height; }
+
+        bool Contains(const vec2& point) const { return point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height; }
+
         f32 x      = 0.0f;
         f32 y      = 0.0f;
         f32 width  = 0.0f;

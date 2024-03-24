@@ -17,7 +17,6 @@ namespace C3D
 
         m_geometry.id         = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
-        m_geometry.internalId = INVALID_ID;
 
         if (parent)
         {

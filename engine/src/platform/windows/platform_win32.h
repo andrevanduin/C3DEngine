@@ -134,35 +134,42 @@ namespace C3D
          *
          * @return int The width of the primary screen.
          */
-        static int GetPrimaryScreenWidth();
+        static i32 GetPrimaryScreenWidth();
 
         /**
          * @brief Get the primary screen height.
          *
-         * @return int The height of the primary screen.
+         * @return int The height of the primary screen
          */
-        static int GetPrimaryScreenHeight();
+        static i32 GetPrimaryScreenHeight();
 
         /**
-         * @brief Get the virtual screen width (all monitors combined)
+         * @brief Get the virtual screen width (all monitors combined).
          *
-         * @return int The width of the primary screen.
+         * @return int The width of the primary screen
          */
-        static int GetVirtualScreenWidth();
+        static i32 GetVirtualScreenWidth();
 
         /**
-         * @brief Get the virtual screen height (all monitors combined)
+         * @brief Get the virtual screen height (all monitors combined).
          *
-         * @return int The height of the primary screen.
+         * @return int The height of the primary screen
          */
-        static int GetVirtualScreenHeight();
+        static i32 GetVirtualScreenHeight();
+
+        /**
+         * @brief Gets the Device Pixel Ratio of the main window.
+         *
+         * @return The device pixel ratio
+         */
+        f32 GetDevicePixelRatio();
 
         /**
          * @brief Loads a dynamic library by name into memory.
          *
-         * @param Name The name of the dynamic library you want to load.
-         * @param LibraryData A pointer to a void pointer that can accept the data.
-         * @param Size A reference to a u64 that can hold the size of the provided data.
+         * @param Name The name of the dynamic library you want to load
+         * @param LibraryData A pointer to a void pointer that can accept the data
+         * @param Size A reference to a u64 that can hold the size of the provided data
          * @return True if successful, false otherwise
          */
         static bool LoadDynamicLibrary(const char* name, void** libraryData, u64& size);
@@ -170,7 +177,7 @@ namespace C3D
         /**
          * @brief Unloads a dynamic library from memory.
          *
-         * @param LibraryData A void pointer to the library data.
+         * @param LibraryData A void pointer to the library data
          * @return True if successful, false otherwise
          */
         static bool UnloadDynamicLibrary(void* libraryData);
@@ -178,8 +185,8 @@ namespace C3D
         /**
          * @brief Loads a function inside a loaded dynamic library.
          *
-         * @param Name The name of the function you want to load.
-         * @param LibraryData A void pointer to the loaded library data.
+         * @param Name The name of the function you want to load
+         * @param LibraryData A void pointer to the loaded library data
          * @return True if successful, false otherwise
          */
         template <typename Func>
@@ -225,6 +232,8 @@ namespace C3D
 
         f64 m_clockFrequency = 0.0;
         u64 m_startTime      = 0;
+
+        f32 m_devicePixelRatio = 1.0f;
 
         DynamicArray<Win32FileWatch> m_fileWatches;
 

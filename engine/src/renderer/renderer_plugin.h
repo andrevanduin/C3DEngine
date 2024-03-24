@@ -32,8 +32,6 @@ namespace C3D
         virtual bool Begin(const FrameData& frameData)        = 0;
         virtual bool End(const FrameData& frameData)          = 0;
 
-        virtual void DrawGeometry(const GeometryRenderData& data) = 0;
-
         virtual bool Present(const FrameData& frameData) = 0;
 
         virtual void SetViewport(const vec4& rect) = 0;
@@ -56,13 +54,7 @@ namespace C3D
         virtual void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba)            = 0;
 
         virtual void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) = 0;
-
-        virtual void DestroyTexture(Texture* texture) = 0;
-
-        virtual bool CreateGeometry(Geometry& geometry)                                                                    = 0;
-        virtual bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset, u32 indexRange) = 0;
-        virtual void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices)   = 0;
-        virtual void DestroyGeometry(Geometry& geometry)                                                                   = 0;
+        virtual void DestroyTexture(Texture* texture)                             = 0;
 
         virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
         virtual void DestroyShader(Shader& shader)                                                    = 0;

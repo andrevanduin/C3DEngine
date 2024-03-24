@@ -96,7 +96,7 @@ namespace C3D
 
         bool CreateGeometry(Geometry& geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount,
                             const void* indices) const;
-        bool UploadGeometry(Geometry& geometry) const;
+        bool UploadGeometry(Geometry& geometry);
         void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) const;
         void DestroyGeometry(Geometry& geometry) const;
 
@@ -152,6 +152,9 @@ namespace C3D
     private:
         u8 m_windowRenderTargetCount = 0;
         u32 m_frameBufferWidth = 1280, m_frameBufferHeight = 720;
+
+        RenderBuffer* m_geometryVertexBuffer;
+        RenderBuffer* m_geometryIndexBuffer;
 
         DynamicLibrary m_backendDynamicLibrary;
         RendererPlugin* m_backendPlugin = nullptr;

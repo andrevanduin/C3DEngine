@@ -18,16 +18,16 @@ namespace C3D
         [[nodiscard]] Transform* GetParent() const;
         void SetParent(Transform* parent);
 
-        [[nodiscard]] vec3 GetPosition() const;
+        const vec3& GetPosition() const;
         void SetPosition(const vec3& position);
         void Translate(const vec3& translation);
 
-        [[nodiscard]] quat GetRotation() const;
+        const quat& GetRotation() const;
         void SetRotation(const quat& rotation);
         void SetEulerRotation(const vec3& rotation);
         void Rotate(const quat& rotation);
 
-        [[nodiscard]] vec3 GetScale() const;
+        const vec3& GetScale() const;
         void SetScale(const vec3& scale);
         void Scale(const vec3& scale);
 

@@ -46,6 +46,12 @@ namespace C3D
             return *reinterpret_cast<Type*>(m_components + (index * sizeof(Type)));
         }
 
+        template <typename Type>
+        const Type& Get(EntityIndex index) const
+        {
+            return *reinterpret_cast<Type*>(m_components + (index * sizeof(Type)));
+        }
+
     private:
         String m_name;
         u64 m_maxComponents;

@@ -131,7 +131,6 @@ namespace C3D
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;
-            g->internalId                                = INVALID_ID;
             g->generation                                = INVALID_ID_U16;
 
             return false;
@@ -143,7 +142,6 @@ namespace C3D
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;
-            g->internalId                                = INVALID_ID;
             g->generation                                = INVALID_ID_U16;
 
             return false;
