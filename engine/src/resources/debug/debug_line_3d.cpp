@@ -12,7 +12,7 @@ namespace C3D
 
         m_point0 = point0;
         m_point1 = point1;
-        m_uuid.Generate();
+        m_id.Generate();
         m_color = vec4(1.0f);  // Default is white
 
         m_geometry.id         = INVALID_ID;
@@ -28,7 +28,7 @@ namespace C3D
 
     void DebugLine3D::Destroy()
     {
-        m_uuid.Invalidate();
+        m_id.Invalidate();
         m_vertices.Destroy();
     }
 

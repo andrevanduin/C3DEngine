@@ -29,7 +29,7 @@ bool SkyboxPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     pass.stencil               = 0;
 
     C3D::RenderTargetAttachmentConfig targetAttachment = {};
-    targetAttachment.type                              = C3D::RenderTargetAttachmentType::Color;
+    targetAttachment.type                              = C3D::RenderTargetAttachmentTypeColor;
     targetAttachment.source                            = C3D::RenderTargetAttachmentSource::Default;
     targetAttachment.loadOperation                     = C3D::RenderTargetAttachmentLoadOperation::DontCare;
     targetAttachment.storeOperation                    = C3D::RenderTargetAttachmentStoreOperation::Store;

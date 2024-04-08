@@ -1,5 +1,7 @@
 
 #pragma once
+#include <new>
+
 #include "core/defines.h"
 #include "core/metrics/metrics.h"
 #include "core/metrics/types.h"
@@ -23,19 +25,19 @@ namespace C3D
         virtual void* AllocateBlock(MemoryType type, u64 size, u16 alignment = 1) const = 0;
         virtual void Free(void* block) const                                            = 0;
 
-        virtual bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment) { return true; }
+        virtual bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment) const { return true; }
 
-        virtual bool GetAlignment(void* block, u16* outAlignment) { return true; }
-        virtual bool GetAlignment(const void* block, u16* outAlignment) { return true; }
+        virtual bool GetAlignment(void* block, u16* outAlignment) const { return true; }
+        virtual bool GetAlignment(const void* block, u16* outAlignment) const { return true; }
 
 #ifdef C3D_MEMORY_METRICS_STACKTRACE
-        BaseAllocator& SetStacktraceRef()
+        const BaseAllocator& SetStacktraceRef() const
         {
             Metrics.SetStacktrace();
             return *this;
         }
 
-        BaseAllocator* SetStacktrace()
+        const BaseAllocator* SetStacktrace() const
         {
             Metrics.SetStacktrace();
             return this;
@@ -48,10 +50,18 @@ namespace C3D
             return static_cast<T*>(AllocateBlock(type, sizeof(T) * count, alignof(T)));
         }
 
+        template <class T>
+        C3D_INLINE T* New(const MemoryType type) const
+        {
+            auto block = AllocateBlock(type, sizeof(T), alignof(T));
+            return new (block) T();
+        }
+
         template <class T, class... Args>
         C3D_INLINE T* New(const MemoryType type, Args&&... args) const
         {
-            return new (AllocateBlock(type, sizeof(T), alignof(T))) T(std::forward<Args>(args)...);
+            auto block = AllocateBlock(type, sizeof(T), alignof(T));
+            return new (block) T(std::forward<Args>(args)...);
         }
 
         template <class T>

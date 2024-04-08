@@ -41,13 +41,13 @@ namespace C3D
         /** @brief Obtains the size and alignment of a given block of memory.
          * Will fail if the provided block of memory is invalid.
          */
-        bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment) override;
+        bool GetSizeAlignment(void* block, u64* outSize, u16* outAlignment) const override;
 
         /** @brief Obtains the alignment of a given block of memory.
          * Will fail if the provided block of memory is invalid.
          */
-        bool GetAlignment(void* block, u16* outAlignment) override;
-        bool GetAlignment(const void* block, u16* outAlignment) override;
+        bool GetAlignment(void* block, u16* outAlignment) const override;
+        bool GetAlignment(const void* block, u16* outAlignment) const override;
 
         [[nodiscard]] u64 FreeSpace() const;
         [[nodiscard]] u64 GetTotalUsableSize() const;

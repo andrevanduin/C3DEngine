@@ -38,10 +38,13 @@ namespace C3D
         /** @brief The number of frames since last resize. Only set if resizing == true; Otherwise it's 0. */
         u8 framesSinceResize = 0;
 
+        u16 windowWidth  = 0;
+        u16 windowHeight = 0;
+
         f64 lastTime = 0;
     };
 
-    class C3D_API Engine final
+    class C3D_API Engine
     {
     public:
         explicit Engine(Application* pApplication, UIConsole* pConsole);
@@ -55,9 +58,8 @@ namespace C3D
         void OnUpdate();
         void OnResize(u32 width, u32 height);
 
-        void GetFrameBufferSize(u32* width, u32* height) const;
-
-        [[nodiscard]] const EngineState* GetState() const;
+        u16 GetWindowWidth() const { return m_state.windowWidth; }
+        u16 GetWindowHeight() const { return m_state.windowHeight; }
 
         void OnApplicationLibraryReload(Application* app);
 

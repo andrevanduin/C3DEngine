@@ -55,7 +55,7 @@ namespace C3D
         virtual bool Flush(u64 offset, u64 size);
         virtual bool Resize(u64 newTotalSize);
 
-        virtual bool Allocate(u64 size, u64* outOffset);
+        virtual bool Allocate(u64 size, u64& outOffset);
         virtual bool Free(u64 size, u64 offset);
         virtual bool Clear(bool zeroMemory);
 

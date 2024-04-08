@@ -33,12 +33,8 @@ void TestManager::RunTests()
     u32 skipped = 0;
 
     C3D::PlatformSystemConfig config;
-    config.applicationName = "Tests";
-    config.width           = 1280;
-    config.height          = 720;
-    config.x               = 0;
-    config.y               = 0;
-    config.makeWindow      = false;
+    config.applicationName           = "Tests";
+    config.windowConfig.shouldCreate = false;
 
     C3D::Platform platform;
     platform.OnInit(config);

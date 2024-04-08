@@ -1,6 +1,6 @@
 
 #pragma once
-#include "defines.h"
+#include "core/defines.h"
 
 namespace C3D
 {
@@ -27,9 +27,14 @@ namespace C3D
 
         bool operator!() const { return m_uuid == INVALID_ID_U64; }
 
+        static UUID Create();
+        static UUID Invalid();
+
     private:
         u64 m_uuid = INVALID_ID_U64;
     };
+
+    using Handle = UUID;
 }  // namespace C3D
 
 template <>

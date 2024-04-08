@@ -36,6 +36,14 @@ namespace C3D
         void ResetScissor() override;
         void SetWinding(RendererWinding winding) override;
 
+        void SetStencilTestingEnabled(bool enabled) override;
+        void SetStencilReference(u32 reference) override;
+        void SetStencilCompareMask(u32 compareMask) override;
+        void SetStencilWriteMask(u32 writeMask) override;
+        void SetStencilOperation(StencilOperation failOp, StencilOperation passOp, StencilOperation depthFailOp,
+                                 CompareOperation compareOp) override;
+        void SetDepthTestingEnabled(bool enabled) override;
+
         bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) override;
         bool EndRenderPass(RenderPass* pass) override;
 

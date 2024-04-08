@@ -72,6 +72,29 @@ namespace C3D
             return m_componentPools[componentId].Get<ComponentType>(index);
         }
 
+        /**
+         * @brief Gets the requested component. If the component does not yet exist on this entity it gets added first.
+         *
+         * @param entity The entity that you want to get/add the component from/to
+         * @return A reference to the component on the provided entity
+         */
+        template <typename ComponentType>
+        ComponentType& GetOrAddComponent(Entity entity)
+        {
+            auto index       = entity.GetIndex();
+            auto componentId = ComponentType::GetId();
+
+            if (m_entities[index].HasComponent(componentId))
+            {
+                return m_componentPools[componentId].Get<ComponentType>(index);
+            }
+
+            auto pComponent = m_componentPools[componentId].Allocate<ComponentType>(index);
+
+            m_entities[index].AddComponent(componentId);
+            return *pComponent;
+        }
+
         template <typename ComponentType>
         bool HasComponent(Entity entity) const
         {

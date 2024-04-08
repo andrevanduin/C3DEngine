@@ -1,11 +1,11 @@
 
 #pragma once
-#include "UI/2D/components.h"
+#include "UI/2D/component.h"
 #include "UI/2D/ui2d_defines.h"
 #include "UI/2D/ui_pass.h"
 #include "containers/dynamic_array.h"
+#include "containers/hash_map.h"
 #include "core/defines.h"
-#include "core/ecs/ecs.h"
 #include "core/events/event_context.h"
 #include "memory/allocators/dynamic_allocator.h"
 #include "renderer/rendergraph/rendergraph_pass.h"
@@ -34,96 +34,114 @@ namespace C3D
         bool OnInit(const UI2DSystemConfig& config) override;
 
         bool OnRun();
+        void Prepare(Viewport* viewport);
 
         bool OnUpdate(const FrameData& frameData) override;
 
-        bool PrepareFrame(const FrameData& frameData, Viewport* viewport, Camera* camera, UIMesh* meshes,
-                          const DynamicArray<UIText*, LinearAllocator>& texts);
-
         /* ------ Components Start ------ */
 
-        Entity AddPanel(u16 x, u16 y, u16 width, u16 height, u16 cornerWidth, u16 cornerHeight);
-        Entity AddButton(u16 x, u16 y, u16 width, u16 height);
+        Handle AddPanel(const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize);
+        Handle AddButton(const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize);
+        Handle AddLabel(const u16vec2& pos, const String& text, FontHandle font);
+        Handle AddTextbox(const u16vec2& pos, const u16vec2& size, const String& text, FontHandle font);
 
         /* ------- Components End -------  */
 
         /* ------ Generic Handlers Start ------ */
 
-        bool SetParent(Entity child, Entity parent);
+        bool MakeVisible(Handle handle, bool visible);
 
-        const vec2& GetPosition(Entity entity) const;
+        bool ToggleVisible(Handle handle);
 
-        bool SetPosition(Entity entity, const vec2& translation);
+        bool SetParent(Handle child, Handle parent);
 
-        vec2 GetSize(Entity entity) const;
+        vec2 GetPosition(Handle handle) const;
+        bool SetPosition(Handle handle, const vec2& position);
 
-        bool SetSize(Entity entity, u16 width, u16 height);
+        vec2 GetSize(Handle handle) const;
+        bool SetSize(Handle handle, u16 width, u16 height);
 
-        f32 GetRotation(Entity entity) const;
+        u16 GetWidth(Handle handle) const;
+        bool SetWidth(Handle handle, u16 width);
 
-        bool SetRotation(Entity entity, f32 angle);
+        u16 GetHeight(Handle handle) const;
+        bool SetHeight(Handle handle, u16 height);
 
-        /**
-         * @brief Makes the provided entity clickable.
-         *
-         * @param entity The entity that you want to make clickable.
-         * @return True if successful; false otherwise.
-         */
-        bool MakeClickable(Entity entity);
-
-        /**
-         * @brief Makes the provided entity clickable within the provided bounds.
-         *
-         * @param entity The entity that you want to make clickable.
-         * @param bounds The bounds within the entity that you want to make clickable.
-         *
-         * @return True if successful; false otherwise.
-         */
-        bool MakeClickable(Entity entity, const Bounds& bounds);
+        f32 GetRotation(Handle handle) const;
+        bool SetRotation(Handle handle, f32 angle);
 
         /**
-         * @brief Add a OnClickHandler to the provided Entity.
+         * @brief Sets the provided component to active or inactive.
+         * Only one component at the time can be active. Calling this method on another component while there is already a component active
+         * will set the previously active componet to inactive.
          *
-         * @param entity The entity that you want to add the OnClick handler to.
-         * @param handler The handler function that needs to be called on a click.
-         * @return True if successful; false otherwise.
+         * @param handle A handle to the component that you want to change activity for
+         * @param active A boolean inidicating if you want active(true) or inactive(false)
+         * @return True if successful; false otherwise
          */
-        bool AddOnClickHandler(Entity entity, const UI_2D::OnClickEventHandler& handler);
+        bool SetActive(Handle Handle, bool active);
 
         /**
-         * @brief Makes the provided entity hoverable.
+         * @brief Add an OnClickHandler to the provided Entity.
          *
-         * @param entity The entity that you want to make hoverable.
-         * @return True if successful; false otherwise.
+         * @param entity The entity that you want to add the OnClick handler to
+         * @param handler The handler function that needs to be called on a click
+         * @return True if successful; false otherwise
          */
-        bool MakeHoverable(Entity entity);
+        bool AddOnClickHandler(Handle handle, const UI_2D::OnClickEventHandler& handler);
 
         /**
-         * @brief Makes the provided entity hoverable within the provided bounds.
+         * @brief Add an OnHoverStartHandler to the provided Entity.
          *
-         * @param entity The entity that you want to make hoverable.
-         * @param bounds The bounds within the entity that you want to make hoverable.
-         * @return True if successful; false otherwise.
+         * @param entity The entity that you want to add the OnHoverStart handler to
+         * @param handler The handler function that needs to be called when hover starts
+         * @return True if successful; false otherwise
          */
-        bool MakeHoverable(Entity entity, const Bounds& bounds);
+        bool AddOnHoverStartHandler(Handle handle, const UI_2D::OnHoverStartEventHandler& handler);
 
         /**
-         * @brief Add a OnHoverStartHandler to the provided Entity.
+         * @brief Add an OnHoverEndHandler to the provided Entity.
          *
-         * @param entity The entity that you want to add the OnHoverStart handler to.
-         * @param handler The handler function that needs to be called when hover starts.
-         * @return True if successful; false otherwise.
+         * @param entity The entity that you want to add the OnHoverEnd handler to
+         * @param handler The handler function that needs to be called when hover ends
+         * @return True if successful; false otherwise
          */
-        bool AddOnHoverStartHandler(Entity entity, const UI_2D::OnHoverStartEventHandler& handler);
+        bool AddOnHoverEndHandler(Handle handle, const UI_2D::OnHoverEndEventHandler& handler);
 
         /**
-         * @brief Add a OnHoverEndHandler to the provided Entity.
+         * @brief Add an OnEndTextInputHandler to the provided Entity.
          *
-         * @param entity The entity that you want to add the OnHoverEnd handler to.
-         * @param handler The handler function that needs to be called when hover ends.
-         * @return True if successful; false otherwise.
+         * @param entity The entity that you want to add the OnEndTextInput handler to
+         * @param handler The handler function that needs to be called when text input ends
+         * @return True if successful; false otherwise
          */
-        bool AddOnHoverEndHandler(Entity entity, const UI_2D::OnHoverEndEventHandler& handler);
+        // bool AddOnEndTextInputHandler(Handle handle, const UI_2D::OnEndTextInputEventHandler& handler);
+
+        /**
+         * @brief Add an OnFlagsChangedEventHandler to the provided Entity.
+         *
+         * @param entity The entity that you want to add the OnFlagsChanged handler to
+         * @param handler The handler function that needs to be called when flags change
+         */
+        // bool AddOnFlagsChangedHandler(Handle handle, const UI_2D::OnFlagsChangedEventHandler& handler);
+
+        /**
+         * @brief Sets the text for the provided entity.
+         *
+         * @param entity The entity that you want to set the text for
+         * @param text The text you want to set
+         * @return True if successful; false otherwise
+         */
+        // bool SetText(Entity entity, const char* text);
+        // bool SetText(Entity entity, const String& text);
+
+        // f32 GetMaxTextX(Entity entity);
+        // f32 GetMaxTextY(Entity entity);
+
+        const UI_2D::AtlasDescriptions& GetAtlasDescriptions(UI_2D::ComponentType type) const;
+
+        Shader& GetShader();
+        TextureMap& GetAtlas();
 
         /* ------- Generic Handlers End -------  */
 
@@ -132,6 +150,13 @@ namespace C3D
         void OnShutdown() override;
 
     private:
+        UI_2D::Component& GetComponent(Handle handle);
+        const UI_2D::Component& GetComponent(Handle handle) const;
+
+        Handle SetComponent(const UI_2D::Component& component);
+
+        bool SetActive(UI_2D::Component& component, bool active);
+
         /** @brief Handles OnClick events for all the components managed by the UI2D System.
          * @return True if OnClick event is handled; false otherwise
          */
@@ -140,28 +165,27 @@ namespace C3D
         /** @brief Handles OnMouseMoved events for all components managed by the UI2D System. */
         bool OnMouseMoved(const EventContext& context);
 
-        void SetupBaseComponent(Entity entity, const char* name, u16 x, u16 y, u16 width, u16 height);
+        /** @brief Handles OnKeyDown events for all components managed by the UI2D System. */
+        bool OnKeyDown(const EventContext& context);
 
-        void SetupNineSliceComponent(Entity entity, const u16vec2& cornerSize, const u16vec2& cornerAtlasSize,
-                                     const u16vec2& atlasMinDefault, const u16vec2& atlasMaxDefault, const u16vec2& atlasMinHover,
-                                     const u16vec2& atlasMaxHover);
+        // void RegenerateNineSliceGeometry(Entity entity);
 
-        void RegenerateNineSliceGeometry(Entity entity);
+        // bool KeyDownTextInput(Entity entity, const UI_2D::KeyEventContext& ctx);
 
-        bool SetupRenderableComponent(Entity entity, const UIGeometryConfig& config);
-
-        void SetupClickableComponent(Entity entity, u16 width, u16 height);
+        DynamicAllocator m_allocator;
+        void* m_memoryBlock = nullptr;
 
         UI2DPass m_pass;
         Shader* m_shader;
 
-        DynamicArray<UIRenderData, LinearAllocator> m_renderData;
+        HashMap<UUID, u32> m_componentMap;
+        DynamicArray<UI_2D::Component> m_components;
+        UI_2D::Component* m_pActiveComponent;
 
         TextureMap m_textureAtlas;
 
-        RegisteredEventCallback m_onClickEventRegisteredCallback;
-        RegisteredEventCallback m_onMouseMoveEventRegisteredCallback;
+        DynamicArray<RegisteredEventCallback> m_callbacks;
 
-        ECS m_ecs;
+        UI_2D::AtlasDescriptions m_atlasBank[8];
     };
 }  // namespace C3D

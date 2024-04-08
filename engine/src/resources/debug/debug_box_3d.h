@@ -41,14 +41,14 @@ namespace C3D
 
         const Geometry* GetGeometry() const { return &m_geometry; }
 
-        UUID GetUniqueId() const { return m_uuid; }
+        UUID GetId() const { return m_id; }
 
     private:
         void UpdateVertexColor();
 
         void RecalculateExtents(const Extents3D& extents);
 
-        UUID m_uuid;
+        UUID m_id;
         String m_name;
 
         vec3 m_size;

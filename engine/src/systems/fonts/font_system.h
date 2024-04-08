@@ -3,6 +3,8 @@
 #include "containers/hash_map.h"
 #include "containers/string.h"
 #include "core/defines.h"
+#include "core/uuid.h"
+#include "resources/font.h"
 #include "resources/loaders/bitmap_font_loader.h"
 #include "systems/system.h"
 
@@ -38,7 +40,6 @@ namespace C3D
         BitmapFontResource resource;
     };
 
-    class UIText;
     struct FontData;
 
     class C3D_API FontSystem final : public SystemWithConfig<FontSystemConfig>
@@ -49,18 +50,23 @@ namespace C3D
         bool OnInit(const FontSystemConfig& config) override;
         void OnShutdown() override;
 
-        [[nodiscard]] bool LoadSystemFont(const FontSystemConfig& config) const;
+        bool LoadSystemFont(const FontSystemConfig& config) const;
         bool LoadBitmapFont(const BitmapFontConfig& config);
 
-        bool Acquire(const char* fontName, u16 fontSize, UIText* text);
-        bool Release(UIText* text);
+        FontHandle Acquire(const char* name, FontType type, u16 fontSize);
+        FontHandle Acquire(const String& name, FontType type, u16 fontSize);
 
-        bool VerifyAtlas(const FontData* font, const String& text) const;
+        void Release(FontHandle handle);
+
+        bool VerifyAtlas(FontHandle handle, const String& text) const;
+
+        FontData& GetFontData(FontHandle handle);
 
     private:
         bool SetupFontData(FontData& font) const;
         void CleanupFontData(FontData& font) const;
 
-        HashMap<const char*, BitmapFontLookup> m_bitmapFonts;
+        HashMap<FontHandle, BitmapFontLookup> m_bitmapFonts;
+        HashMap<const char*, FontHandle> m_bitmapNameLookup;
     };
 }  // namespace C3D

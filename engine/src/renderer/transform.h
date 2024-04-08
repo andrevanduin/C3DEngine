@@ -15,11 +15,14 @@ namespace C3D
         Transform(const vec3& position, const quat& rotation);
         Transform(const vec3& position, const quat& rotation, const vec3& scale);
 
-        [[nodiscard]] Transform* GetParent() const;
-        void SetParent(Transform* parent);
+        const Transform* GetParent() const;
+        void SetParent(const Transform* parent);
 
         const vec3& GetPosition() const;
         void SetPosition(const vec3& position);
+        void SetX(f32 x);
+        void SetY(f32 y);
+        void SetZ(f32 z);
         void Translate(const vec3& translation);
 
         const quat& GetRotation() const;
@@ -49,7 +52,7 @@ namespace C3D
         f32 GetDeterminant() const { return m_determinant; }
 
     private:
-        Transform* m_parent = nullptr;
+        const Transform* m_parent = nullptr;
 
         vec3 m_position = vec3(0);
         vec3 m_scale    = vec3(1.0f);

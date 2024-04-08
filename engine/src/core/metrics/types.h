@@ -68,7 +68,7 @@ namespace C3D
         Test,
         DebugConsole,
         Command,
-        UI2D,
+        UI,
         ECS,
         MaxType,
     };

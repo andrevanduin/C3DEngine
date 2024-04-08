@@ -4,7 +4,6 @@
 #include "core/engine.h"
 #include "math/c3d_math.h"
 #include "renderer/renderer_frontend.h"
-#include "resources/ui_text.h"
 #include "systems/resources/resource_system.h"
 #include "systems/textures/texture_system.h"
 
@@ -25,6 +24,7 @@ namespace C3D
         m_config = config;
 
         m_bitmapFonts.Create(config.maxBitmapFontCount);
+        m_bitmapNameLookup.Create(config.maxBitmapFontCount);
 
         // Load all our bitmap fonts
         for (auto& font : m_config.bitmapFontConfigs)
@@ -49,6 +49,7 @@ namespace C3D
         }
 
         m_bitmapFonts.Destroy();
+        m_bitmapNameLookup.Destroy();
     }
 
     bool FontSystem::LoadSystemFont(const FontSystemConfig& config) const
@@ -59,7 +60,7 @@ namespace C3D
 
     bool FontSystem::LoadBitmapFont(const BitmapFontConfig& config)
     {
-        if (m_bitmapFonts.Has(config.name.Data()))
+        if (m_bitmapNameLookup.Has(config.name.Data()))
         {
             WARN_LOG("A font named: '{}' already exists and won't be loaded again.", config.name);
             return true;
@@ -67,7 +68,7 @@ namespace C3D
 
         // Load our font resource
         BitmapFontLookup lookup;
-        if (!Resources.Load(config.resourceName.Data(), lookup.resource))
+        if (!Resources.Load(config.resourceName, lookup.resource))
         {
             ERROR_LOG("Failed to load bitmap font resource.");
             return false;
@@ -78,50 +79,61 @@ namespace C3D
 
         const bool result = SetupFontData(lookup.resource.data);
 
-        // Store our new lookup
-        m_bitmapFonts.Set(config.name.Data(), lookup);
+        // Generate a new Handle (UUID)
+        auto handle = FontHandle::Create();
+        // Store our new lookup at the generated handle
+        m_bitmapFonts.Set(handle, lookup);
+        // Also store the combination of name and handle so we can do lookups by name
+        m_bitmapNameLookup.Set(config.name.Data(), handle);
+
         return result;
     }
 
-    bool FontSystem::Acquire(const char* fontName, u16 fontSize, UIText* text)
+    FontHandle FontSystem::Acquire(const char* fontName, FontType type, u16 fontSize)
     {
-        if (text->type == UITextType::Bitmap)
+        if (type == FontType::Bitmap)
         {
-            if (!m_bitmapFonts.Has(fontName))
+            if (!m_bitmapNameLookup.Has(fontName))
             {
                 ERROR_LOG("Bitmap font named: '{}' was not found.", fontName);
-                return false;
+                return FontHandle::Invalid();
             }
 
-            // Get our lookup and increment the reference count
-            auto& lookup = m_bitmapFonts[fontName];
-            lookup.referenceCount++;
+            // Get our handle by name
+            auto handle = m_bitmapNameLookup[fontName];
+            // Now get our actual bitmap data to increment reference count
+            auto& data = m_bitmapFonts[handle];
+            data.referenceCount++;
 
-            // Set the UIText's fontData
-            text->data = &lookup.resource.data;
-
-            return true;
+            return handle;
         }
 
-        if (text->type == UITextType::System)
+        if (type == FontType::System)
         {
             ERROR_LOG("System fonts are not yet supported.");
-            return false;
+            return FontHandle::Invalid();
         }
 
-        ERROR_LOG("Unknown font type: {}.", ToUnderlying(text->type));
-        return false;
+        ERROR_LOG("Unknown font type.");
+        return FontHandle::Invalid();
     }
 
-    bool FontSystem::Release(UIText* text)
+    FontHandle FontSystem::Acquire(const String& name, FontType type, u16 fontSize) { return Acquire(name.Data(), type, fontSize); }
+
+    void FontSystem::Release(FontHandle handle)
     {
-        // TODO: Undo our acquire (and potentially auto release)
-        return true;
+        if (m_bitmapFonts.Has(handle))
+        {
+            // Decrement our reference count
+            auto& lookup = m_bitmapFonts[handle];
+            lookup.referenceCount--;
+        }
     }
 
-    bool FontSystem::VerifyAtlas(const FontData* font, const String& text) const
+    bool FontSystem::VerifyAtlas(FontHandle handle, const String& text) const
     {
-        if (font->type == FontType::Bitmap)
+        auto& font = m_bitmapFonts[handle].resource.data;
+        if (font.type == FontType::Bitmap)
         {
             // Bitmaps don't need verification since they are already generated.
             return true;
@@ -130,6 +142,8 @@ namespace C3D
         ERROR_LOG("Failed to verify atlas, unknown font type.");
         return false;
     }
+
+    FontData& FontSystem::GetFontData(FontHandle handle) { return m_bitmapFonts[handle].resource.data; }
 
     bool FontSystem::SetupFontData(FontData& font) const
     {

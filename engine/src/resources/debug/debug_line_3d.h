@@ -26,6 +26,7 @@ namespace C3D
 
         bool Update();
 
+        UUID GetId() const { return m_id; }
         mat4 GetModel() const { return m_transform.GetWorld(); }
         const Geometry* GetGeometry() const { return &m_geometry; }
 
@@ -37,7 +38,7 @@ namespace C3D
         void UpdateVertexColor();
         void RecalculatePoints();
 
-        UUID m_uuid;
+        UUID m_id;
         String m_name;
 
         vec3 m_point0, m_point1;

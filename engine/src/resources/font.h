@@ -28,8 +28,9 @@ namespace C3D
         i16 amount;
     };
 
-    enum class FontType
+    enum class FontType : u8
     {
+        Unknown,
         Bitmap,
         System,
     };
@@ -61,4 +62,6 @@ namespace C3D
     {
         String name;
     };
+
+    using FontHandle = UUID;
 }  // namespace C3D

@@ -36,8 +36,11 @@ namespace C3D
             SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
         }
 
-        if (config.makeWindow)
+        auto windowConfig = config.windowConfig;
+        if (windowConfig.shouldCreate)
         {
+            ParseWindowFlags(windowConfig);
+
             // Setup and register our window class
             HICON icon                = LoadIcon(m_handle.hInstance, IDI_APPLICATION);
             WNDCLASSA windowClass     = {};
@@ -58,10 +61,10 @@ namespace C3D
             }
 
             // Create our window
-            i32 windowX      = config.x;
-            i32 windowY      = config.y;
-            i32 windowWidth  = config.width;
-            i32 windowHeight = config.height;
+            i32 windowX      = windowConfig.x;
+            i32 windowY      = windowConfig.y;
+            i32 windowWidth  = windowConfig.width;
+            i32 windowHeight = windowConfig.height;
 
             u32 windowStyle   = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME;
             u32 windowExStyle = WS_EX_APPWINDOW;
@@ -306,6 +309,13 @@ namespace C3D
     i32 Platform::GetVirtualScreenHeight() { return GetSystemMetrics(SM_CYVIRTUALSCREEN); }
 
     f32 Platform::GetDevicePixelRatio() { return m_devicePixelRatio; }
+
+    vec2 Platform::GetWindowSize()
+    {
+        RECT rect;
+        GetClientRect(m_handle.hwnd, &rect);
+        return vec2(rect.right - rect.left, rect.bottom - rect.top);
+    }
 
     bool Platform::LoadDynamicLibrary(const char* name, void** libraryData, u64& size)
     {

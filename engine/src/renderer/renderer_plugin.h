@@ -43,6 +43,52 @@ namespace C3D
         /** @brief Sets the Renderer's vertex winding direction. */
         virtual void SetWinding(RendererWinding winding) = 0;
 
+        /**
+         * @brief Sets Stencil testing to enabled or disabled.
+         *
+         * @param enabled Bool indicating if you want Stencil testing enabled or disabled
+         */
+        virtual void SetStencilTestingEnabled(bool enabled) = 0;
+
+        /**
+         * @brief Sets the Stencil Reference for testing.
+         *
+         * @param reference The reference to use when stencil testing/writing
+         */
+        virtual void SetStencilReference(u32 reference) = 0;
+
+        /**
+         * @brief Sets the Stencil Compare Mask.
+         *
+         * @param compareMask The value to use for the Stencil Compare Mask
+         */
+        virtual void SetStencilCompareMask(u32 compareMask) = 0;
+
+        /**
+         * @brief Sets the Stencil Write Mask.
+         *
+         * @param writeMask The value to use for the Stencil Write Mask
+         */
+        virtual void SetStencilWriteMask(u32 writeMask) = 0;
+
+        /**
+         * @brief Sets the Stencil operation.
+         *
+         * @param failOp The action that should be performed on samples that fail the stencil test
+         * @param passOp The action that should be performed on samples that pass both depth and stencil tests
+         * @param depthFailOp The action that should be performed on samples that pass the stencil test but fail the depth test
+         * @param compareOp The comparison operaion used in the stencil test
+         */
+        virtual void SetStencilOperation(StencilOperation failOp, StencilOperation passOp, StencilOperation depthFailOp,
+                                         CompareOperation compareOp) = 0;
+
+        /**
+         * @brief Sets Depth testing to enabled or disabled.
+         *
+         * @param enabled Bool indicating if you want Depth testing enabled or disabled
+         */
+        virtual void SetDepthTestingEnabled(bool enabled) = 0;
+
         virtual bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) = 0;
         virtual bool EndRenderPass(RenderPass* pass)                                    = 0;
 

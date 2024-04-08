@@ -45,6 +45,8 @@ namespace C3D
 
         bool Destroy();
 
+        UUID GetId() const { return m_id; }
+
         const String& GetName() const { return config.name; }
 
         DebugBox3D* GetDebugBox() const { return m_debugBox; }
@@ -53,7 +55,6 @@ namespace C3D
 
         const Extents3D& GetExtents() const { return m_extents; }
 
-        UUID uuid;
         u8 generation = INVALID_ID_U8;
 
         DynamicArray<Geometry*> geometries;
@@ -67,6 +68,8 @@ namespace C3D
         void LoadJobSuccess();
 
         void LoadJobFailure();
+
+        UUID m_id;
 
         MeshResource m_resource;
         Extents3D m_extents;

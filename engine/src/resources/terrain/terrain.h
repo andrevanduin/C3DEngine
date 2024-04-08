@@ -32,6 +32,8 @@ namespace C3D
 
         void Destroy();
 
+        UUID GetId() const { return m_id; }
+
         const String& GetName() const { return m_name; }
 
         mat4 GetModel() const { return m_transform.GetWorld(); }
@@ -41,9 +43,6 @@ namespace C3D
         Transform* GetTransform() { return &m_transform; }
 
         void SetTransform(const Transform& t) { m_transform = t; }
-
-        UUID uuid;
-
     private:
         bool LoadFromResource();
 
@@ -51,6 +50,7 @@ namespace C3D
 
         void LoadJobFailure();
 
+        UUID m_id;
         String m_name;
 
         u32 m_tileCountX = 0, m_tileCountZ = 0;

@@ -165,6 +165,12 @@ namespace C3D
         f32 GetDevicePixelRatio();
 
         /**
+         * @brief Gets the size of the current Window.
+         * @return The size of the current Window
+         */
+        vec2 GetWindowSize();
+
+        /**
          * @brief Loads a dynamic library by name into memory.
          *
          * @param Name The name of the dynamic library you want to load

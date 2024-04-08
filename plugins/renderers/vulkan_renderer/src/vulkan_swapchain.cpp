@@ -89,6 +89,8 @@ namespace C3D
             // We start with the vulkan internal data
             const auto img = static_cast<VulkanImage*>(renderTextures[i].internalData);
             Memory.Delete(img);
+            // Cleanup the render texture names
+            renderTextures[i].name.Destroy();
         }
 
         // then we cleanup the actual render textures themselves
@@ -289,16 +291,16 @@ namespace C3D
 
         for (u32 i = 0; i < imageCount; i++)
         {
-            // Create a depth image and it's view
-            const auto name  = String::FromFormat("SWAPCHAIN_IMAGE_{}", i);
+            // Create a depth/stencil image and it's view
+            const auto name  = String::FromFormat("__C3D_DEFAULT_DEPTH_STENCIL_TEXTURE_{}", i);
             const auto image = Memory.Allocate<VulkanImage>(MemoryType::Texture);
             image->Create(m_context, name, TextureType::Type2D, extent.width, extent.height, m_context->device.GetDepthFormat(),
                           VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true,
-                          1, VK_IMAGE_ASPECT_DEPTH_BIT);
+                          1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 
             // Wrap it in a texture
-            Textures.WrapInternal("__C3D_default_depth_texture__", extent.width, extent.height, m_context->device.GetDepthChannelCount(),
-                                  false, true, false, image, &depthTextures[i]);
+            Textures.WrapInternal(name.Data(), extent.width, extent.height, m_context->device.GetDepthChannelCount(), false, true, false,
+                                  image, &depthTextures[i]);
         }
 
         INFO_LOG("Successfully created.");
@@ -316,6 +318,7 @@ namespace C3D
             Memory.Delete(image);
 
             depthTextures[i].internalData = nullptr;
+            depthTextures[i].name.Destroy();
         }
 
         auto logicalDevice = m_context->device.GetLogical();
@@ -324,8 +327,8 @@ namespace C3D
         for (u32 i = 0; i < imageCount; i++)
         {
             // First we destroy the internal vulkan specific data for every render texture
-            const auto img = static_cast<VulkanImage*>(renderTextures[i].internalData);
-            vkDestroyImageView(logicalDevice, img->view, m_context->allocator);
+            const auto image = static_cast<VulkanImage*>(renderTextures[i].internalData);
+            vkDestroyImageView(logicalDevice, image->view, m_context->allocator);
         }
 
         vkDestroySwapchainKHR(logicalDevice, handle, m_context->allocator);

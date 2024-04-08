@@ -1,78 +1,67 @@
 
 #include "global_memory_system.h"
 
-#include "platform/platform.h"
-
 #include "allocators/linear_allocator.h"
 #include "allocators/stack_allocator.h"
+#include "platform/platform.h"
 
 namespace C3D
 {
-	void GlobalMemorySystem::Init(const MemorySystemConfig& config)
-	{
-		const u64 memoryRequirement = DynamicAllocator::GetMemoryRequirements(config.totalAllocSize);
-		const auto memoryBlock = GetMemoryBlock(memoryRequirement);
-		if (!memoryBlock)
-		{
-			Logger::Fatal("[GLOBAL_MEMORY_SYSTEM] - Allocating memory pool failed");
-		}
+    constexpr const char* INSTANCE_NAME = "GLOBAL_MEMORY_SYSTEM";
 
-		const auto globalAllocator = BaseAllocator<DynamicAllocator>::GetDefault();
-		globalAllocator->Create(memoryBlock, memoryRequirement, config.totalAllocSize);
+    void GlobalMemorySystem::Init(const MemorySystemConfig& config)
+    {
+        const u64 memoryRequirement = DynamicAllocator::GetMemoryRequirements(config.totalAllocSize);
+        const auto memoryBlock      = std::malloc(memoryRequirement);
+        if (!memoryBlock)
+        {
+            FATAL_LOG("Allocating memory pool failed");
+        }
 
-		const auto linearAllocator = BaseAllocator<LinearAllocator>::GetDefault();
-		linearAllocator->Create("DefaultLinearAllocator", KibiBytes(8));
+        const auto globalAllocator = BaseAllocator<DynamicAllocator>::GetDefault();
+        globalAllocator->Create(memoryBlock, memoryRequirement, config.totalAllocSize);
 
-		const auto stackAllocator = BaseAllocator<StackAllocator<KibiBytes(8)>>::GetDefault();
-		stackAllocator->Create("DefaultStackAllocator");
+        const auto linearAllocator = BaseAllocator<LinearAllocator>::GetDefault();
+        linearAllocator->Create("DefaultLinearAllocator", KibiBytes(8));
 
-		Logger::Info("[GLOBAL_MEMORY_SYSTEM] - Initialized successfully");
-	}
+        const auto stackAllocator = BaseAllocator<StackAllocator<KibiBytes(8)>>::GetDefault();
+        stackAllocator->Create("DefaultStackAllocator");
 
-	void GlobalMemorySystem::Destroy()
-	{
-		if (const auto stackAllocator = BaseAllocator<StackAllocator<KibiBytes(8)>>::GetDefault())
-		{
-			stackAllocator->Destroy();
-			delete stackAllocator;
-		}
+        INFO_LOG("Initialized successfully");
+    }
 
-		if (const auto linearAllocator = BaseAllocator<LinearAllocator>::GetDefault())
-		{
-			linearAllocator->Destroy();
-			delete linearAllocator;
-		}
+    void GlobalMemorySystem::Destroy()
+    {
+        INFO_LOG("Shutting down");
 
-		if (const auto globalAllocator = BaseAllocator<DynamicAllocator>::GetDefault())
-		{
-			globalAllocator->Destroy();
-			delete globalAllocator;
-		}
-	}
+        if (const auto stackAllocator = BaseAllocator<StackAllocator<KibiBytes(8)>>::GetDefault())
+        {
+            stackAllocator->Destroy();
+            delete stackAllocator;
+        }
 
-	void* GlobalMemorySystem::Zero(void* block, const u64 size)
-	{
-		return std::memset(block, 0, size);
-	}
+        if (const auto linearAllocator = BaseAllocator<LinearAllocator>::GetDefault())
+        {
+            linearAllocator->Destroy();
+            delete linearAllocator;
+        }
 
-	void* GlobalMemorySystem::MemCopy(void* dest, const void* source, const u64 size)
-	{
-		return std::memcpy(dest, source, size);
-	}
+        if (const auto globalAllocator = BaseAllocator<DynamicAllocator>::GetDefault())
+        {
+            // Free our entire memory block
+            auto memory = globalAllocator->GetMemory();
+            std::free(memory);
+            // Destroy the global allocator and delete it
+            globalAllocator->Destroy();
+            delete globalAllocator;
+        }
+    }
 
-	void* GlobalMemorySystem::SetMemory(void* dest, const i32 value, const u64 size)
-	{
-		return std::memset(dest, value, size);
-	}
+    void* GlobalMemorySystem::Zero(void* block, const u64 size) { return std::memset(block, 0, size); }
 
-	DynamicAllocator& GlobalMemorySystem::GetAllocator()
-	{
-		return *BaseAllocator<DynamicAllocator>::GetDefault();
-	}
+    void* GlobalMemorySystem::MemCopy(void* dest, const void* source, const u64 size) { return std::memcpy(dest, source, size); }
 
-	void* GlobalMemorySystem::GetMemoryBlock(const u64 memoryRequirement)
-	{
-		static void* memoryBlock = std::malloc(memoryRequirement);
-		return memoryBlock;
-	}
-}
+    void* GlobalMemorySystem::SetMemory(void* dest, const i32 value, const u64 size) { return std::memset(dest, value, size); }
+
+    DynamicAllocator& GlobalMemorySystem::GetAllocator() { return *BaseAllocator<DynamicAllocator>::GetDefault(); }
+}  // namespace C3D

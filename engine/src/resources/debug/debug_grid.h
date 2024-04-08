@@ -49,10 +49,11 @@ namespace C3D
         bool Unload();
         bool Update();
 
+        UUID GetId() const { return m_id; }
         const Geometry* GetGeometry() const { return &m_geometry; }
 
     private:
-        UUID m_uuid;
+        UUID m_id;
         String m_name;
 
         DebugGridOrientation m_orientation;

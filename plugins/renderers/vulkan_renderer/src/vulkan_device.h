@@ -40,19 +40,15 @@ namespace C3D
 
     enum VulkanDeviceSupportFlagBits : u8
     {
-        VULKAN_DEVICE_SUPPORT_FLAG_NONE_BIT = 0,
-        /** @brief Indicates if the device supports native dynamic topology (Must be using Vulkan API >= V1.3). */
-        VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT = 1,
-        /** @brief Indicates if the device supports dynamic topology by means of extension. */
-        VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT = 2,
+        VULKAN_DEVICE_SUPPORT_FLAG_NONE_BIT = 0x00,
+        /** @brief Indicates if the device supports native dynamic state. */
+        VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE = 0x01,
+        /** @brief Indicates if the device supports dynamic state by means of extension. */
+        VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE = 0x02,
         /** @brief Indicates if the device supports smooth line rasterization. */
-        VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION_BIT = 4,
-        /** @brief Indicates if the device supports device local host visible memory. */
-        VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY_BIT = 8,
-        /** @brief Indicates if the device supports native dynamic front face swapping (Must be using Vulkan API >= 1.3). */
-        VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT = 16,
-        /** @brief Indicates if the device supports dynamic front face swapping by means of extension. */
-        VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT = 32,
+        VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION = 0x04,
+        /** @brief Indicates if the vulkan device support device local host visible memory. */
+        VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY = 0x08,
     };
 
     /** @brief An enum that represents the result of the device support check. */

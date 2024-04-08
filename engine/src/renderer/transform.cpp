@@ -16,9 +16,9 @@ namespace C3D
         : m_position(position), m_scale(scale), m_rotation(rotation)
     {}
 
-    Transform* Transform::GetParent() const { return m_parent; }
+    const Transform* Transform::GetParent() const { return m_parent; }
 
-    void Transform::SetParent(Transform* parent)
+    void Transform::SetParent(const Transform* parent)
     {
         m_parent      = parent;
         m_needsUpdate = true;
@@ -29,6 +29,24 @@ namespace C3D
     void Transform::SetPosition(const vec3& position)
     {
         m_position    = position;
+        m_needsUpdate = true;
+    }
+
+    void Transform::SetX(f32 x)
+    {
+        m_position.x  = x;
+        m_needsUpdate = true;
+    }
+
+    void Transform::SetY(f32 y)
+    {
+        m_position.y  = y;
+        m_needsUpdate = true;
+    }
+
+    void Transform::SetZ(f32 z)
+    {
+        m_position.z  = z;
         m_needsUpdate = true;
     }
 

@@ -49,7 +49,7 @@ namespace C3D
         }
 
         m_origin = vec3(0);
-        m_uuid.Generate();
+        m_id.Generate();
 
         // Two vertices per line, one line per tile in each direction, plus one in the middle for each direction.
         // And two extra for the third axis.
@@ -59,7 +59,7 @@ namespace C3D
         return true;
     }
 
-    void DebugGrid::Destroy() { m_uuid.Invalidate(); }
+    void DebugGrid::Destroy() { m_id.Invalidate(); }
 
     bool DebugGrid::Initialize()
     {
@@ -187,7 +187,7 @@ namespace C3D
 
     bool DebugGrid::Unload()
     {
-        if (m_uuid.IsValid())
+        if (m_id.IsValid())
         {
             Renderer.DestroyGeometry(m_geometry);
         }

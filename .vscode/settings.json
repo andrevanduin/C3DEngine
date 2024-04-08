@@ -90,7 +90,11 @@
         "typeindex": "cpp",
         "string_view": "cpp",
         "stb_vorbis.c": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "cinttypes": "cpp",
+        "csignal": "cpp",
+        "numeric": "cpp",
+        "shared_mutex": "cpp"
     },
     "cmake.generator": "Ninja",
     "todohighlight.include": [

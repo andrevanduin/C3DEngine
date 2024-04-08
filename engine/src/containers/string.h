@@ -533,7 +533,7 @@ namespace C3D
         /** @brief Added to support using default std::back_inserter(). */
         void push_back(const char c) { Append(c); }
 
-        /* @brief Removes the last count characters from the string.
+        /** @brief Removes the last count characters from the string.
          * If count > String::Size(), String::Size() characters will be removed (leaving you with an empty string).
          */
         void RemoveLast(const u64 count = 1)
@@ -968,6 +968,16 @@ namespace C3D
         /** @brief Checks if the string is currently empty. */
         [[nodiscard]] bool Empty() const { return m_size == 0; }
 
+        [[nodiscard]] bool EmptyOrWhitespace() const
+        {
+            if (m_size == 0) return true;
+            for (u32 i = 0; i < m_size; i++)
+            {
+                if (!std::isspace(m_data[i])) return false;
+            }
+            return true;
+        }
+
         /** @brief Returns a pointer to the internal character array. */
         [[nodiscard]] const char* Data() const { return m_data; }
 
@@ -1057,6 +1067,12 @@ namespace C3D
         BasicString& operator+=(u64 number)
         {
             Append(BasicString(number));
+            return *this;
+        }
+
+        BasicString& operator+=(char c)
+        {
+            Append(c);
             return *this;
         }
 

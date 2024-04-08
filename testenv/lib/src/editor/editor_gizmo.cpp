@@ -966,6 +966,8 @@ void EditorGizmo::CreateRotateMode()
     // NOTE: We do not need extents for the rotate mode since we are using discs
 }
 
+C3D::UUID EditorGizmo::GetId() const { return m_id; }
+
 C3D::Geometry* EditorGizmo::GetGeometry() { return &m_modeData[ToUnderlying(m_mode)].geometry; }
 
 vec3 EditorGizmo::GetPosition() const { return m_transform.GetPosition(); }

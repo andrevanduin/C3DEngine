@@ -6,25 +6,27 @@ namespace C3D
 {
     struct Texture;
 
-    enum class RenderTargetAttachmentType : i8
+    enum RenderTargetAttachmentTypeBits : u8
     {
-        Color   = 0x01,
-        Depth   = 0x02,
-        Stencil = 0x04,
+        RenderTargetAttachmentTypeColor   = 0x01,
+        RenderTargetAttachmentTypeDepth   = 0x02,
+        RenderTargetAttachmentTypeStencil = 0x04,
     };
+
+    using RenderTargetAttachmentType = u8;
 
     static inline const char* ToString(RenderTargetAttachmentType type)
     {
         switch (type)
         {
-            case RenderTargetAttachmentType::Color:
+            case RenderTargetAttachmentTypeColor:
                 return "Color";
-            case RenderTargetAttachmentType::Depth:
+            case RenderTargetAttachmentTypeDepth:
                 return "Depth";
-            case RenderTargetAttachmentType::Stencil:
+            case RenderTargetAttachmentTypeStencil:
                 return "Stencil";
             default:
-                return "UNKOWN";
+                return "UNKNOWN";
         }
     }
 

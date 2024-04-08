@@ -9,7 +9,6 @@
 #include <renderer/viewport.h>
 #include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
-#include <resources/ui_text.h>
 #include <systems/events/event_system.h>
 
 #include "editor/editor_gizmo.h"
@@ -55,7 +54,6 @@ struct GameState final : C3D::ApplicationState
 
     C3D::DynamicArray<C3D::DebugLine3D> testLines;
     C3D::DynamicArray<C3D::DebugBox3D> testBoxes;
-    C3D::DynamicArray<C3D::UIText*, C3D::LinearAllocator> texts;
 
     C3D::Viewport worldViewport;
     C3D::Viewport uiViewport;
@@ -72,10 +70,9 @@ struct GameState final : C3D::ApplicationState
 
     C3D::PointLight* pLights[4];
 
-    C3D::UIMesh uiMeshes[10];
-    C3D::UIText testText;
-
-    C3D::Entity panel, button;
+    C3D::Handle panel, button, label;
+    C3D::Handle debugInfoPanel, debugInfoLabel;
+    C3D::Handle textbox;
 
     u32 hoveredObjectId = INVALID_ID;
 

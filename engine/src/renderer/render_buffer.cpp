@@ -96,29 +96,29 @@ namespace C3D
         return true;
     }
 
-    bool RenderBuffer::Allocate(const u64 size, u64* outOffset)
+    bool RenderBuffer::Allocate(const u64 size, u64& outOffset)
     {
-        if (size == 0 || !outOffset)
+        if (size == 0)
         {
-            ERROR_LOG("Requires a nonzero size and a valid pointer to hold the offset.");
+            ERROR_LOG("Requires a nonzero size.");
             return false;
         }
 
         if (m_trackType == RenderBufferTrackType::None)
         {
             WARN_LOG("Called on a buffer that has TrackType == None. Offset will not be valid! Call LoadRange() instead.");
-            *outOffset = 0;
+            outOffset = 0;
             return false;
         }
         else if (m_trackType == RenderBufferTrackType::Linear)
         {
-            *outOffset = m_offset;
+            outOffset = m_offset;
             m_offset += size;
             return true;
         }
         else
         {
-            return m_freeList.AllocateBlock(size, outOffset);
+            return m_freeList.AllocateBlock(size, &outOffset);
         }
     }
 

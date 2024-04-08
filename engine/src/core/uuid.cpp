@@ -19,4 +19,13 @@ namespace C3D
 
     void UUID::Invalidate() { m_uuid = INVALID_ID_U64; }
 
+    UUID UUID::Create()
+    {
+        auto uuid = UUID();
+        uuid.Generate();
+        return uuid;
+    }
+
+    UUID UUID::Invalid() { return UUID(); }
+
 }  // namespace C3D

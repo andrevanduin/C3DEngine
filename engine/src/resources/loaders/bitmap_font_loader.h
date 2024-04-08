@@ -1,58 +1,57 @@
 
 #pragma once
-#include "resources/resource_types.h"
-#include "resources/font.h"
-#include "resource_loader.h"
-
 #include "containers/dynamic_array.h"
 #include "containers/string.h"
+#include "resource_loader.h"
+#include "resources/font.h"
+#include "resources/resource_types.h"
 
 namespace C3D
 {
-	class File;
+    class File;
 
-	enum class BitmapFontFileType
-	{
-		NotFound,
-		CBF,
-		FNT,
-	};
+    enum class BitmapFontFileType
+    {
+        NotFound,
+        CBF,
+        FNT,
+    };
 
-	struct SupportedBitmapFontFileType
-	{
-		const char* extension;
-		BitmapFontFileType type;
-		bool isBinary;
-	};
+    struct SupportedBitmapFontFileType
+    {
+        const char* extension;
+        BitmapFontFileType type;
+        bool isBinary;
+    };
 
-	struct BitmapFontResource : Resource
-	{
-		FontData data;
-		DynamicArray<BitmapFontPage> pages;
-	};
+    struct BitmapFontResource : Resource
+    {
+        FontData data;
+        DynamicArray<BitmapFontPage> pages;
+    };
 
-	template <>
-	class ResourceLoader<BitmapFontResource> final : public IResourceLoader
-	{
-	public:
-		explicit ResourceLoader(const SystemManager* pSystemsManager);
+    template <>
+    class ResourceLoader<BitmapFontResource> final : public IResourceLoader
+    {
+    public:
+        explicit ResourceLoader(const SystemManager* pSystemsManager);
 
-		bool Load(const char* name, BitmapFontResource& resource) const;
-		static void Unload(BitmapFontResource& resource);
+        bool Load(const char* name, BitmapFontResource& resource) const;
+        static void Unload(BitmapFontResource& resource);
 
-	private:
-		bool ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource& data) const;
+    private:
+        bool ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource& data) const;
 
-		static bool ParseInfoLine(const String& line, BitmapFontResource& res);
-		bool ParseCommonLine(const String& line, BitmapFontResource& res) const;
-		bool ParseCharsLine(const String& line, BitmapFontResource& res) const;
-		static bool ParseCharLine(const String& line, BitmapFontResource& res);
-		static bool ParsePageLine(const String& line, BitmapFontResource& res);
-		bool ParseKerningsLine(const String& line, BitmapFontResource& res) const;
-		static bool ParseKerningLine(const String& line, BitmapFontResource& res);
+        static bool ParseInfoLine(const String& line, BitmapFontResource& res);
+        bool ParseCommonLine(const String& line, BitmapFontResource& res) const;
+        bool ParseCharsLine(const String& line, BitmapFontResource& res) const;
+        static bool ParseCharLine(const String& line, BitmapFontResource& res);
+        static bool ParsePageLine(const String& line, BitmapFontResource& res);
+        bool ParseKerningsLine(const String& line, BitmapFontResource& res) const;
+        static bool ParseKerningLine(const String& line, BitmapFontResource& res);
 
-		bool ReadCbfFile(File& file, BitmapFontResource& res) const;
-		[[nodiscard]] bool WriteCbfFile(const String& path, const BitmapFontResource& res) const;
-	};
+        bool ReadCbfFile(File& file, BitmapFontResource& res) const;
+        [[nodiscard]] bool WriteCbfFile(const String& path, const BitmapFontResource& res) const;
+    };
 
-}
+}  // namespace C3D

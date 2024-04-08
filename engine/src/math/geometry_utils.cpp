@@ -153,7 +153,8 @@ namespace C3D::GeometryUtils
                       uniqueVertexCount);
     }
 
-    UIGeometryConfig GenerateUIQuadConfig(const char* name, f32 width, f32 height, f32 uMin, f32 uMax, f32 vMin, f32 vMax)
+    UIGeometryConfig GenerateUIQuadConfig(const char* name, const u16vec2& size, const u16vec2& atlasSize, const u16vec2& atlasMin,
+                                          const u16vec2& atlasMax)
     {
         UIGeometryConfig config = {};
         config.vertices.Resize(4);
@@ -162,23 +163,28 @@ namespace C3D::GeometryUtils
         config.materialName = "";
         config.name         = name;
 
+        f32 uMin = atlasMin.x / atlasSize.x;
+        f32 uMax = atlasMax.x / atlasSize.x;
+        f32 vMin = atlasMin.y / atlasSize.y;
+        f32 vMax = atlasMax.y / atlasSize.y;
+
         // Top left corner
         config.vertices[0].position.x = 0.0f;
         config.vertices[0].position.y = 0.0f;
         config.vertices[0].texture.x  = uMin;
         config.vertices[0].texture.y  = vMin;
 
-        config.vertices[1].position.x = width;
-        config.vertices[1].position.y = height;
+        config.vertices[1].position.x = size.x;
+        config.vertices[1].position.y = size.y;
         config.vertices[1].texture.x  = uMax;
         config.vertices[1].texture.y  = vMax;
 
         config.vertices[2].position.x = 0.0f;
-        config.vertices[2].position.y = height;
+        config.vertices[2].position.y = size.y;
         config.vertices[2].texture.x  = uMin;
         config.vertices[2].texture.y  = vMax;
 
-        config.vertices[3].position.x = width;
+        config.vertices[3].position.x = size.x;
         config.vertices[3].position.y = 0.0f;
         config.vertices[3].texture.x  = uMax;
         config.vertices[3].texture.y  = vMin;

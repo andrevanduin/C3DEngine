@@ -30,6 +30,9 @@ namespace C3D
             m_version++;
         }
 
+        bool operator==(Entity other) const { return m_index == other.m_index && m_version == other.m_version; }
+        bool operator!=(Entity other) const { return m_index != other.m_index || m_version != other.m_version; }
+
         static Entity Invalid() { return Entity(INVALID_ID); }
 
     private:

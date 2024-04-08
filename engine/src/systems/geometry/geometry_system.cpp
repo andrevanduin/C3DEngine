@@ -44,7 +44,6 @@ namespace C3D
 
         // Cleanup the default geometry
         DestroyGeometry(&m_defaultGeometry);
-        DestroyGeometry(&m_default2DGeometry);
 
         Memory.Free(m_registeredGeometries);
         m_registeredGeometries = nullptr;
@@ -99,17 +98,6 @@ namespace C3D
         }
 
         return &m_defaultGeometry;
-    }
-
-    Geometry* GeometrySystem::GetDefault2D()
-    {
-        if (!m_initialized)
-        {
-            FATAL_LOG("Called before system was initialized.");
-            return nullptr;
-        }
-
-        return &m_default2DGeometry;
     }
 
     GeometryConfig GeometrySystem::GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX, f32 tileY,
@@ -365,7 +353,7 @@ namespace C3D
         Renderer.DestroyGeometry(*g);
         g->generation = INVALID_ID_U16;
         g->id         = INVALID_ID;
-        g->name.Clear();
+        g->name.Destroy();
 
         // Release the material
         if (g->material && !g->material->name.Empty())
@@ -420,46 +408,6 @@ namespace C3D
 
         // Acquire the default material
         m_defaultGeometry.material = Materials.GetDefault();
-
-        // Create default 2d geometry
-        Vertex2D vertices2d[vertexCount] = {};
-
-        vertices2d[0].position.x = -0.5f * f;
-        vertices2d[0].position.y = -0.5f * f;
-        vertices2d[0].texture.x  = 0.0f;
-        vertices2d[0].texture.y  = 0.0f;
-
-        vertices2d[1].position.x = 0.5f * f;
-        vertices2d[1].position.y = 0.5f * f;
-        vertices2d[1].texture.x  = 1.0f;
-        vertices2d[1].texture.y  = 1.0f;
-
-        vertices2d[2].position.x = -0.5f * f;
-        vertices2d[2].position.y = 0.5f * f;
-        vertices2d[2].texture.x  = 0.0f;
-        vertices2d[2].texture.y  = 1.0f;
-
-        vertices2d[3].position.x = 0.5f * f;
-        vertices2d[3].position.y = -0.5f * f;
-        vertices2d[3].texture.x  = 1.0f;
-        vertices2d[3].texture.y  = 0.0f;
-
-        // Indices (NOTE: counter-clockwise)
-        const u32 indices2d[indexCount] = { 2, 1, 0, 3, 0, 1 };
-
-        if (!Renderer.CreateGeometry(m_default2DGeometry, sizeof(Vertex2D), vertexCount, vertices2d, sizeof(u32), indexCount, indices2d))
-        {
-            FATAL_LOG("Failed to create default 2d geometry.");
-            return false;
-        }
-
-        if (!Renderer.UploadGeometry(m_default2DGeometry))
-        {
-            FATAL_LOG("Failed to upload default 2d geometry.");
-            return false;
-        }
-
-        m_default2DGeometry.material = Materials.GetDefaultUI();
 
         return true;
     }

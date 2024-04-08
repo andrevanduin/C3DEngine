@@ -95,7 +95,10 @@ namespace C3D
 
         PFN_vkCmdSetPrimitiveTopologyEXT pfnCmdSetPrimitiveTopologyEXT;
         PFN_vkCmdSetFrontFaceEXT pfnCmdSetFrontFaceEXT;
-
+        PFN_vkCmdSetStencilTestEnableEXT pfnCmdSetStencilTestEnableEXT;
+        PFN_vkCmdSetDepthTestEnableEXT pfnCmdSetDepthTestEnableEXT;
+        PFN_vkCmdSetStencilOpEXT pfnCmdSetStencilOpEXT;
+        
         /** @brief A pointer to the currently bound shader. */
         const Shader* boundShader;
 

@@ -147,7 +147,19 @@ namespace C3D
             m_context.shaderCompiler = nullptr;
         }
 
-        // Destroy stuff in opposite order of creation
+        // Destroy the samplers
+        for (auto sampler : m_context.samplers)
+        {
+            if (sampler)
+            {
+                WARN_LOG(
+                    "Sampler is not destroyed before Shutdown is called. This indicates that you are missing a "
+                    "ReleaseTextureMapResources call somewhere.");
+                vkDestroySampler(m_context.device.GetLogical(), sampler, m_context.allocator);
+            }
+        }
+        m_context.samplers.Destroy();
+
         m_context.stagingBuffer.Destroy();
 
         INFO_LOG("Destroying Semaphores and Fences.");
@@ -167,8 +179,8 @@ namespace C3D
             vkDestroyFence(logicalDevice, m_context.inFlightFences[i], m_context.allocator);
         }
 
-        m_context.imageAvailableSemaphores.Clear();
-        m_context.queueCompleteSemaphores.Clear();
+        m_context.imageAvailableSemaphores.Destroy();
+        m_context.queueCompleteSemaphores.Destroy();
 
         INFO_LOG("Freeing Command buffers.");
         auto graphicsCommandPool = m_context.device.GetGraphicsCommandPool();
@@ -176,7 +188,7 @@ namespace C3D
         {
             buffer.Free(&m_context, graphicsCommandPool);
         }
-        m_context.graphicsCommandBuffers.Clear();
+        m_context.graphicsCommandBuffers.Destroy();
 
         INFO_LOG("Destroying SwapChain.");
         m_context.swapChain.Destroy();
@@ -298,6 +310,20 @@ namespace C3D
 
         // Always start each frame with Counter-Clockwise winding
         SetWinding(RendererWinding::CounterClockwise);
+
+        // Reset stencil reference
+        SetStencilReference(0);
+        // Reset compare mask
+        SetStencilCompareMask(0xFF);
+        // Reset stencil operation
+        SetStencilOperation(StencilOperation::Keep, StencilOperation::Replace, StencilOperation::Keep, CompareOperation::Always);
+        // Disable stencil testing by default
+        SetStencilTestingEnabled(false);
+        // Enable depth testing by default
+        SetDepthTestingEnabled(true);
+        // Disable stencil writing by default
+        SetStencilWriteMask(0x0);
+
         return true;
     }
 
@@ -404,12 +430,12 @@ namespace C3D
         VkFrontFace frontFace = winding == RendererWinding::CounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
 
         // Check for Dynamic Winding
-        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT))
+        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE))
         {
             // Native support
             vkCmdSetFrontFace(commandBuffer.handle, frontFace);
         }
-        else if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT))
+        else if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
         {
             // Support by means of extension
             m_context.pfnCmdSetFrontFaceEXT(commandBuffer.handle, frontFace);
@@ -433,6 +459,135 @@ namespace C3D
             {
                 ERROR_LOG("Unable to set Winding since there is no currently bound shader.");
             }
+        }
+    }
+
+    static VkStencilOp GetStencilOp(StencilOperation op)
+    {
+        switch (op)
+        {
+            case StencilOperation::Keep:
+                return VK_STENCIL_OP_KEEP;
+            case StencilOperation::Zero:
+                return VK_STENCIL_OP_ZERO;
+            case StencilOperation::Replace:
+                return VK_STENCIL_OP_REPLACE;
+            case StencilOperation::IncrementAndClamp:
+                return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+            case StencilOperation::DecrementAndClamp:
+                return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+            case StencilOperation::Invert:
+                return VK_STENCIL_OP_INVERT;
+            case StencilOperation::IncrementAndWrap:
+                return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+            case StencilOperation::DecrementAndWrap:
+                return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+            default:
+                ERROR_LOG("Unsupported StencilOperation. Defaulting to KEEP.");
+                return VK_STENCIL_OP_KEEP;
+        }
+    }
+
+    static VkCompareOp GetCompareOp(CompareOperation op)
+    {
+        switch (op)
+        {
+            case CompareOperation::Never:
+                return VK_COMPARE_OP_NEVER;
+            case CompareOperation::Less:
+                return VK_COMPARE_OP_LESS;
+            case CompareOperation::Equal:
+                return VK_COMPARE_OP_EQUAL;
+            case CompareOperation::LessOrEqual:
+                return VK_COMPARE_OP_LESS_OR_EQUAL;
+            case CompareOperation::Greater:
+                return VK_COMPARE_OP_GREATER;
+            case CompareOperation::NotEqual:
+                return VK_COMPARE_OP_NOT_EQUAL;
+            case CompareOperation::GreaterOrEqual:
+                return VK_COMPARE_OP_GREATER_OR_EQUAL;
+            case CompareOperation::Always:
+                return VK_COMPARE_OP_ALWAYS;
+            default:
+                ERROR_LOG("Unsupported CompareOperation. Defaulting to ALWAYS.");
+                return VK_COMPARE_OP_ALWAYS;
+        }
+    }
+
+    void VulkanRendererPlugin::SetStencilTestingEnabled(bool enabled)
+    {
+        auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+
+        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE))
+        {
+            vkCmdSetStencilTestEnable(commandBuffer.handle, static_cast<VkBool32>(enabled));
+        }
+        else if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
+        {
+            m_context.pfnCmdSetStencilTestEnableEXT(commandBuffer.handle, static_cast<VkBool32>(enabled));
+        }
+        else
+        {
+            FATAL_LOG("Unsupported functionality.");
+        }
+    }
+    void VulkanRendererPlugin::SetStencilReference(u32 reference)
+    {
+        auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+        // Supported since VK_VERSION_1_0 so no need for fallback to extension
+        vkCmdSetStencilReference(commandBuffer.handle, VK_STENCIL_FACE_FRONT_AND_BACK, reference);
+    }
+
+    void VulkanRendererPlugin::SetStencilCompareMask(u32 compareMask)
+    {
+        auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+        // Supported since VK_VERSION_1_0 so no need for fallback to extension
+        vkCmdSetStencilCompareMask(commandBuffer.handle, VK_STENCIL_FACE_FRONT_AND_BACK, compareMask);
+    }
+
+    void VulkanRendererPlugin::SetStencilWriteMask(u32 writeMask)
+    {
+        auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+        // Supported since VK_VERSION_1_0 so no need for fallback to extension
+        vkCmdSetStencilWriteMask(commandBuffer.handle, VK_STENCIL_FACE_FRONT_AND_BACK, writeMask);
+    }
+
+    void VulkanRendererPlugin::SetStencilOperation(StencilOperation failOp, StencilOperation passOp, StencilOperation depthFailOp,
+                                                   CompareOperation compareOp)
+    {
+        auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+
+        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE))
+        {
+            vkCmdSetStencilOp(commandBuffer.handle, VK_STENCIL_FACE_FRONT_AND_BACK, GetStencilOp(failOp), GetStencilOp(passOp),
+                              GetStencilOp(depthFailOp), GetCompareOp(compareOp));
+        }
+        else if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
+        {
+            m_context.pfnCmdSetStencilOpEXT(commandBuffer.handle, VK_STENCIL_FACE_FRONT_AND_BACK, GetStencilOp(failOp),
+                                            GetStencilOp(passOp), GetStencilOp(depthFailOp), GetCompareOp(compareOp));
+        }
+        else
+        {
+            FATAL_LOG("Unsupported functionality.");
+        }
+    }
+
+    void VulkanRendererPlugin::SetDepthTestingEnabled(bool enabled)
+    {
+        auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+
+        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE))
+        {
+            vkCmdSetDepthTestEnable(commandBuffer.handle, static_cast<VkBool32>(enabled));
+        }
+        else if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
+        {
+            m_context.pfnCmdSetDepthTestEnableEXT(commandBuffer.handle, static_cast<VkBool32>(enabled));
+        }
+        else
+        {
+            FATAL_LOG("Unsupported functionality.");
         }
     }
 
@@ -614,7 +769,7 @@ namespace C3D
         else
         {
             usage       = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                                                      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+                                                            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
             aspect      = VK_IMAGE_ASPECT_COLOR_BIT;
             imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
         }
@@ -632,7 +787,7 @@ namespace C3D
 
         // Allocate space in our staging buffer
         u64 stagingOffset = 0;
-        if (!m_context.stagingBuffer.Allocate(size, &stagingOffset))
+        if (!m_context.stagingBuffer.Allocate(size, stagingOffset))
         {
             ERROR_LOG("Failed to allocate in the staging buffer.");
             return;
@@ -1031,8 +1186,8 @@ namespace C3D
                     Memory.Delete(pipeline);
                 }
             }
-            vulkanShader->pipelines.Clear();
-            vulkanShader->clockwisePipelines.Clear();
+            vulkanShader->pipelines.Destroy();
+            vulkanShader->clockwisePipelines.Destroy();
 
             // Cleanup Shader Modules
             for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
@@ -1041,7 +1196,10 @@ namespace C3D
             }
 
             // Destroy the configuration
-            std::memset(&vulkanShader->config, 0, sizeof(VulkanShaderConfig));
+            for (auto& stage : vulkanShader->config.stages)
+            {
+                stage.fileName.Destroy();
+            }
 
             // Free the api (Vulkan in this case) specific data from the shader
             Memory.Free(shader.apiSpecificData);
@@ -1168,8 +1326,8 @@ namespace C3D
         }
 
         // Create one pipeline per topology class if dynamic topology is supported (either natively or by extension)
-        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT) ||
-            m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT))
+        if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE) ||
+            m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
         {
             // Total of 3 topology classes
             vulkanShader->pipelines.Resize(3);
@@ -1319,7 +1477,7 @@ namespace C3D
         vulkanShader->uniformBuffer.Bind(0);
 
         // Allocate space for the global UBO, which should occupy the stride space and not the actual size need
-        if (!vulkanShader->uniformBuffer.Allocate(shader.globalUboStride, &shader.globalUboOffset))
+        if (!vulkanShader->uniformBuffer.Allocate(shader.globalUboStride, shader.globalUboOffset))
         {
             ERROR_LOG("Failed to allocate space for the uniform buffer.");
             return false;
@@ -1622,7 +1780,7 @@ namespace C3D
         const u64 size = shader.uboStride;
         if (size > 0)
         {
-            if (!internal->uniformBuffer.Allocate(size, &instanceState->offset))
+            if (!internal->uniformBuffer.Allocate(size, instanceState->offset))
             {
                 ERROR_LOG("Failed to acquire UBO space.");
                 return false;

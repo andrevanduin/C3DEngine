@@ -100,64 +100,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     const auto simpleSceneLoader = Memory.New<C3D::ResourceLoader<SimpleSceneConfig>>(C3D::MemoryType::ResourceLoader, m_pSystemsManager);
     Resources.RegisterLoader(simpleSceneLoader);
 
-    // TEMP
-    // Create test ui text objects
-    if (!m_state->testText.Create("TEST_UI_TEXT", m_pSystemsManager, C3D::UITextType::Bitmap, "Ubuntu Mono 21px", 21,
-                                  "Some test text 123,\nyesyes!\n\tKaas!"))
-    {
-        FATAL_LOG("Failed to load basic ui bitmap text.");
-        return false;
-    }
-
-    m_state->testText.SetPosition({ 10, 640, 0 });
-
-    // Load up our test ui geometry
-    C3D::UIGeometryConfig uiConfig = {};
-    uiConfig.vertices.Resize(4);
-    uiConfig.indices.Resize(6);
-
-    uiConfig.materialName = "test_ui_material";
-    uiConfig.name         = "test_ui_geometry";
-
-    constexpr f32 w = 128.0f;
-    constexpr f32 h = 32.0f;
-
-    uiConfig.vertices[0].position.x = 0.0f;
-    uiConfig.vertices[0].position.y = 0.0f;
-    uiConfig.vertices[0].texture.x  = 0.0f;
-    uiConfig.vertices[0].texture.y  = 0.0f;
-
-    uiConfig.vertices[1].position.x = w;
-    uiConfig.vertices[1].position.y = h;
-    uiConfig.vertices[1].texture.x  = 1.0f;
-    uiConfig.vertices[1].texture.y  = 1.0f;
-
-    uiConfig.vertices[2].position.x = 0.0f;
-    uiConfig.vertices[2].position.y = h;
-    uiConfig.vertices[2].texture.x  = 0.0f;
-    uiConfig.vertices[2].texture.y  = 1.0f;
-
-    uiConfig.vertices[3].position.x = w;
-    uiConfig.vertices[3].position.y = 0.0f;
-    uiConfig.vertices[3].texture.x  = 1.0f;
-    uiConfig.vertices[3].texture.y  = 0.0f;
-
-    // Counter-clockwise
-    uiConfig.indices.PushBack(2);
-    uiConfig.indices.PushBack(1);
-    uiConfig.indices.PushBack(0);
-    uiConfig.indices.PushBack(3);
-    uiConfig.indices.PushBack(0);
-    uiConfig.indices.PushBack(1);
-
-    m_state->uiMeshes[0].LoadFromConfig(m_pSystemsManager, uiConfig);
-
-    // auto rotation = angleAxis(C3D::DegToRad(45.0f), vec3(0.0f, 0.0f, 1.0f));
-    // m_uiMeshes[0].transform.Rotate(rotation);
-    // m_uiMeshes[0].transform.SetPosition({ 0})
-
-    // TEMP END
-
     m_state->camera = Cam.Acquire("WORLD_CAM");
     m_state->camera->SetPosition({ 16.07f, 4.5f, 25.0f });
     m_state->camera->SetEulerRotation({ -20.0f, 51.0f, 0.0f });
@@ -189,13 +131,33 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
         return false;
     }
 
-    m_state->texts.SetAllocator(frameData.allocator);
+    auto font = Fonts.Acquire("Ubuntu Mono 21px", C3D::FontType::Bitmap, 32);
 
-    m_state->panel  = UI2D.AddPanel(512, 0, 256, 512, 32, 32);
-    m_state->button = UI2D.AddButton(0, 0, 150, 60);
+    m_state->panel   = UI2D.AddPanel(u16vec2(512, 0), u16vec2(256, 512), u16vec2(16, 16));
+    m_state->button  = UI2D.AddButton(u16vec2(0, 0), u16vec2(150, 60), u16vec2(8, 8));
+    m_state->label   = UI2D.AddLabel(u16vec2(50, 200), "test123", font);
+    m_state->textbox = UI2D.AddTextbox(u16vec2(30, 250), u16vec2(100, 30), "DEFAULT_TEXT", font);
+
+    /*
+    UI2D.AddOnClickHandler(m_state->textbox, [](const C3D::UI_2D::MouseButtonEventContext& ctx) {
+        C3D::Logger::Info("Sicke click op de Textbox");
+        return true;
+    });
+    UI2D.AddOnEndTextInputHandler(m_state->textbox, [](u16 key, const C3D::String& text) {
+        C3D::Logger::Info("Text input ended at with key: {} and text: {}", key, text);
+    });
+    */
+
+    m_state->debugInfoPanel = UI2D.AddPanel(u16vec2(0, 0), u16vec2(300, 80), u16vec2(16, 16));
+    m_state->debugInfoLabel = UI2D.AddLabel(u16vec2(15, 10), "DebugInfo", font);
 
     UI2D.SetParent(m_state->button, m_state->panel);
+    UI2D.SetParent(m_state->label, m_state->panel);
+    UI2D.SetParent(m_state->textbox, m_state->panel);
 
+    UI2D.SetParent(m_state->debugInfoLabel, m_state->debugInfoPanel);
+
+    /*
     UI2D.AddOnClickHandler(m_state->button, [](const C3D::UI_2D::MouseButtonEventContext& ctx) {
         INFO_LOG("Button Clickerino'ed at: ({}, {}).", ctx.x, ctx.y);
         return true;
@@ -209,13 +171,12 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
         INFO_LOG("Button hover ended at: ({}, {}).", ctx.x, ctx.y);
         return true;
     });
+    */
 
     m_state->testMusic = Audio.LoadStream("Woodland Fantasy");
 
     Audio.SetMasterVolume(0.1f);
     Audio.Play(m_state->testMusic, true);
-
-    OnResize();
 
     return true;
 }
@@ -399,10 +360,6 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         // Rotate
         quat rotation = angleAxis(0.2f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
 
-        // m_state->meshes[0].transform.Rotate(rotation);
-        // m_state->meshes[1].transform.Rotate(rotation);
-        // m_state->meshes[2].transform.Rotate(rotation);
-
         const auto absTime  = OS.GetAbsoluteTime();
         const auto sinTime  = (C3D::Sin(absTime) + 1) / 2;  // 0  -> 1
         const auto sinTime2 = C3D::Sin(absTime);            // -1 -> 1
@@ -421,8 +378,8 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         Lights.InvalidatePointLightCache();
     }
 
-    const auto fWidth  = static_cast<f32>(m_state->width);
-    const auto fHeight = static_cast<f32>(m_state->height);
+    const auto fWidth  = static_cast<f32>(m_pEngine->GetWindowWidth());
+    const auto fHeight = static_cast<f32>(m_pEngine->GetWindowHeight());
 
     const auto pos = m_state->camera->GetPosition();
     const auto rot = m_state->camera->GetEulerRotation();
@@ -458,7 +415,16 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         frameData.timeData.avgRenderTimeMs, frameData.timeData.avgPresentTimeMs, frameData.timeData.avgUpdateTimeMs,
         frameData.timeData.avgRunTimeMs);
 
-    m_state->testText.SetText(buffer.Data());
+    // UI2D.SetText(m_state->debugInfoLabel, buffer.Data());
+
+    static bool resized = false;
+    if (!resized)
+    {
+        auto debugLabelSize = UI2D.GetSize(m_state->debugInfoLabel);
+        UI2D.SetSize(m_state->debugInfoPanel, debugLabelSize.x + 30, debugLabelSize.y + 20);
+        UI2D.SetPosition(m_state->debugInfoPanel, vec2(0, fHeight - (debugLabelSize.y + 20)));
+        resized = true;
+    }
 }
 
 bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
@@ -480,12 +446,7 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
         m_state->editorPass.Prepare(&m_state->worldViewport, m_state->camera, &m_state->gizmo);
     }
 
-    // Prepare the UI pass
-    m_state->texts.Reset();
-    m_state->texts.PushBack(&m_state->testText);
-
-    m_pConsole->OnPrepareRender(m_state->texts);
-    UI2D.PrepareFrame(frameData, &m_state->uiViewport, m_state->camera, m_state->uiMeshes, m_state->texts);
+    UI2D.Prepare(&m_state->uiViewport);
 
     return true;
 }
@@ -513,27 +474,28 @@ bool TestEnv::OnRender(C3D::FrameData& frameData)
     return true;
 }
 
-void TestEnv::OnResize()
+void TestEnv::OnResize(u16 width, u16 height)
 {
-    f32 halfWidth = m_state->width * 0.5f;
+    f32 halfWidth = width * 0.5f;
 
     // Resize our viewports
-    C3D::Rect2D worldViewportRect = { 0.0f, 0.0f, static_cast<f32>(m_state->width), static_cast<f32>(m_state->height) };
+    C3D::Rect2D worldViewportRect = { 0.0f, 0.0f, static_cast<f32>(width), static_cast<f32>(height) };
     m_state->worldViewport.Resize(worldViewportRect);
 
-    C3D::Rect2D wireframeViewportRect = { 20.0f, 20.0f, halfWidth - 40.0f, m_state->height - 40.0f };
+    C3D::Rect2D wireframeViewportRect = { 20.0f, 20.0f, halfWidth - 40.0f, height - 40.0f };
     m_state->wireframeViewport.Resize(wireframeViewportRect);
 
-    C3D::Rect2D uiViewportRect = { 0.0f, 0.0f, static_cast<f32>(m_state->width), static_cast<f32>(m_state->height) };
+    C3D::Rect2D uiViewportRect = { 0.0f, 0.0f, static_cast<f32>(width), static_cast<f32>(height) };
     m_state->uiViewport.Resize(uiViewportRect);
 
-    m_state->testText.SetPosition({ 10, m_state->height - 100, 0 });
-    m_state->uiMeshes[0].transform.SetPosition({ m_state->width - 130, 10, 0 });
-
-    m_state->frameGraph.OnResize(m_state->width, m_state->height);
+    m_state->frameGraph.OnResize(width, height);
 
     auto size = UI2D.GetSize(m_state->panel);
-    UI2D.SetPosition(m_state->panel, vec2(m_state->width - size.x, 0));
+    UI2D.SetPosition(m_state->panel, vec2(width - size.x, 0));
+
+    auto debugLabelSize = UI2D.GetSize(m_state->debugInfoLabel);
+    UI2D.SetSize(m_state->debugInfoPanel, debugLabelSize.x + 30, debugLabelSize.y + 20);
+    UI2D.SetPosition(m_state->debugInfoPanel, vec2(0, height - (debugLabelSize.y + 20)));
 }
 
 void TestEnv::OnShutdown()
@@ -544,17 +506,20 @@ void TestEnv::OnShutdown()
     // Destroy our Rendergraph
     m_state->frameGraph.Destroy();
 
-    // Destroy our test text
-    m_state->testText.Destroy();
-
-    // Unload our ui meshes
-    for (auto& mesh : m_state->uiMeshes)
+    // Destroy our test geometry
+    for (auto& line : m_state->testLines)
     {
-        if (mesh.generation != INVALID_ID_U8)
-        {
-            mesh.Unload();
-        }
+        line.Unload();
+        line.Destroy();
     }
+    m_state->testLines.Destroy();
+
+    for (auto& box : m_state->testBoxes)
+    {
+        box.Unload();
+        box.Destroy();
+    }
+    m_state->testBoxes.Destroy();
 
     // Unload our gizmo
     m_state->gizmo.Unload();
@@ -662,7 +627,7 @@ void TestEnv::OnLibraryUnload()
     {
         Event.Unregister(cb);
     }
-    m_state->registeredCallbacks.Clear();
+    m_state->registeredCallbacks.Destroy();
 
     m_pConsole->UnregisterCommand("load_scene");
     m_pConsole->UnregisterCommand("unload_scene");
@@ -806,8 +771,19 @@ bool TestEnv::ConfigureRendergraph() const
         ERROR_LOG("Failed to add COLOR_BUFFER sink to UI pass.");
         return false;
     }
+    if (!m_state->frameGraph.AddSink("UI", "DEPTH_BUFFER"))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER sink to UI pass.");
+        return false;
+    }
     if (!m_state->frameGraph.AddSource("UI", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
                                        C3D::RendergraphSourceOrigin::Other))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER source to UI pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("UI", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
+                                       C3D::RendergraphSourceOrigin::Global))
     {
         ERROR_LOG("Failed to add COLOR_BUFFER source to UI pass.");
         return false;
@@ -815,6 +791,11 @@ bool TestEnv::ConfigureRendergraph() const
     if (!m_state->frameGraph.Link("EDITOR", "COLOR_BUFFER", "UI", "COLOR_BUFFER"))
     {
         ERROR_LOG("Failed to link Editor COLOR_BUFFER source to UI COLOR_BUFFER sink.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("DEPTH_BUFFER", "UI", "DEPTH_BUFFER"))
+    {
+        ERROR_LOG("Failed to link Global DEPTH_BUFFER source to UI DEPTH_BUFFER sink.");
         return false;
     }
 
@@ -1034,31 +1015,6 @@ bool TestEnv::OnMouseDragged(u16 code, void* sender, const C3D::EventContext& co
 
 bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 {
-    /*if (code == C3D::EventCodeDebug0)
-    {
-        const char* names[3] = { "cobblestone", "paving", "rock" };
-        static i8 choice     = 2;
-
-        const char* oldName = names[choice];
-
-        choice++;
-        choice %= 3;
-
-        if (C3D::Geometry* g = m_state->meshes[0].geometries[0])
-        {
-            g->material = Materials.Acquire(names[choice]);
-            if (!g->material)
-            {
-                m_logger.Warn("OnDebugEvent() - No material found! Using default material.");
-                g->material = Materials.GetDefault();
-            }
-
-            Materials.Release(oldName);
-        }
-
-        return true;
-    }*/
-
     if (code == C3D::EventCodeDebug1)
     {
         if (m_state->simpleScene.GetState() == SceneState::Uninitialized)
@@ -1135,12 +1091,12 @@ C3D::Application* CreateApplication(C3D::ApplicationState* state) { return Memor
 
 C3D::ApplicationState* CreateApplicationState()
 {
-    const auto state          = Memory.New<GameState>(C3D::MemoryType::Game);
-    state->name               = "TestEnv";
-    state->width              = 1280;
-    state->height             = 720;
-    state->flags              = C3D::ApplicationFlagWindowCenter;
-    state->frameAllocatorSize = MebiBytes(8);
-    state->appFrameDataSize   = sizeof(GameFrameData);
+    const auto state           = Memory.New<GameState>(C3D::MemoryType::Game);
+    state->name                = "TestEnv";
+    state->windowConfig.width  = 1280;
+    state->windowConfig.height = 720;
+    state->windowConfig.flags  = C3D::WindowFlagCenter;
+    state->frameAllocatorSize  = MebiBytes(8);
+    state->appFrameDataSize    = sizeof(GameFrameData);
     return state;
 }

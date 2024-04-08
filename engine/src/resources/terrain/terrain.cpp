@@ -71,7 +71,7 @@ namespace C3D
 
     void Terrain::Destroy()
     {
-        uuid.Invalidate();
+        m_id.Invalidate();
 
         m_geometry.id         = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
@@ -228,7 +228,7 @@ namespace C3D
         // TODO: This should be done in the renderer (CreateGeometry() method)
         m_geometry.generation++;
 
-        uuid.Generate();
+        m_id.Generate();
 
         {
             auto timer = ScopedTimer("Acquiring Terrain Material", m_pSystemsManager);

@@ -63,7 +63,7 @@ namespace C3D
         }
 
         generation = 0;
-        uuid.Generate();
+        m_id.Generate();
 
         if (m_debugBox)
         {
@@ -121,7 +121,7 @@ namespace C3D
             m_debugBox = nullptr;
         }
 
-        uuid.Invalidate();
+        m_id.Invalidate();
         return true;
     }
 
@@ -217,7 +217,7 @@ namespace C3D
             }
 
             generation++;
-            uuid.Generate();
+            m_id.Generate();
 
             if (m_debugBox)
             {

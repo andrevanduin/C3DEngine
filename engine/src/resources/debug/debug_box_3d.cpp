@@ -11,7 +11,7 @@ namespace C3D
         m_pSystemsManager = systemsManager;
 
         // TODO: name?
-        m_uuid.Generate();
+        m_id.Generate();
         m_size  = size;
         m_color = vec4(1.0f);  // Default = white
 
@@ -28,7 +28,7 @@ namespace C3D
 
     void DebugBox3D::Destroy()
     {
-        m_uuid.Invalidate();
+        m_id.Invalidate();
         m_vertices.Destroy();
     }
 

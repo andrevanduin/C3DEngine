@@ -1,37 +1,16 @@
 
 #pragma once
+#include "component.h"
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
 #include "memory/allocators/linear_allocator.h"
 #include "renderer/renderer_types.h"
 #include "renderer/rendergraph/rendergraph_pass.h"
+#include "ui2d_defines.h"
 
 namespace C3D
 {
     class Shader;
-    class UIMesh;
-    class UIText;
-    struct TextureMap;
-    struct UI2DRenderData;
-
-    namespace
-    {
-        struct ShaderLocations
-        {
-            u16 diffuseMap = INVALID_ID_U16;
-            u16 properties = INVALID_ID_U16;
-            u16 model      = INVALID_ID_U16;
-        };
-
-        struct ShaderUI2DLocations
-        {
-            u16 projection     = INVALID_ID_U16;
-            u16 view           = INVALID_ID_U16;
-            u16 diffuseTexture = INVALID_ID_U16;
-            u16 properties     = INVALID_ID_U16;
-            u16 model          = INVALID_ID_U16;
-        };
-    }  // namespace
 
     class C3D_API UI2DPass : public RendergraphPass
     {
@@ -40,21 +19,13 @@ namespace C3D
         UI2DPass(const SystemManager* pSystemsManager);
 
         bool Initialize(const LinearAllocator* frameAllocator) override;
-        bool Prepare(Viewport* viewport, Camera* camera, TextureMap* textureAtlas, const UIMesh* meshes,
-                     const DynamicArray<UIText*, LinearAllocator>* texts, const DynamicArray<UIRenderData, LinearAllocator>* uiRenderData);
+        void Prepare(Viewport* viewport, const DynamicArray<UI_2D::Component>* components);
         bool Execute(const FrameData& frameData) override;
 
     private:
-        Shader* m_shader     = nullptr;
-        Shader* m_ui2DShader = nullptr;
+        Shader* m_shader = nullptr;
+        UI_2D::ShaderLocations m_locations;
 
-        const UIMesh* m_pMeshes;
-        const DynamicArray<UIText*, LinearAllocator>* m_pTexts;
-        const DynamicArray<UIRenderData, LinearAllocator>* m_pUIRenderData;
-
-        TextureMap* m_pTextureAtlas;
-
-        ShaderLocations m_locations;
-        ShaderUI2DLocations m_ui2DLocations;
+        const DynamicArray<UI_2D::Component>* m_pComponents = nullptr;
     };
 }  // namespace C3D
