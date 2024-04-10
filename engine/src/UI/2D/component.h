@@ -4,6 +4,7 @@
 #include "containers/string.h"
 #include "core/defines.h"
 #include "core/uuid.h"
+#include "handlers.h"
 #include "renderer/geometry.h"
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
@@ -20,6 +21,7 @@ namespace C3D::UI_2D
 
     using OnUpdateFunc = void (*)(Component& self);
     using OnRenderFunc = void (*)(Component& self, const FrameData& frameData, const ShaderLocations& locations);
+    using OnResizeFunc = void (*)(Component& self);
 
     /** @brief Function pointers for handling hover. */
     using OnHoverStartFunc = bool (*)(Component& self, const OnHoverEventContext& ctx);
@@ -30,6 +32,9 @@ namespace C3D::UI_2D
     using OnMoseUpFunc    = bool (*)(Component& self, const MouseButtonEventContext& ctx);
     using OnClickFunc     = bool (*)(Component& self, const MouseButtonEventContext& ctx);
 
+    /** @brief Function pointers for handling keys. */
+    using OnKeyDownFunc = bool (*)(Component& self, const KeyEventContext& ctx);
+
     using ComponentHandle = UUID;
 
     class Component
@@ -37,14 +42,18 @@ namespace C3D::UI_2D
     public:
         Component(const SystemManager* systemsManager);
 
-        void Initialize(const u16vec2& pos, const u16vec2& size);
+        void Initialize(const u16vec2& pos, const u16vec2& size, ComponentType _type);
         void Destroy(const DynamicAllocator* pAllocator);
 
         bool AddChild(Component& child);
         bool AddParent(Component& parent);
 
+        void MakeUserHandlers(const DynamicAllocator* pAllocator);
+        void DestroyUserHandlers(const DynamicAllocator* pAllocator);
+
         UUID GetID() const;
         const Transform& GetTransform() const;
+        mat4 GetWorld() const;
 
         bool IsValid() const;
 
@@ -75,7 +84,11 @@ namespace C3D::UI_2D
 
         bool Contains(const vec2& point) const;
 
-        mat4 GetWorld() const;
+        template <typename T>
+        void MakeInternal(const DynamicAllocator* pAllocator)
+        {
+            m_pImplData = pAllocator->New<T>(MemoryType::UI);
+        }
 
         template <typename T>
         T& GetInternal() const
@@ -98,9 +111,12 @@ namespace C3D::UI_2D
         bool operator==(const Component& other) const;
         bool operator!=(const Component& other) const;
 
+        ComponentType type = ComponentTypeNone;
+
         // Component implementation specific methods
         OnUpdateFunc onUpdate = nullptr;
         OnRenderFunc onRender = nullptr;
+        OnResizeFunc onResize = nullptr;
 
         OnHoverStartFunc onHoverStart = nullptr;
         OnHoverEndFunc onHoverEnd     = nullptr;
@@ -109,15 +125,11 @@ namespace C3D::UI_2D
         OnMoseUpFunc onMouseUp      = nullptr;
         OnClickFunc onClick         = nullptr;
 
+        OnKeyDownFunc onKeyDown = nullptr;
+
         OnDestroyFunc onDestroy = nullptr;
 
-        // User addable handlers
-        OnClickEventHandler onClickHandler;
-
-        OnHoverStartEventHandler onHoverStartHandler;
-        OnHoverEndEventHandler onHoverEndHandler;
-
-        void* m_pImplData = nullptr;
+        UserHandlers* pUserHandlers = nullptr;
 
     private:
         UUID m_id;
@@ -129,6 +141,7 @@ namespace C3D::UI_2D
         ComponentHandle m_parent;
         DynamicArray<ComponentHandle> m_children;
 
+        void* m_pImplData                      = nullptr;
         const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D::UI_2D

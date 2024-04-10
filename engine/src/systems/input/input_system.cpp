@@ -137,7 +137,7 @@ namespace C3D
         auto& currentButton = m_mouseCurrent.buttons[button];
 
         EventContext context = {};
-        context.data.u16[0]  = button;
+        context.data.i16[0]  = button;
         context.data.i16[1]  = m_mouseCurrent.pos.x;
         context.data.i16[2]  = m_mouseCurrent.pos.y;
 
@@ -189,7 +189,7 @@ namespace C3D
 
             Event.Fire(ToUnderlying(EventCodeMouseMoved), this, mouseMovedContext);
 
-            for (u32 i = 0; i < MaxButtons; i++)
+            for (i32 i = 0; i < MaxButtons; i++)
             {
                 auto& currentButton = m_mouseCurrent.buttons[i];
 
@@ -199,7 +199,7 @@ namespace C3D
                     {
                         // Already in drag
                         EventContext context = {};
-                        context.data.u16[0]  = i;
+                        context.data.i16[0]  = i;
                         context.data.i16[1]  = x;
                         context.data.i16[2]  = y;
                         Event.Fire(EventCodeMouseDragged, this, context);
@@ -208,7 +208,7 @@ namespace C3D
                     {
                         /* Button is held but we have not started dragging yet */
                         EventContext context = {};
-                        context.data.u16[0]  = i;
+                        context.data.i16[0]  = i;
                         context.data.i16[1]  = x;
                         context.data.i16[2]  = y;
                         Event.Fire(EventCodeMouseDraggedStart, this, context);

@@ -1,6 +1,7 @@
 
 #include "button.h"
 
+#include "defaults.h"
 #include "nine_slice_component.h"
 
 namespace C3D::UI_2D
@@ -16,18 +17,19 @@ namespace C3D::UI_2D
     {
         Component component(systemsManager);
 
-        component.m_pImplData = pAllocator->New<ButtonData>(MemoryType::UI);
-        component.onDestroy   = &Destroy;
-        component.onRender    = &OnRender;
+        component.MakeInternal<ButtonData>(pAllocator);
+        component.onDestroy = &Destroy;
+        component.onRender  = &OnRender;
+        component.onClick   = &DefaultMethods::OnClick;
 
         return component;
     }
 
     bool Button::Initialize(Component& self, const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize)
     {
-        self.Initialize(pos, size);
+        self.Initialize(pos, size, ComponentTypeButton);
         auto& data = self.GetInternal<ButtonData>();
-        data.nineSlice.Initialize(self, "Button", ComponentTypeButton, cornerSize);
+        data.nineSlice.Initialize(self, "Button", AtlasIDButton, size, cornerSize);
         return true;
     }
 

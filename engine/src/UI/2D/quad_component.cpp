@@ -1,5 +1,5 @@
 
-#include "nine_slice_component.h"
+#include "quad_component.h"
 
 #include "core/colors.h"
 #include "math/geometry_utils.h"
@@ -12,8 +12,7 @@ namespace C3D::UI_2D
 {
     constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
 
-    bool NineSliceComponent::Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& size,
-                                        const u16vec2& _cornerSize)
+    bool QuadComponent::Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& size)
     {
         auto& uiSystem       = self.GetSystem<UI2DSystem>();
         auto& geometrySystem = self.GetSystem<GeometrySystem>();
@@ -22,13 +21,11 @@ namespace C3D::UI_2D
         atlasID = _atlasID;
 
         auto& descriptions = uiSystem.GetAtlasDescriptions(atlasID);
-        cornerSize         = _cornerSize;
         atlasMin           = descriptions.defaultMin;
         atlasMax           = descriptions.defaultMax;
 
         // Generate a config for the NineSlice
-        auto config = GeometryUtils::GenerateUINineSliceConfig(name, size, cornerSize, descriptions.size, descriptions.cornerSize, atlasMin,
-                                                               atlasMax);
+        auto config = GeometryUtils::GenerateUIQuadConfig(name, size, descriptions.size, atlasMin, atlasMax);
 
         // Create Geometry from the config
         geometry = geometrySystem.AcquireFromConfig(config, true);
@@ -46,7 +43,7 @@ namespace C3D::UI_2D
         return true;
     }
 
-    void NineSliceComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
+    void QuadComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
     {
         auto& shaderSystem = self.GetSystem<ShaderSystem>();
         auto& uiSystem     = self.GetSystem<UI2DSystem>();
@@ -57,7 +54,8 @@ namespace C3D::UI_2D
 
         shaderSystem.BindInstance(renderable.instanceId);
 
-        shaderSystem.SetUniformByIndex(locations.properties, &WHITE);
+        constexpr static auto jan = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+        shaderSystem.SetUniformByIndex(locations.properties, &jan);
         shaderSystem.SetUniformByIndex(locations.diffuseTexture, &uiSystem.GetAtlas());
         shaderSystem.ApplyInstance(needsUpdate);
 
@@ -70,24 +68,27 @@ namespace C3D::UI_2D
 
         // Apply local
         auto model = self.GetWorld();
+        model[3][0] += offsetX;
+        model[3][1] += offsetY;
+
         shaderSystem.SetUniformByIndex(locations.model, &model);
 
         renderer.DrawGeometry(renderable.renderData);
     }
 
-    void NineSliceComponent::OnResize(Component& self, const u16vec2& size)
+    void QuadComponent::OnResize(Component& self, const u16vec2& size)
     {
         auto& uiSystem     = self.GetSystem<UI2DSystem>();
         auto& renderSystem = self.GetSystem<RenderSystem>();
 
         auto& descriptions = uiSystem.GetAtlasDescriptions(atlasID);
-        GeometryUtils::RegenerateUINineSliceGeometry(static_cast<Vertex2D*>(geometry->vertices), size, cornerSize, descriptions.size,
-                                                     descriptions.cornerSize, atlasMin, atlasMax);
+
+        GeometryUtils::RegenerateUIQuadGeometry(static_cast<Vertex2D*>(geometry->vertices), size, descriptions.size, atlasMin, atlasMax);
 
         renderSystem.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices);
     }
 
-    void NineSliceComponent::Destroy(Component& self)
+    void QuadComponent::Destroy(Component& self)
     {
         if (geometry)
         {

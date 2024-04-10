@@ -20,9 +20,16 @@ namespace C3D
 
         const vec3& GetPosition() const;
         void SetPosition(const vec3& position);
+
+        f32 GetX() const;
         void SetX(f32 x);
+
+        f32 GetY() const;
         void SetY(f32 y);
+
+        f32 GetZ() const;
         void SetZ(f32 z);
+
         void Translate(const vec3& translation);
 
         const quat& GetRotation() const;

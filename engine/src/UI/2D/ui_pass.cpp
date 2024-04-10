@@ -134,7 +134,10 @@ namespace C3D
 
         for (auto& component : *m_pComponents)
         {
-            component.onRender(component, frameData, m_locations);
+            if (component.IsFlagSet(UI_2D::FlagVisible))
+            {
+                component.onRender(component, frameData, m_locations);
+            }
         }
 
         if (!Renderer.EndRenderPass(m_pass))

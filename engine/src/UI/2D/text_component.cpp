@@ -111,6 +111,9 @@ namespace C3D::UI_2D
 
         // Apply local
         auto model = self.GetWorld();
+        model[3][0] += offsetX;
+        model[3][1] += offsetY;
+
         shaderSystem.SetUniformByIndex(locations.model, &model);
 
         renderer.DrawGeometry(renderable.renderData);
@@ -168,8 +171,8 @@ namespace C3D::UI_2D
 
         f32 x = 0, y = 0;
 
-        auto width  = 0;
-        auto height = 0;
+        maxX = 0;
+        maxY = 0;
 
         // Clear our temp data
         vertices.Clear();
@@ -213,13 +216,13 @@ namespace C3D::UI_2D
 
             if (glyph)
             {
-                const f32 minX = x + static_cast<f32>(glyph->xOffset);
-                const f32 minY = y + static_cast<f32>(glyph->yOffset);
-                const f32 maxX = minX + static_cast<f32>(glyph->width);
-                const f32 maxY = minY + static_cast<f32>(glyph->height);
+                const f32 minX    = x + static_cast<f32>(glyph->xOffset);
+                const f32 minY    = y + static_cast<f32>(glyph->yOffset);
+                const f32 curMaxX = minX + static_cast<f32>(glyph->width);
+                const f32 curMaxY = minY + static_cast<f32>(glyph->height);
 
-                if (maxX > width) width = maxX;
-                if (maxY > height) height = maxY;
+                if (curMaxX > maxX) maxX = curMaxX;
+                if (curMaxY > maxY) maxY = curMaxY;
 
                 const f32 atlasSizeX = static_cast<f32>(data.atlasSizeX);
                 const f32 atlasSizeY = static_cast<f32>(data.atlasSizeY);
@@ -237,9 +240,9 @@ namespace C3D::UI_2D
                 }
 
                 vertices.EmplaceBack(vec2(minX, minY), vec2(tMinX, tMinY));
-                vertices.EmplaceBack(vec2(maxX, maxY), vec2(tMaxX, tMaxY));
-                vertices.EmplaceBack(vec2(minX, maxY), vec2(tMinX, tMaxY));
-                vertices.EmplaceBack(vec2(maxX, minY), vec2(tMaxX, tMinY));
+                vertices.EmplaceBack(vec2(curMaxX, curMaxY), vec2(tMaxX, tMaxY));
+                vertices.EmplaceBack(vec2(minX, curMaxY), vec2(tMinX, tMaxY));
+                vertices.EmplaceBack(vec2(curMaxX, minY), vec2(tMaxX, tMinY));
 
                 // Increment our x by the xAdvance plus any potential kerning
                 x += static_cast<f32>(glyph->xAdvance) + GetFontKerningAmount(data, text, codepoint, c + advance, utf8Size);
@@ -261,9 +264,6 @@ namespace C3D::UI_2D
             c += advance - 1;
             uc++;
         }
-
-        // Set our newly calculated size
-        self.SetSize(u16vec2(width, height));
 
         if (utf8Size > 0)
         {
@@ -287,6 +287,23 @@ namespace C3D::UI_2D
         renderable.renderData.vertexCount     = vertices.Size();
         renderable.renderData.indexCount      = indices.Size();
         renderable.renderData.windingInverted = false;
+    }
+
+    void TextComponent::SetText(Component& self, const char* _text)
+    {
+        text = _text;
+        Regenerate(self);
+    }
+
+    void TextComponent::Append(Component& self, char c)
+    {
+        text.Append(c);
+        Regenerate(self);
+    }
+    void TextComponent::RemoveLast(Component& self)
+    {
+        text.RemoveLast();
+        Regenerate(self);
     }
 
     void TextComponent::Destroy(Component& self)

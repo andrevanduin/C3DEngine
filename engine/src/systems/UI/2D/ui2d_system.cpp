@@ -85,7 +85,7 @@ namespace C3D
         // TODO: Get from config
 
         // Panel configuration
-        auto& panelAtlasses = m_atlasBank[ComponentTypePanel];
+        auto& panelAtlasses = m_atlasBank[AtlasIDPanel];
         // Default
         panelAtlasses.defaultMin = u16vec2(0, 0);
         panelAtlasses.defaultMax = u16vec2(32, 32);
@@ -94,7 +94,7 @@ namespace C3D
         panelAtlasses.cornerSize = u16vec2(16, 16);
 
         // Button configuration
-        auto& buttonAtlasses = m_atlasBank[ComponentTypeButton];
+        auto& buttonAtlasses = m_atlasBank[AtlasIDButton];
         // Default
         buttonAtlasses.defaultMin = u16vec2(96, 0);
         buttonAtlasses.defaultMax = u16vec2(112, 17);
@@ -106,7 +106,7 @@ namespace C3D
         buttonAtlasses.cornerSize = u16vec2(8, 8);
 
         // Textbox configuration
-        auto& textboxAtlasses = m_atlasBank[ComponentTypeTextbox];
+        auto& textboxAtlasses = m_atlasBank[AtlasIDTextboxNineSlice];
         // Default
         textboxAtlasses.defaultMin = u16vec2(0, 32);
         textboxAtlasses.defaultMax = u16vec2(3, 35);
@@ -116,6 +116,13 @@ namespace C3D
         // Size
         textboxAtlasses.size       = u16vec2(512, 512);
         textboxAtlasses.cornerSize = u16vec2(1, 1);
+
+        auto& textboxCursorAtlasses = m_atlasBank[AtlasIDTextboxCursor];
+        // Default
+        textboxCursorAtlasses.defaultMin = u16vec2(0, 35);
+        textboxCursorAtlasses.defaultMax = u16vec2(1, 36);
+        // Size
+        textboxCursorAtlasses.size = u16vec2(512, 512);
 
         return true;
     }
@@ -147,7 +154,17 @@ namespace C3D
 
     void UI2DSystem::Prepare(Viewport* viewport) { m_pass.Prepare(viewport, &m_components); }
 
-    bool UI2DSystem::OnUpdate(const FrameData& frameData) { return true; }
+    bool UI2DSystem::OnUpdate(const FrameData& frameData)
+    {
+        for (auto& component : m_components)
+        {
+            if (component.onUpdate)
+            {
+                component.onUpdate(component);
+            }
+        }
+        return true;
+    }
 
     ComponentHandle UI2DSystem::AddPanel(const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize)
     {
@@ -278,8 +295,7 @@ namespace C3D
         ASSERT_VALID(handle);
 
         auto& component = GetComponent(handle);
-        component.SetSize(u16vec2(width, height));
-
+        component.SetSize(vec2(width, height));
         return true;
     }
 
@@ -366,7 +382,7 @@ namespace C3D
             if (m_pActiveComponent)
             {
                 // We have an active component already. So let's deactive it since we can only have one at once.
-                component.RemoveFlag(FlagActive);
+                m_pActiveComponent->RemoveFlag(FlagActive);
             }
 
             // Set the component we just activated as our current active component
@@ -392,9 +408,14 @@ namespace C3D
     {
         ASSERT_VALID(handle);
 
-        auto& component          = GetComponent(handle);
-        component.onClickHandler = handler;
+        auto& component = GetComponent(handle);
+        if (!component.pUserHandlers)
+        {
+            INFO_LOG("Component: {} did not have any User defined handlers yet. Allocating memory for the handlers first.", handle);
+            component.MakeUserHandlers(&m_allocator);
+        }
 
+        component.pUserHandlers->onClickHandler = handler;
         return true;
     }
 
@@ -402,9 +423,14 @@ namespace C3D
     {
         ASSERT_VALID(handle);
 
-        auto& component               = GetComponent(handle);
-        component.onHoverStartHandler = handler;
+        auto& component = GetComponent(handle);
+        if (!component.pUserHandlers)
+        {
+            INFO_LOG("Component: {} did not have any User defined handlers yet. Allocating memory for the handlers first.", handle);
+            component.MakeUserHandlers(&m_allocator);
+        }
 
+        component.pUserHandlers->onHoverStartHandler = handler;
         return true;
     }
 
@@ -412,15 +438,98 @@ namespace C3D
     {
         ASSERT_VALID(handle);
 
-        auto& component             = GetComponent(handle);
-        component.onHoverEndHandler = handler;
+        auto& component = GetComponent(handle);
+        if (!component.pUserHandlers)
+        {
+            INFO_LOG("Component: {} did not have any User defined handlers yet. Allocating memory for the handlers first.", handle);
+            component.MakeUserHandlers(&m_allocator);
+        }
+
+        component.pUserHandlers->onHoverEndHandler = handler;
+        return true;
+    }
+
+    bool UI2DSystem::AddOnEndTextInputHandler(Handle handle, const UI_2D::OnEndTextInputEventHandler& handler)
+    {
+        ASSERT_VALID(handle);
+
+        auto& component = GetComponent(handle);
+        if (!component.pUserHandlers)
+        {
+            INFO_LOG("Component: {} did not have any User defined handlers yet. Allocating memory for the handlers first.", handle);
+            component.MakeUserHandlers(&m_allocator);
+        }
+
+        component.pUserHandlers->onTextInputEndHandler = handler;
+        return true;
+    }
+
+    // bool UI2DSystem::AddOnFlagsChangedHandler(Handle handle, const UI_2D::OnFlagsChangedEventHandler& handler) {}
+
+    bool UI2DSystem::SetText(Handle handle, const char* text)
+    {
+        ASSERT_VALID(handle);
+
+        auto& component = GetComponent(handle);
+        switch (component.type)
+        {
+            case ComponentTypeLabel:
+            {
+                auto& data = component.GetInternal<Label::InternalData>();
+                data.textComponent.SetText(component, text);
+            }
+            break;
+            case ComponentTypeTextbox:
+                Textbox::SetText(component, text);
+                break;
+        }
 
         return true;
     }
 
-    // bool UI2DSystem::AddOnEndTextInputHandler(Handle handle, const UI_2D::OnEndTextInputEventHandler& handler) {}
+    bool UI2DSystem::SetText(Handle handle, const String& text) { return SetText(handle, text.Data()); }
 
-    // bool UI2DSystem::AddOnFlagsChangedHandler(Handle handle, const UI_2D::OnFlagsChangedEventHandler& handler) {}
+    u16 UI2DSystem::GetTextMaxX(Handle handle) const
+    {
+        auto& component = GetComponent(handle);
+        switch (component.type)
+        {
+            case ComponentTypeTextbox:
+            {
+                auto& data = component.GetInternal<Textbox::InternalData>();
+                return data.textComponent.maxX;
+            }
+            case ComponentTypeLabel:
+            {
+                auto& data = component.GetInternal<Label::InternalData>();
+                return data.textComponent.maxX;
+            }
+        }
+
+        ERROR_LOG("Tried to get TextMaxX for component that does not have it.");
+        return 0;
+    }
+
+    u16 UI2DSystem::GetTextMaxY(Handle handle) const
+    {
+        auto& component = GetComponent(handle);
+        switch (component.type)
+        {
+            case ComponentTypeTextbox:
+            {
+                auto& data = component.GetInternal<Textbox::InternalData>();
+                return data.textComponent.maxY;
+            }
+            case ComponentTypeLabel:
+            {
+                auto& data = component.GetInternal<Label::InternalData>();
+                return data.textComponent.maxY;
+            }
+        }
+
+        ERROR_LOG("Tried to get TextMaxY for component that does not have it.");
+        return 0;
+    }
 
     UI_2D::Component& UI2DSystem::GetComponent(ComponentHandle handle)
     {
@@ -461,20 +570,20 @@ namespace C3D
 
     bool UI2DSystem::OnClick(const EventContext& context)
     {
-        auto ctx = MouseButtonEventContext(context.data.u16[0], context.data.u16[1], context.data.u16[2]);
+        auto ctx = MouseButtonEventContext(context.data.i16[0], context.data.i16[1], context.data.i16[2]);
 
         for (auto& component : m_components)
         {
             if (component.onClick)
             {
                 // This component handles onClick events
-                auto inverseModel   = glm::inverse(component.GetWorld());
-                auto transformedPos = inverseModel * vec4(ctx.x, ctx.y, 0.0f, 1.0f);
+                auto model          = component.GetWorld();
+                auto inverse        = glm::inverse(model);
+                auto transformedPos = inverse * vec4(static_cast<f32>(ctx.x), static_cast<f32>(ctx.y), 0.0f, 1.0f);
 
-                if (component.Contains(transformedPos))
+                if (component.Contains(vec2(transformedPos.x, transformedPos.y)))
                 {
                     // Set this entity to active to indicate that this is our currently active entity
-                    SetActive(component, true);
                     return component.onClick(component, ctx);
                 }
             }
@@ -526,9 +635,24 @@ namespace C3D
         return false;
     }
 
-    bool UI2DSystem::OnKeyDown(const EventContext& context) { return false; }
+    bool UI2DSystem::OnKeyDown(const EventContext& context)
+    {
+        auto ctx = KeyEventContext(context.data.u16[0]);
 
-    const AtlasDescriptions& UI2DSystem::GetAtlasDescriptions(ComponentType type) const { return m_atlasBank[type]; }
+        for (auto& component : m_components)
+        {
+            // We only check active components that have an onKeyDownHandler
+            if (component.IsFlagSet(FlagActive) && component.onKeyDown)
+            {
+                // We can immediatly return since there may only be one active component at a time
+                return component.onKeyDown(component, ctx);
+            }
+        }
+
+        return false;
+    }
+
+    const AtlasDescriptions& UI2DSystem::GetAtlasDescriptions(AtlasID id) const { return m_atlasBank[id]; }
 
     Shader& UI2DSystem::GetShader() { return *m_shader; }
 

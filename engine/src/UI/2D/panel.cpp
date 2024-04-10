@@ -17,21 +17,19 @@ namespace C3D::UI_2D
     {
         Component component(systemsManager);
 
-        component.m_pImplData = pAllocator->New<PanelData>(MemoryType::UI);
-
-        auto& jan = component.GetInternal<PanelData>();
-
+        component.MakeInternal<PanelData>(pAllocator);
         component.onDestroy = &Destroy;
         component.onRender  = &OnRender;
+        component.onResize  = &OnResize;
 
         return component;
     }
 
     bool Panel::Initialize(Component& self, const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize)
     {
-        self.Initialize(pos, size);
+        self.Initialize(pos, size, ComponentTypePanel);
         auto& data = self.GetInternal<PanelData>();
-        data.nineSlice.Initialize(self, "Panel", ComponentTypePanel, cornerSize);
+        data.nineSlice.Initialize(self, "Panel", AtlasIDPanel, size, cornerSize);
         return true;
     }
 
@@ -39,6 +37,12 @@ namespace C3D::UI_2D
     {
         auto& data = self.GetInternal<PanelData>();
         data.nineSlice.OnRender(self, frameData, locations);
+    }
+
+    void Panel::OnResize(Component& self)
+    {
+        auto& data = self.GetInternal<PanelData>();
+        data.nineSlice.OnResize(self, self.GetSize());
     }
 
     void Panel::Destroy(Component& self, const DynamicAllocator* pAllocator)

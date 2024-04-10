@@ -32,17 +32,23 @@ namespace C3D
         m_needsUpdate = true;
     }
 
+    f32 Transform::GetX() const { return m_position.x; }
+
     void Transform::SetX(f32 x)
     {
         m_position.x  = x;
         m_needsUpdate = true;
     }
 
+    f32 Transform::GetY() const { return m_position.y; }
+
     void Transform::SetY(f32 y)
     {
         m_position.y  = y;
         m_needsUpdate = true;
     }
+
+    f32 Transform::GetZ() const { return m_position.z; }
 
     void Transform::SetZ(f32 z)
     {

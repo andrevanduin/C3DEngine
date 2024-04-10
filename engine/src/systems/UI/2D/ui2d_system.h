@@ -115,7 +115,7 @@ namespace C3D
          * @param handler The handler function that needs to be called when text input ends
          * @return True if successful; false otherwise
          */
-        // bool AddOnEndTextInputHandler(Handle handle, const UI_2D::OnEndTextInputEventHandler& handler);
+        bool AddOnEndTextInputHandler(Handle handle, const UI_2D::OnEndTextInputEventHandler& handler);
 
         /**
          * @brief Add an OnFlagsChangedEventHandler to the provided Entity.
@@ -132,13 +132,13 @@ namespace C3D
          * @param text The text you want to set
          * @return True if successful; false otherwise
          */
-        // bool SetText(Entity entity, const char* text);
-        // bool SetText(Entity entity, const String& text);
+        bool SetText(Handle handle, const char* text);
+        bool SetText(Handle handle, const String& text);
 
-        // f32 GetMaxTextX(Entity entity);
-        // f32 GetMaxTextY(Entity entity);
+        u16 GetTextMaxX(Handle handle) const;
+        u16 GetTextMaxY(Handle handle) const;
 
-        const UI_2D::AtlasDescriptions& GetAtlasDescriptions(UI_2D::ComponentType type) const;
+        const UI_2D::AtlasDescriptions& GetAtlasDescriptions(UI_2D::AtlasID id) const;
 
         Shader& GetShader();
         TextureMap& GetAtlas();

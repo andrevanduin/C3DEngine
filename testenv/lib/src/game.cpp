@@ -134,7 +134,7 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     auto font = Fonts.Acquire("Ubuntu Mono 21px", C3D::FontType::Bitmap, 32);
 
     m_state->panel   = UI2D.AddPanel(u16vec2(512, 0), u16vec2(256, 512), u16vec2(16, 16));
-    m_state->button  = UI2D.AddButton(u16vec2(0, 0), u16vec2(150, 60), u16vec2(8, 8));
+    m_state->button  = UI2D.AddButton(u16vec2(40, 50), u16vec2(150, 60), u16vec2(8, 8));
     m_state->label   = UI2D.AddLabel(u16vec2(50, 200), "test123", font);
     m_state->textbox = UI2D.AddTextbox(u16vec2(30, 250), u16vec2(100, 30), "DEFAULT_TEXT", font);
 
@@ -157,12 +157,12 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 
     UI2D.SetParent(m_state->debugInfoLabel, m_state->debugInfoPanel);
 
-    /*
     UI2D.AddOnClickHandler(m_state->button, [](const C3D::UI_2D::MouseButtonEventContext& ctx) {
         INFO_LOG("Button Clickerino'ed at: ({}, {}).", ctx.x, ctx.y);
         return true;
     });
 
+    /*
     UI2D.AddOnHoverStartHandler(m_state->button, [](const C3D::UI_2D::OnHoverEventContext& ctx) {
         INFO_LOG("Button hover started at: ({}, {}).", ctx.x, ctx.y);
         return true;
@@ -189,6 +189,8 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     static u64 allocCount    = 0;
     const u64 prevAllocCount = allocCount;
     allocCount               = Metrics.GetAllocCount();
+
+    UI2D.OnUpdate(frameData);
 
     const auto deltaTime = frameData.timeData.delta;
     if (!m_pConsole->IsOpen())
@@ -415,14 +417,16 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         frameData.timeData.avgRenderTimeMs, frameData.timeData.avgPresentTimeMs, frameData.timeData.avgUpdateTimeMs,
         frameData.timeData.avgRunTimeMs);
 
-    // UI2D.SetText(m_state->debugInfoLabel, buffer.Data());
+    UI2D.SetText(m_state->debugInfoLabel, buffer.Data());
 
     static bool resized = false;
     if (!resized)
     {
-        auto debugLabelSize = UI2D.GetSize(m_state->debugInfoLabel);
-        UI2D.SetSize(m_state->debugInfoPanel, debugLabelSize.x + 30, debugLabelSize.y + 20);
-        UI2D.SetPosition(m_state->debugInfoPanel, vec2(0, fHeight - (debugLabelSize.y + 20)));
+        auto debugLabelMaxX = UI2D.GetTextMaxX(m_state->debugInfoLabel);
+        auto debugLabelMaxY = UI2D.GetTextMaxY(m_state->debugInfoLabel);
+
+        UI2D.SetSize(m_state->debugInfoPanel, debugLabelMaxX + 30, debugLabelMaxY + 20);
+        UI2D.SetPosition(m_state->debugInfoPanel, vec2(0, fHeight - (debugLabelMaxY + 20)));
         resized = true;
     }
 }
@@ -493,9 +497,11 @@ void TestEnv::OnResize(u16 width, u16 height)
     auto size = UI2D.GetSize(m_state->panel);
     UI2D.SetPosition(m_state->panel, vec2(width - size.x, 0));
 
-    auto debugLabelSize = UI2D.GetSize(m_state->debugInfoLabel);
-    UI2D.SetSize(m_state->debugInfoPanel, debugLabelSize.x + 30, debugLabelSize.y + 20);
-    UI2D.SetPosition(m_state->debugInfoPanel, vec2(0, height - (debugLabelSize.y + 20)));
+    auto debugLabelMaxX = UI2D.GetTextMaxX(m_state->debugInfoLabel);
+    auto debugLabelMaxY = UI2D.GetTextMaxY(m_state->debugInfoLabel);
+
+    UI2D.SetSize(m_state->debugInfoPanel, debugLabelMaxX + 30, debugLabelMaxY + 20);
+    UI2D.SetPosition(m_state->debugInfoPanel, vec2(0, height - (debugLabelMaxY + 20)));
 }
 
 void TestEnv::OnShutdown()

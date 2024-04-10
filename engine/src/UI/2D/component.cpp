@@ -1,9 +1,11 @@
 
 #include "component.h"
 
+#include "platform/platform.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/UI/2D/ui2d_system.h"
 #include "systems/geometry/geometry_system.h"
+#include "systems/input/input_system.h"
 #include "systems/shaders/shader_system.h"
 
 namespace C3D::UI_2D
@@ -12,17 +14,22 @@ namespace C3D::UI_2D
 
     Component::Component(const SystemManager* systemsManager) : m_pSystemsManager(systemsManager) { m_id.Generate(); }
 
-    void Component::Initialize(const u16vec2& pos, const u16vec2& size)
+    void Component::Initialize(const u16vec2& pos, const u16vec2& size, ComponentType _type)
     {
         m_transform = Transform();
         m_transform.SetPosition(vec3(pos.x, pos.y, 0));
-        m_bounds = Bounds(pos.x, pos.y, size.x, size.y);
+        m_bounds = Bounds(0.0f, 0.0f, size.x, size.y);
+        m_flags |= FlagVisible;
+        type = _type;
     }
 
     void Component::Destroy(const DynamicAllocator* pAllocator)
     {
         m_id.Invalidate();
+        // Call the implementation specific destroy method
         onDestroy(*this, pAllocator);
+        // Destroy our user handlers struct if it's allocated
+        DestroyUserHandlers(pAllocator);
     }
 
     bool Component::AddChild(Component& child)
@@ -50,9 +57,28 @@ namespace C3D::UI_2D
         return true;
     }
 
+    void Component::MakeUserHandlers(const DynamicAllocator* pAllocator)
+    {
+        if (!pUserHandlers)
+        {
+            pUserHandlers = pAllocator->New<UserHandlers>(MemoryType::UI);
+        }
+    }
+
+    void Component::DestroyUserHandlers(const DynamicAllocator* pAllocator)
+    {
+        if (pUserHandlers)
+        {
+            pAllocator->Delete(pUserHandlers);
+            pUserHandlers = nullptr;
+        }
+    }
+
     UUID Component::GetID() const { return m_id; }
 
     const Transform& Component::GetTransform() const { return m_transform; }
+
+    mat4 Component::GetWorld() const { return m_transform.GetWorld(); }
 
     bool Component::IsValid() const { return m_id.IsValid(); }
 
@@ -74,38 +100,37 @@ namespace C3D::UI_2D
         }
     }
 
-    vec2 Component::GetPosition() const { return vec2(m_bounds.x, m_bounds.y); }
-
-    void Component::SetPosition(const u16vec2& position)
+    vec2 Component::GetPosition() const
     {
-        m_bounds.x = position.x;
-        m_bounds.y = position.y;
-        m_transform.SetPosition(vec3(position, 0.0f));
+        auto& position = m_transform.GetPosition();
+        return { position.x, position.y };
     }
 
-    f32 Component::GetX() const { return m_bounds.x; }
+    void Component::SetPosition(const u16vec2& position) { m_transform.SetPosition(vec3(position, 0.0f)); }
 
-    void Component::SetX(f32 x)
-    {
-        m_bounds.x = x;
-        m_transform.SetX(x);
-    }
+    f32 Component::GetX() const { return m_transform.GetX(); }
 
-    f32 Component::GetY() const { return m_bounds.y; }
+    void Component::SetX(f32 x) { m_transform.SetX(x); }
 
-    void Component::SetY(f32 y)
-    {
-        m_bounds.y = y;
-        m_transform.SetY(y);
-    }
+    f32 Component::GetY() const { return m_transform.GetY(); }
+
+    void Component::SetY(f32 y) { m_transform.SetY(y); }
 
     u16 Component::GetWidth() const { return m_bounds.width; }
 
-    void Component::SetWidth(u16 width) { m_bounds.width = width; };
+    void Component::SetWidth(u16 width)
+    {
+        m_bounds.width = width;
+        if (onResize) onResize(*this);
+    };
 
     u16 Component::GetHeight() const { return m_bounds.height; }
 
-    void Component::SetHeight(u16 height) { m_bounds.height = height; }
+    void Component::SetHeight(u16 height)
+    {
+        m_bounds.height = height;
+        if (onResize) onResize(*this);
+    }
 
     u16vec2 Component::GetSize() const { return u16vec2(m_bounds.width, m_bounds.height); }
 
@@ -113,13 +138,12 @@ namespace C3D::UI_2D
     {
         m_bounds.width  = size.x;
         m_bounds.height = size.y;
+        if (onResize) onResize(*this);
     }
 
     void Component::SetRotation(const quat& rotation) { m_transform.SetRotation(rotation); }
 
     bool Component::Contains(const vec2& point) const { return m_bounds.Contains(point); }
-
-    mat4 Component::GetWorld() const { return m_transform.GetWorld(); }
 
     template <>
     GeometrySystem& Component::GetSystem() const
@@ -149,6 +173,18 @@ namespace C3D::UI_2D
     FontSystem& Component::GetSystem() const
     {
         return Fonts;
+    }
+
+    template <>
+    InputSystem& Component::GetSystem() const
+    {
+        return Input;
+    }
+
+    template <>
+    Platform& Component::GetSystem() const
+    {
+        return OS;
     }
 
     bool Component::operator==(const Component& other) const { return m_id == other.m_id; }

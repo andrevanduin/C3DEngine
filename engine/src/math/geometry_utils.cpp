@@ -163,31 +163,7 @@ namespace C3D::GeometryUtils
         config.materialName = "";
         config.name         = name;
 
-        f32 uMin = atlasMin.x / atlasSize.x;
-        f32 uMax = atlasMax.x / atlasSize.x;
-        f32 vMin = atlasMin.y / atlasSize.y;
-        f32 vMax = atlasMax.y / atlasSize.y;
-
-        // Top left corner
-        config.vertices[0].position.x = 0.0f;
-        config.vertices[0].position.y = 0.0f;
-        config.vertices[0].texture.x  = uMin;
-        config.vertices[0].texture.y  = vMin;
-
-        config.vertices[1].position.x = size.x;
-        config.vertices[1].position.y = size.y;
-        config.vertices[1].texture.x  = uMax;
-        config.vertices[1].texture.y  = vMax;
-
-        config.vertices[2].position.x = 0.0f;
-        config.vertices[2].position.y = size.y;
-        config.vertices[2].texture.x  = uMin;
-        config.vertices[2].texture.y  = vMax;
-
-        config.vertices[3].position.x = size.x;
-        config.vertices[3].position.y = 0.0f;
-        config.vertices[3].texture.x  = uMax;
-        config.vertices[3].texture.y  = vMin;
+        RegenerateUIQuadGeometry(config.vertices.GetData(), size, atlasSize, atlasMin, atlasMax);
 
         // Counter-clockwise
         config.indices.PushBack(2);
@@ -380,5 +356,34 @@ namespace C3D::GeometryUtils
         vertices[15].position.y = size.y;
         vertices[15].texture.x  = iUMax;
         vertices[15].texture.y  = giVMax;
+    }
+
+    void RegenerateUIQuadGeometry(Vertex2D* vertices, const u16vec2& size, const u16vec2& atlasSize, const u16vec2& atlasMin,
+                                  const u16vec2& atlasMax)
+    {
+        f32 uMin = static_cast<f32>(atlasMin.x) / atlasSize.x;
+        f32 uMax = static_cast<f32>(atlasMax.x) / atlasSize.x;
+        f32 vMin = static_cast<f32>(atlasMin.y) / atlasSize.y;
+        f32 vMax = static_cast<f32>(atlasMax.y) / atlasSize.y;
+
+        vertices[0].position.x = 0.0f;
+        vertices[0].position.y = 0.0f;
+        vertices[0].texture.x  = uMin;
+        vertices[0].texture.y  = vMin;
+
+        vertices[1].position.x = size.x;
+        vertices[1].position.y = size.y;
+        vertices[1].texture.x  = uMax;
+        vertices[1].texture.y  = vMax;
+
+        vertices[2].position.x = 0.0f;
+        vertices[2].position.y = size.y;
+        vertices[2].texture.x  = uMin;
+        vertices[2].texture.y  = vMax;
+
+        vertices[3].position.x = size.x;
+        vertices[3].position.y = 0.0f;
+        vertices[3].texture.x  = uMax;
+        vertices[3].texture.y  = vMin;
     }
 }  // namespace C3D::GeometryUtils

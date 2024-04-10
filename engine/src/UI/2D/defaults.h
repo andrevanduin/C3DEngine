@@ -4,9 +4,11 @@
 
 namespace C3D::UI_2D
 {
-    namespace Hoverable
+    namespace DefaultMethods
     {
         bool OnHoverStart(Component& self, const OnHoverEventContext& ctx);
         bool OnHoverEnd(Component& self, const OnHoverEventContext& ctx);
-    }  // namespace Hoverable
+
+        bool OnClick(Component& self, const MouseButtonEventContext& ctx);
+    }  // namespace DefaultMethods
 }  // namespace C3D::UI_2D

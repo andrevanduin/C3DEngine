@@ -85,7 +85,7 @@ namespace C3D
         CircularBuffer<CString<256>, MAX_LINES> m_lines;
         CircularBuffer<CString<256>, MAX_HISTORY> m_history;
 
-        UI_2D::ComponentHandle m_text, m_entry, m_cursor;
+        UI_2D::ComponentHandle m_text, m_entry;
         UI_2D::ComponentHandle m_background;
 
         HashMap<CommandName, CommandCallback> m_commands;

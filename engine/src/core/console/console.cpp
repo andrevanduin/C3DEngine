@@ -44,12 +44,8 @@ namespace C3D
 
         m_background = UI2D.AddPanel(u16vec2(0, 0), u16vec2(windowSize.x, 100), u16vec2(16, 16));
         m_text       = UI2D.AddLabel(u16vec2(5, 5), "-", font);
-        m_entry      = UI2D.AddTextbox(u16vec2(5, 5), u16vec2(windowSize.x - 10), "TEST1234", font);
-        m_cursor     = UI2D.AddLabel(u16vec2(5, 3), "|", font);
+        m_entry      = UI2D.AddTextbox(u16vec2(5, 5), u16vec2(windowSize.x - 10, 30), "", font);
 
-        UI2D.SetParent(m_cursor, m_entry);
-
-        /*
         UI2D.AddOnEndTextInputHandler(m_entry, [this](u16 key, const String& text) {
             if (key == KeyEnter)
             {
@@ -59,13 +55,10 @@ namespace C3D
                 UI2D.SetActive(m_entry, true);
             }
         });
-        UI2D.AddOnFlagsChangedHandler(m_entry, [this](UI_2D::Flags flags) { m_showCursor = (flags & UI_2D::FlagActive); });
-        */
 
         UI2D.MakeVisible(m_background, false);
         UI2D.MakeVisible(m_text, false);
         UI2D.MakeVisible(m_entry, false);
-        UI2D.MakeVisible(m_cursor, false);
     }
 
     void UIConsole::OnShutDown()
@@ -93,22 +86,11 @@ namespace C3D
 
             UI2D.MakeVisible(m_text, m_isOpen);
             UI2D.MakeVisible(m_entry, m_isOpen);
-            UI2D.MakeVisible(m_cursor, m_isOpen);
             UI2D.MakeVisible(m_background, m_isOpen);
             UI2D.SetActive(m_entry, m_isOpen);
         }
 
-        if (m_isOpen && m_showCursor)
-        {
-            auto currentTime = OS.GetAbsoluteTime();
-            if (currentTime - BLINK_TIME >= m_cursorTime)
-            {
-                UI2D.ToggleVisible(m_cursor);
-                m_cursorTime = currentTime;
-            }
-        }
-
-        f32 textMaxY = UI2D.GetHeight(m_text);
+        f32 textMaxY = UI2D.GetTextMaxY(m_text);
         if (m_isTextDirty)
         {
             constexpr auto maxChars = 4096;
@@ -122,15 +104,12 @@ namespace C3D
                 buffer += '\n';
             }
 
-            // UI2D.SetText(m_text, buffer.Data());
-            UI2D.SetPosition(m_entry, vec2(5, textMaxY + 10));
+            UI2D.SetText(m_text, buffer.Data());
+            UI2D.SetPosition(m_entry, vec2(5, textMaxY + 15));
             UI2D.SetHeight(m_background, textMaxY + 50);
 
             m_isTextDirty = false;
         }
-
-        f32 entryMaxX = UI2D.GetWidth(m_entry);
-        UI2D.SetPosition(m_cursor, vec2(entryMaxX, 0));
     }
 
     void UIConsole::RegisterCommand(const CommandName& name, const CommandCallback& func)
@@ -222,7 +201,7 @@ namespace C3D
                 return false;
             }
 
-            // UI2D.SetText(m_entry, m_history[m_currentHistory].Data());
+            UI2D.SetText(m_entry, m_history[m_currentHistory].Data());
             return true;
         }
 
@@ -231,7 +210,7 @@ namespace C3D
             if (m_currentHistory != -1 && m_currentHistory < m_nextHistory)
             {
                 m_currentHistory++;
-                // UI2D.SetText(m_entry, m_history[m_currentHistory].Data());
+                UI2D.SetText(m_entry, m_history[m_currentHistory].Data());
                 return true;
             }
 
@@ -290,7 +269,7 @@ namespace C3D
         if (args.Empty())
         {
             ERROR_LOG("The input: \'{}\' failed to be parsed!", current);
-            // UI2D.SetText(m_entry, "");
+            UI2D.SetText(m_entry, "");
             return;
         }
 
@@ -301,7 +280,7 @@ namespace C3D
         {
             // Not a command let's warn the user
             ERROR_LOG("The command: '{}' does not exist!", commandName);
-            // UI2D.SetText(m_entry, "");
+            UI2D.SetText(m_entry, "");
             return;
         }
 
@@ -326,7 +305,7 @@ namespace C3D
             }
         }
 
-        // UI2D.SetText(m_entry, "");
+        UI2D.SetText(m_entry, "");
     }
 
     bool UIConsole::IsInitialized() const { return m_initialized; }

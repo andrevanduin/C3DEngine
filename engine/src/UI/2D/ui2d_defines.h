@@ -2,6 +2,7 @@
 #pragma once
 #include "core/defines.h"
 #include "core/input/buttons.h"
+#include "renderer/renderer_types.h"
 
 namespace C3D::UI_2D
 {
@@ -16,11 +17,11 @@ namespace C3D::UI_2D
 
     struct MouseButtonEventContext
     {
-        MouseButtonEventContext(u8 button, u16 x, u16 y) : button(button), x(x), y(y) {}
+        MouseButtonEventContext(i16 button, i16 x, i16 y) : button(button), x(x), y(y) {}
 
-        u8 button;
-        u16 x;
-        u16 y;
+        i16 button;
+        i16 x;
+        i16 y;
     };
 
     struct OnHoverEventContext
@@ -38,13 +39,6 @@ namespace C3D::UI_2D
         u16 keyCode;
     };
 
-    // using OnMouseDownEventHandler = std::function<bool(const MouseButtonEventContext& ctx)>;
-    // using OnMouseUpEventHandler   = std::function<bool(const MouseButtonEventContext& ctx)>;
-    using OnClickEventHandler = std::function<bool(const MouseButtonEventContext& ctx)>;
-
-    using OnHoverStartEventHandler = std::function<bool(const OnHoverEventContext& ctx)>;
-    using OnHoverEndEventHandler   = std::function<bool(const OnHoverEventContext& ctx)>;
-
     enum FlagBit : u8
     {
         FlagNone    = 0x00,
@@ -56,12 +50,22 @@ namespace C3D::UI_2D
 
     using Flags = u8;
 
-    enum ComponentType : u8
+    enum ComponentType : i8
     {
+        ComponentTypeNone = -1,
         ComponentTypePanel,
         ComponentTypeLabel,
         ComponentTypeButton,
         ComponentTypeTextbox,
+    };
+
+    /** @brief IDs for all the different atlas types. For fast lookup. */
+    enum AtlasID : u8
+    {
+        AtlasIDPanel,
+        AtlasIDButton,
+        AtlasIDTextboxNineSlice,
+        AtlasIDTextboxCursor,
     };
 
     struct AtlasDescriptions
@@ -82,8 +86,6 @@ namespace C3D::UI_2D
     /** @brief Describes the internal data needed for a Component that is renderable. */
     struct RenderableComponent
     {
-        RenderableComponent() { Logger::Info("RenderableComponent ctor called"); }
-
         GeometryRenderData renderData;
         u32 instanceId  = INVALID_ID;
         u64 frameNumber = INVALID_ID_U64;
