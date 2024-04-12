@@ -1736,7 +1736,7 @@ namespace C3D
         }
     }
 
-    bool VulkanRendererPlugin::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps,
+    bool VulkanRendererPlugin::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps,
                                                               u32* outInstanceId)
     {
         const auto internal = static_cast<VulkanShader*>(shader.apiSpecificData);

@@ -12,7 +12,7 @@ namespace C3D::UI_2D
         {
             return self.pUserHandlers->onHoverStartHandler(ctx);
         }
-        return false;
+        return true;
     }
 
     bool DefaultMethods::OnHoverEnd(Component& self, const OnHoverEventContext& ctx)
@@ -22,7 +22,7 @@ namespace C3D::UI_2D
         {
             return self.pUserHandlers->onHoverEndHandler(ctx);
         }
-        return false;
+        return true;
     }
 
     bool DefaultMethods::OnClick(Component& self, const MouseButtonEventContext& ctx)
@@ -34,6 +34,6 @@ namespace C3D::UI_2D
         {
             return self.pUserHandlers->onClickHandler(ctx);
         }
-        return false;
+        return true;
     }
 }  // namespace C3D::UI_2D

@@ -639,14 +639,10 @@ namespace C3D
     {
         auto ctx = KeyEventContext(context.data.u16[0]);
 
-        for (auto& component : m_components)
+        // We only handle key down events for the active component
+        if (m_pActiveComponent && m_pActiveComponent->onKeyDown)
         {
-            // We only check active components that have an onKeyDownHandler
-            if (component.IsFlagSet(FlagActive) && component.onKeyDown)
-            {
-                // We can immediatly return since there may only be one active component at a time
-                return component.onKeyDown(component, ctx);
-            }
+            return m_pActiveComponent->onKeyDown(*m_pActiveComponent, ctx);
         }
 
         return false;

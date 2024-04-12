@@ -364,6 +364,68 @@ namespace C3D
             return *this;
         }
 
+        BasicString& operator=(const char* other)
+        {
+            // Copy over the size
+            auto newSize = std::strlen(other);
+
+            // Check if 'other' needs to be stack or heap allocated
+            if (newSize > SSO_THRESHOLD)
+            {
+                // We need the heap
+                const auto newCapacity = newSize + 1;  // Extra byte for our '\0' char
+
+                if (m_sso.data[MEMORY_TYPE] == SSO_USE_STACK)
+                {
+                    // We are currently using the stack so we need to allocate
+                    m_sso.capacity          = newCapacity;
+                    m_sso.data[MEMORY_TYPE] = SSO_USE_HEAP;
+
+                    m_data = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
+                    std::memcpy(m_data, other, newCapacity);
+                }
+                else
+                {
+                    // We are already using the heap
+                    if (m_sso.capacity >= newCapacity)
+                    {
+                        // We have enough capacity already
+                        std::memcpy(m_data, other, newCapacity);
+                    }
+                    else
+                    {
+                        // We don't have enough space. So let's free first
+                        Free();
+
+                        m_sso.capacity = newCapacity;
+                        m_data         = Allocator(m_allocator)->template Allocate<char>(MemoryType::C3DString, newCapacity);
+                        std::memcpy(m_data, other, newCapacity);
+                    }
+                }
+
+                m_size = newSize;
+            }
+            else
+            {
+                // We can use the stack
+                if (m_sso.data[MEMORY_TYPE] == SSO_USE_HEAP)
+                {
+                    // We are currently using the heap so let's free that memory first
+                    Free();
+                }
+
+                // We point our data pointer to our stack space
+                m_data = m_sso.data;
+                // We save off our new size
+                m_size = newSize;
+                // Set our MEMORY_TYPE bit to use the stack
+                m_sso.data[MEMORY_TYPE] = SSO_USE_STACK;
+                // We can copy over the data from 'other' (we use size + 1 to also copy the '\0' byte)
+                std::memcpy(&m_sso.data, other, m_size + 1);
+            }
+            return *this;
+        }
+
         ~BasicString() { Free(); }
 
         /** @brief Reserve enough space in the string to hold the provided capacity. */
@@ -522,9 +584,26 @@ namespace C3D
             const u64 requiredSize = m_size + 1;
             // Resize our internal buffer if it is needed (including '\0' byte)
             Resize(requiredSize + 1);
-            // Copy data from the other string into our newly allocated buffer
+            // Copy char to the end of our buffer
             m_data[m_size] = c;
             // Add '\0' character at the end
+            m_data[requiredSize] = '\0';
+            // Store our new size
+            m_size = requiredSize;
+        }
+
+        /** @brief Insert the provided const char at the provided index. */
+        void Insert(u32 index, const char c)
+        {
+            // Calculate the totalSize that we will require for our inserted string
+            const u64 requiredSize = m_size + 1;
+            // Resize our internal buffer if it is needed (including '\0' byte)
+            Resize(requiredSize + 1);
+            // Move all chars from the index one to the right
+            std::move_backward(begin() + index, end(), end() + 1);
+            // Copy char to the provided index
+            m_data[index] = c;
+            // Ensure we null-terminate our string
             m_data[requiredSize] = '\0';
             // Store our new size
             m_size = requiredSize;
@@ -546,6 +625,20 @@ namespace C3D
 
             m_data[newSize] = '\0';
             m_size          = newSize;
+        }
+
+        /** @brief Removes a char at the provided at the provided index. */
+        void RemoveAt(u32 index)
+        {
+            if (index < m_size && m_size > 0)
+            {
+                // Move the chars in the range [index + 1, end] tp [index, end - 1]
+                std::move(begin() + index + 1, end(), begin() + index);
+                // Decrement our size
+                m_size--;
+                // Ensure we end in a '\0'
+                m_data[m_size] = '\0';
+            }
         }
 
         /** @brief Splits the string at the given delimiter. */

@@ -388,7 +388,7 @@ namespace C3D
         return m_backendPlugin->ShaderApplyInstance(shader, needsUpdate);
     }
 
-    bool RenderSystem::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps,
+    bool RenderSystem::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps,
                                                       u32* outInstanceId) const
     {
         return m_backendPlugin->AcquireShaderInstanceResources(shader, textureMapCount, maps, outInstanceId);

@@ -2,8 +2,8 @@
 #include "textbox.h"
 
 #include "core/input/keys.h"
-#include "defaults.h"
 #include "systems/UI/2D/ui2d_system.h"
+#include "systems/fonts/font_system.h"
 #include "systems/input/input_system.h"
 
 namespace C3D::UI_2D
@@ -22,7 +22,7 @@ namespace C3D::UI_2D
         component.onRender  = &OnRender;
         component.onResize  = &OnResize;
         component.onKeyDown = &OnKeyDown;
-        component.onClick   = &DefaultMethods::OnClick;
+        component.onClick   = &OnClick;
 
         return component;
     }
@@ -34,11 +34,12 @@ namespace C3D::UI_2D
         data.textComponent.Initialize(self, font, text);
         data.textComponent.offsetX = 4;
         data.textComponent.offsetY = 4;
+        data.characterIndex        = text.Size();
 
         data.nineSlice.Initialize(self, "TextboxNineSlice", AtlasIDTextboxNineSlice, size, CORNER_SIZE);
         data.cursor.Initialize(self, "TextboxCursor", AtlasIDTextboxCursor, u16vec2(2, size.y - 8));
 
-        CalculateCursorOffset(data);
+        CalculateCursorOffset(self);
         return true;
     }
 
@@ -75,30 +76,36 @@ namespace C3D::UI_2D
         auto size  = self.GetSize();
 
         data.nineSlice.OnResize(self, size);
-        data.cursor.OnResize(self, u16vec2(4, size.y - 2));
+        data.cursor.OnResize(self, u16vec2(2, size.y - 8));
     }
 
     void Textbox::SetText(Component& self, const char* text)
     {
-        auto& data = self.GetInternal<Textbox::InternalData>();
+        auto& data = self.GetInternal<InternalData>();
         data.textComponent.SetText(self, text);
-        CalculateCursorOffset(data);
+        data.characterIndex = data.textComponent.text.Size();
+        CalculateCursorOffset(self);
     }
 
-    void Textbox::CalculateCursorOffset(InternalData& data)
+    void Textbox::CalculateCursorOffset(Component& self)
     {
+        auto& fontSystem = self.GetSystem<FontSystem>();
+        auto& data       = self.GetInternal<InternalData>();
+
+        auto size = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndex);
+
         data.cursor.offsetY = 4;
-        data.cursor.offsetX = data.textComponent.maxX + 6;
+        data.cursor.offsetX = size.x + 4;
     }
 
     void Textbox::OnTextChanged(Component& self)
     {
-        auto& data = self.GetInternal<InternalData>();
-        CalculateCursorOffset(data);
+        CalculateCursorOffset(self);
 
         if (self.pUserHandlers && self.pUserHandlers->onTextChangedHandler)
         {
             // Notify the user of the text changing
+            auto& data = self.GetInternal<InternalData>();
             self.pUserHandlers->onTextChangedHandler(data.textComponent.text);
         }
     }
@@ -128,8 +135,29 @@ namespace C3D::UI_2D
         {
             if (!text.Empty())
             {
-                data.textComponent.RemoveLast(self);
+                data.textComponent.RemoveAt(self, data.characterIndex - 1);
+                data.characterIndex--;
                 OnTextChanged(self);
+            }
+            return true;
+        }
+
+        if (keyCode == KeyArrowLeft)
+        {
+            if (data.characterIndex > 0)
+            {
+                data.characterIndex--;
+                CalculateCursorOffset(self);
+            }
+            return true;
+        }
+
+        if (keyCode == KeyArrowRight)
+        {
+            if (data.characterIndex <= text.Size())
+            {
+                data.characterIndex++;
+                CalculateCursorOffset(self);
             }
             return true;
         }
@@ -151,15 +179,24 @@ namespace C3D::UI_2D
         {
             typedChar = static_cast<char>(keyCode);
         }
-        else if (keyCode == KeyMinus || keyCode == KeyEquals)
+        else if (keyCode >= KeyEquals && keyCode <= KeySlash)
         {
             switch (keyCode)
             {
+                case KeyEquals:
+                    typedChar = shiftHeld ? '+' : '=';
+                    break;
+                case KeyComma:
+                    typedChar = shiftHeld ? '<' : ',';
+                    break;
                 case KeyMinus:
                     typedChar = shiftHeld ? '_' : '-';
                     break;
-                case KeyEquals:
-                    typedChar = shiftHeld ? '+' : '=';
+                case KeyPeriod:
+                    typedChar = shiftHeld ? '>' : '.';
+                    break;
+                case KeySlash:
+                    typedChar = shiftHeld ? '?' : '/';
                     break;
                 default:
                     FATAL_LOG("Unknown char found while trying to parse key for console '{}'.", keyCode);
@@ -216,8 +253,27 @@ namespace C3D::UI_2D
             return false;
         }
 
-        data.textComponent.Append(self, typedChar);
+        data.textComponent.Insert(self, data.characterIndex, typedChar);
+        data.characterIndex++;
+
         OnTextChanged(self);
+        return true;
+    }
+
+    bool Textbox::OnClick(Component& self, const MouseButtonEventContext& ctx)
+    {
+        // Set the textbox to active
+        auto& uiSystem = self.GetSystem<UI2DSystem>();
+        uiSystem.SetActive(self.GetID(), true);
+
+        // Determine cursor location
+        CalculateCursorOffset(self);
+
+        // Handle the optional user provided onClick handler method
+        if (self.pUserHandlers && self.pUserHandlers->onClickHandler)
+        {
+            return self.pUserHandlers->onClickHandler(ctx);
+        }
         return true;
     }
 

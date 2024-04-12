@@ -26,8 +26,9 @@ namespace C3D::UI_2D
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
         void Regenerate(Component& self);
         void SetText(Component& self, const char* _text);
-        void Append(Component& self, char c);
-        void RemoveLast(Component& self);
+
+        void Insert(Component& self, u32 index, char c);
+        void RemoveAt(Component& self, u32 index);
 
         void Destroy(Component& self);
     };

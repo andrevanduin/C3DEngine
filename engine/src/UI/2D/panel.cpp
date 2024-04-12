@@ -7,6 +7,7 @@
 namespace C3D::UI_2D
 {
     constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
+    constexpr auto BACKGROUND_COLOR     = vec4(0.05, 0.05, 0.05, 1.0);
 
     struct PanelData
     {
@@ -29,7 +30,7 @@ namespace C3D::UI_2D
     {
         self.Initialize(pos, size, ComponentTypePanel);
         auto& data = self.GetInternal<PanelData>();
-        data.nineSlice.Initialize(self, "Panel", AtlasIDPanel, size, cornerSize);
+        data.nineSlice.Initialize(self, "Panel", AtlasIDPanel, size, cornerSize, BACKGROUND_COLOR);
         return true;
     }
 

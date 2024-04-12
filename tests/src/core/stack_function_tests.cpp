@@ -320,14 +320,14 @@ u8 CallShouldWork()
 void StackFunction::RegisterTests(TestManager& manager)
 {
     manager.StartType("StackFunction");
-    manager.Register(CreateStaticFunc, "StackFunction should create properly with static function as argument");
-    manager.Register(CreateLambda, "StackFunction should create properly with a lambda function as argument");
-    manager.Register(CreateMemberFunc, "StackFunction should create properly with member function as argument");
-    manager.Register(CreateClassWithOperator,
-                     "StackFunction should create properly with a instance of a class that has operator() as argument");
-    manager.Register(CopyConstructorShouldWork, "StackFunction copy constructor should work");
-    manager.Register(CopyAssignmentOperatorShouldWork, "StackFunction copy assignment operator should work");
-    manager.Register(MoveConstructorShouldWork, "StackFunction move constructor should work");
-    manager.Register(MoveAssignmentOperatorShouldWork, "StackFunction move assignment operator should work");
-    manager.Register(CallShouldWork, "Stackfunction calling should work with multitude of arguments");
+    REGISTER_TEST(CreateStaticFunc, "StackFunction should create properly with static function as argument");
+    REGISTER_TEST(CreateLambda, "StackFunction should create properly with a lambda function as argument");
+    REGISTER_TEST(CreateMemberFunc, "StackFunction should create properly with member function as argument");
+    REGISTER_TEST(CreateClassWithOperator,
+                  "StackFunction should create properly with a instance of a class that has operator() as argument");
+    REGISTER_TEST(CopyConstructorShouldWork, "StackFunction copy constructor should work");
+    REGISTER_TEST(CopyAssignmentOperatorShouldWork, "StackFunction copy assignment operator should work");
+    REGISTER_TEST(MoveConstructorShouldWork, "StackFunction move constructor should work");
+    REGISTER_TEST(MoveAssignmentOperatorShouldWork, "StackFunction move assignment operator should work");
+    REGISTER_TEST(CallShouldWork, "Stackfunction calling should work with multitude of arguments");
 }

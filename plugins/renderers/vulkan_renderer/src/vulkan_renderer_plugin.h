@@ -70,7 +70,8 @@ namespace C3D
         bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) override;
         bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) override;
 
-        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps, u32* outInstanceId) override;
+        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps,
+                                            u32* outInstanceId) override;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) override;
 
         bool AcquireTextureMapResources(TextureMap& map) override;

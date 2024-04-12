@@ -114,8 +114,8 @@ namespace C3D
         virtual bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate)  = 0;
         virtual bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) = 0;
 
-        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, TextureMap** maps, u32* outInstanceId) = 0;
-        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId)                                             = 0;
+        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, const TextureMap** maps, u32* outInstanceId) = 0;
+        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId)                                                   = 0;
 
         virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
         virtual void ReleaseTextureMapResources(TextureMap& map) = 0;

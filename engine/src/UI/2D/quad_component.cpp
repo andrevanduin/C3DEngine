@@ -12,13 +12,14 @@ namespace C3D::UI_2D
 {
     constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
 
-    bool QuadComponent::Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& size)
+    bool QuadComponent::Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& size, const vec4& _color)
     {
         auto& uiSystem       = self.GetSystem<UI2DSystem>();
         auto& geometrySystem = self.GetSystem<GeometrySystem>();
         auto& renderSystem   = self.GetSystem<RenderSystem>();
 
         atlasID = _atlasID;
+        color   = _color;
 
         auto& descriptions = uiSystem.GetAtlasDescriptions(atlasID);
         atlasMin           = descriptions.defaultMin;
@@ -31,7 +32,7 @@ namespace C3D::UI_2D
         geometry = geometrySystem.AcquireFromConfig(config, true);
 
         // Acquire shader instance resources
-        TextureMap* maps[1] = { &uiSystem.GetAtlas() };
+        const TextureMap* maps[1] = { &uiSystem.GetAtlas() };
         if (!renderSystem.AcquireShaderInstanceResources(uiSystem.GetShader(), 1, maps, &renderable.instanceId))
         {
             ERROR_LOG("Failed to Acquire Shader Instance resources.");
@@ -54,8 +55,7 @@ namespace C3D::UI_2D
 
         shaderSystem.BindInstance(renderable.instanceId);
 
-        constexpr static auto jan = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-        shaderSystem.SetUniformByIndex(locations.properties, &jan);
+        shaderSystem.SetUniformByIndex(locations.properties, &color);
         shaderSystem.SetUniformByIndex(locations.diffuseTexture, &uiSystem.GetAtlas());
         shaderSystem.ApplyInstance(needsUpdate);
 

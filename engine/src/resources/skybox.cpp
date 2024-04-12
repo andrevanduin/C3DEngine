@@ -52,8 +52,8 @@ namespace C3D
 
         // Get our builtin skybox shader
         // TODO: Allow configurable shader here
-        const auto shader   = Shaders.Get("Shader.Builtin.Skybox");
-        TextureMap* maps[1] = { &cubeMap };
+        const auto shader         = Shaders.Get("Shader.Builtin.Skybox");
+        const TextureMap* maps[1] = { &cubeMap };
 
         // Acquire our shader instance resources
         if (!Renderer.AcquireShaderInstanceResources(*shader, 1, maps, &instanceId))

@@ -13,9 +13,11 @@ namespace C3D::UI_2D
         {
             TextComponent textComponent;
             NineSliceComponent nineSlice;
-            QuadComponent cursor;
-            f64 nextBlink   = 0.0;
+
             bool showCursor = false;
+            QuadComponent cursor;
+            f64 nextBlink      = 0.0;
+            u32 characterIndex = 0;
         };
 
         Component Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator);
@@ -27,10 +29,11 @@ namespace C3D::UI_2D
 
         void SetText(Component& self, const char* text);
 
-        void CalculateCursorOffset(InternalData& data);
+        void CalculateCursorOffset(Component& self);
         void OnTextChanged(Component& self);
 
         bool OnKeyDown(Component& self, const KeyEventContext& ctx);
+        bool OnClick(Component& self, const MouseButtonEventContext& ctx);
 
         void Destroy(Component& self, const DynamicAllocator* pAllocator);
 

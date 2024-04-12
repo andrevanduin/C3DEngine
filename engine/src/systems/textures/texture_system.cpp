@@ -164,7 +164,7 @@ namespace C3D
             }
             else
             {
-                t = Memory.Allocate<Texture>(MemoryType::Texture);
+                t = Memory.New<Texture>(MemoryType::Texture);
             }
         }
 

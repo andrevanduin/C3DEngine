@@ -17,10 +17,11 @@ TestManager::~TestManager() { C3D::GlobalMemorySystem::Destroy(); }
 
 void TestManager::StartType(const std::string& type) { m_currentType = type; }
 
-void TestManager::Register(u8 (*pFnTest)(), const std::string& description)
+void TestManager::Register(TestFunc func, const std::string& name, const std::string& description)
 {
     TestEntry e;
-    e.func        = pFnTest;
+    e.func        = func;
+    e.name        = name;
     e.description = description;
     e.type        = m_currentType;
     m_tests.push_back(e);
@@ -52,6 +53,8 @@ void TestManager::RunTests()
 
         i++;
 
+        INFO_LOG("Executing ({}/{}): {} - {}", i, m_tests.size(), test.name, test.description);
+
         testTime.Begin();
 
         const u8 result = test.func();
@@ -59,24 +62,24 @@ void TestManager::RunTests()
         testTime.End();
 
         if (result == PASSED)
+        {
             passed++;
+            INFO_LOG("Result: SUCCESS (Ran in {:.4f} sec)", testTime.GetElapsed());
+        }
         else if (result == SKIPPED)
         {
             skipped++;
-            WARN_LOG("[SKIPPED] - {}.", test.description);
+            WARN_LOG("Result: SKIPPED (Ran in {:.4f} sec)", testTime.GetElapsed());
         }
         else if (result == FAILED)
         {
-            ERROR_LOG("[FAILED] - {}.", test.description);
             failed++;
+            ERROR_LOG("Result: FAILED (Ran in {:.4f} sec)", testTime.GetElapsed());
         }
-
-        auto status = failed ? "*** FAILED ***" : "SUCCESS";
-        INFO_LOG("Executed {} of {} (skipped {}) {} ({:.4f} sec / {:.4f} sec total).", i, m_tests.size(), skipped, status,
-                 testTime.GetElapsed(), testTime.GetTotalElapsed());
     }
 
-    INFO_LOG("Results: {} passed, {} failed and {} skipped. Ran in {:.4f} sec.", passed, failed, skipped, testTime.GetTotalElapsed());
+    INFO_LOG("Results: {} passed, {} failed and {} skipped. Total runtime {:.4f} sec.", passed, failed, skipped,
+             testTime.GetTotalElapsed());
 
     platform.OnShutdown();
 }

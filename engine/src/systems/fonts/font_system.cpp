@@ -143,7 +143,107 @@ namespace C3D
         return false;
     }
 
-    FontData& FontSystem::GetFontData(FontHandle handle) { return m_bitmapFonts[handle].resource.data; }
+    FontGlyph* FontSystem::GetFontGlyph(const FontData& data, const i32 codepoint) const
+    {
+        for (auto& g : data.glyphs)
+        {
+            if (g.codepoint == codepoint)
+            {
+                return &g;
+            }
+        }
+        return nullptr;
+    }
+
+    f32 FontSystem::GetFontKerningAmount(const FontData& data, const String& text, const i32 codepoint, const u32 offset,
+                                         const u64 utf8Size) const
+    {
+        if (offset > utf8Size - 1) return 0;
+
+        u8 advanceNext          = 0;
+        const i32 nextCodepoint = text.ToCodepoint(offset, advanceNext);
+        if (nextCodepoint == -1) return 0;
+
+        for (const auto& k : data.kernings)
+        {
+            if (k.codepoint0 == codepoint && k.codepoint1 == nextCodepoint)
+            {
+                return k.amount;
+            }
+        }
+        return 0;
+    }
+
+    vec2 FontSystem::MeasureString(FontHandle handle, const String& text, u32 size) const
+    {
+        vec2 extents;
+
+        u32 charLength = size > text.Size() ? text.Size() : size;
+        u32 utf8Length = text.SizeUtf8();
+
+        f32 x = 0;
+        f32 y = 0;
+
+        auto& fontData = GetFontData(handle);
+
+        // Take the length in chars and get the correct codepoint from it.
+        for (u32 c = 0; c < charLength; ++c)
+        {
+            i32 codepoint = text[c];
+
+            // Continue to the next line for newlines
+            if (codepoint == '\n')
+            {
+                x = 0;
+                y += static_cast<f32>(fontData.lineHeight);
+                continue;
+            }
+
+            if (codepoint == '\t')
+            {
+                x += fontData.tabXAdvance;
+                continue;
+            }
+
+            u8 advance = 0;
+            codepoint  = text.ToCodepoint(c, advance);
+
+            const FontGlyph* glyph = GetFontGlyph(fontData, codepoint);
+            if (!glyph)
+            {
+                // If we don't have a valid glyph for the codepoint we simply revert to the codepoint = 1 glyph
+                // (fallback glyph)
+                glyph = GetFontGlyph(fontData, -1);
+            }
+
+            if (glyph)
+            {
+                x += glyph->xAdvance + GetFontKerningAmount(fontData, text, codepoint, c + advance, utf8Length);
+            }
+            else
+            {
+                ERROR_LOG("Failed find codepoint. Skipping this glyph.");
+                continue;
+            }
+
+            // Increment our character index (subtracting 1 since our loop will increment every iteration by 1)
+            c += advance - 1;
+        }
+
+        // One last check in case of no more newlines.
+        if (x > extents.x)
+        {
+            extents.x = x;
+        }
+
+        // Since y starts 0-based, we need to add one more to make it 1-line based.
+        y += fontData.lineHeight;
+        extents.y = y;
+
+        return extents;
+    }
+
+    const FontData& FontSystem::GetFontData(FontHandle handle) const { return m_bitmapFonts[handle].resource.data; }
 
     bool FontSystem::SetupFontData(FontData& font) const
     {

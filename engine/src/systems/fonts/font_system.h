@@ -59,12 +59,16 @@ namespace C3D
         void Release(FontHandle handle);
 
         bool VerifyAtlas(FontHandle handle, const String& text) const;
+        vec2 MeasureString(FontHandle handle, const String& text, u32 size = 0) const;
 
-        FontData& GetFontData(FontHandle handle);
+        const FontData& GetFontData(FontHandle handle) const;
 
     private:
         bool SetupFontData(FontData& font) const;
         void CleanupFontData(FontData& font) const;
+
+        FontGlyph* GetFontGlyph(const FontData& data, const i32 codepoint) const;
+        f32 GetFontKerningAmount(const FontData& data, const String& text, const i32 codepoint, const u32 offset, const u64 utf8Size) const;
 
         HashMap<FontHandle, BitmapFontLookup> m_bitmapFonts;
         HashMap<const char*, FontHandle> m_bitmapNameLookup;

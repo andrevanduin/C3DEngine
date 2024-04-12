@@ -63,7 +63,7 @@ namespace C3D::UI_2D
         if (textSize < 1) textSize = 1;
 
         // Acquire shader instance resources
-        TextureMap* maps[1] = { &fontSystem.GetFontData(font).atlas };
+        const TextureMap* maps[1] = { &fontSystem.GetFontData(font).atlas };
         if (!renderSystem.AcquireShaderInstanceResources(uiSystem.GetShader(), 1, maps, &renderable.instanceId))
         {
             ERROR_LOG("Failed to Acquire Shader Instance resources.");
@@ -295,14 +295,15 @@ namespace C3D::UI_2D
         Regenerate(self);
     }
 
-    void TextComponent::Append(Component& self, char c)
+    void TextComponent::Insert(Component& self, u32 index, char c)
     {
-        text.Append(c);
+        text.Insert(index, c);
         Regenerate(self);
     }
-    void TextComponent::RemoveLast(Component& self)
+
+    void TextComponent::RemoveAt(Component& self, u32 index)
     {
-        text.RemoveLast();
+        text.RemoveAt(index);
         Regenerate(self);
     }
 

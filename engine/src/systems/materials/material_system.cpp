@@ -271,7 +271,7 @@ namespace C3D
             materials.Clear();
 
             // Acquire instance resource for all our maps
-            TextureMap** maps = Memory.Allocate<TextureMap*>(MemoryType::Array, maxMapCount);
+            const TextureMap** maps = Memory.Allocate<const TextureMap*>(MemoryType::Array, maxMapCount);
             // Assign our material's maps
             for (u32 i = 0; i < maxMapCount; i++)
             {
@@ -530,7 +530,7 @@ namespace C3D
         m_defaultMaterial.maps[1].texture = Textures.GetDefaultSpecular();
         m_defaultMaterial.maps[2].texture = Textures.GetDefaultNormal();
 
-        TextureMap* maps[3] = { &m_defaultMaterial.maps[0], &m_defaultMaterial.maps[1], &m_defaultMaterial.maps[2] };
+        const TextureMap* maps[3] = { &m_defaultMaterial.maps[0], &m_defaultMaterial.maps[1], &m_defaultMaterial.maps[2] };
 
         Shader* shader = Shaders.Get("Shader.Builtin.Material");
         if (!Renderer.AcquireShaderInstanceResources(*shader, 3, maps, &m_defaultMaterial.internalId))
@@ -562,7 +562,8 @@ namespace C3D
         m_defaultTerrainMaterial.maps[1].texture = Textures.GetDefaultSpecular();
         m_defaultTerrainMaterial.maps[2].texture = Textures.GetDefaultNormal();
 
-        TextureMap* maps[3] = { &m_defaultTerrainMaterial.maps[0], &m_defaultTerrainMaterial.maps[1], &m_defaultTerrainMaterial.maps[2] };
+        const TextureMap* maps[3] = { &m_defaultTerrainMaterial.maps[0], &m_defaultTerrainMaterial.maps[1],
+                                      &m_defaultTerrainMaterial.maps[2] };
 
         Shader* shader = Shaders.Get("Shader.Builtin.Terrain");
         if (!Renderer.AcquireShaderInstanceResources(*shader, 3, maps, &m_defaultTerrainMaterial.internalId))
@@ -787,7 +788,7 @@ namespace C3D
         }
 
         // Gather a list of pointers to our texture maps
-        TextureMap** maps = Memory.Allocate<TextureMap*>(MemoryType::Array, mapCount);
+        const TextureMap** maps = Memory.Allocate<const TextureMap*>(MemoryType::Array, mapCount);
         for (u32 i = 0; i < mapCount; i++)
         {
             maps[i] = &mat.maps[i];
