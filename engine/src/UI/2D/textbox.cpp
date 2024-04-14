@@ -204,17 +204,46 @@ namespace C3D::UI_2D
             return true;
         }
 
-        if (keyCode == KeyBackspace || keyCode == KeyDelete)
+        if (keyCode == KeyBackspace)
         {
             if (!text.Empty())
             {
                 if (data.characterIndexStart == data.characterIndexEnd)
                 {
+                    // Delete character behind the cursor
                     data.textComponent.RemoveAt(self, data.characterIndexCurrent - 1);
                     data.characterIndexStart--;
                 }
                 else
                 {
+                    // Delete range
+                    data.textComponent.RemoveRange(self, data.characterIndexStart, data.characterIndexEnd);
+                }
+
+                data.characterIndexEnd     = data.characterIndexStart;
+                data.characterIndexCurrent = data.characterIndexStart;
+
+                OnTextChanged(self);
+                CalculateHighlight(self, false);
+            }
+            return true;
+        }
+
+        if (keyCode == KeyDelete)
+        {
+            if (!text.Empty())
+            {
+                if (data.characterIndexStart == data.characterIndexEnd)
+                {
+                    // Delete character in front the cursor
+                    if (data.characterIndexCurrent < text.Size())
+                    {
+                        data.textComponent.RemoveAt(self, data.characterIndexCurrent);
+                    }
+                }
+                else
+                {
+                    // Delete range
                     data.textComponent.RemoveRange(self, data.characterIndexStart, data.characterIndexEnd);
                 }
 
