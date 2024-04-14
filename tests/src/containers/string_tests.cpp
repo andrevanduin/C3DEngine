@@ -24,6 +24,65 @@ u8 StringShouldCreateEmptyWithEmptyCtor()
     return true;
 }
 
+u8 StringOperatorEqualsConstChar()
+{
+    // Starting string is stack allocated
+    {
+        // operator=(const char* other) with other.length < 15
+        C3D::String stack = "1234";
+        const char* other = "123456";
+
+        stack = other;
+        ExpectToBeTrue(stack == C3D::String("123456"));
+
+        // Since both are stack allocated we expect no dynamic memory usage
+        ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+    }
+    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+
+    {
+        // operator=(const char* other) with other.length >= 15
+        C3D::String stack = "1234";
+        const char* other = "1234567891011121314151617";
+
+        stack = other;
+        ExpectToBeTrue(stack == C3D::String("1234567891011121314151617"));
+
+        // Since other is > 15 we expect a dynamic memory allocation
+        ExpectShouldBe(std::strlen(other) + 1, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::C3DString));
+    }
+    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+
+    // Starting string is heap allocated
+    {
+        // operator=(const char* other) with other.length < 15
+        C3D::String heap  = "123456789101112131415";
+        const char* other = "123456";
+
+        heap = other;
+        ExpectToBeTrue(heap == C3D::String("123456"));
+
+        // Since other is < 15 we expect no memory usage
+        ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+    }
+    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+
+    {
+        // operator=(const char* other) with other.length >= 15
+        C3D::String heap  = "123456789101112131415";
+        const char* other = "1234567891011121314151617";
+
+        heap = other;
+        ExpectToBeTrue(heap == C3D::String("1234567891011121314151617"));
+
+        // Since other is > 15 we expect a dynamic memory allocation
+        ExpectShouldBe(std::strlen(other) + 1, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::C3DString));
+    }
+    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+
+    return true;
+}
+
 u8 StringShouldDoIntegerConversion()
 {
     Util util;
@@ -164,16 +223,130 @@ u8 StringShouldSplit()
     return true;
 }
 
+u8 StringInsert()
+{
+    C3D::String test("134");
+
+    // Test if we can insert at a random spot
+    test.Insert(1, '2');
+    ExpectToBeTrue(test == C3D::String("1234"));
+
+    // Test if we can insert at the start
+    test.Insert(0, '0');
+    ExpectToBeTrue(test == C3D::String("01234"));
+
+    // Test if we can insert at the end
+    test.Insert(5, '5');
+    ExpectToBeTrue(test == C3D::String("012345"));
+
+    // This should also work for heap allocated strings
+    C3D::String heapTest("aaaaaaaaaaaaaaaa");
+    heapTest.Insert(16, 'b');
+    ExpectToBeTrue(heapTest == C3D::String("aaaaaaaaaaaaaaaab"));
+    ExpectShouldBe(17, heapTest.Size());
+
+    heapTest.Insert(5, '5');
+    ExpectToBeTrue(heapTest == C3D::String("aaaaa5aaaaaaaaaaab"));
+    ExpectShouldBe(18, heapTest.Size());
+
+    return true;
+}
+
+u8 StringRemoveAt()
+{
+    C3D::String test("012234");
+
+    // Test if we can remove at a random location
+    test.RemoveAt(2);
+    ExpectToBeTrue(test == C3D::String("01234"));
+
+    // Test if we can remove at the start
+    test.RemoveAt(0);
+    ExpectToBeTrue(test == C3D::String("1234"));
+
+    // Test if we can remove at the end
+    test.RemoveAt(3);
+    ExpectToBeTrue(test == C3D::String("123"));
+
+    // Ensure we don't crash when we try to remove at index > size
+    test.RemoveAt(100);
+
+    // Ensure we don't crash when we try to RemoveAt on a string with 0 chars
+    C3D::String empty;
+    empty.RemoveAt(4);
+
+    return true;
+}
+
+u8 StringRemoveRange()
+{
+    {
+        // Remove range at the start of the string
+        C3D::String test("0123456789");
+        test.RemoveRange(0, 4);
+        ExpectToBeTrue(test == C3D::String("56789"));
+    }
+
+    {
+        // Remove range at the end of the string
+        C3D::String test("0123456789");
+        test.RemoveRange(7, 9);
+        ExpectToBeTrue(test == C3D::String("0123456"));
+    }
+
+    {
+        // Remove range in the middle of the string
+        C3D::String test("0123456789");
+        test.RemoveRange(3, 5);
+        ExpectToBeTrue(test == C3D::String("0126789"));
+    }
+
+    {
+        // Remove range of length 1
+        C3D::String test("0123456789");
+        test.RemoveRange(2, 2);
+        ExpectToBeTrue(test == C3D::String("013456789"));
+    }
+
+    {
+        // Ignore ranges starting > str.Size()
+        C3D::String test("01234");
+        test.RemoveRange(8, 9);
+        ExpectToBeTrue(test == C3D::String("01234"));
+    }
+
+    {
+        // Ignore ranges ending > str.Size()
+        C3D::String test("01234");
+        test.RemoveRange(2, 10);
+        ExpectToBeTrue(test == C3D::String("01234"));
+    }
+
+    {
+        // Ignore ranges start > end
+        C3D::String test("01234");
+        test.RemoveRange(3, 1);
+        ExpectToBeTrue(test == C3D::String("01234"));
+    }
+
+    return true;
+}
+
 void String::RegisterTests(TestManager& manager)
 {
     manager.StartType("String");
-    manager.Register(StringShouldCreateEmptyWithEmptyCtor, "Strings should be created empty with default CTOR.");
-    manager.Register(StringShouldDoIntegerConversion, "You should be able to create string from integers.");
-    manager.Register(StringShouldDoBooleanConversion, "You should be able to create string from booleans.");
-    manager.Register(StringShouldUseSso, "Strings should not dynamically allocate memory if they are small (SSO).");
-    manager.Register(StringShouldCompare, "String should compare with each other and with char* .");
-    manager.Register(StringShouldBeTruthy, "String should evaluate to truthy values.");
-    manager.Register(StringShouldAppend, "Strings and chars should append to strings.");
-    manager.Register(StringShouldTrim, "String should properly trim.");
-    manager.Register(StringShouldSplit, "String should properly split into parts.");
+
+    REGISTER_TEST(StringShouldCreateEmptyWithEmptyCtor, "Strings should be created empty with default CTOR.");
+    REGISTER_TEST(StringOperatorEqualsConstChar, "Strings should correctly allocate when operator=(const char*) is used");
+    REGISTER_TEST(StringShouldDoIntegerConversion, "You should be able to create string from integers.");
+    REGISTER_TEST(StringShouldDoBooleanConversion, "You should be able to create string from booleans.");
+    REGISTER_TEST(StringShouldUseSso, "Strings should not dynamically allocate memory if they are small (SSO).");
+    REGISTER_TEST(StringShouldCompare, "String should compare with each other and with char* .");
+    REGISTER_TEST(StringShouldBeTruthy, "String should evaluate to truthy values.");
+    REGISTER_TEST(StringShouldAppend, "Strings and chars should append to strings.");
+    REGISTER_TEST(StringShouldTrim, "String should properly trim.");
+    REGISTER_TEST(StringShouldSplit, "String should properly split into parts.");
+    REGISTER_TEST(StringInsert, "String should allow chars to be inserted at arbitrary points.");
+    REGISTER_TEST(StringRemoveAt, "String should allow chars to be removed at arbitrary locations.");
+    REGISTER_TEST(StringRemoveRange, "String should allow arbitrary ranges of chars to be removed.");
 }

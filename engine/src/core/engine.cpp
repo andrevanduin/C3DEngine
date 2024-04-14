@@ -8,6 +8,7 @@
 #include "metrics/metrics.h"
 #include "platform/platform.h"
 #include "renderer/renderer_frontend.h"
+#include "systems/UI/2D/ui2d_system.h"
 #include "systems/audio/audio_system.h"
 #include "systems/cameras/camera_system.h"
 #include "systems/cvars/cvar_system.h"
@@ -38,23 +39,6 @@ namespace C3D
         C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the engine twice");
 
         const auto appState = m_application->m_appState;
-
-        // Check the appliation flags and set some properties based on those
-        if (appState->flags & ApplicationFlagWindowFullScreen)
-        {
-            appState->width  = Platform::GetPrimaryScreenWidth();
-            appState->height = Platform::GetPrimaryScreenWidth();
-        }
-
-        if (appState->flags & ApplicationFlagWindowCenter || appState->flags & ApplicationFlagWindowCenterHorizontal)
-        {
-            appState->x = (Platform::GetPrimaryScreenWidth() / 2) - (appState->width / 2);
-        }
-
-        if (appState->flags & ApplicationFlagWindowCenter || appState->flags & ApplicationFlagWindowCenterVertical)
-        {
-            appState->y = (Platform::GetPrimaryScreenHeight() / 2) - (appState->height / 2);
-        }
 
         // Setup our frame allocator
         m_frameAllocator.Create("FRAME_ALLOCATOR", appState->frameAllocatorSize);
@@ -88,9 +72,10 @@ namespace C3D
 
         constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
         constexpr ShaderSystemConfig shaderSystemConfig{ 128, 128, 31, 31 };
-        const PlatformSystemConfig platformConfig{ windowName.Data(), appState->x, appState->y, appState->width, appState->height };
+        const PlatformSystemConfig platformConfig{ windowName.Data(), appState->windowConfig };
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
         const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled };
+        constexpr UI2DSystemConfig ui2dSystemConfig{ 1024, MebiBytes(16) };
         constexpr AudioSystemConfig audioSystemConfig{ "C3DOpenAL", 0, ChannelType::Stereo, 4096 * 16, 8 };
 
         // Init before boot systems
@@ -101,6 +86,7 @@ namespace C3D
         m_systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);  // Resource System
         m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);        // Shader System
         m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);        // Render System
+        m_systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);              // UI2D System
         m_systemsManager.RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);           //  Audio System
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
@@ -170,6 +156,11 @@ namespace C3D
         m_state.initialized = true;
         m_state.lastTime    = 0;
 
+        // Get the window size from the OS since it could be any size (depending on the options that the user requested)
+        auto size            = OS.GetWindowSize();
+        m_state.windowWidth  = size.x;
+        m_state.windowHeight = size.y;
+
         m_pConsole->OnInit(&m_systemsManager);
         return true;
     }
@@ -187,7 +178,11 @@ namespace C3D
         m_state.clocks.present.SetPlatform(os);
         m_state.clocks.total.SetPlatform(os);
 
+        UI2D.OnRun();
+
+        m_pConsole->OnRun();
         m_application->OnRun(m_frameData);
+        OnResize(m_state.windowWidth, m_state.windowHeight);
 
         Metrics.PrintMemoryUsage();
 
@@ -222,7 +217,7 @@ namespace C3D
                     if (m_state.framesSinceResize >= 5)
                     {
                         const auto appState = m_application->m_appState;
-                        OnResize(appState->width, appState->height);
+                        OnResize(m_state.windowWidth, m_state.windowHeight);
                     }
                     else
                     {
@@ -241,7 +236,7 @@ namespace C3D
                     // If we fail to prepare the frame we just skip this frame since we are propabably just done resizing
                     // or we just changed a renderer flag (like VSYNC) which will require resource recreation and will skip a frame.
                     // Notify our application of the resize
-                    m_application->OnResize();
+                    m_application->OnResize(m_state.windowWidth, m_state.windowHeight);
                     continue;
                 }
 
@@ -315,21 +310,11 @@ namespace C3D
         // Prepare our next frame
         Renderer.PrepareFrame(m_frameData);
         // Notify our application of the resize
-        m_application->OnResize();
+        m_application->OnResize(width, height);
 
         m_state.framesSinceResize = 0;
         m_state.resizing          = false;
     }
-
-    void Engine::GetFrameBufferSize(u32* width, u32* height) const
-    {
-        const auto appState = m_application->m_appState;
-
-        *width  = appState->width;
-        *height = appState->height;
-    }
-
-    const EngineState* Engine::GetState() const { return &m_state; }
 
     void Engine::OnApplicationLibraryReload(Application* app)
     {
@@ -353,7 +338,7 @@ namespace C3D
         m_frameAllocator.Destroy();
 
         // Free the application specific frame data
-        Memory.Free(m_frameData.applicationFrameData);
+        Memory.Delete(m_frameData.applicationFrameData);
 
         // Shutdown our console
         m_pConsole->OnShutDown();
@@ -373,18 +358,16 @@ namespace C3D
             // Start counting the frames since the last resize
             m_state.framesSinceResize = 0;
 
-            const u16 width     = context.data.u16[0];
-            const u16 height    = context.data.u16[1];
-            const auto appState = m_application->m_appState;
+            const u16 width  = context.data.u16[0];
+            const u16 height = context.data.u16[1];
 
             // We only update out width and height if they actually changed
-            if (width != appState->width || height != appState->height)
+            if (width != m_state.windowWidth || height != m_state.windowHeight)
             {
                 INFO_LOG("width: '{}' and height: '{}'.", width, height);
 
-                const auto appState = m_application->m_appState;
-                appState->width     = width;
-                appState->height    = height;
+                m_state.windowWidth  = width;
+                m_state.windowHeight = height;
 
                 if (width == 0 || height == 0)
                 {

@@ -95,9 +95,17 @@ namespace C3D
             {
                 if (value.ToBool()) resource.flags |= ShaderFlagDepthTest;
             }
+            else if (varName.IEquals("stencilTest"))
+            {
+                if (value.ToBool()) resource.flags |= ShaderFlagStencilTest;
+            }
             else if (varName.IEquals("depthWrite"))
             {
                 if (value.ToBool()) resource.flags |= ShaderFlagDepthWrite;
+            }
+            else if (varName.IEquals("stencilWrite"))
+            {
+                if (value.ToBool()) resource.flags |= ShaderFlagStencilWrite;
             }
             else if (varName.IEquals("wireframe"))
             {

@@ -83,6 +83,52 @@ namespace C3D
 
         void SetWinding(RendererWinding winding) const;
 
+        /**
+         * @brief Sets Stencil testing to enabled or disabled.
+         *
+         * @param enabled Bool indicating if you want Stencil testing enabled or disabled
+         */
+        void SetStencilTestingEnabled(bool enabled) const;
+
+        /**
+         * @brief Sets the Stencil Reference for testing.
+         *
+         * @param reference The reference to use when stencil testing/writing
+         */
+        void SetStencilReference(u32 reference) const;
+
+        /**
+         * @brief Sets the Stencil Compare Mask.
+         *
+         * @param compareMask The value to use for the Stencil Compare Mask
+         */
+        void SetStencilCompareMask(u8 compareMask) const;
+
+        /**
+         * @brief Sets the Stencil Write Mask.
+         *
+         * @param writeMask The value to use for the Stencil Write Mask
+         */
+        void SetStencilWriteMask(u8 writeMask) const;
+
+        /**
+         * @brief Sets the Stencil operation.
+         *
+         * @param failOp The action that should be performed on samples that fail the stencil test
+         * @param passOp The action that should be performed on samples that pass both depth and stencil tests
+         * @param depthFailOp The action that should be performed on samples that pass the stencil test but fail the depth test
+         * @param compareOp The comparison operaion used in the stencil test
+         */
+        void SetStencilOperation(StencilOperation failOp, StencilOperation passOp, StencilOperation depthFailOp,
+                                 CompareOperation compareOp) const;
+
+        /**
+         * @brief Sets Depth testing to enabled or disabled.
+         *
+         * @param enabled Bool indicating if you want Depth testing enabled or disabled
+         */
+        void SetDepthTestingEnabled(bool enabled) const;
+
         void CreateTexture(const u8* pixels, Texture* texture) const;
         void CreateWritableTexture(Texture* texture) const;
 
@@ -96,7 +142,7 @@ namespace C3D
 
         bool CreateGeometry(Geometry& geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount,
                             const void* indices) const;
-        bool UploadGeometry(Geometry& geometry) const;
+        bool UploadGeometry(Geometry& geometry);
         void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) const;
         void DestroyGeometry(Geometry& geometry) const;
 
@@ -117,7 +163,7 @@ namespace C3D
         bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) const;
         bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) const;
 
-        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps, u32* outInstanceId) const;
+        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps, u32* outInstanceId) const;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) const;
 
         bool AcquireTextureMapResources(TextureMap& map) const;
@@ -139,6 +185,11 @@ namespace C3D
 
         [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
                                                        RenderBufferTrackType trackType) const;
+
+        bool AllocateInRenderBuffer(RenderBufferType type, u64 size, u64& outOffset);
+        bool FreeInRenderBuffer(RenderBufferType type, u64 size, u64 offset);
+        bool LoadRangeInRenderBuffer(RenderBufferType type, u64 offset, u64 size, const void* data);
+
         bool DestroyRenderBuffer(RenderBuffer* buffer) const;
 
         const Viewport* GetActiveViewport() const;
@@ -152,6 +203,9 @@ namespace C3D
     private:
         u8 m_windowRenderTargetCount = 0;
         u32 m_frameBufferWidth = 1280, m_frameBufferHeight = 720;
+
+        RenderBuffer* m_geometryVertexBuffer;
+        RenderBuffer* m_geometryIndexBuffer;
 
         DynamicLibrary m_backendDynamicLibrary;
         RendererPlugin* m_backendPlugin = nullptr;

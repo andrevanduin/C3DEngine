@@ -16,19 +16,43 @@ namespace C3D
         : m_position(position), m_scale(scale), m_rotation(rotation)
     {}
 
-    Transform* Transform::GetParent() const { return m_parent; }
+    const Transform* Transform::GetParent() const { return m_parent; }
 
-    void Transform::SetParent(Transform* parent)
+    void Transform::SetParent(const Transform* parent)
     {
         m_parent      = parent;
         m_needsUpdate = true;
     }
 
-    vec3 Transform::GetPosition() const { return m_position; }
+    const vec3& Transform::GetPosition() const { return m_position; }
 
     void Transform::SetPosition(const vec3& position)
     {
         m_position    = position;
+        m_needsUpdate = true;
+    }
+
+    f32 Transform::GetX() const { return m_position.x; }
+
+    void Transform::SetX(f32 x)
+    {
+        m_position.x  = x;
+        m_needsUpdate = true;
+    }
+
+    f32 Transform::GetY() const { return m_position.y; }
+
+    void Transform::SetY(f32 y)
+    {
+        m_position.y  = y;
+        m_needsUpdate = true;
+    }
+
+    f32 Transform::GetZ() const { return m_position.z; }
+
+    void Transform::SetZ(f32 z)
+    {
+        m_position.z  = z;
         m_needsUpdate = true;
     }
 
@@ -38,7 +62,7 @@ namespace C3D
         m_needsUpdate = true;
     }
 
-    quat Transform::GetRotation() const { return m_rotation; }
+    const quat& Transform::GetRotation() const { return m_rotation; }
 
     void Transform::SetRotation(const quat& rotation)
     {
@@ -61,7 +85,7 @@ namespace C3D
         m_needsUpdate = true;
     }
 
-    vec3 Transform::GetScale() const { return m_scale; }
+    const vec3& Transform::GetScale() const { return m_scale; }
 
     void Transform::SetScale(const vec3& scale)
     {
@@ -161,7 +185,7 @@ namespace C3D
             return ret;
         }
         // If we have no parent get the determinant from the local matrix
-        m_determinant = glm::determinant(local); 
+        m_determinant = glm::determinant(local);
         return local;
     }
 }  // namespace C3D

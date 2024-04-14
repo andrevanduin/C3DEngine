@@ -3,7 +3,6 @@
 #include "core/defines.h"
 #include "core/logger.h"
 #include "render_buffer.h"
-#include "render_view_types.h"
 #include "renderer_types.h"
 
 namespace C3D
@@ -33,8 +32,6 @@ namespace C3D
         virtual bool Begin(const FrameData& frameData)        = 0;
         virtual bool End(const FrameData& frameData)          = 0;
 
-        virtual void DrawGeometry(const GeometryRenderData& data) = 0;
-
         virtual bool Present(const FrameData& frameData) = 0;
 
         virtual void SetViewport(const vec4& rect) = 0;
@@ -45,6 +42,52 @@ namespace C3D
         virtual void ResetScissor() = 0;
         /** @brief Sets the Renderer's vertex winding direction. */
         virtual void SetWinding(RendererWinding winding) = 0;
+
+        /**
+         * @brief Sets Stencil testing to enabled or disabled.
+         *
+         * @param enabled Bool indicating if you want Stencil testing enabled or disabled
+         */
+        virtual void SetStencilTestingEnabled(bool enabled) = 0;
+
+        /**
+         * @brief Sets the Stencil Reference for testing.
+         *
+         * @param reference The reference to use when stencil testing/writing
+         */
+        virtual void SetStencilReference(u32 reference) = 0;
+
+        /**
+         * @brief Sets the Stencil Compare Mask.
+         *
+         * @param compareMask The value to use for the Stencil Compare Mask
+         */
+        virtual void SetStencilCompareMask(u32 compareMask) = 0;
+
+        /**
+         * @brief Sets the Stencil Write Mask.
+         *
+         * @param writeMask The value to use for the Stencil Write Mask
+         */
+        virtual void SetStencilWriteMask(u32 writeMask) = 0;
+
+        /**
+         * @brief Sets the Stencil operation.
+         *
+         * @param failOp The action that should be performed on samples that fail the stencil test
+         * @param passOp The action that should be performed on samples that pass both depth and stencil tests
+         * @param depthFailOp The action that should be performed on samples that pass the stencil test but fail the depth test
+         * @param compareOp The comparison operaion used in the stencil test
+         */
+        virtual void SetStencilOperation(StencilOperation failOp, StencilOperation passOp, StencilOperation depthFailOp,
+                                         CompareOperation compareOp) = 0;
+
+        /**
+         * @brief Sets Depth testing to enabled or disabled.
+         *
+         * @param enabled Bool indicating if you want Depth testing enabled or disabled
+         */
+        virtual void SetDepthTestingEnabled(bool enabled) = 0;
 
         virtual bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) = 0;
         virtual bool EndRenderPass(RenderPass* pass)                                    = 0;
@@ -57,13 +100,7 @@ namespace C3D
         virtual void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba)            = 0;
 
         virtual void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) = 0;
-
-        virtual void DestroyTexture(Texture* texture) = 0;
-
-        virtual bool CreateGeometry(Geometry& geometry)                                                                    = 0;
-        virtual bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset, u32 indexRange) = 0;
-        virtual void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices)   = 0;
-        virtual void DestroyGeometry(Geometry& geometry)                                                                   = 0;
+        virtual void DestroyTexture(Texture* texture)                             = 0;
 
         virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
         virtual void DestroyShader(Shader& shader)                                                    = 0;
@@ -77,8 +114,8 @@ namespace C3D
         virtual bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate)  = 0;
         virtual bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) = 0;
 
-        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, TextureMap** maps, u32* outInstanceId) = 0;
-        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId)                                             = 0;
+        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, const TextureMap** maps, u32* outInstanceId) = 0;
+        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId)                                                   = 0;
 
         virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
         virtual void ReleaseTextureMapResources(TextureMap& map) = 0;

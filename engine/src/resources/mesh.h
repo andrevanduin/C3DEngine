@@ -1,6 +1,7 @@
 
 #pragma once
 #include "containers/string.h"
+#include "core/uuid.h"
 #include "loaders/mesh_loader.h"
 #include "renderer/transform.h"
 #include "resources/geometry_config.h"
@@ -44,6 +45,8 @@ namespace C3D
 
         bool Destroy();
 
+        UUID GetId() const { return m_id; }
+
         const String& GetName() const { return config.name; }
 
         DebugBox3D* GetDebugBox() const { return m_debugBox; }
@@ -52,7 +55,6 @@ namespace C3D
 
         const Extents3D& GetExtents() const { return m_extents; }
 
-        u32 uniqueId  = INVALID_ID;
         u8 generation = INVALID_ID_U8;
 
         DynamicArray<Geometry*> geometries;
@@ -66,6 +68,8 @@ namespace C3D
         void LoadJobSuccess();
 
         void LoadJobFailure();
+
+        UUID m_id;
 
         MeshResource m_resource;
         Extents3D m_extents;
@@ -83,7 +87,7 @@ namespace C3D
 
         bool Unload();
 
-        u32 uniqueId  = INVALID_ID;
+        UUID uuid;
         u8 generation = INVALID_ID_U8;
 
         DynamicArray<Geometry*> geometries;

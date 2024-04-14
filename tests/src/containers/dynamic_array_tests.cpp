@@ -635,40 +635,39 @@ u8 DynamicArrayShouldReallocWithNonTrivialCopyConstructorObjects()
 void DynamicArray::RegisterTests(TestManager& manager)
 {
     manager.StartType("DynamicArray");
-    manager.Register(DynamicArrayShouldCreateAndDestroy,
-                     "Dynamic array should internally allocate memory and destroy it properly on destroy");
-    manager.Register(DynamicArrayShouldReserve, "Dynamic array should internally allocate enough space after Reserve() call");
-    manager.Register(DynamicArrayShouldReserveWithElementsPresent,
-                     "Dynamic array should internally allocate enough space after Reserve() call");
-    manager.Register(DynamicArrayShouldResize, "Dynamic array should Resize() and allocate enough memory with default objects");
-    manager.Register(DynamicArrayShouldAllocateLargeBlocks,
-                     "Dynamic array should also work when allocating lots of storage for complex structs");
-    manager.Register(DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize,
-                     "Dynamic array should also work when allocating lots of storage for complex structs after at "
-                     "least 1 element is added");
-    manager.Register(DynamicArrayShouldReallocate,
-                     "Dynamic array should reallocate whenever there is not enough space and also cleanup the old memory.");
-    manager.Register(DynamicArrayShouldIterate, "Dynamic array should iterate over all it's elements in a foreach loop");
-    manager.Register(DynamicArrayShouldDestroyWhenLeavingScope,
-                     "Dynamic array should be automatically destroyed and cleaned up after leaving scope");
-    manager.Register(DynamicArrayShouldCallDestructorsOfElementsWhenDestroyed,
-                     "Dynamic array should automatically call the destructor of every element when it is destroyed");
-    manager.Register(DynamicArrayShouldCallDestructorsOfElementsWhenGoingOutOfScope,
-                     "Dynamic array should automatically call the destructor of every element when it goes out of scope");
-    manager.Register(DynamicArrayShouldFindAndErase,
-                     "Dynamic array should erase elements based on iterator and move all elements after it to the left");
-    manager.Register(DynamicArrayEraseLast, "Dynamic array should erase last element correctly");
-    manager.Register(DynamicArrayEraseByIndex, "Dynamic array should erase by index");
-    manager.Register(DynamicArrayEraseByIndexLast, "Dynamic array should erase by index for the last element");
-    manager.Register(DynamicArrayShouldInsert, "Dynamic array should insert elements at a random iterator location");
-    manager.Register(DynamicArrayShouldInsertRange, "Dynamic array should insert range of elements at a random iterator location");
-    manager.Register(DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled,
-                     "If you call reserve on a dynamic array with elements already present they should be preserved");
-    manager.Register(DynamicArrayShouldShrinkCorrectly, "Dynamic array should shrink correctly");
-    manager.Register(DynamicArrayShouldClearCorrectly, "Dynamic array should have size == 0 and capacity == unchanged after a Clear()");
-    manager.Register(DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize,
-                     "Dynamic array should not do anything when resize is called with a smaller size then current capacity");
-    manager.Register(DynamicArrayShouldRemove, "Dynamic array should be able to remove element by value");
-    manager.Register(DynamicArrayShouldReallocWithNonTrivialCopyConstructorObjects,
-                     "Dynamic array should be able to realloc also with non-trivial copy constructors");
+    REGISTER_TEST(DynamicArrayShouldCreateAndDestroy, "Dynamic array should internally allocate memory and destroy it properly on destroy");
+    REGISTER_TEST(DynamicArrayShouldReserve, "Dynamic array should internally allocate enough space after Reserve() call");
+    REGISTER_TEST(DynamicArrayShouldReserveWithElementsPresent,
+                  "Dynamic array should internally allocate enough space after Reserve() call");
+    REGISTER_TEST(DynamicArrayShouldResize, "Dynamic array should Resize() and allocate enough memory with default objects");
+    REGISTER_TEST(DynamicArrayShouldAllocateLargeBlocks,
+                  "Dynamic array should also work when allocating lots of storage for complex structs");
+    REGISTER_TEST(DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize,
+                  "Dynamic array should also work when allocating lots of storage for complex structs after at "
+                  "least 1 element is added");
+    REGISTER_TEST(DynamicArrayShouldReallocate,
+                  "Dynamic array should reallocate whenever there is not enough space and also cleanup the old memory.");
+    REGISTER_TEST(DynamicArrayShouldIterate, "Dynamic array should iterate over all it's elements in a foreach loop");
+    REGISTER_TEST(DynamicArrayShouldDestroyWhenLeavingScope,
+                  "Dynamic array should be automatically destroyed and cleaned up after leaving scope");
+    REGISTER_TEST(DynamicArrayShouldCallDestructorsOfElementsWhenDestroyed,
+                  "Dynamic array should automatically call the destructor of every element when it is destroyed");
+    REGISTER_TEST(DynamicArrayShouldCallDestructorsOfElementsWhenGoingOutOfScope,
+                  "Dynamic array should automatically call the destructor of every element when it goes out of scope");
+    REGISTER_TEST(DynamicArrayShouldFindAndErase,
+                  "Dynamic array should erase elements based on iterator and move all elements after it to the left");
+    REGISTER_TEST(DynamicArrayEraseLast, "Dynamic array should erase last element correctly");
+    REGISTER_TEST(DynamicArrayEraseByIndex, "Dynamic array should erase by index");
+    REGISTER_TEST(DynamicArrayEraseByIndexLast, "Dynamic array should erase by index for the last element");
+    REGISTER_TEST(DynamicArrayShouldInsert, "Dynamic array should insert elements at a random iterator location");
+    REGISTER_TEST(DynamicArrayShouldInsertRange, "Dynamic array should insert range of elements at a random iterator location");
+    REGISTER_TEST(DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled,
+                  "If you call reserve on a dynamic array with elements already present they should be preserved");
+    REGISTER_TEST(DynamicArrayShouldShrinkCorrectly, "Dynamic array should shrink correctly");
+    REGISTER_TEST(DynamicArrayShouldClearCorrectly, "Dynamic array should have size == 0 and capacity == unchanged after a Clear()");
+    REGISTER_TEST(DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize,
+                  "Dynamic array should not do anything when resize is called with a smaller size then current capacity");
+    REGISTER_TEST(DynamicArrayShouldRemove, "Dynamic array should be able to remove element by value");
+    REGISTER_TEST(DynamicArrayShouldReallocWithNonTrivialCopyConstructorObjects,
+                  "Dynamic array should be able to realloc also with non-trivial copy constructors");
 }

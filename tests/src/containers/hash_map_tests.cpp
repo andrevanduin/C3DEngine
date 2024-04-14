@@ -92,11 +92,9 @@ u8 HashMapShouldIterate()
 void HashMap::RegisterTests(TestManager& manager)
 {
     manager.StartType("HashMap");
-    manager.Register(HashMapShouldCreateAndDestroy, "HashMap should create and destroy correctly.");
-    manager.Register(HashMapShouldSetAndGet,
-                     "You should be able to set an entry in the HashMap by key and get it with the same key.");
-    manager.Register(HashMapGetShouldBeEditable, "You should be able to get and entry by key and edit it.");
-    manager.Register(HashMapHasShouldWork,
-                     "HashMap Has() function should return true if key already exists and false otherwise.");
-    manager.Register(HashMapShouldIterate, "You should be able to iterate over all existing elements.");
+    REGISTER_TEST(HashMapShouldCreateAndDestroy, "HashMap should create and destroy correctly.");
+    REGISTER_TEST(HashMapShouldSetAndGet, "You should be able to set an entry in the HashMap by key and get it with the same key.");
+    REGISTER_TEST(HashMapGetShouldBeEditable, "You should be able to get and entry by key and edit it.");
+    REGISTER_TEST(HashMapHasShouldWork, "HashMap Has() function should return true if key already exists and false otherwise.");
+    REGISTER_TEST(HashMapShouldIterate, "You should be able to iterate over all existing elements.");
 }

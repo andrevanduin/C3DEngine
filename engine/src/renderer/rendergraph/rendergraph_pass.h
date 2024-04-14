@@ -33,6 +33,8 @@ namespace C3D
         void SetViewport(Viewport* viewport) { m_viewport = viewport; }
         void SetCamera(Camera* camera) { m_camera = camera; }
 
+        RenderPass* GetRenderPass() const { return m_pass; }
+
     protected:
         void AddSource(const String& name, RendergraphSourceType type, RendergraphSourceOrigin origin);
         void AddSink(const String& name);

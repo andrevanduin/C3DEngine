@@ -3,6 +3,7 @@
 #include "containers/dynamic_array.h"
 #include "containers/string.h"
 #include "core/defines.h"
+#include "core/uuid.h"
 #include "math/math_types.h"
 #include "renderer/geometry.h"
 #include "renderer/vertex.h"
@@ -48,10 +49,11 @@ namespace C3D
         bool Unload();
         bool Update();
 
+        UUID GetId() const { return m_id; }
         const Geometry* GetGeometry() const { return &m_geometry; }
 
     private:
-        u32 m_uniqueId = INVALID_ID;
+        UUID m_id;
         String m_name;
 
         DebugGridOrientation m_orientation;

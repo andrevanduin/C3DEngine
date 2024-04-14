@@ -39,7 +39,7 @@ namespace C3D
         for (auto& attachmentConfig : config.target.attachments)
         {
             VkAttachmentDescription attachmentDescription = {};
-            if (attachmentConfig.type == RenderTargetAttachmentType::Color)
+            if (attachmentConfig.type & RenderTargetAttachmentTypeColor)
             {
                 // A color attachment
                 auto doClearColor = m_clearFlags & ClearColorBuffer;
@@ -120,11 +120,13 @@ namespace C3D
                 // Add this attachment description to our array
                 colorAttachmentDescriptions.PushBack(attachmentDescription);
             }
-            else if (attachmentConfig.type == RenderTargetAttachmentType::Depth)
+            else if (attachmentConfig.type & RenderTargetAttachmentTypeDepth)
             {
                 // A depth attachment
-                auto doClearDepth = m_clearFlags & RenderPassClearFlags::ClearDepthBuffer;
-                auto depthFormat  = m_context->device.GetDepthFormat();
+                auto doClearDepth   = m_clearFlags & RenderPassClearFlags::ClearDepthBuffer;
+                auto doClearStencil = m_clearFlags & RenderPassClearFlags::ClearDepthBuffer;
+
+                auto depthFormat = m_context->device.GetDepthFormat();
 
                 if (attachmentConfig.source == RenderTargetAttachmentSource::Default)
                 {
@@ -148,6 +150,7 @@ namespace C3D
                     // to user.
                     if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load)
                     {
+                        // Depth
                         if (doClearDepth)
                         {
                             WARN_LOG(
@@ -158,6 +161,18 @@ namespace C3D
                         else
                         {
                             attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                        }
+                        // Stencil
+                        if (doClearStencil)
+                        {
+                            WARN_LOG(
+                                "Stencil attachment load operation set to load, but also set to clear. This combination is invalid and "
+                                "should not be used.");
+                            attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                        }
+                        else
+                        {
+                            attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
                         }
                     }
                     else
@@ -338,12 +353,12 @@ namespace C3D
         }
         beginInfo.clearValueCount++;
 
-        if (m_clearFlags & ClearDepthBuffer)
+        const bool doClearDepth   = (m_clearFlags & ClearDepthBuffer);
+        const bool doClearStencil = (m_clearFlags & ClearStencilBuffer);
+        if (doClearDepth || doClearStencil)
         {
             std::memcpy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
-            clearValues[beginInfo.clearValueCount].depthStencil.depth = m_depth;
-
-            const bool doClearStencil                                   = m_clearFlags & ClearStencilBuffer;
+            clearValues[beginInfo.clearValueCount].depthStencil.depth   = doClearDepth ? m_depth : 0;
             clearValues[beginInfo.clearValueCount].depthStencil.stencil = doClearStencil ? m_stencil : 0;
             beginInfo.clearValueCount++;
         }
@@ -351,9 +366,9 @@ namespace C3D
         {
             for (auto attachment : target.attachments)
             {
-                if (attachment.type == RenderTargetAttachmentType::Depth)
+                if (attachment.type & RenderTargetAttachmentTypeDepth || attachment.type & RenderTargetAttachmentTypeStencil)
                 {
-                    // If there is a depth attachment, make sure to add the clear count, but don't bother copying the
+                    // If there is a depth/stencil attachment, make sure to add the clear count, but don't bother copying the
                     // data
                     beginInfo.clearValueCount++;
                 }

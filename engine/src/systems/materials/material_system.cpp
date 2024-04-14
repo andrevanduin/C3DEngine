@@ -35,7 +35,6 @@ namespace C3D
         m_config = config;
 
         m_materialShaderId = INVALID_ID;
-        m_uiShaderId       = INVALID_ID;
 
         // Create our hashmap for the materials
         m_registeredMaterials.Create(config.maxMaterialCount);
@@ -43,12 +42,6 @@ namespace C3D
         if (!CreateDefaultMaterial())
         {
             ERROR_LOG("Failed to create Default Material.");
-            return false;
-        }
-
-        if (!CreateDefaultUIMaterial())
-        {
-            ERROR_LOG("Failed to create Default UI Material.");
             return false;
         }
 
@@ -75,15 +68,6 @@ namespace C3D
         m_materialLocations.dirLight        = Shaders.GetUniformIndex(shader, "dirLight");
         m_materialLocations.pLights         = Shaders.GetUniformIndex(shader, "pLights");
         m_materialLocations.numPLights      = Shaders.GetUniformIndex(shader, "numPLights");
-
-        // Then comes the UI Shader
-        shader                       = Shaders.Get("Shader.Builtin.UI");
-        m_uiShaderId                 = shader->id;
-        m_uiLocations.projection     = Shaders.GetUniformIndex(shader, "projection");
-        m_uiLocations.view           = Shaders.GetUniformIndex(shader, "view");
-        m_uiLocations.properties     = Shaders.GetUniformIndex(shader, "properties");
-        m_uiLocations.diffuseTexture = Shaders.GetUniformIndex(shader, "diffuseTexture");
-        m_uiLocations.model          = Shaders.GetUniformIndex(shader, "model");
 
         // Finally the Terrain Shader
         shader                          = Shaders.Get("Shader.Builtin.Terrain");
@@ -129,7 +113,6 @@ namespace C3D
 
         INFO_LOG("Destroying default materials.");
         DestroyMaterial(m_defaultMaterial);
-        DestroyMaterial(m_defaultUIMaterial);
         DestroyMaterial(m_defaultTerrainMaterial);
 
         // Cleanup our registered Material hashmap
@@ -288,7 +271,7 @@ namespace C3D
             materials.Clear();
 
             // Acquire instance resource for all our maps
-            TextureMap** maps = Memory.Allocate<TextureMap*>(MemoryType::Array, maxMapCount);
+            const TextureMap** maps = Memory.Allocate<const TextureMap*>(MemoryType::Array, maxMapCount);
             // Assign our material's maps
             for (u32 i = 0; i < maxMapCount; i++)
             {
@@ -325,12 +308,6 @@ namespace C3D
         if (config.name.IEquals(DEFAULT_MATERIAL_NAME))
         {
             return &m_defaultMaterial;
-        }
-
-        // Return Default UI Material
-        if (config.name.IEquals(DEFAULT_UI_MATERIAL_NAME))
-        {
-            return &m_defaultUIMaterial;
         }
 
         // Return Default Terrain Material
@@ -412,16 +389,6 @@ namespace C3D
         return &m_defaultMaterial;
     }
 
-    Material* MaterialSystem::GetDefaultUI()
-    {
-        if (!m_initialized)
-        {
-            FATAL_LOG("Tried to get the default Material before system is initialized.");
-            return nullptr;
-        }
-        return &m_defaultUIMaterial;
-    }
-
     Material* MaterialSystem::GetDefaultTerrain()
     {
         if (!m_initialized)
@@ -461,11 +428,6 @@ namespace C3D
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.ambientColor, ambientColor));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.viewPosition, viewPosition));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.renderMode, &renderMode));
-        }
-        else if (shaderId == m_uiShaderId)
-        {
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.projection, projection));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.view, view));
         }
         else
         {
@@ -511,11 +473,6 @@ namespace C3D
                     return false;
                 }
             }
-            else if (material->shaderId == m_uiShaderId)
-            {
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.properties, material->properties));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_uiLocations.diffuseTexture, &material->maps[0]));
-            }
             else if (material->shaderId == m_terrainShaderId)
             {
                 // Apply Maps
@@ -548,10 +505,6 @@ namespace C3D
         {
             return Shaders.SetUniformByIndex(m_materialLocations.model, model);
         }
-        if (material->shaderId == m_uiShaderId)
-        {
-            return Shaders.SetUniformByIndex(m_uiLocations.model, model);
-        }
         if (material->shaderId == m_terrainShaderId)
         {
             return Shaders.SetUniformByIndex(m_terrainLocations.model, model);
@@ -577,7 +530,7 @@ namespace C3D
         m_defaultMaterial.maps[1].texture = Textures.GetDefaultSpecular();
         m_defaultMaterial.maps[2].texture = Textures.GetDefaultNormal();
 
-        TextureMap* maps[3] = { &m_defaultMaterial.maps[0], &m_defaultMaterial.maps[1], &m_defaultMaterial.maps[2] };
+        const TextureMap* maps[3] = { &m_defaultMaterial.maps[0], &m_defaultMaterial.maps[1], &m_defaultMaterial.maps[2] };
 
         Shader* shader = Shaders.Get("Shader.Builtin.Material");
         if (!Renderer.AcquireShaderInstanceResources(*shader, 3, maps, &m_defaultMaterial.internalId))
@@ -588,33 +541,6 @@ namespace C3D
 
         // Assign the shader id to the default material
         m_defaultMaterial.shaderId = shader->id;
-        return true;
-    }
-
-    bool MaterialSystem::CreateDefaultUIMaterial()
-    {
-        m_defaultUIMaterial.name           = DEFAULT_UI_MATERIAL_NAME;
-        m_defaultUIMaterial.type           = MaterialType::UI;
-        m_defaultUIMaterial.propertiesSize = sizeof(MaterialUIProperties);
-        m_defaultUIMaterial.properties     = Memory.Allocate<MaterialUIProperties>(MemoryType::MaterialInstance);
-
-        auto props          = static_cast<MaterialUIProperties*>(m_defaultUIMaterial.properties);
-        props->diffuseColor = vec4(1);
-
-        m_defaultUIMaterial.maps.Resize(1);
-        m_defaultUIMaterial.maps[0].texture = Textures.GetDefaultDiffuse();
-
-        TextureMap* maps[1] = { &m_defaultUIMaterial.maps[0] };
-
-        Shader* shader = Shaders.Get("Shader.Builtin.UI");
-        if (!Renderer.AcquireShaderInstanceResources(*shader, 1, maps, &m_defaultUIMaterial.internalId))
-        {
-            ERROR_LOG("Failed to acquire renderer resources for the Default UI Material.");
-            return false;
-        }
-
-        // Assign the shader id to the default material
-        m_defaultUIMaterial.shaderId = shader->id;
         return true;
     }
 
@@ -636,7 +562,8 @@ namespace C3D
         m_defaultTerrainMaterial.maps[1].texture = Textures.GetDefaultSpecular();
         m_defaultTerrainMaterial.maps[2].texture = Textures.GetDefaultNormal();
 
-        TextureMap* maps[3] = { &m_defaultTerrainMaterial.maps[0], &m_defaultTerrainMaterial.maps[1], &m_defaultTerrainMaterial.maps[2] };
+        const TextureMap* maps[3] = { &m_defaultTerrainMaterial.maps[0], &m_defaultTerrainMaterial.maps[1],
+                                      &m_defaultTerrainMaterial.maps[2] };
 
         Shader* shader = Shaders.Get("Shader.Builtin.Terrain");
         if (!Renderer.AcquireShaderInstanceResources(*shader, 3, maps, &m_defaultTerrainMaterial.internalId))
@@ -861,7 +788,7 @@ namespace C3D
         }
 
         // Gather a list of pointers to our texture maps
-        TextureMap** maps = Memory.Allocate<TextureMap*>(MemoryType::Array, mapCount);
+        const TextureMap** maps = Memory.Allocate<const TextureMap*>(MemoryType::Array, mapCount);
         for (u32 i = 0; i < mapCount; i++)
         {
             maps[i] = &mat.maps[i];
@@ -917,6 +844,6 @@ namespace C3D
         mat.generation        = INVALID_ID;
         mat.internalId        = INVALID_ID;
         mat.renderFrameNumber = INVALID_ID;
-        mat.name.Clear();
+        mat.name.Destroy();
     }
 }  // namespace C3D

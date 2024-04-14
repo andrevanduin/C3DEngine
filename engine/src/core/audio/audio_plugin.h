@@ -29,7 +29,7 @@ namespace C3D
     public:
         virtual bool Init(const AudioPluginConfig& config) = 0;
         virtual void Shutdown()                            = 0;
-        virtual void OnUpdate(const FrameData& frameData)  = 0;
+        virtual bool OnUpdate(const FrameData& frameData)  = 0;
 
         virtual bool LoadChunk(AudioFile& audio)  = 0;
         virtual bool LoadStream(AudioFile& audio) = 0;

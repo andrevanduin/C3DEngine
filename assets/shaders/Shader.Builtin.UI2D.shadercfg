@@ -1,0 +1,20 @@
+
+version = 1
+name = Shader.Builtin.UI2D
+stages = vertex, fragment
+stageFiles = shaders/Builtin.UI2DShader.vert, shaders/Builtin.UI2DShader.frag
+depthTest = false
+depthWrite = false
+stencilTest = true
+stencilWrite = true
+
+# Attributes
+attribute = vec2, inPosition
+attribute = vec2, inTexCoord
+
+# Uniforms
+uniform = mat4, global, projection
+uniform = mat4, global, view
+uniform = struct16, instance, properties
+uniform = samp, instance, diffuseTexture
+uniform = mat4, local, model

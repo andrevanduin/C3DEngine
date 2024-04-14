@@ -32,4 +32,16 @@ namespace C3D::GeometryUtils
 
     void DeduplicateVertices(GeometryConfig& config);
 
+    UIGeometryConfig GenerateUIQuadConfig(const char* name, const u16vec2& size, const u16vec2& atlasSize, const u16vec2& atlasMin,
+                                          const u16vec2& atlasMax);
+
+    UIGeometryConfig GenerateUINineSliceConfig(const char* name, const u16vec2& size, const u16vec2& cornerSize, const u16vec2& atlasSize,
+                                               const u16vec2& cornerAtlasSize, const u16vec2& atlasMin, const u16vec2& atlasMax);
+
+    void RegenerateUINineSliceGeometry(Vertex2D* vertices, const u16vec2& size, const u16vec2& cornerSize, const u16vec2& atlasSize,
+                                       const u16vec2& cornerAtlasSize, const u16vec2& atlasMin, const u16vec2& atlasMax);
+
+    void RegenerateUIQuadGeometry(Vertex2D* vertices, const u16vec2& size, const u16vec2& atlasSize, const u16vec2& atlasMin,
+                                  const u16vec2& atlasMax);
+
 }  // namespace C3D::GeometryUtils

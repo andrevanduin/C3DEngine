@@ -62,17 +62,17 @@ namespace C3D
             {
                 if (attachment.source == RenderTargetAttachmentSource::Default)
                 {
-                    if (attachment.type == RenderTargetAttachmentType::Color)
+                    if (attachment.type & RenderTargetAttachmentTypeColor)
                     {
                         attachment.texture = Renderer.GetWindowAttachment(i);
                     }
-                    else if (attachment.type == RenderTargetAttachmentType::Depth)
+                    else if (attachment.type & RenderTargetAttachmentTypeDepth || attachment.type & RenderTargetAttachmentTypeStencil)
                     {
                         attachment.texture = Renderer.GetDepthAttachment(i);
                     }
                     else
                     {
-                        FATAL_LOG("Unknown attachment type: '{}'.", ToUnderlying(attachment.type));
+                        FATAL_LOG("Unknown attachment type: '{}'.", attachment.type);
                         return false;
                     }
                 }

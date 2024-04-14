@@ -73,7 +73,7 @@ namespace C3D
 
         // Smooth line rasterization (when it's supported)
         VkPipelineRasterizationLineStateCreateInfoEXT lineRasterizationCreateInfo = {};
-        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION_BIT))
+        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION))
         {
             lineRasterizationCreateInfo.sType                 = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT;
             lineRasterizationCreateInfo.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
@@ -100,7 +100,25 @@ namespace C3D
             }
             depthStencil.depthCompareOp        = VK_COMPARE_OP_LESS;
             depthStencil.depthBoundsTestEnable = VK_FALSE;
-            depthStencil.stencilTestEnable     = VK_FALSE;
+        }
+
+        if (config.shaderFlags & ShaderFlagStencilTest)
+        {
+            depthStencil.stencilTestEnable = VK_TRUE;
+            depthStencil.back.compareOp    = VK_COMPARE_OP_ALWAYS;
+            depthStencil.back.reference    = 1;
+            depthStencil.back.compareMask  = 0xFF;
+
+            depthStencil.back.failOp      = VK_STENCIL_OP_ZERO;
+            depthStencil.back.depthFailOp = VK_STENCIL_OP_ZERO;
+            depthStencil.back.passOp      = VK_STENCIL_OP_REPLACE;
+
+            depthStencil.back.writeMask = (config.shaderFlags & ShaderFlagStencilWrite) ? 0xFF : 0x0;
+            depthStencil.front          = depthStencil.back;
+        }
+        else
+        {
+            depthStencil.stencilTestEnable = VK_FALSE;
         }
 
         // Color blend attachment
@@ -127,17 +145,18 @@ namespace C3D
         // By default we always use viewport and scissor since they are natively supported always
         dynamicStates.PushBack(VK_DYNAMIC_STATE_VIEWPORT);
         dynamicStates.PushBack(VK_DYNAMIC_STATE_SCISSOR);
-        // We add primitive topology when it's supported (either natively or by extension)
-        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT) ||
-            m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT))
+        // We add dynamic primitive topology and dynamic front face when it's supported (either natively or by extension)
+        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE) ||
+            m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
         {
             dynamicStates.PushBack(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
-        }
-        // We add front face when it's supported (either natively or by extension)
-        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT) ||
-            m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT))
-        {
             dynamicStates.PushBack(VK_DYNAMIC_STATE_FRONT_FACE);
+            dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_OP);
+            dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE);
+            dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
+            dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
+            dynamicStates.PushBack(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+            dynamicStates.PushBack(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE);
         }
 
         // Dynamic state create info
@@ -252,10 +271,11 @@ namespace C3D
         pipelineCreateInfo.pViewportState      = &viewportState;
         pipelineCreateInfo.pRasterizationState = &rasterizerCreateInfo;
         pipelineCreateInfo.pMultisampleState   = &multiSampleCreateInfo;
-        pipelineCreateInfo.pDepthStencilState  = (config.shaderFlags & ShaderFlagDepthTest) ? &depthStencil : nullptr;
-        pipelineCreateInfo.pColorBlendState    = &colorBlendStateCreateInfo;
-        pipelineCreateInfo.pDynamicState       = &dynamicStateCreateInfo;
-        pipelineCreateInfo.pTessellationState  = nullptr;
+        pipelineCreateInfo.pDepthStencilState =
+            (config.shaderFlags & ShaderFlagDepthTest || config.shaderFlags & ShaderFlagStencilTest) ? &depthStencil : nullptr;
+        pipelineCreateInfo.pColorBlendState   = &colorBlendStateCreateInfo;
+        pipelineCreateInfo.pDynamicState      = &dynamicStateCreateInfo;
+        pipelineCreateInfo.pTessellationState = nullptr;
 
         pipelineCreateInfo.layout = layout;
 
@@ -299,11 +319,11 @@ namespace C3D
     {
         vkCmdBindPipeline(commandBuffer->handle, bindPoint, m_handle);
         // Make sure to use the bound topology type
-        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT))
+        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE))
         {
             vkCmdSetPrimitiveTopology(commandBuffer->handle, m_currentTopology);
         }
-        else if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT))
+        else if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
         {
             m_context->pfnCmdSetPrimitiveTopologyEXT(commandBuffer->handle, m_currentTopology);
         }

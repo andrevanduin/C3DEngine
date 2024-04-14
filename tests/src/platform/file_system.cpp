@@ -45,8 +45,7 @@ u8 FileNameFromPathWithoutExtension()
 void FileSystem::RegisterTests(TestManager& manager)
 {
     manager.StartType("FileSystem");
-    manager.Register(FileSystemDirectoryFromPath, "DirectoryFromPath should correctly return the full directory.");
-    manager.Register(FileNameFromPathWithExtension, "FileNameFromPath should correctly return the file name.");
-    manager.Register(FileNameFromPathWithoutExtension,
-                     "FileNameFromPath should remove extension when option is provided.");
+    REGISTER_TEST(FileSystemDirectoryFromPath, "DirectoryFromPath should correctly return the full directory.");
+    REGISTER_TEST(FileNameFromPathWithExtension, "FileNameFromPath should correctly return the file name.");
+    REGISTER_TEST(FileNameFromPathWithoutExtension, "FileNameFromPath should remove extension when option is provided.");
 }

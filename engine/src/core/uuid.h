@@ -1,6 +1,6 @@
 
 #pragma once
-#include "defines.h"
+#include "core/defines.h"
 
 namespace C3D
 {
@@ -8,14 +8,16 @@ namespace C3D
     {
     public:
         /** @brief Default UUID which starts off as invalid. */
-        UUID() = default;
-        /** @brief Create an UUID from an already existing 64-bit number */
+        UUID();
+        /** @brief Create an UUID from an already existing 64-bit number. */
         UUID(u64 uuid);
-        UUID(const UUID&) = default;
+        UUID(const UUID&);
 
         void Generate();
 
         void Invalidate();
+
+        bool IsValid() const { return m_uuid != INVALID_ID_U64; }
 
         operator u64() const { return m_uuid; }
         operator bool() const { return m_uuid != INVALID_ID_U64; }
@@ -25,9 +27,14 @@ namespace C3D
 
         bool operator!() const { return m_uuid == INVALID_ID_U64; }
 
+        static UUID Create();
+        static UUID Invalid();
+
     private:
         u64 m_uuid = INVALID_ID_U64;
     };
+
+    using Handle = UUID;
 }  // namespace C3D
 
 template <>

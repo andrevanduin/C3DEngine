@@ -35,8 +35,8 @@ namespace C3D
         TextureRepeat repeatV = TextureRepeat::Repeat;
         /** @brief Texture repeat mode on the W axis. */
         TextureRepeat repeatW = TextureRepeat::Repeat;
-        /** @brief A pointer to internal, render API-specific data. Typically the internal sampler. */
-        void* internalData = nullptr;
+        /** @brief An id for internal render API-specific data. Typically the internal sampler. */
+        u32 internalId = INVALID_ID;
         /** @brief The amount of mip levels for this texture map.
          * This value should always be atleast 1 since we will always have atleast the base image.
          */

@@ -117,10 +117,12 @@ namespace C3D
 
     enum ShaderFlags
     {
-        ShaderFlagNone       = 0x0,
-        ShaderFlagDepthTest  = 0x1,
-        ShaderFlagDepthWrite = 0x2,
-        ShaderFlagWireframe  = 0x4,
+        ShaderFlagNone         = 0x0,
+        ShaderFlagDepthTest    = 0x01,
+        ShaderFlagDepthWrite   = 0x02,
+        ShaderFlagStencilTest  = 0x04,
+        ShaderFlagStencilWrite = 0x08,
+        ShaderFlagWireframe    = 0x10,
     };
     typedef u32 ShaderFlagBits;
 

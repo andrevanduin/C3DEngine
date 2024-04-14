@@ -1,7 +1,6 @@
 
 #include "mesh.h"
 
-#include "core/identifier.h"
 #include "core/scoped_timer.h"
 #include "resources/debug/debug_box_3d.h"
 #include "systems/geometry/geometry_system.h"
@@ -64,7 +63,7 @@ namespace C3D
         }
 
         generation = 0;
-        uniqueId   = Identifier::GetNewId(this);
+        m_id.Generate();
 
         if (m_debugBox)
         {
@@ -122,7 +121,7 @@ namespace C3D
             m_debugBox = nullptr;
         }
 
-        Identifier::ReleaseId(uniqueId);
+        m_id.Invalidate();
         return true;
     }
 
@@ -218,7 +217,7 @@ namespace C3D
             }
 
             generation++;
-            uniqueId = Identifier::GetNewId(this);
+            m_id.Generate();
 
             if (m_debugBox)
             {
@@ -257,7 +256,7 @@ namespace C3D
     {
         m_pSystemsManager = pSystemsManager;
 
-        uniqueId = Identifier::GetNewId(this);
+        uuid.Generate();
         geometries.PushBack(Geometric.AcquireFromConfig(config, true));
         generation = 0;
 

@@ -7,15 +7,18 @@
 
 #include "core/logger.h"
 
+#define REGISTER_TEST(name, description) manager.Register(name, #name, description)
+
 constexpr auto FAILED  = 0;
 constexpr auto PASSED  = 1;
 constexpr auto SKIPPED = 2;
 
-typedef u8 (*pFnTest)();
+using TestFunc = u8 (*)();
 
 struct TestEntry
 {
-    pFnTest func;
+    TestFunc func;
+    std::string name;
     std::string description;
     std::string type;
 };
@@ -27,7 +30,7 @@ public:
     ~TestManager();
 
     void StartType(const std::string& type);
-    void Register(pFnTest, const std::string& description);
+    void Register(TestFunc func, const std::string& name, const std::string& description);
 
     void RunTests();
 

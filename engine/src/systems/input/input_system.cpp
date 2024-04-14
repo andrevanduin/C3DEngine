@@ -33,12 +33,15 @@ namespace C3D
             button = INVALID_ID_U8;
         }
 
+        // Check the current capslock state
+        m_capslockActive = OS.GetCurrentCapsLockState();
+
         return true;
     }
 
-    void InputSystem::OnUpdate(const FrameData& frameData)
+    bool InputSystem::OnUpdate(const FrameData& frameData)
     {
-        if (!m_initialized) return;
+        if (!m_initialized) return true;
 
         for (auto& index : m_downButtons)
         {
@@ -93,6 +96,7 @@ namespace C3D
 
         m_keyboardPrevious = m_keyboardCurrent;
         m_mousePrevious    = m_mouseCurrent;
+        return true;
     }
 
     void InputSystem::ProcessKey(const Keys key, const InputState state)
@@ -126,6 +130,12 @@ namespace C3D
         }
         else
         {
+            // If our capslock key goes up we toggle it's state
+            if (key == KeyCapslock)
+            {
+                m_capslockActive ^= true;
+            }
+
             Event.Fire(EventCodeKeyUp, this, context);
             currentKey.state = InputState::Up;
         }
@@ -136,7 +146,7 @@ namespace C3D
         auto& currentButton = m_mouseCurrent.buttons[button];
 
         EventContext context = {};
-        context.data.u16[0]  = button;
+        context.data.i16[0]  = button;
         context.data.i16[1]  = m_mouseCurrent.pos.x;
         context.data.i16[2]  = m_mouseCurrent.pos.y;
 
@@ -166,6 +176,10 @@ namespace C3D
                 Event.Fire(EventCodeMouseDraggedEnd, this, context);
                 currentButton.inDrag = false;
             }
+            else
+            {
+                Event.Fire(EventCodeButtonClicked, this, context);
+            }
         }
     }
 
@@ -184,7 +198,7 @@ namespace C3D
 
             Event.Fire(ToUnderlying(EventCodeMouseMoved), this, mouseMovedContext);
 
-            for (u32 i = 0; i < MaxButtons; i++)
+            for (i32 i = 0; i < MaxButtons; i++)
             {
                 auto& currentButton = m_mouseCurrent.buttons[i];
 
@@ -194,7 +208,7 @@ namespace C3D
                     {
                         // Already in drag
                         EventContext context = {};
-                        context.data.u16[0]  = i;
+                        context.data.i16[0]  = i;
                         context.data.i16[1]  = x;
                         context.data.i16[2]  = y;
                         Event.Fire(EventCodeMouseDragged, this, context);
@@ -203,7 +217,7 @@ namespace C3D
                     {
                         /* Button is held but we have not started dragging yet */
                         EventContext context = {};
-                        context.data.u16[0]  = i;
+                        context.data.i16[0]  = i;
                         context.data.i16[1]  = x;
                         context.data.i16[2]  = y;
                         Event.Fire(EventCodeMouseDraggedStart, this, context);
@@ -220,6 +234,8 @@ namespace C3D
         context.data.i8[0] = static_cast<i8>(delta);
         Event.Fire(ToUnderlying(EventCodeMouseScrolled), nullptr, context);
     }
+
+    void InputSystem::SetCapslockState(bool active) { m_capslockActive = active; }
 
     bool InputSystem::IsKeyDown(const u8 key) const
     {
@@ -305,6 +321,8 @@ namespace C3D
         if (!m_initialized) return false;
         return m_keyboardCurrent.keys[KeyLAlt].state > InputState::Up || m_keyboardCurrent.keys[KeyRAlt].state > InputState::Up;
     }
+
+    bool InputSystem::IsCapslockActive() const { return m_capslockActive; }
 
     const ivec2& InputSystem::GetMousePosition() const
     {

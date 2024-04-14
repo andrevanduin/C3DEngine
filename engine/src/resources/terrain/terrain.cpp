@@ -1,7 +1,6 @@
 
 #include "terrain.h"
 
-#include "core/identifier.h"
 #include "core/random.h"
 #include "core/scoped_timer.h"
 #include "math/geometry_utils.h"
@@ -22,7 +21,6 @@ namespace C3D
         m_name            = config.name;
 
         m_geometry.id         = INVALID_ID;
-        m_geometry.internalId = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
 
         return true;
@@ -73,10 +71,9 @@ namespace C3D
 
     void Terrain::Destroy()
     {
-        Identifier::ReleaseId(uniqueId);
+        m_id.Invalidate();
 
         m_geometry.id         = INVALID_ID;
-        m_geometry.internalId = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
         m_geometry.name.Clear();
 
@@ -231,7 +228,7 @@ namespace C3D
         // TODO: This should be done in the renderer (CreateGeometry() method)
         m_geometry.generation++;
 
-        uniqueId = Identifier::GetNewId(this);
+        m_id.Generate();
 
         {
             auto timer = ScopedTimer("Acquiring Terrain Material", m_pSystemsManager);

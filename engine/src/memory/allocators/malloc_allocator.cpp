@@ -15,19 +15,10 @@ namespace C3D
     void* MallocAllocator::AllocateBlock(const MemoryType type, const u64 size, u16 alignment) const
     {
         const auto ptr = std::malloc(size);
-#if defined C3D_MEMORY_METRICS_MALLOC && C3D_MEMORY_METRICS_POINTERS
-        Metrics.Allocate(m_id, Allocation(type, ptr, size));
-#endif
         return ptr;
     }
 
-    void MallocAllocator::Free(void* block) const
-    {
-#if defined C3D_MEMORY_METRICS_MALLOC && C3D_MEMORY_METRICS_POINTERS
-        Metrics.Free(m_id, DeAllocation(type, block));
-#endif
-        std::free(block);
-    }
+    void MallocAllocator::Free(void* block) const { std::free(block); }
 
     MallocAllocator* MallocAllocator::GetDefault()
     {

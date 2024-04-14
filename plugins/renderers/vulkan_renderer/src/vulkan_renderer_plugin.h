@@ -36,10 +36,16 @@ namespace C3D
         void ResetScissor() override;
         void SetWinding(RendererWinding winding) override;
 
+        void SetStencilTestingEnabled(bool enabled) override;
+        void SetStencilReference(u32 reference) override;
+        void SetStencilCompareMask(u32 compareMask) override;
+        void SetStencilWriteMask(u32 writeMask) override;
+        void SetStencilOperation(StencilOperation failOp, StencilOperation passOp, StencilOperation depthFailOp,
+                                 CompareOperation compareOp) override;
+        void SetDepthTestingEnabled(bool enabled) override;
+
         bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) override;
         bool EndRenderPass(RenderPass* pass) override;
-
-        void DrawGeometry(const GeometryRenderData& data) override;
 
         void CreateTexture(const u8* pixels, Texture* texture) override;
         void CreateWritableTexture(Texture* texture) override;
@@ -51,11 +57,6 @@ namespace C3D
         void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba) override;
 
         void DestroyTexture(Texture* texture) override;
-
-        bool CreateGeometry(Geometry& geometry) override;
-        bool UploadGeometry(Geometry& geometry, u32 vertexOffset, u32 vertexSize, u32 indexOffset, u32 indexSize) override;
-        void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) override;
-        void DestroyGeometry(Geometry& geometry) override;
 
         bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const override;
         void DestroyShader(Shader& shader) override;
@@ -69,7 +70,8 @@ namespace C3D
         bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) override;
         bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) override;
 
-        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps, u32* outInstanceId) override;
+        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps,
+                                            u32* outInstanceId) override;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) override;
 
         bool AcquireTextureMapResources(TextureMap& map) override;
@@ -84,7 +86,8 @@ namespace C3D
         RenderPass* CreateRenderPass(const RenderPassConfig& config) override;
         bool DestroyRenderPass(RenderPass* pass) override;
 
-        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize, RenderBufferTrackType trackType) override;
+        RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType bufferType, u64 totalSize,
+                                         RenderBufferTrackType trackType) override;
         bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
         Texture* GetWindowAttachment(u8 index) override;
@@ -111,14 +114,6 @@ namespace C3D
         VkFilter ConvertFilterType(const char* op, TextureFilter filter) const;
 
         VulkanContext m_context;
-
-        /** @brief A buffer to hold all the renderer's vertex data. */
-        VulkanBuffer m_objectVertexBuffer;
-        /** @brief A buffer to hold all the renderer's index data. */
-        VulkanBuffer m_objectIndexBuffer;
-
-        // TODO: make dynamic
-        VulkanGeometryData m_geometries[VULKAN_MAX_GEOMETRY_COUNT];
 
 #ifdef _DEBUG
         VkDebugUtilsMessengerEXT m_debugMessenger = nullptr;

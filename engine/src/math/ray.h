@@ -2,6 +2,7 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
+#include "core/uuid.h"
 #include "disc.h"
 #include "math_types.h"
 #include "plane.h"
@@ -40,12 +41,12 @@ namespace C3D
     {
         RayCastHit() = default;
 
-        RayCastHit(RayCastHitType type, u32 uniqueId, vec3 position, f32 distance)
-            : type(type), uniqueId(uniqueId), position(position), distance(distance)
+        RayCastHit(RayCastHitType type, UUID uuid, vec3 position, f32 distance)
+            : type(type), uuid(uuid), position(position), distance(distance)
         {}
 
         RayCastHitType type = RAY_CAST_HIT_TYPE_NONE;
-        u32 uniqueId        = INVALID_ID;
+        UUID uuid;
         vec3 position;
         f32 distance = 0.0f;
     };

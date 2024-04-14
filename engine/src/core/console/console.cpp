@@ -1,50 +1,93 @@
 
 #include "console.h"
+
 #include "core/engine.h"
 #include "core/string_utils.h"
+#include "systems/UI/2D/ui2d_system.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/events/event_system.h"
+#include "systems/fonts/font_system.h"
 #include "systems/input/input_system.h"
 #include "systems/system_manager.h"
 
 namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "UI_CONSOLE";
+    constexpr auto BLINK_TIME           = 0.9f;
+    constexpr auto SCROLL_DELAY         = 0.1f;
 
     void UIConsole::OnInit(const SystemManager* pSystemsManager)
     {
         m_pSystemsManager = pSystemsManager;
 
-        m_text.Create("CONSOLE_UI_TEXT", m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "-");
-        m_entry.Create("CONSOLE_UI_ENTRY_TEXT", m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, " ");
-        m_cursor.Create("CONSOLE_UI_CURSOR_TEXT", m_pSystemsManager, UITextType::Bitmap, "Ubuntu Mono 21px", 21, "|");
-
-        m_text.SetPosition({ 5, 5, 0 });
-        m_entry.SetPosition({ 5, 30, 0 });
-        m_cursor.SetPosition({ 5, 30, 0 });
-
-        Event.Register(EventCodeKeyDown,
-                       [this](const u16 code, void* sender, const EventContext& context) { return OnKeyDownEvent(code, sender, context); });
-        Event.Register(EventCodeMouseScrolled, [this](const u16 code, void* sender, const EventContext& context) {
-            return OnMouseScrollEvent(code, sender, context);
-        });
-
         m_commands.Create(377);
         m_initialized = true;
 
         RegisterDefaultCommands();
+
+        m_callbacks.PushBack(Event.Register(EventCodeKeyDown, [this](const u16 code, void* sender, const EventContext& context) {
+            return OnKeyDownEvent(code, sender, context);
+        }));
+        m_callbacks.PushBack(Event.Register(EventCodeMouseScrolled, [this](const u16 code, void* sender, const EventContext& context) {
+            return OnMouseScrollEvent(code, sender, context);
+        }));
+        m_callbacks.PushBack(Event.Register(EventCodeResized, [this](const u16 code, void* sender, const EventContext& context) {
+            return OnResizeEvent(code, sender, context);
+        }));
+    }
+
+    void UIConsole::OnRun()
+    {
+        auto font = Fonts.Acquire("Ubuntu Mono 21px", FontType::Bitmap, 32);
+
+        auto windowSize = OS.GetWindowSize();
+
+        auto config = UI_2D::Config::DefaultPanel();
+        config.size = u16vec2(windowSize.x, 100);
+
+        m_background = UI2D.AddPanel(config);
+
+        config          = UI_2D::Config::DefaultLabel();
+        config.position = vec2(5, 5);
+        config.text     = "-";
+        config.font     = font;
+
+        m_text = UI2D.AddLabel(config);
+
+        config          = UI_2D::Config::DefaultTextbox();
+        config.position = vec2(5, 5);
+        config.size     = u16vec2(windowSize.x - 10, 30);
+        config.font     = font;
+
+        m_entry = UI2D.AddTextbox(config);
+
+        UI2D.AddOnEndTextInputHandler(m_entry, [this](u16 key, const String& text) {
+            if (key == KeyEnter)
+            {
+                // Parse the inputted text as a command
+                OnParseCommand(text);
+                // Default behaviour is to set control to inactive after KeyEnter so we set it back to active
+                UI2D.SetActive(m_entry, true);
+            }
+        });
+
+        UI2D.MakeVisible(m_background, false);
+        UI2D.MakeVisible(m_text, false);
+        UI2D.MakeVisible(m_entry, false);
     }
 
     void UIConsole::OnShutDown()
     {
         if (m_initialized)
         {
+            for (auto& callback : m_callbacks)
+            {
+                Event.Unregister(callback);
+            }
+            m_callbacks.Destroy();
+
             // Clear our commands
             m_commands.Destroy();
-            m_text.Destroy();
-            m_entry.Destroy();
-            m_cursor.Destroy();
-
             m_initialized = false;
         }
     }
@@ -55,20 +98,14 @@ namespace C3D
         {
             m_isOpen ^= true;
             INFO_LOG(m_isOpen ? "Opened" : "Closed");
+
+            UI2D.MakeVisible(m_text, m_isOpen);
+            UI2D.MakeVisible(m_entry, m_isOpen);
+            UI2D.MakeVisible(m_background, m_isOpen);
+            UI2D.SetActive(m_entry, m_isOpen);
         }
 
-        if (m_isOpen)
-        {
-            m_cursorCounter++;
-            m_cursorCounter %= 180;
-
-            if (m_scrollCounter > 0) m_scrollCounter--;
-        }
-    }
-
-    void UIConsole::OnPrepareRender(DynamicArray<UIText*, LinearAllocator>& texts)
-    {
-        if (m_isTextDirty)
+        if (m_isTextDirty && m_isOpen)
         {
             constexpr auto maxChars = 4096;
             CString<maxChars> buffer;
@@ -81,25 +118,13 @@ namespace C3D
                 buffer += '\n';
             }
 
-            m_text.SetText(buffer.Data());
-            m_entry.SetPosition({ 5, m_text.GetMaxY() + 5, 0 });
+            UI2D.SetText(m_text, buffer.Data());
+
+            f32 textMaxY = UI2D.GetTextMaxY(m_text);
+            UI2D.SetPosition(m_entry, vec2(5, textMaxY + 15));
+            UI2D.SetHeight(m_background, textMaxY + 50);
+
             m_isTextDirty = false;
-        }
-
-        if (m_isEntryDirty)
-        {
-            m_entry.SetText(m_current.Data());
-            m_isEntryDirty = false;
-        }
-
-        m_cursor.SetPosition({ m_entry.GetMaxX(), m_text.GetMaxY() + 5, 0 });
-
-        if (m_isOpen)
-        {
-            texts.PushBack(&m_text);
-
-            if (!m_current.Empty()) texts.PushBack(&m_entry);
-            if (m_cursorCounter >= 90) texts.PushBack(&m_cursor);
         }
     }
 
@@ -192,8 +217,7 @@ namespace C3D
                 return false;
             }
 
-            m_isEntryDirty = true;
-            m_current      = m_history[m_currentHistory];
+            UI2D.SetText(m_entry, m_history[m_currentHistory].Data());
             return true;
         }
 
@@ -202,112 +226,13 @@ namespace C3D
             if (m_currentHistory != -1 && m_currentHistory < m_nextHistory)
             {
                 m_currentHistory++;
-                m_isEntryDirty = true;
-                m_current      = m_history[m_currentHistory];
+                UI2D.SetText(m_entry, m_history[m_currentHistory].Data());
                 return true;
             }
 
             return false;
         }
 
-        if (keyCode == KeyEnter)
-        {
-            return OnParseCommand();
-        }
-        if (keyCode == KeyBackspace)
-        {
-            if (!m_current.Empty())
-            {
-                m_current[m_current.Size() - 1] = '\0';
-                m_isEntryDirty                  = true;
-            }
-            return true;
-        }
-
-        const auto shiftHeld = Input.IsShiftDown();
-        char typedChar;
-
-        if (keyCode >= KeyA && keyCode <= KeyZ)
-        {
-            // Ingore '`' key so we don't type that into the console immediatly after opening it
-            if (keyCode == KeyGrave) return false;
-
-            // Characters
-            typedChar = static_cast<char>(keyCode);
-            // If shift is not held we want don't want capital letters
-            if (!shiftHeld) typedChar += 32;
-        }
-        else if (keyCode == KeySpace)
-        {
-            typedChar = static_cast<char>(keyCode);
-        }
-        else if (keyCode == KeyMinus || keyCode == KeyEquals)
-        {
-            switch (keyCode)
-            {
-                case KeyMinus:
-                    typedChar = shiftHeld ? '_' : '-';
-                    break;
-                case KeyEquals:
-                    typedChar = shiftHeld ? '+' : '=';
-                    break;
-                default:
-                    FATAL_LOG("Unknown char found while trying to parse key for console '{}'.", keyCode);
-                    break;
-            }
-        }
-        else if (keyCode >= Key0 && keyCode <= Key9)
-        {
-            // Numbers
-            typedChar = static_cast<char>(keyCode);
-            if (shiftHeld)
-            {
-                switch (keyCode)
-                {
-                    case Key0:
-                        typedChar = ')';
-                        break;
-                    case Key1:
-                        typedChar = '!';
-                        break;
-                    case Key2:
-                        typedChar = '@';
-                        break;
-                    case Key3:
-                        typedChar = '#';
-                        break;
-                    case Key4:
-                        typedChar = '$';
-                        break;
-                    case Key5:
-                        typedChar = '%';
-                        break;
-                    case Key6:
-                        typedChar = '^';
-                        break;
-                    case Key7:
-                        typedChar = '&';
-                        break;
-                    case Key8:
-                        typedChar = '*';
-                        break;
-                    case Key9:
-                        typedChar = '(';
-                        break;
-                    default:
-                        FATAL_LOG("Unknown char found while trying to parse numbers for console '{}'.", keyCode);
-                        break;
-                }
-            }
-        }
-        else
-        {
-            // A key was pressed that we don't care about
-            return false;
-        }
-
-        m_current.Append(typedChar);
-        m_isEntryDirty = true;
         return true;
     }
 
@@ -322,42 +247,46 @@ namespace C3D
         // > If we did wrap around it must be larger than the end index % MAX_LINES since that is the end index of
         // were we store our lines. Everything beyond that index is actually the wrapped around newer lines
         const auto minStartIndex = m_endIndex > MAX_LINES ? m_endIndex % MAX_LINES : 0;
-        if (scrollAmount > 0 && m_scrollCounter == 0 && m_startIndex > minStartIndex)
+
+        auto currentTime = OS.GetAbsoluteTime();
+        if (scrollAmount > 0 && currentTime >= m_scrollTime && m_startIndex > minStartIndex)
         {
-            m_scrollCounter = 10;
+            m_scrollTime = currentTime + SCROLL_DELAY;
             m_startIndex--;
             m_endIndex--;
             m_isTextDirty = true;
         }
-        if (scrollAmount < 0 && m_scrollCounter == 0 && m_endIndex < m_nextLine)
+        if (scrollAmount < 0 && currentTime >= m_scrollTime && m_endIndex < m_nextLine)
         {
-            m_scrollCounter = 10;
+            m_scrollTime = currentTime + SCROLL_DELAY;
             m_startIndex++;
             m_endIndex++;
             m_isTextDirty = true;
         }
+
         return true;
     }
 
-    bool UIConsole::OnParseCommand()
+    void UIConsole::OnParseCommand(const String& text)
     {
-        if (StringUtils::IsEmptyOrWhitespaceOnly(m_current))
+        if (text.EmptyOrWhitespace())
         {
-            m_current      = "";
-            m_isEntryDirty = true;
-            return true;
+            return;
         }
 
-        m_history[m_nextHistory] = m_current;
+        auto current = CString<256>(text.Data());
+
+        m_history[m_nextHistory] = current;
         m_nextHistory++;
         m_endHistory     = m_nextHistory;
         m_currentHistory = -1;
 
-        const auto args = StringUtils::Split<256, 128>(m_current, ' ');
+        const auto args = StringUtils::Split<256, 128>(current, ' ');
         if (args.Empty())
         {
-            PrintCommandMessage(LogType::Error, "The input: \'{}\' failed to be parsed!", m_current);
-            return false;
+            ERROR_LOG("The input: \'{}\' failed to be parsed!", current);
+            UI2D.SetText(m_entry, "");
+            return;
         }
 
         // The first argument is the command
@@ -366,15 +295,16 @@ namespace C3D
         if (!m_commands.Has(commandName))
         {
             // Not a command let's warn the user
-            PrintCommandMessage(LogType::Error, "The command: '{}' does not exist!", commandName);
-            return false;
+            ERROR_LOG("The command: '{}' does not exist!", commandName);
+            UI2D.SetText(m_entry, "");
+            return;
         }
 
         // A valid command let's try to run the associated logic
         const CommandCallback& command = m_commands[commandName];
         if (String output = ""; !command.operator()(args, output))
         {
-            PrintCommandMessage(LogType::Error, "The command '{}' failed to execute:", commandName);
+            ERROR_LOG("The command '{}' failed to execute:", commandName);
             if (!output.Empty())
             {
                 const char* msg = output.Data();
@@ -383,7 +313,7 @@ namespace C3D
         }
         else
         {
-            PrintCommandMessage(LogType::Info, "The command '{}' executed successfully:", commandName);
+            INFO_LOG("The command '{}' executed successfully:", commandName);
             if (!output.Empty())
             {
                 const char* msg = output.Data();
@@ -391,14 +321,22 @@ namespace C3D
             }
         }
 
-        m_current      = "";
-        m_isEntryDirty = true;
-        return true;
+        UI2D.SetText(m_entry, "");
     }
 
     bool UIConsole::IsInitialized() const { return m_initialized; }
 
     bool UIConsole::IsOpen() const { return m_isOpen; }
+
+    bool UIConsole::OnResizeEvent(const u16 code, void* sender, const EventContext& context)
+    {
+        u16 width = context.data.u16[0];
+        UI2D.SetWidth(m_background, width);
+        UI2D.SetWidth(m_entry, width - 10);
+
+        // Let other also handle this event
+        return false;
+    }
 
     void UIConsole::RegisterDefaultCommands()
     {

@@ -56,12 +56,14 @@ namespace C3D
 
         bool OnInit() override;
 
-        void OnUpdate(const FrameData& frameData) override;
+        bool OnUpdate(const FrameData& frameData) override;
 
         void ProcessKey(Keys key, InputState state);
         void ProcessButton(u8 button, InputState state);
         void ProcessMouseMove(i32 xPos, i32 yPos);
         void ProcessMouseWheel(i32 delta) const;
+
+        void SetCapslockState(bool active);
 
         [[nodiscard]] C3D_API bool IsKeyDown(u8 key) const;
         [[nodiscard]] C3D_API bool IsKeyUp(u8 key) const;
@@ -81,6 +83,7 @@ namespace C3D
         [[nodiscard]] C3D_API bool IsShiftDown() const;
         [[nodiscard]] C3D_API bool IsCtrlDown() const;
         [[nodiscard]] C3D_API bool IsAltDown() const;
+        [[nodiscard]] C3D_API bool IsCapslockActive() const;
 
         [[nodiscard]] C3D_API const ivec2& GetMousePosition() const;
         [[nodiscard]] C3D_API const ivec2& GetPreviousMousePosition() const;
@@ -92,7 +95,9 @@ namespace C3D
         MouseState m_mouseCurrent  = {};
         MouseState m_mousePrevious = {};
 
-        u8 m_downKeys[MAX_HELD_KEYS] = {};
+        u8 m_downKeys[MAX_HELD_KEYS]       = {};
         u8 m_downButtons[MAX_HELD_BUTTONS] = {};
+
+        bool m_capslockActive = false;
     };
 }  // namespace C3D

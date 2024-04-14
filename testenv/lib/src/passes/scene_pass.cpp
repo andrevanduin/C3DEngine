@@ -41,13 +41,13 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
     pass.stencil    = 0;
 
     C3D::RenderTargetAttachmentConfig targetAttachments[2]{};
-    targetAttachments[0].type           = C3D::RenderTargetAttachmentType::Color;
+    targetAttachments[0].type           = C3D::RenderTargetAttachmentTypeColor;
     targetAttachments[0].source         = C3D::RenderTargetAttachmentSource::Default;
     targetAttachments[0].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::Load;
     targetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
     targetAttachments[0].presentAfter   = false;
 
-    targetAttachments[1].type           = C3D::RenderTargetAttachmentType::Depth;
+    targetAttachments[1].type           = C3D::RenderTargetAttachmentTypeDepth;
     targetAttachments[1].source         = C3D::RenderTargetAttachmentSource::Default;
     targetAttachments[1].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
     targetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
@@ -140,7 +140,7 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
                 const auto box = mesh.GetDebugBox();
                 if (box->IsValid())
                 {
-                    m_debugGeometries.EmplaceBack(box->GetModel(), box->GetGeometry(), box->GetUniqueId());
+                    m_debugGeometries.EmplaceBack(box->GetId(), box->GetModel(), box->GetGeometry());
                 }
             }
 
@@ -158,7 +158,7 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
 
                 if (frustum.IntersectsWithAABB({ center, halfExtents }))
                 {
-                    m_geometries.EmplaceBack(model, geometry, mesh.uniqueId, windingInverted);
+                    m_geometries.EmplaceBack(mesh.GetId(), model, geometry, windingInverted);
                     frameData.drawnMeshCount++;
                 }
             }
@@ -169,7 +169,7 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
     {
         // TODO: Check terrain generation
         // TODO: Frustum culling
-        m_terrains.EmplaceBack(terrain.GetModel(), terrain.GetGeometry(), terrain.uniqueId);
+        m_terrains.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
         // TODO: Seperate counter for terrain meshes/geometry
         frameData.drawnMeshCount++;
     }
@@ -180,7 +180,7 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
     auto gridGeometry       = scene.m_grid.GetGeometry();
     if (gridGeometry->generation != INVALID_ID_U16)
     {
-        m_debugGeometries.EmplaceBack(identity, gridGeometry, INVALID_ID);
+        m_debugGeometries.EmplaceBack(scene.m_grid.GetId(), identity, gridGeometry);
     }
 
     // TODO: Directional lights
@@ -193,19 +193,19 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
 
         if (debug)
         {
-            m_debugGeometries.EmplaceBack(debug->box.GetModel(), debug->box.GetGeometry(), debug->box.GetUniqueId());
+            m_debugGeometries.EmplaceBack(debug->box.GetId(), debug->box.GetModel(), debug->box.GetGeometry());
         }
     }
 
     // Debug geometry
     for (const auto& line : debugLines)
     {
-        m_debugGeometries.EmplaceBack(line.GetModel(), line.GetGeometry(), INVALID_ID);
+        m_debugGeometries.EmplaceBack(line.GetId(), line.GetModel(), line.GetGeometry());
     }
 
     for (const auto& box : debugBoxes)
     {
-        m_debugGeometries.EmplaceBack(box.GetModel(), box.GetGeometry(), INVALID_ID);
+        m_debugGeometries.EmplaceBack(box.GetId(), box.GetModel(), box.GetGeometry());
     }
 
     m_prepared = true;
@@ -243,7 +243,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
 
         for (const auto& terrain : m_terrains)
         {
-            C3D::Material* m = terrain.geometry->material ? terrain.geometry->material : Materials.GetDefaultTerrain();
+            C3D::Material* m = terrain.material ? terrain.material : Materials.GetDefaultTerrain();
 
             bool needsUpdate = m->renderFrameNumber != frameData.frameNumber || m->renderDrawIndex != frameData.drawIndex;
             if (!Materials.ApplyInstance(m, frameData, needsUpdate))
@@ -264,6 +264,8 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
     }
 
+    u32 currentMaterialId = INVALID_ID;
+
     // Static geometry
     if (!m_geometries.Empty())
     {
@@ -282,18 +284,22 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
 
         for (const auto& data : m_geometries)
         {
-            C3D::Material* m = data.geometry->material ? data.geometry->material : Materials.GetDefault();
-
-            bool needsUpdate = m->renderFrameNumber != frameData.frameNumber || m->renderDrawIndex != frameData.drawIndex;
-            if (!Materials.ApplyInstance(m, frameData, needsUpdate))
+            C3D::Material* m = data.material ? data.material : Materials.GetDefault();
+            if (m->internalId != currentMaterialId)
             {
-                WARN_LOG("Failed to apply Terrain Material: '{}'. Skipping.", m->name);
-                continue;
-            }
+                bool needsUpdate = m->renderFrameNumber != frameData.frameNumber || m->renderDrawIndex != frameData.drawIndex;
+                if (!Materials.ApplyInstance(m, frameData, needsUpdate))
+                {
+                    WARN_LOG("Failed to apply Terrain Material: '{}'. Skipping.", m->name);
+                    continue;
+                }
 
-            // Sync the frame number and draw index
-            m->renderFrameNumber = frameData.frameNumber;
-            m->renderDrawIndex   = frameData.drawIndex;
+                // Sync the frame number and draw index
+                m->renderFrameNumber = frameData.frameNumber;
+                m->renderDrawIndex   = frameData.drawIndex;
+
+                currentMaterialId = m->internalId;
+            }
 
             // Apply the locals
             Materials.ApplyLocal(m, &data.model);

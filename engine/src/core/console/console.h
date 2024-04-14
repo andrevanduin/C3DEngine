@@ -1,10 +1,10 @@
 
 #pragma once
+#include "UI/2D/component.h"
 #include "containers/circular_buffer.h"
 #include "containers/hash_map.h"
 #include "core/defines.h"
 #include "core/function/function.h"
-#include "resources/ui_text.h"
 #include "systems/events/event_system.h"
 
 namespace C3D
@@ -31,10 +31,11 @@ namespace C3D
         UIConsole() = default;
 
         void OnInit(const SystemManager* pSystemsManager);
+        void OnRun();
+
         void OnShutDown();
 
         void OnUpdate();
-        void OnPrepareRender(DynamicArray<UIText*, LinearAllocator>& texts);
 
         void RegisterCommand(const CommandName& name, const CommandCallback& func);
 
@@ -46,6 +47,8 @@ namespace C3D
         [[nodiscard]] bool IsOpen() const;
 
     private:
+        bool OnResizeEvent(const u16 code, void* sender, const EventContext& context);
+
         void RegisterDefaultCommands();
 
         void WriteLineInternal(const CString<256>& line);
@@ -53,7 +56,7 @@ namespace C3D
         bool OnKeyDownEvent(u16 code, void* sender, const EventContext& context);
         bool OnMouseScrollEvent(u16 code, void* sender, const EventContext& context);
 
-        bool OnParseCommand();
+        void OnParseCommand(const String& text);
 
         template <typename... Args>
         void PrintCommandMessage(const LogType type, const char* format, Args&&... args)
@@ -66,15 +69,13 @@ namespace C3D
             {
                 INSTANCE_ERROR_LOG("UI_CONSOLE", format, args...);
             }
-
-            m_current      = "";
-            m_isEntryDirty = true;
         }
 
         bool m_isOpen = false, m_initialized = false;
-        bool m_isTextDirty = true, m_isEntryDirty = true;
+        bool m_isTextDirty = true, m_showCursor = false;
 
-        u8 m_cursorCounter = 0, m_scrollCounter = 0;
+        f64 m_cursorTime = 0, m_scrollTime = 0;
+
         u32 m_startIndex = 0, m_endIndex = SHOWN_LINES, m_nextLine = 0;
 
         // History
@@ -84,10 +85,11 @@ namespace C3D
         CircularBuffer<CString<256>, MAX_LINES> m_lines;
         CircularBuffer<CString<256>, MAX_HISTORY> m_history;
 
-        UIText m_text, m_entry, m_cursor;
-        CString<256> m_current;
+        UI_2D::ComponentHandle m_text, m_entry;
+        UI_2D::ComponentHandle m_background;
 
         HashMap<CommandName, CommandCallback> m_commands;
+        DynamicArray<RegisteredEventCallback> m_callbacks;
 
         const SystemManager* m_pSystemsManager;
     };

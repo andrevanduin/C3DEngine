@@ -91,7 +91,7 @@ namespace C3D
 
         ~DynamicArray() { Free(); }
 
-        /*
+        /**
          * @brief Reserves enough memory for the provided initial capacity.
          * The array will still have the original size and no elements will be created or added
          */
@@ -130,7 +130,7 @@ namespace C3D
             m_elements = newElements;
         }
 
-        /*
+        /**
          * @brief Resizes the array to have enough memory for the requested size
          * The array will default construct elements in all newly created empty slots up to size - 1
          */
@@ -145,7 +145,7 @@ namespace C3D
             m_size = size;
         }
 
-        /*
+        /**
          * @brief Resizes the array internally to have capacity = size
          * This operation causes a reallocation (and thus copying of elements) if capacity != size
          */
@@ -176,15 +176,15 @@ namespace C3D
             m_capacity = m_size;
         }
 
-        /* @brief Destroys the underlying memory allocated by this dynamic array. */
+        /** @brief Destroys the underlying memory allocated by this dynamic array. */
         void Destroy() { Free(); }
 
-        /* @brief Gets a reference to the element at the provided index. */
+        /** @brief Gets a reference to the element at the provided index. */
         T& operator[](u64 index) { return m_elements[index]; }
 
         const T& operator[](u64 index) const { return m_elements[index]; }
 
-        /*
+        /**
          * @brief Gets a reference to the element at the provided index.
          * Includes an out-of-range check
          */
@@ -197,7 +197,7 @@ namespace C3D
             return m_elements[index];
         }
 
-        /*
+        /**
          * @brief Gets a const reference to the element at the provided index.
          * Includes an out-of-range check
          */
@@ -207,19 +207,27 @@ namespace C3D
             return m_elements[index];
         }
 
-        /* @brief Returns a reference to the first element in the array. */
+        /** @brief Returns a reference to the first element in the array. */
         T& Front() { return m_elements[0]; }
 
-        /* @brief Returns a const reference to the first element in the array. */
+        /** @brief Returns a const reference to the first element in the array. */
         [[nodiscard]] const T& Front() const { return m_elements[0]; }
 
-        /* @brief Returns a reference to the last element in the array. */
+        /** @brief Returns a reference to the last element in the array. */
         T& Back() { return m_elements[m_size - 1]; }
 
-        /* @brief Returns a const reference to the last element in the array. */
+        /** @brief Removes and then returns the last element from the array. */
+        T PopBack()
+        {
+            auto element = m_elements[m_size - 1];
+            Erase(m_size - 1);
+            return element;
+        }
+
+        /** @brief Returns a const reference to the last element in the array. */
         [[nodiscard]] const T& Back() const { return m_elements[m_size - 1]; }
 
-        /*
+        /**
          * @brief Adds the provided element to the back of the array.
          * This will cause a resize if size + 1 >= capacity.
          */
@@ -236,7 +244,7 @@ namespace C3D
             m_size++;
         }
 
-        /*
+        /**
          * @brief Adds an element with the provided arguments in-place (so without copies)
          * This will cause a resize if size + 1 >= capacity
          */

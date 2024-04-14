@@ -11,12 +11,16 @@
 
 typedef glm::vec2 vec2;
 typedef glm::ivec2 ivec2;
+typedef glm::uvec2 uvec2;
+typedef glm::u16vec2 u16vec2;
 
 typedef glm::vec3 vec3;
 typedef glm::ivec3 ivec3;
+typedef glm::uvec3 uvec3;
 
 typedef glm::vec4 vec4;
 typedef glm::ivec4 ivec4;
+typedef glm::uvec4 uvec4;
 
 typedef glm::mat4 mat4;
 
@@ -34,6 +38,21 @@ namespace C3D
     {
         vec3 min = { 0, 0, 0 };
         vec3 max = { 0, 0, 0 };
+    };
+
+    struct Bounds
+    {
+        Bounds() {}
+        Bounds(f32 x, f32 y, f32 width, f32 height) : x(x), y(y), width(width), height(height) {}
+
+        bool Contains(f32 xPos, f32 yPos) const { return xPos >= x && xPos <= x + width && yPos >= y && yPos <= y + height; }
+
+        bool Contains(const vec2& point) const { return point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height; }
+
+        f32 x      = 0.0f;
+        f32 y      = 0.0f;
+        f32 width  = 0.0f;
+        f32 height = 0.0f;
     };
 
     struct Sphere

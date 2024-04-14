@@ -38,6 +38,8 @@ namespace C3D
         EventCodeButtonDown,
         /** @brief An event that gets triggered when a mouse button goes up. */
         EventCodeButtonUp,
+        /** @brief An event that gets triggered when a mouse button goes up after being down (but not held). */
+        EventCodeButtonClicked,
         /** @brief An event that gets triggered when a mouse button starts being held. */
         EventCodeButtonHeldStart,
         /** @brief An event that gets triggered when the mouse is moved. */

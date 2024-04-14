@@ -2,19 +2,19 @@
 #pragma once
 #include <core/application.h>
 #include <core/audio/audio_types.h>
+#include <core/ecs/entity.h>
 #include <core/frame_data.h>
+#include <core/uuid.h>
 #include <renderer/rendergraph/rendergraph.h>
 #include <renderer/viewport.h>
 #include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
-#include <resources/ui_text.h>
 #include <systems/events/event_system.h>
 
 #include "editor/editor_gizmo.h"
 #include "passes/editor_pass.h"
 #include "passes/scene_pass.h"
 #include "passes/skybox_pass.h"
-#include "passes/ui_pass.h"
 #include "resources/scenes/simple_scene.h"
 
 namespace C3D
@@ -34,7 +34,7 @@ enum class ReloadState
 
 struct SelectedObject
 {
-    u32 uniqueId              = INVALID_ID;
+    C3D::UUID uuid;
     C3D::Transform* transform = nullptr;
 };
 
@@ -63,7 +63,6 @@ struct GameState final : C3D::ApplicationState
     SkyboxPass skyboxPass;
     ScenePass scenePass;
     EditorPass editorPass;
-    UIPass uiPass;
 
     SelectedObject selectedObject;
 
@@ -71,8 +70,8 @@ struct GameState final : C3D::ApplicationState
 
     C3D::PointLight* pLights[4];
 
-    C3D::UIMesh uiMeshes[10];
-    C3D::UIText testText;
+    C3D::Handle debugInfoPanel, debugInfoLabel;
+    C3D::Handle textbox;
 
     u32 hoveredObjectId = INVALID_ID;
 

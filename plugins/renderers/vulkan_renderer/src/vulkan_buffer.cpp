@@ -21,12 +21,6 @@ namespace C3D
     {
         if (!RenderBuffer::Create(bufferType, size, trackType)) return false;
 
-        u32 deviceLocalBits = 0;
-        if (m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY_BIT))
-        {
-            deviceLocalBits = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        }
-
         switch (bufferType)
         {
             case RenderBufferType::Vertex:
@@ -40,9 +34,15 @@ namespace C3D
                 m_memoryPropertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 break;
             case RenderBufferType::Uniform:
+            {
+                u32 deviceLocalBits = m_context->device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY)
+                                          ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                                          : 0;
+
                 m_usage = static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
                 m_memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | deviceLocalBits;
-                break;
+            }
+            break;
             case RenderBufferType::Staging:
                 m_usage               = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
                 m_memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -300,7 +300,7 @@ namespace C3D
         {
             // The memory is local but not host visible so we need a staging buffer
             u64 stagingOffset = 0;
-            if (!m_context->stagingBuffer.Allocate(size, &stagingOffset))
+            if (!m_context->stagingBuffer.Allocate(size, stagingOffset))
             {
                 ERROR_LOG("Failed to Allocate from staging buffer.");
                 return false;

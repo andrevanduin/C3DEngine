@@ -390,6 +390,8 @@ namespace C3D
                 vkDestroyImage(logicalDevice, handle, m_context->allocator);
                 handle = nullptr;
             }
+
+            m_name.Destroy();
         }
 
         std::memset(&m_memoryRequirements, 0, sizeof(VkMemoryRequirements));

@@ -1,7 +1,5 @@
 
 #pragma once
-#include <unordered_map>
-
 #include "containers/hash_map.h"
 #include "containers/hash_table.h"
 #include "core/defines.h"
@@ -49,15 +47,6 @@ namespace C3D
         u16 numPLights      = INVALID_ID_U16;
     };
 
-    struct UIUniformLocations
-    {
-        u16 projection     = INVALID_ID_U16;
-        u16 view           = INVALID_ID_U16;
-        u16 properties     = INVALID_ID_U16;
-        u16 diffuseTexture = INVALID_ID_U16;
-        u16 model          = INVALID_ID_U16;
-    };
-
     struct TerrainUniformLocations
     {
         u16 projection   = INVALID_ID_U16;
@@ -90,7 +79,6 @@ namespace C3D
         void Release(const String& name);
 
         Material* GetDefault();
-        Material* GetDefaultUI();
         Material* GetDefaultTerrain();
 
         bool ApplyGlobal(u32 shaderId, const FrameData& frameData, const mat4* projection, const mat4* view, const vec4* ambientColor,
@@ -100,7 +88,6 @@ namespace C3D
 
     private:
         bool CreateDefaultMaterial();
-        bool CreateDefaultUIMaterial();
         bool CreateDefaultTerrainMaterial();
 
         Material& AcquireReference(const String& name, bool autoRelease, bool& needsCreation);
@@ -112,17 +99,13 @@ namespace C3D
 
         void DestroyMaterial(Material& mat) const;
 
-        Material m_defaultMaterial, m_defaultUIMaterial, m_defaultTerrainMaterial;
+        Material m_defaultMaterial, m_defaultTerrainMaterial;
         /** @brief HashMap to map names to material-references */
         HashMap<String, MaterialReference> m_registeredMaterials;
 
         // Known locations for the Material Shader
         MaterialUniformLocations m_materialLocations;
         u32 m_materialShaderId = INVALID_ID;
-
-        // Known locations for the UI Shader
-        UIUniformLocations m_uiLocations;
-        u32 m_uiShaderId = INVALID_ID;
 
         // Known locations for the Terrain Shader
         TerrainUniformLocations m_terrainLocations;

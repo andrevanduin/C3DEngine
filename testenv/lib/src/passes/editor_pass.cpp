@@ -2,6 +2,7 @@
 #include "editor_pass.h"
 
 #include <renderer/renderer_frontend.h>
+#include <renderer/renderpass.h>
 #include <renderer/viewport.h>
 #include <systems/shaders/shader_system.h>
 #include <systems/system_manager.h>
@@ -26,13 +27,13 @@ bool EditorPass::Initialize(const C3D::LinearAllocator* frameAllocator)
 
     C3D::RenderTargetAttachmentConfig targetAttachments[2]{};
     // Color
-    targetAttachments[0].type           = C3D::RenderTargetAttachmentType::Color;
+    targetAttachments[0].type           = C3D::RenderTargetAttachmentTypeColor;
     targetAttachments[0].source         = C3D::RenderTargetAttachmentSource::Default;
     targetAttachments[0].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::Load;
     targetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
     targetAttachments[0].presentAfter   = false;
     // Depth
-    targetAttachments[1].type           = C3D::RenderTargetAttachmentType::Depth;
+    targetAttachments[1].type           = C3D::RenderTargetAttachmentTypeDepth;
     targetAttachments[1].source         = C3D::RenderTargetAttachmentSource::Default;
     targetAttachments[1].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
     targetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
@@ -92,7 +93,7 @@ bool EditorPass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, EditorGiz
         mat4 scale = glm::scale(vec3(scaleScalar));
         model *= scale;
 
-        m_geometries.EmplaceBack(model, gizmo->GetGeometry(), INVALID_ID);
+        m_geometries.EmplaceBack(gizmo->GetId(), model, gizmo->GetGeometry());
     }
 
     m_prepared = true;

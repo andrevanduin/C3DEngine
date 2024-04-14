@@ -3,6 +3,7 @@
 #include <containers/dynamic_array.h>
 #include <containers/hash_map.h>
 #include <core/defines.h>
+#include <core/uuid.h>
 #include <renderer/camera.h>
 #include <renderer/transform.h>
 #include <renderer/vertex.h>
@@ -120,7 +121,7 @@ public:
 
     bool RayCast(const C3D::Ray& ray, C3D::RayCastResult& result);
 
-    C3D::Transform* GetTransformById(u32 uniqueId);
+    C3D::Transform* GetTransformById(C3D::UUID uuid);
 
     [[nodiscard]] u32 GetId() const { return m_id; }
     [[nodiscard]] SceneState GetState() const { return m_state; }

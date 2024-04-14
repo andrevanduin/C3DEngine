@@ -2,6 +2,7 @@
 #pragma once
 #include "containers/string.h"
 #include "core/defines.h"
+#include "core/uuid.h"
 #include "math/math_types.h"
 #include "renderer/geometry.h"
 #include "renderer/transform.h"
@@ -40,14 +41,14 @@ namespace C3D
 
         const Geometry* GetGeometry() const { return &m_geometry; }
 
-        u32 GetUniqueId() const { return m_uniqueId; }
+        UUID GetId() const { return m_id; }
 
     private:
         void UpdateVertexColor();
 
         void RecalculateExtents(const Extents3D& extents);
 
-        u32 m_uniqueId = INVALID_ID;
+        UUID m_id;
         String m_name;
 
         vec3 m_size;

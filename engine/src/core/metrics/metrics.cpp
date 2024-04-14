@@ -48,8 +48,10 @@ namespace C3D
                                                                                      "SystemFont",
                                                                                      "Terrain",
                                                                                      "Test",
-                                                                                     "Console",
-                                                                                     "Command" };
+                                                                                     "DebugConsole",
+                                                                                     "Command",
+                                                                                     "UI2D",
+                                                                                     "ECS" };
 
     MetricSystem* MetricSystem::s_instance;
 

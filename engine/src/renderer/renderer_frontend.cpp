@@ -10,6 +10,7 @@
 #include "resources/shaders/shader.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/system_manager.h"
+#include "vertex.h"
 #include "viewport.h"
 
 namespace C3D
@@ -43,6 +44,27 @@ namespace C3D
             return false;
         }
 
+        // Create and bind our buffers
+        constexpr u64 vertexBufferSize = sizeof(Vertex3D) * 4096 * 4096;
+        m_geometryVertexBuffer = m_backendPlugin->CreateRenderBuffer("GEOMETRY_VERTEX_BUFFER", RenderBufferType::Vertex, vertexBufferSize,
+                                                                     RenderBufferTrackType::FreeList);
+        if (!m_geometryVertexBuffer)
+        {
+            ERROR_LOG("Error creating vertex buffer.");
+            return false;
+        }
+        m_geometryVertexBuffer->Bind(0);
+
+        constexpr u64 indexBufferSize = sizeof(u32) * 8192 * 8192;
+        m_geometryIndexBuffer = m_backendPlugin->CreateRenderBuffer("GEOMETRY_INDEX_BUFFER", RenderBufferType::Index, indexBufferSize,
+                                                                    RenderBufferTrackType::FreeList);
+        if (!m_geometryIndexBuffer)
+        {
+            ERROR_LOG("Error creating index buffer.");
+            return false;
+        }
+        m_geometryIndexBuffer->Bind(0);
+
         auto& vSync = CVars.Get<bool>("vsync");
         vSync.AddOnChangedCallback([this](const bool& b) { SetFlagEnabled(FlagVSyncEnabled, b); });
 
@@ -53,6 +75,9 @@ namespace C3D
     void RenderSystem::OnShutdown()
     {
         INFO_LOG("Shutting down.");
+        // Destroy our render buffers
+        m_backendPlugin->DestroyRenderBuffer(m_geometryVertexBuffer);
+        m_backendPlugin->DestroyRenderBuffer(m_geometryIndexBuffer);
         // Shutdown our plugin
         m_backendPlugin->Shutdown();
         // Delete the plugin
@@ -121,6 +146,22 @@ namespace C3D
 
     void RenderSystem::SetWinding(const RendererWinding winding) const { m_backendPlugin->SetWinding(winding); }
 
+    void RenderSystem::SetStencilTestingEnabled(bool enabled) const { m_backendPlugin->SetStencilTestingEnabled(enabled); }
+
+    void RenderSystem::SetStencilReference(u32 reference) const { m_backendPlugin->SetStencilReference(reference); }
+
+    void RenderSystem::SetStencilCompareMask(u8 compareMask) const { m_backendPlugin->SetStencilCompareMask(compareMask); }
+
+    void RenderSystem::SetStencilWriteMask(u8 writeMask) const { m_backendPlugin->SetStencilWriteMask(writeMask); }
+
+    void RenderSystem::SetStencilOperation(StencilOperation failOp, StencilOperation passOp, StencilOperation depthFailOp,
+                                           CompareOperation compareOp) const
+    {
+        m_backendPlugin->SetStencilOperation(failOp, passOp, depthFailOp, compareOp);
+    }
+
+    void RenderSystem::SetDepthTestingEnabled(bool enabled) const { m_backendPlugin->SetDepthTestingEnabled(enabled); }
+
     void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const { m_backendPlugin->CreateTexture(pixels, texture); }
 
     void RenderSystem::CreateWritableTexture(Texture* texture) const { m_backendPlugin->CreateWritableTexture(texture); }
@@ -159,18 +200,19 @@ namespace C3D
         geometry.material = nullptr;
 
         // Invalidate IDs
-        geometry.internalId = INVALID_ID;
         geometry.generation = INVALID_ID_U16;
 
         // Take a copy of our vertex data
-        geometry.vertexCount       = vertexCount;
-        geometry.vertexElementSize = vertexSize;
-        geometry.vertices          = Memory.AllocateBlock(MemoryType::RenderSystem, vertexSize * vertexCount);
+        geometry.vertexCount = vertexCount;
+        geometry.vertexSize  = vertexSize;
+        geometry.vertices    = Memory.AllocateBlock(MemoryType::RenderSystem, vertexSize * vertexCount);
         std::memcpy(geometry.vertices, vertices, vertexSize * vertexCount);
+        geometry.vertexBufferOffset = INVALID_ID_U64;
 
-        geometry.indexCount       = indexCount;
-        geometry.indexElementSize = indexSize;
-        geometry.indices          = nullptr;
+        geometry.indexCount        = indexCount;
+        geometry.indexSize         = indexSize;
+        geometry.indices           = nullptr;
+        geometry.indexBufferOffset = INVALID_ID_U64;
 
         // If index data is supplied we take a copy of it
         if (indexSize && indexCount)
@@ -179,38 +221,108 @@ namespace C3D
             std::memcpy(geometry.indices, indices, indexSize * indexCount);
         }
 
-        return m_backendPlugin->CreateGeometry(geometry);
+        return true;
     }
 
-    bool RenderSystem::UploadGeometry(Geometry& geometry) const
+    bool RenderSystem::UploadGeometry(Geometry& geometry)
     {
-        return m_backendPlugin->UploadGeometry(geometry, 0, geometry.vertexElementSize * geometry.vertexCount, 0,
-                                               geometry.indexElementSize * geometry.indexCount);
+        // Check if this is a reupload. If it is we don't need to allocate
+        bool isReupload = geometry.generation != INVALID_ID_U16;
+        u64 vertexSize  = geometry.vertexSize * geometry.vertexCount;
+        u64 indexSize   = geometry.indexSize * geometry.indexCount;
+
+        if (!isReupload)
+        {
+            // Allocate space in the buffer.
+            if (!m_geometryVertexBuffer->Allocate(vertexSize, geometry.vertexBufferOffset))
+            {
+                ERROR_LOG("Failed to allocate memory frome the vertex buffer.");
+                return false;
+            }
+        }
+
+        // Load the data
+        if (!m_geometryVertexBuffer->LoadRange(geometry.vertexBufferOffset, vertexSize, geometry.vertices))
+        {
+            ERROR_LOG("Failed to upload to the vertex buffer.");
+            return false;
+        }
+
+        if (geometry.indexCount && geometry.indices && indexSize)
+        {
+            if (!isReupload)
+            {
+                // Allocate space in the buffer.
+                if (!m_geometryIndexBuffer->Allocate(indexSize, geometry.indexBufferOffset))
+                {
+                    ERROR_LOG("Failed to allocate memory frome the index buffer.");
+                    return false;
+                }
+            }
+
+            // Load the data
+            if (!m_geometryIndexBuffer->LoadRange(geometry.indexBufferOffset, indexSize, geometry.indices))
+            {
+                ERROR_LOG("Failed to upload to the index buffer.");
+                return false;
+            }
+        }
+
+        // Increment the generation since we now have changed this geometry
+        geometry.generation++;
+
+        return true;
     }
 
     void RenderSystem::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) const
     {
-        m_backendPlugin->UpdateGeometryVertices(geometry, offset, vertexCount, vertices);
+        u64 vertexSize = geometry.vertexSize * vertexCount;
+        if (!m_geometryVertexBuffer->LoadRange(geometry.vertexBufferOffset + offset, vertexSize, vertices))
+        {
+            ERROR_LOG("Failed to LoadRange for the provided vertices.");
+        }
     }
 
     void RenderSystem::DestroyGeometry(Geometry& geometry) const
     {
-        // Call the backend to cleanup our internal API specific geometry data
-        m_backendPlugin->DestroyGeometry(geometry);
+        if (geometry.generation != INVALID_ID_U16)
+        {
+            u64 vertexDataSize = geometry.vertexSize * geometry.vertexCount;
+            if (vertexDataSize > 0)
+            {
+                if (!m_geometryVertexBuffer->Free(vertexDataSize, geometry.vertexBufferOffset))
+                {
+                    ERROR_LOG("Failed to free Geometry Vertex Buffer data.");
+                }
+            }
 
-        // Free the memory that we've allocated for the vertices in the CreateGeometry method
-        Memory.Free(geometry.vertices);
-        geometry.vertexCount       = 0;
-        geometry.vertexElementSize = 0;
-        geometry.vertices          = nullptr;
+            u64 indexDataSize = geometry.indexSize * geometry.indexCount;
+            if (indexDataSize > 0)
+            {
+                if (!m_geometryIndexBuffer->Free(indexDataSize, geometry.indexBufferOffset))
+                {
+                    ERROR_LOG("Failed to free Geometry Index Buffer data.");
+                }
+            }
+
+            geometry.generation = INVALID_ID_U16;
+            geometry.name.Destroy();
+        }
+
+        if (geometry.vertices)
+        {
+            Memory.Free(geometry.vertices);
+            geometry.vertices    = nullptr;
+            geometry.vertexCount = 0;
+            geometry.vertexSize  = 0;
+        }
 
         if (geometry.indices)
         {
-            // Free the memory that we've allocated for the indices in the CreateGeometry method
             Memory.Free(geometry.indices);
-            geometry.indexCount       = 0;
-            geometry.indexElementSize = 0;
-            geometry.indices          = nullptr;
+            geometry.indices    = nullptr;
+            geometry.indexCount = 0;
+            geometry.indexSize  = 0;
         }
     }
 
@@ -224,7 +336,21 @@ namespace C3D
             m_backendPlugin->SetWinding(currentWindingInverted ? RendererWinding::Clockwise : RendererWinding::CounterClockwise);
         }
 
-        m_backendPlugin->DrawGeometry(data);
+        bool includesIndexData = data.indexCount > 0;
+
+        if (!m_geometryVertexBuffer->Draw(data.vertexBufferOffset, data.vertexCount, includesIndexData))
+        {
+            ERROR_LOG("Failed to draw Vertex Buffer.");
+            return;
+        }
+
+        if (includesIndexData)
+        {
+            if (!m_geometryIndexBuffer->Draw(data.indexBufferOffset, data.indexCount, !includesIndexData))
+            {
+                ERROR_LOG("Failed to draw Index Buffer.");
+            }
+        }
     }
 
     bool RenderSystem::BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) const
@@ -262,7 +388,7 @@ namespace C3D
         return m_backendPlugin->ShaderApplyInstance(shader, needsUpdate);
     }
 
-    bool RenderSystem::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, TextureMap** maps,
+    bool RenderSystem::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps,
                                                       u32* outInstanceId) const
     {
         return m_backendPlugin->AcquireShaderInstanceResources(shader, textureMapCount, maps, outInstanceId);
@@ -308,6 +434,48 @@ namespace C3D
                                                    RenderBufferTrackType trackType) const
     {
         return m_backendPlugin->CreateRenderBuffer(name, type, totalSize, trackType);
+    }
+
+    bool RenderSystem::AllocateInRenderBuffer(RenderBufferType type, u64 size, u64& offset)
+    {
+        switch (type)
+        {
+            case RenderBufferType::Vertex:
+                return m_geometryVertexBuffer->Allocate(size, offset);
+            case RenderBufferType::Index:
+                return m_geometryIndexBuffer->Allocate(size, offset);
+            default:
+                ERROR_LOG("Invalid RenderBufferType provided.");
+                return false;
+        }
+    }
+
+    bool RenderSystem::FreeInRenderBuffer(RenderBufferType type, u64 size, u64 offset)
+    {
+        switch (type)
+        {
+            case RenderBufferType::Vertex:
+                return m_geometryVertexBuffer->Free(size, offset);
+            case RenderBufferType::Index:
+                return m_geometryIndexBuffer->Free(size, offset);
+            default:
+                ERROR_LOG("Invalid RenderBufferType provided.");
+                return false;
+        }
+    }
+
+    bool RenderSystem::LoadRangeInRenderBuffer(RenderBufferType type, u64 offset, u64 size, const void* data)
+    {
+        switch (type)
+        {
+            case RenderBufferType::Vertex:
+                return m_geometryVertexBuffer->LoadRange(offset, size, data);
+            case RenderBufferType::Index:
+                return m_geometryIndexBuffer->LoadRange(offset, size, data);
+            default:
+                ERROR_LOG("Invalid RenderBufferType provided.");
+                return false;
+        }
     }
 
     bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const { return m_backendPlugin->DestroyRenderBuffer(buffer); }

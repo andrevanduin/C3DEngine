@@ -20,13 +20,15 @@
 #define Fonts m_pSystemsManager->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
 #define CVars m_pSystemsManager->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
 #define OS m_pSystemsManager->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType)
+#define UI2D m_pSystemsManager->GetSystem<C3D::UI2DSystem>(C3D::SystemType::UI2DSystemType)
 #define Audio m_pSystemsManager->GetSystem<C3D::AudioSystem>(C3D::SystemType::AudioSystemType)
 
 namespace C3D
 {
     enum SystemType
     {
-        FontSystemType = 0,
+        UI2DSystemType = 0,
+        FontSystemType,
         LightSystemType,
         CameraSystemType,
         GeometrySystemType,

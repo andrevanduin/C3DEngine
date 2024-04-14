@@ -19,7 +19,7 @@ public:
     bool OnPrepareRender(C3D::FrameData& frameData) override;
     bool OnRender(C3D::FrameData& frameData) override;
 
-    void OnResize() override;
+    void OnResize(u16 width, u16 height) override;
 
     void OnShutdown() override;
 

@@ -30,6 +30,9 @@ namespace C3D
 
     constexpr auto INF = 1e30f;
 
+    /** @brief A vec2 with zero values. */
+    constexpr auto VEC2_ZERO = vec2(0.0f, 0.0f);
+
     /** @brief A vec3 pointing up. */
     constexpr auto VEC3_UP = vec3(0.0f, 1.0f, 0.0f);
     /** @brief A vec3 pointing down. */

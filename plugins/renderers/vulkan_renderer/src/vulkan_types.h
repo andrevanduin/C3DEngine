@@ -18,8 +18,6 @@ struct shaderc_compiler;
 
 namespace C3D
 {
-    constexpr auto VULKAN_MAX_GEOMETRY_COUNT = 4096;
-
     class VulkanImage;
     struct Shader;
 
@@ -27,18 +25,6 @@ namespace C3D
     {
         // Internal Vulkan image.
         VulkanImage image;
-    };
-
-    struct VulkanGeometryData
-    {
-        /** @brief The Vulkan geometry id. */
-        u32 id = INVALID_ID;
-        /** @brief The Vulkan geometry generation, which gets incremented everytime the data changes. */
-        u32 generation = INVALID_ID;
-        /** @brief The offset in bytes into the vertex buffer. */
-        u64 vertexBufferOffset = 0;
-        /** @brief The offset in bytes into the index buffer. */
-        u64 indexBufferOffset = 0;
     };
 
     enum VulkanTopologyClass
@@ -66,8 +52,11 @@ namespace C3D
         u32 inFlightFenceCount = 0;
         VkFence inFlightFences[2];
 
-        /** @brief Holds pointers to fences which exist and are owned elsewhere, one per frame */
+        /** @brief Holds pointers to fences which exist and are owned elsewhere, one per frame. */
         VkFence imagesInFlight[3];
+
+        /** @brief A dynamic array containing all used samplers. */
+        DynamicArray<VkSampler> samplers;
 
         u32 imageIndex           = 0;
         mutable u32 currentFrame = 0;
@@ -106,7 +95,10 @@ namespace C3D
 
         PFN_vkCmdSetPrimitiveTopologyEXT pfnCmdSetPrimitiveTopologyEXT;
         PFN_vkCmdSetFrontFaceEXT pfnCmdSetFrontFaceEXT;
-
+        PFN_vkCmdSetStencilTestEnableEXT pfnCmdSetStencilTestEnableEXT;
+        PFN_vkCmdSetDepthTestEnableEXT pfnCmdSetDepthTestEnableEXT;
+        PFN_vkCmdSetStencilOpEXT pfnCmdSetStencilOpEXT;
+        
         /** @brief A pointer to the currently bound shader. */
         const Shader* boundShader;
 

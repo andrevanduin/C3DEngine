@@ -2,6 +2,7 @@
 #pragma once
 #include <containers/dynamic_array.h>
 #include <core/logger.h>
+#include <core/uuid.h>
 #include <math/math_types.h>
 #include <math/ray.h>
 #include <renderer/camera.h>
@@ -81,9 +82,10 @@ public:
     EditorGizmoInteractionType GetCurrentInteractionType() const { return m_interaction; }
     EditorGizmoOrientation GetOrientation() const { return m_orientation; }
 
-    C3D::Geometry* GetGeometry();
+    C3D::UUID GetId() const;
     vec3 GetPosition() const;
     mat4 GetModel() const;
+    C3D::Geometry* GetGeometry();
 
     void SetMode(const EditorGizmoMode mode) { m_mode = mode; }
     void SetScale(const f32 scale) { m_scale = scale; }
@@ -102,6 +104,8 @@ private:
 
     /** @brief Used to keep the gizmo a consistent size on the screen despite camera distance. */
     f32 m_scale = 0.0f;
+
+    C3D::UUID m_id;
 
     EditorGizmoMode m_mode;
     EditorGizmoModeData m_modeData[ToUnderlying(EditorGizmoMode::Max)];

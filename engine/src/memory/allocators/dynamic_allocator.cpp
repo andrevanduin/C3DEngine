@@ -171,7 +171,7 @@ namespace C3D
         MetricsFree(m_id, memoryType, *blockSize, requiredSize, userDataPtr);
     }
 
-    bool DynamicAllocator::GetSizeAlignment(void* block, u64* outSize, u16* outAlignment)
+    bool DynamicAllocator::GetSizeAlignment(void* block, u64* outSize, u16* outAlignment) const
     {
         std::lock_guard getSizeAlignmentGuard(m_mutex);
 
@@ -188,7 +188,7 @@ namespace C3D
         return true;
     }
 
-    bool DynamicAllocator::GetAlignment(void* block, u16* outAlignment)
+    bool DynamicAllocator::GetAlignment(void* block, u16* outAlignment) const
     {
         std::lock_guard getAlignmentGuard(m_mutex);
 
@@ -204,7 +204,7 @@ namespace C3D
         return true;
     }
 
-    bool DynamicAllocator::GetAlignment(const void* block, u16* outAlignment)
+    bool DynamicAllocator::GetAlignment(const void* block, u16* outAlignment) const
     {
         std::lock_guard getAlignmentGuard(m_mutex);
 

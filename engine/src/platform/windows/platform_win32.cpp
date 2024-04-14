@@ -26,8 +26,21 @@ namespace C3D
         GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &m_stdOutputConsoleScreenBufferInfo);
         GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &m_stdErrorConsoleScreenBufferInfo);
 
-        if (config.makeWindow)
+        // NOTE: This is only available in Creators update of windows 10+ so we fallback to V1 if this call fails
+        if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
         {
+            WARN_LOG(
+                "The following error occured: '{}' while trying to set ProcessDpiAwarenessContext to: "
+                "'DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2'. Falling back to V1.",
+                GetLastErrorMsg());
+            SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+        }
+
+        auto windowConfig = config.windowConfig;
+        if (windowConfig.shouldCreate)
+        {
+            ParseWindowFlags(windowConfig);
+
             // Setup and register our window class
             HICON icon                = LoadIcon(m_handle.hInstance, IDI_APPLICATION);
             WNDCLASSA windowClass     = {};
@@ -48,10 +61,10 @@ namespace C3D
             }
 
             // Create our window
-            i32 windowX      = config.x;
-            i32 windowY      = config.y;
-            i32 windowWidth  = config.width;
-            i32 windowHeight = config.height;
+            i32 windowX      = windowConfig.x;
+            i32 windowY      = windowConfig.y;
+            i32 windowWidth  = windowConfig.width;
+            i32 windowHeight = windowConfig.height;
 
             u32 windowStyle   = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME;
             u32 windowExStyle = WS_EX_APPWINDOW;
@@ -276,6 +289,21 @@ namespace C3D
         return static_cast<f64>(nowTime.QuadPart) * m_clockFrequency;
     }
 
+    bool Platform::GetCurrentCapsLockState() const
+    {
+        /* From Microsoft documentation:
+         SHORT GetKeyState(int nVirtKey)
+
+        The return value specifies the status of the specified virtual key, as follows:
+        If the high-order bit is 1, the key is down; otherwise, it is up.
+        If the low-order bit is 1, the key is toggled. A key, such as the CAPS LOCK key, is toggled if it is turned on.
+        The key is off and untoggled if the low-order bit is 0.
+        A toggle key's indicator light (if any) on the keyboard will be on when the key is toggled, and off when the key is untoggled.
+        */
+        SHORT state = GetKeyState(VK_CAPITAL);
+        return LOBYTE(state);
+    }
+
     void Platform::SleepMs(const u64 ms) { Sleep(static_cast<u32>(ms)); }
 
     i32 Platform::GetProcessorCount()
@@ -287,13 +315,22 @@ namespace C3D
 
     u64 Platform::GetThreadId() { return GetCurrentThreadId(); }
 
-    int Platform::GetPrimaryScreenWidth() { return GetSystemMetrics(SM_CXSCREEN); }
+    i32 Platform::GetPrimaryScreenWidth() { return GetSystemMetrics(SM_CXSCREEN); }
 
-    int Platform::GetPrimaryScreenHeight() { return GetSystemMetrics(SM_CYSCREEN); }
+    i32 Platform::GetPrimaryScreenHeight() { return GetSystemMetrics(SM_CYSCREEN); }
 
-    int Platform::GetVirtualScreenWidth() { return GetSystemMetrics(SM_CXVIRTUALSCREEN); }
+    i32 Platform::GetVirtualScreenWidth() { return GetSystemMetrics(SM_CXVIRTUALSCREEN); }
 
-    int Platform::GetVirtualScreenHeight() { return GetSystemMetrics(SM_CYVIRTUALSCREEN); }
+    i32 Platform::GetVirtualScreenHeight() { return GetSystemMetrics(SM_CYVIRTUALSCREEN); }
+
+    f32 Platform::GetDevicePixelRatio() { return m_devicePixelRatio; }
+
+    vec2 Platform::GetWindowSize()
+    {
+        RECT rect;
+        GetClientRect(m_handle.hwnd, &rect);
+        return vec2(rect.right - rect.left, rect.bottom - rect.top);
+    }
 
     bool Platform::LoadDynamicLibrary(const char* name, void** libraryData, u64& size)
     {
@@ -331,7 +368,7 @@ namespace C3D
         if (FreeLibrary(library) == 0)
         {
             const auto errorMsg = GetLastErrorMsg();
-            printf("[PLATFORM] - UnloadDynamicLibrary() Failed - %s", errorMsg.data());
+            printf("[PLATFORM] - UnloadDynamicLibrary() Failed - %s.", errorMsg.data());
             return false;
         }
 
@@ -368,6 +405,15 @@ namespace C3D
                 PostQuitMessage(0);
                 return 0;
             }
+            case WM_DPICHANGED:
+            {
+                // Since x and y DPI are always the same we can take either one
+                i32 dpi = GET_X_LPARAM(wParam);
+                // Store the device pixel ratio in our state
+                m_devicePixelRatio = static_cast<f32>(dpi) / USER_DEFAULT_SCREEN_DPI;
+                INFO_LOG("Display device pixel ratio changed to: '{}'.", m_devicePixelRatio);
+                return 0;
+            }
             case WM_SIZE:
             {
                 // Window resize, let's get the updated size
@@ -375,6 +421,18 @@ namespace C3D
                 GetClientRect(hwnd, &r);
                 u32 width  = r.right - r.left;
                 u32 height = r.bottom - r.top;
+
+                {
+                    HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+
+                    MONITORINFO monitorInfo = {};
+                    monitorInfo.cbSize      = sizeof(MONITORINFO);
+                    if (!GetMonitorInfo(monitor, &monitorInfo))
+                    {
+                        WARN_LOG("Failed to get Monitor Info.");
+                    }
+                    INFO_LOG("Monitor: {}", monitorInfo.rcMonitor.left);
+                }
 
                 // Fire a resize event
                 EventContext context = {};

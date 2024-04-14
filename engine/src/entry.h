@@ -2,7 +2,6 @@
 #pragma once
 #include "core/console/console.h"
 #include "core/engine.h"
-#include "core/identifier.h"
 #include "core/metrics/metrics.h"
 #include "memory/global_memory_system.h"
 
@@ -19,9 +18,6 @@ int main(int argc, char** argv)
 
     // Initialize our global allocator that we will normally always use
     C3D::GlobalMemorySystem::Init({ MebiBytes(1024) });
-
-    // Create our identifiers
-    C3D::Identifier::Init();
 
     // Create the application by calling the method provided by the user
     const auto application = C3D::CreateApplication();
@@ -44,9 +40,6 @@ int main(int argc, char** argv)
 
     // Call the user's cleanup method
     C3D::DestroyApplication();
-
-    // Destroy our identifiers
-    C3D::Identifier::Destroy();
 
     // Cleanup our global memory system
     C3D::GlobalMemorySystem::Destroy();

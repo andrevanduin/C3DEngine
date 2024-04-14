@@ -28,6 +28,8 @@ namespace C3D
         u32 indexCount = 0;
         u32 indices[8];
 
+        bool presentMustShareGraphics = false;
+
         // We always need at least the graphics queue
         indices[indexCount] = m_graphicsQueueIndex;
         indexCount++;
@@ -47,6 +49,12 @@ namespace C3D
 
         VkDeviceQueueCreateInfo queueCreateInfos[8];
         f32 queuePriorities[2] = { 0.9f, 1.0f };
+
+        VkQueueFamilyProperties queueFamilyProperties[32];
+        u32 propCount;
+        vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &propCount, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &propCount, queueFamilyProperties);
+
         for (u32 i = 0; i < indexCount; i++)
         {
             auto& queueCreateInfo = queueCreateInfos[i];
@@ -57,7 +65,16 @@ namespace C3D
 
             if (m_graphicsQueueIndex == m_presentQueueIndex && indices[i] == m_presentQueueIndex)
             {
-                queueCreateInfo.queueCount = 2;
+                if (queueFamilyProperties[m_presentQueueIndex].queueCount > 1)
+                {
+                    // If the same family is shared between graphics and presentation, we get 2 queues from that same family
+                    queueCreateInfo.queueCount = 2;
+                }
+                else
+                {
+                    // We only have 1 queue in this family so we must share them
+                    presentMustShareGraphics = true;
+                }
             }
 
             // TODO: Future enhancement with multiple graphics queue count
@@ -80,30 +97,27 @@ namespace C3D
             requestedExtensions.PushBack(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
         }
 
-        auto dynamicTopologyResult = CheckForSupportAndAddExtensionIfNeeded(
-            "Dynamic Topology", VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT, VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT,
-            VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME, requestedExtensions);
+        auto dynamicStateResult = CheckForSupportAndAddExtensionIfNeeded("Dynamic State", VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE,
+                                                                         VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE,
+                                                                         VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME, requestedExtensions);
 
-        if (dynamicTopologyResult == VulkanDeviceSupportResult::Extension)
+        if (dynamicStateResult == VulkanDeviceSupportResult::Extension)
         {
             // We need to use an extension to get the functionality so let's get the function pointer for it
             m_context->pfnCmdSetPrimitiveTopologyEXT =
                 VulkanUtils::LoadExtensionFunction<PFN_vkCmdSetPrimitiveTopologyEXT>(m_context->instance, "vkCmdSetPrimitiveTopologyEXT");
-        }
-
-        auto frontFaceResult = CheckForSupportAndAddExtensionIfNeeded(
-            "Dynamic Front Face Swapping", VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT,
-            VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME, requestedExtensions);
-
-        if (frontFaceResult == VulkanDeviceSupportResult::Extension)
-        {
-            // We need to use an extension to get the functionality so let's get the function pointer for it
             m_context->pfnCmdSetFrontFaceEXT =
                 VulkanUtils::LoadExtensionFunction<PFN_vkCmdSetFrontFaceEXT>(m_context->instance, "vkCmdSetFrontFaceEXT");
+            m_context->pfnCmdSetDepthTestEnableEXT =
+                VulkanUtils::LoadExtensionFunction<PFN_vkCmdSetDepthTestEnableEXT>(m_context->instance, "vkCmdSetDepthTestEnableEXT");
+            m_context->pfnCmdSetStencilTestEnableEXT =
+                VulkanUtils::LoadExtensionFunction<PFN_vkCmdSetStencilTestEnableEXT>(m_context->instance, "vkCmdSetStencilTestEnableEXT");
+            m_context->pfnCmdSetStencilOpEXT =
+                VulkanUtils::LoadExtensionFunction<PFN_vkCmdSetStencilOpEXT>(m_context->instance, "vkCmdSetStencilOpEXT");
         }
 
         // If we support smooth rasterization of lines we load the extension
-        if (HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION_BIT))
+        if (HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION))
         {
             INFO_LOG("We have support for smooth line rasterization through the: '{}' extension. We are enabling it!",
                      VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
@@ -128,7 +142,7 @@ namespace C3D
         extendedDynamicState.extendedDynamicState = VK_TRUE;
         deviceCreateInfo.pNext                    = &extendedDynamicState;
 
-        if (HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION_BIT))
+        if (HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION))
         {
             // If we support smooth lines we add the required structures to the pNext
             VkPhysicalDeviceLineRasterizationFeaturesEXT lineRasterization = {
@@ -146,7 +160,8 @@ namespace C3D
         INFO_LOG("Logical Device created.");
 
         vkGetDeviceQueue(m_logicalDevice, m_graphicsQueueIndex, 0, &m_graphicsQueue);
-        vkGetDeviceQueue(m_logicalDevice, m_presentQueueIndex, m_graphicsQueueIndex == m_presentQueueIndex ? 1 : 0, &m_presentQueue);
+        vkGetDeviceQueue(m_logicalDevice, m_presentQueueIndex,
+                         presentMustShareGraphics ? 0 : (m_graphicsQueueIndex == m_presentQueueIndex ? 1 : 0), &m_presentQueue);
         vkGetDeviceQueue(m_logicalDevice, m_transferQueueIndex, 0, &m_transferQueue);
 
         VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_QUEUE, m_graphicsQueue, "VULKAN_GRAHPICS_QUEUE");
@@ -189,9 +204,9 @@ namespace C3D
 
     bool VulkanDevice::DetectDepthFormat() const
     {
-        constexpr u64 candidateCount                  = 3;
-        constexpr VkFormat candidates[candidateCount] = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
-        constexpr u8 sizes[candidateCount]            = { 4, 4, 3 };
+        constexpr u64 candidateCount                  = 2;
+        constexpr VkFormat candidates[candidateCount] = { VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
+        constexpr u8 sizes[candidateCount]            = { 4, 3 };
 
         constexpr u32 flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
         for (u64 i = 0; i < candidateCount; i++)
@@ -362,23 +377,21 @@ namespace C3D
 
             if (supportsDeviceLocalHostVisible)
             {
-                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY_BIT;
+                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_DEVICE_LOCAL_HOST_VISIBILE_MEMORY;
             }
             if (dynamicStateNext.extendedDynamicState)
             {
-                // Both of these are part of the extended dynamic state extension
-                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_TOPOLOGY_BIT;
-                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_FRONT_FACE_BIT;
+                // Dynamic state extension is supported
+                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE;
             }
             if (m_apiVersionMajor == 1 && m_apiVersionMinor >= 3)
             {
-                // If we are using Vulkan API >= 1.3 we have native support for both of these
-                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_TOPOLOGY_BIT;
-                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_FRONT_FACE_BIT;
+                // If we are using Vulkan API >= 1.3 we have native support for dynamic state
+                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE;
             }
             if (smoothLineNext.smoothLines)
             {
-                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION_BIT;
+                m_supportFlags |= VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION;
             }
 
             break;

@@ -1,25 +1,22 @@
 
 #include "debug_line_3d.h"
 
-#include "core/identifier.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/system_manager.h"
 
 namespace C3D
 {
-    bool DebugLine3D::Create(const SystemManager* systemsManager, const vec3& point0, const vec3& point1,
-                             Transform* parent)
+    bool DebugLine3D::Create(const SystemManager* systemsManager, const vec3& point0, const vec3& point1, Transform* parent)
     {
         m_pSystemsManager = systemsManager;
 
-        m_point0   = point0;
-        m_point1   = point1;
-        m_uniqueId = Identifier::GetNewId(this);
-        m_color    = vec4(1.0f);  // Default is white
+        m_point0 = point0;
+        m_point1 = point1;
+        m_id.Generate();
+        m_color = vec4(1.0f);  // Default is white
 
         m_geometry.id         = INVALID_ID;
         m_geometry.generation = INVALID_ID_U16;
-        m_geometry.internalId = INVALID_ID;
 
         if (parent)
         {
@@ -31,9 +28,7 @@ namespace C3D
 
     void DebugLine3D::Destroy()
     {
-        Identifier::ReleaseId(m_uniqueId);
-        m_uniqueId = INVALID_ID;
-
+        m_id.Invalidate();
         m_vertices.Destroy();
     }
 
@@ -49,8 +44,7 @@ namespace C3D
 
     bool DebugLine3D::Load()
     {
-        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0,
-                                     0))
+        if (!Renderer.CreateGeometry(m_geometry, sizeof(ColorVertex3D), m_vertices.Size(), m_vertices.GetData(), 0, 0, 0))
         {
             Logger::Error("[DEBUG_LINE] - Load() - Failed to create geometry.");
             return false;

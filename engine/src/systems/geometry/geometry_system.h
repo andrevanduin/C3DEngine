@@ -57,7 +57,6 @@ namespace C3D
         void Release(const Geometry* geometry) const;
 
         Geometry* GetDefault();
-        Geometry* GetDefault2D();
 
         // NOTE: Vertex and index arrays are dynamically allocated so they should be freed by the user
         [[nodiscard]] static GeometryConfig GeneratePlaneConfig(f32 width, f32 height, u32 xSegmentCount, u32 ySegmentCount, f32 tileX,
@@ -75,7 +74,6 @@ namespace C3D
         bool CreateDefaultGeometries();
 
         Geometry m_defaultGeometry;
-        Geometry m_default2DGeometry;
 
         GeometryReference* m_registeredGeometries = nullptr;
     };
@@ -131,7 +129,6 @@ namespace C3D
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;
-            g->internalId                                = INVALID_ID;
             g->generation                                = INVALID_ID_U16;
 
             return false;
@@ -143,7 +140,6 @@ namespace C3D
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;
-            g->internalId                                = INVALID_ID;
             g->generation                                = INVALID_ID_U16;
 
             return false;
