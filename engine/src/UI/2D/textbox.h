@@ -36,9 +36,6 @@ namespace C3D::UI_2D
             u16 characterIndexStart   = 0;
             u16 characterIndexCurrent = 0;
             u16 characterIndexEnd     = 0;
-
-            f32 prevCursorX     = 0;
-            f32 highlightStartX = 0;
         };
 
         Component Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator);

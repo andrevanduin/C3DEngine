@@ -94,8 +94,6 @@ namespace C3D::UI_2D
         data.clip.OnRender(self, frameData, locations);
         // Render our text
         data.textComponent.OnRender(self, frameData, locations);
-        // Reset our clipping mask
-        data.clip.ResetClipping(self);
         if (self.IsFlagSet(FlagActive))
         {
             if (data.flags & FlagHighlight)
@@ -109,6 +107,8 @@ namespace C3D::UI_2D
                 data.cursor.OnRender(self, frameData, locations);
             }
         }
+        // Reset our clipping mask
+        data.clip.ResetClipping(self);
     }
 
     void Textbox::OnResize(Component& self)
@@ -140,8 +140,6 @@ namespace C3D::UI_2D
 
         auto textSize = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexCurrent);
 
-        data.prevCursorX = data.cursor.offsetX;
-
         data.cursor.offsetY = TEXT_PADDING;
         data.cursor.offsetX = C3D::Clamp(textSize.x + CURSOR_PADDING, 0.f, (f32)data.clip.size.x);
 
@@ -152,38 +150,20 @@ namespace C3D::UI_2D
     {
         auto& data = self.GetInternal<InternalData>();
 
-        // <- offsetX-- and width++
-        // -> width++
-
-        DEBUG_LOG("CharacterIndexStart: {}", data.characterIndexStart);
-        DEBUG_LOG("CharacterIndexCurrent: {}", data.characterIndexCurrent);
-        DEBUG_LOG("CharacterIndexEnd: {}", data.characterIndexEnd);
-
         if (shiftDown)
         {
-            if (!(data.flags & FlagHighlight))
-            {
-                // Just starting highlighting
-                data.highlightStartX = data.prevCursorX;
-            }
-
             data.flags |= FlagHighlight;
 
-            // Total highlight width is determined by the absolute difference between original starting position and current cursor
-            auto width = C3D::Abs(data.cursor.offsetX - data.highlightStartX);
+            auto& fontSystem = self.GetSystem<FontSystem>();
+
+            auto start = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexStart);
+            auto end   = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexEnd);
+
+            auto width = end.x - start.x;
             data.highlight.OnResize(self, u16vec2(width, data.highlight.size.y));
 
-            auto delta = data.cursor.offsetX - data.highlightStartX;
-            if (delta < 0)
-            {
-                // We are moving left
-                data.highlight.offsetX = data.highlightStartX - width;
-            }
-            else
-            {
-                // we are moving right
-                data.highlight.offsetX = data.highlightStartX;
-            }
+            data.highlight.offsetY = TEXT_PADDING;
+            data.highlight.offsetX = start.x + data.textComponent.offsetX;
         }
         else
         {
