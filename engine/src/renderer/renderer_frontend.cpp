@@ -148,7 +148,7 @@ namespace C3D
 
     void RenderSystem::SetStencilTestingEnabled(bool enabled) const { m_backendPlugin->SetStencilTestingEnabled(enabled); }
 
-    void RenderSystem::SetStencilReference(u8 reference) const { m_backendPlugin->SetStencilReference(reference); }
+    void RenderSystem::SetStencilReference(u32 reference) const { m_backendPlugin->SetStencilReference(reference); }
 
     void RenderSystem::SetStencilCompareMask(u8 compareMask) const { m_backendPlugin->SetStencilCompareMask(compareMask); }
 

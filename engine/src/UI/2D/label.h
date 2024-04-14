@@ -1,7 +1,8 @@
 
 #pragma once
 #include "component.h"
-#include "text_component.h"
+#include "config.h"
+#include "internal/text_component.h"
 
 namespace C3D::UI_2D
 {
@@ -14,7 +15,7 @@ namespace C3D::UI_2D
 
         Component Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator);
 
-        bool Initialize(Component& self, const u16vec2& pos, const String& text, FontHandle font);
+        bool Initialize(Component& self, const Config& config);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
 
         void SetText(Component& self, const String& text);

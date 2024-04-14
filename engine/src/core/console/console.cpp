@@ -42,9 +42,24 @@ namespace C3D
 
         auto windowSize = OS.GetWindowSize();
 
-        m_background = UI2D.AddPanel(u16vec2(0, 0), u16vec2(windowSize.x, 100), u16vec2(16, 16));
-        m_text       = UI2D.AddLabel(u16vec2(5, 5), "-", font);
-        m_entry      = UI2D.AddTextbox(u16vec2(5, 5), u16vec2(windowSize.x - 10, 30), "", font);
+        auto config = UI_2D::Config::DefaultPanel();
+        config.size = u16vec2(windowSize.x, 100);
+
+        m_background = UI2D.AddPanel(config);
+
+        config          = UI_2D::Config::DefaultLabel();
+        config.position = vec2(5, 5);
+        config.text     = "-";
+        config.font     = font;
+
+        m_text = UI2D.AddLabel(config);
+
+        config          = UI_2D::Config::DefaultTextbox();
+        config.position = vec2(5, 5);
+        config.size     = u16vec2(windowSize.x - 10, 30);
+        config.font     = font;
+
+        m_entry = UI2D.AddTextbox(config);
 
         UI2D.AddOnEndTextInputHandler(m_entry, [this](u16 key, const String& text) {
             if (key == KeyEnter)
@@ -90,8 +105,7 @@ namespace C3D
             UI2D.SetActive(m_entry, m_isOpen);
         }
 
-        f32 textMaxY = UI2D.GetTextMaxY(m_text);
-        if (m_isTextDirty)
+        if (m_isTextDirty && m_isOpen)
         {
             constexpr auto maxChars = 4096;
             CString<maxChars> buffer;
@@ -105,6 +119,8 @@ namespace C3D
             }
 
             UI2D.SetText(m_text, buffer.Data());
+
+            f32 textMaxY = UI2D.GetTextMaxY(m_text);
             UI2D.SetPosition(m_entry, vec2(5, textMaxY + 15));
             UI2D.SetHeight(m_background, textMaxY + 50);
 

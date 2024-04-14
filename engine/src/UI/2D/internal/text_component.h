@@ -1,6 +1,7 @@
 
 #pragma once
-#include "component.h"
+#include "UI/2D/component.h"
+#include "UI/2D/config.h"
 
 namespace C3D::UI_2D
 {
@@ -15,6 +16,8 @@ namespace C3D::UI_2D
         f32 offsetX = 0.0f;
         f32 offsetY = 0.0f;
 
+        vec4 color;
+
         DynamicArray<Vertex2D> vertices;
         DynamicArray<u32> indices;
 
@@ -22,13 +25,14 @@ namespace C3D::UI_2D
 
         RenderableComponent renderable;
 
-        bool Initialize(Component& self, FontHandle f, const String& t);
+        bool Initialize(Component& self, const Config& config);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
         void Regenerate(Component& self);
         void SetText(Component& self, const char* _text);
 
         void Insert(Component& self, u32 index, char c);
         void RemoveAt(Component& self, u32 index);
+        void RemoveRange(Component& self, u32 characterIndexStart, u32 characterIndexEnd, bool regenerate = true);
 
         void Destroy(Component& self);
     };

@@ -1,6 +1,6 @@
 
 #pragma once
-#include "component.h"
+#include "UI/2D/component.h"
 #include "core/colors.h"
 
 namespace C3D::UI_2D

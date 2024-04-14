@@ -33,6 +33,9 @@ namespace C3D
             button = INVALID_ID_U8;
         }
 
+        // Check the current capslock state
+        m_capslockActive = OS.GetCurrentCapsLockState();
+
         return true;
     }
 
@@ -127,6 +130,12 @@ namespace C3D
         }
         else
         {
+            // If our capslock key goes up we toggle it's state
+            if (key == KeyCapslock)
+            {
+                m_capslockActive ^= true;
+            }
+
             Event.Fire(EventCodeKeyUp, this, context);
             currentKey.state = InputState::Up;
         }
@@ -226,6 +235,8 @@ namespace C3D
         Event.Fire(ToUnderlying(EventCodeMouseScrolled), nullptr, context);
     }
 
+    void InputSystem::SetCapslockState(bool active) { m_capslockActive = active; }
+
     bool InputSystem::IsKeyDown(const u8 key) const
     {
         if (!m_initialized) return false;
@@ -310,6 +321,8 @@ namespace C3D
         if (!m_initialized) return false;
         return m_keyboardCurrent.keys[KeyLAlt].state > InputState::Up || m_keyboardCurrent.keys[KeyRAlt].state > InputState::Up;
     }
+
+    bool InputSystem::IsCapslockActive() const { return m_capslockActive; }
 
     const ivec2& InputSystem::GetMousePosition() const
     {

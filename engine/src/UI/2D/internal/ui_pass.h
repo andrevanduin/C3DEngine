@@ -1,12 +1,12 @@
 
 #pragma once
-#include "component.h"
+#include "UI/2D/component.h"
+#include "UI/2D/ui2d_defines.h"
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
 #include "memory/allocators/linear_allocator.h"
 #include "renderer/renderer_types.h"
 #include "renderer/rendergraph/rendergraph_pass.h"
-#include "ui2d_defines.h"
 
 namespace C3D
 {

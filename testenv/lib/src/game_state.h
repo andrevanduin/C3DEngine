@@ -70,7 +70,6 @@ struct GameState final : C3D::ApplicationState
 
     C3D::PointLight* pLights[4];
 
-    C3D::Handle panel, button, label;
     C3D::Handle debugInfoPanel, debugInfoLabel;
     C3D::Handle textbox;
 

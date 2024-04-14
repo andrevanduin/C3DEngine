@@ -133,34 +133,27 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 
     auto font = Fonts.Acquire("Ubuntu Mono 21px", C3D::FontType::Bitmap, 32);
 
-    m_state->panel   = UI2D.AddPanel(u16vec2(512, 0), u16vec2(256, 512), u16vec2(16, 16));
-    m_state->button  = UI2D.AddButton(u16vec2(40, 50), u16vec2(150, 60), u16vec2(8, 8));
-    m_state->label   = UI2D.AddLabel(u16vec2(50, 200), "test123", font);
-    m_state->textbox = UI2D.AddTextbox(u16vec2(30, 250), u16vec2(100, 30), "DEFAULT_TEXT", font);
+    auto config = C3D::UI_2D::Config::DefaultPanel();
+    config.size = u16vec2(300, 80);
 
-    /*
-    UI2D.AddOnClickHandler(m_state->textbox, [](const C3D::UI_2D::MouseButtonEventContext& ctx) {
-        C3D::Logger::Info("Sicke click op de Textbox");
-        return true;
-    });
-    UI2D.AddOnEndTextInputHandler(m_state->textbox, [](u16 key, const C3D::String& text) {
-        C3D::Logger::Info("Text input ended at with key: {} and text: {}", key, text);
-    });
-    */
+    m_state->debugInfoPanel = UI2D.AddPanel(config);
 
-    m_state->debugInfoPanel = UI2D.AddPanel(u16vec2(0, 0), u16vec2(300, 80), u16vec2(16, 16));
-    m_state->debugInfoLabel = UI2D.AddLabel(u16vec2(15, 10), "DebugInfo", font);
+    config          = C3D::UI_2D::Config::DefaultLabel();
+    config.position = vec2(15, 10);
+    config.text     = "DebugInfo";
+    config.font     = font;
 
-    UI2D.SetParent(m_state->button, m_state->panel);
-    UI2D.SetParent(m_state->label, m_state->panel);
-    UI2D.SetParent(m_state->textbox, m_state->panel);
+    m_state->debugInfoLabel = UI2D.AddLabel(config);
 
     UI2D.SetParent(m_state->debugInfoLabel, m_state->debugInfoPanel);
 
-    UI2D.AddOnClickHandler(m_state->button, [](const C3D::UI_2D::MouseButtonEventContext& ctx) {
-        INFO_LOG("Button Clickerino'ed at: ({}, {}).", ctx.x, ctx.y);
-        return true;
-    });
+    config          = C3D::UI_2D::Config::DefaultTextbox();
+    config.position = vec2(400, 250);
+    config.text     = "DEFAULT_TEXT_THAT_IS_A_LITTLE_LARGER_THAN_THE_BOUNDS";
+    config.size     = u16vec2(150, 30);
+    config.font     = font;
+
+    m_state->textbox = UI2D.AddTextbox(config);
 
     /*
     UI2D.AddOnHoverStartHandler(m_state->button, [](const C3D::UI_2D::OnHoverEventContext& ctx) {
@@ -294,15 +287,6 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             m_state->camera->MoveForward(move_speed * deltaTime);
         }
 
-        // TEMP
-        if (Input.IsKeyPressed('T'))
-        {
-            C3D::Logger::Debug("Swapping Texture");
-            C3D::EventContext context = {};
-            Event.Fire(C3D::EventCodeDebug0, this, context);
-        }
-        // TEMP END
-
         if (Input.IsKeyDown('S'))
         {
             m_state->camera->MoveBackward(move_speed * deltaTime);
@@ -326,20 +310,6 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         if (Input.IsKeyDown(C3D::KeyX))
         {
             m_state->camera->MoveDown(move_speed * deltaTime);
-        }
-
-        static u16 nSliceWidth = 256;
-
-        if (Input.IsKeyPressed(C3D::KeyNumpad1))
-        {
-            nSliceWidth -= 16;
-            UI2D.SetSize(m_state->panel, nSliceWidth, 512);
-        }
-
-        if (Input.IsKeyPressed(C3D::KeyNumpad2))
-        {
-            nSliceWidth += 16;
-            UI2D.SetSize(m_state->panel, nSliceWidth, 512);
         }
     }
 
@@ -493,9 +463,6 @@ void TestEnv::OnResize(u16 width, u16 height)
     m_state->uiViewport.Resize(uiViewportRect);
 
     m_state->frameGraph.OnResize(width, height);
-
-    auto size = UI2D.GetSize(m_state->panel);
-    UI2D.SetPosition(m_state->panel, vec2(width - size.x, 0));
 
     auto debugLabelMaxX = UI2D.GetTextMaxX(m_state->debugInfoLabel);
     auto debugLabelMaxY = UI2D.GetTextMaxY(m_state->debugInfoLabel);

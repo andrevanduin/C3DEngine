@@ -174,11 +174,11 @@ namespace C3D
         return 0;
     }
 
-    vec2 FontSystem::MeasureString(FontHandle handle, const String& text, u32 size) const
+    vec2 FontSystem::MeasureString(FontHandle handle, const String& text, u64 size) const
     {
         vec2 extents;
 
-        u32 charLength = size > text.Size() ? text.Size() : size;
+        u32 charLength = C3D::Clamp(size, (u64)0, text.Size());
         u32 utf8Length = text.SizeUtf8();
 
         f32 x = 0;

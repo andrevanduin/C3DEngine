@@ -14,13 +14,14 @@ namespace C3D::UI_2D
 
     Component::Component(const SystemManager* systemsManager) : m_pSystemsManager(systemsManager) { m_id.Generate(); }
 
-    void Component::Initialize(const u16vec2& pos, const u16vec2& size, ComponentType _type)
+    bool Component::Initialize(ComponentType _type, const Config& config)
     {
         m_transform = Transform();
-        m_transform.SetPosition(vec3(pos.x, pos.y, 0));
-        m_bounds = Bounds(0.0f, 0.0f, size.x, size.y);
+        m_transform.SetPosition(vec3(config.position.x, config.position.y, 0));
+        m_bounds = Bounds(0.0f, 0.0f, config.size.x, config.size.y);
         m_flags |= FlagVisible;
         type = _type;
+        return onInitialize(*this, config);
     }
 
     void Component::Destroy(const DynamicAllocator* pAllocator)

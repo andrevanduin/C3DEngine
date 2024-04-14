@@ -66,9 +66,6 @@ namespace C3D::UI_2D
         renderable.frameNumber = frameData.frameNumber;
         renderable.drawIndex   = frameData.drawIndex;
 
-        renderer.SetStencilWriteMask(0x0);
-        renderer.SetStencilTestingEnabled(false);
-
         // Apply local
         auto model = self.GetWorld();
         shaderSystem.SetUniformByIndex(locations.model, &model);

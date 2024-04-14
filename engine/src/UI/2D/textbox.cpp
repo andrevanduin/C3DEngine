@@ -10,34 +10,53 @@ namespace C3D::UI_2D
 {
     constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
     constexpr auto CORNER_SIZE          = u16vec2(1, 1);
-    constexpr auto BLINK_DELAY          = 0.8;
+    constexpr auto BLINK_DELAY          = 0.7;
+
+    constexpr auto TEXT_PADDING = 4.f;
+
+    constexpr auto CLIP_PADDING = 4;
+
+    constexpr auto CURSOR_WIDTH   = 2;
+    constexpr auto CURSOR_PADDING = 3.f;
+
+    constexpr char SHIFT_NUMBER_KEY_MAP[10] = { ')', '!', '@', '#', '$', '%', '^', '&', '*', '(' };
 
     Component Textbox::Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator)
     {
         Component component(systemsManager);
 
         component.MakeInternal<InternalData>(pAllocator);
-        component.onDestroy = &Destroy;
-        component.onUpdate  = &OnUpdate;
-        component.onRender  = &OnRender;
-        component.onResize  = &OnResize;
-        component.onKeyDown = &OnKeyDown;
-        component.onClick   = &OnClick;
+        component.onInitialize = &Initialize;
+        component.onDestroy    = &Destroy;
+        component.onUpdate     = &OnUpdate;
+        component.onRender     = &OnRender;
+        component.onResize     = &OnResize;
+        component.onKeyDown    = &OnKeyDown;
+        component.onClick      = &OnClick;
 
         return component;
     }
 
-    bool Textbox::Initialize(Component& self, const u16vec2& pos, const u16vec2& size, const String& text, FontHandle font)
+    bool Textbox::Initialize(Component& self, const Config& config)
     {
-        self.Initialize(pos, size, ComponentTypeTextbox);
         auto& data = self.GetInternal<InternalData>();
-        data.textComponent.Initialize(self, font, text);
-        data.textComponent.offsetX = 4;
-        data.textComponent.offsetY = 4;
-        data.characterIndex        = text.Size();
+        data.textComponent.Initialize(self, config);
+        data.textComponent.offsetX = TEXT_PADDING;
+        data.textComponent.offsetY = TEXT_PADDING;
 
-        data.nineSlice.Initialize(self, "TextboxNineSlice", AtlasIDTextboxNineSlice, size, CORNER_SIZE);
-        data.cursor.Initialize(self, "TextboxCursor", AtlasIDTextboxCursor, u16vec2(2, size.y - 8));
+        data.characterIndexCurrent = config.text.Size();
+        data.characterIndexStart   = config.text.Size();
+        data.characterIndexEnd     = config.text.Size();
+
+        data.nineSlice.Initialize(self, "TextboxNineSlice", AtlasIDTextboxNineSlice, config.size, config.cornerSize,
+                                  config.backgroundColor);
+        data.cursor.Initialize(self, "TextboxCursor", AtlasIDTextboxCursor, u16vec2(CURSOR_WIDTH, config.size.y - 8));
+
+        data.clip.Initialize(self, "TextboxClippingMask", u16vec2(config.size.x - (2 * CLIP_PADDING), config.size.y));
+        data.clip.offsetX = CLIP_PADDING;
+
+        data.highlight.Initialize(self, "TextboxHighlight", AtlasIDTextboxHighlight, u16vec2(10, config.size.y - 8), config.highlightColor);
+        data.highlight.offsetX = CLIP_PADDING;
 
         CalculateCursorOffset(self);
         return true;
@@ -54,7 +73,14 @@ namespace C3D::UI_2D
             if (currentTime >= data.nextBlink)
             {
                 data.nextBlink = currentTime + BLINK_DELAY;
-                data.showCursor ^= true;
+                if (data.flags & FlagCursor)
+                {
+                    data.flags &= ~FlagCursor;
+                }
+                else
+                {
+                    data.flags |= FlagCursor;
+                }
             }
         }
     }
@@ -62,11 +88,26 @@ namespace C3D::UI_2D
     void Textbox::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
     {
         auto& data = self.GetInternal<InternalData>();
+        // Render the background
         data.nineSlice.OnRender(self, frameData, locations);
+        // Render the clipping mask
+        data.clip.OnRender(self, frameData, locations);
+        // Render our text
         data.textComponent.OnRender(self, frameData, locations);
-        if (data.showCursor && self.IsFlagSet(FlagActive))
+        // Reset our clipping mask
+        data.clip.ResetClipping(self);
+        if (self.IsFlagSet(FlagActive))
         {
-            data.cursor.OnRender(self, frameData, locations);
+            if (data.flags & FlagHighlight)
+            {
+                // Render the highlight when we need to show it
+                data.highlight.OnRender(self, frameData, locations);
+            }
+            if (data.flags & FlagCursor)
+            {
+                // Render the cursor when we need to show it
+                data.cursor.OnRender(self, frameData, locations);
+            }
         }
     }
 
@@ -76,14 +117,19 @@ namespace C3D::UI_2D
         auto size  = self.GetSize();
 
         data.nineSlice.OnResize(self, size);
-        data.cursor.OnResize(self, u16vec2(2, size.y - 8));
+        data.cursor.OnResize(self, u16vec2(CURSOR_WIDTH, size.y - 8));
+        data.clip.OnResize(self, u16vec2(size.x - (CLIP_PADDING * 2), size.y));
     }
 
     void Textbox::SetText(Component& self, const char* text)
     {
         auto& data = self.GetInternal<InternalData>();
         data.textComponent.SetText(self, text);
-        data.characterIndex = data.textComponent.text.Size();
+
+        data.characterIndexStart   = data.textComponent.text.Size();
+        data.characterIndexEnd     = data.textComponent.text.Size();
+        data.characterIndexCurrent = data.textComponent.text.Size();
+
         CalculateCursorOffset(self);
     }
 
@@ -92,10 +138,57 @@ namespace C3D::UI_2D
         auto& fontSystem = self.GetSystem<FontSystem>();
         auto& data       = self.GetInternal<InternalData>();
 
-        auto size = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndex);
+        auto textSize = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexCurrent);
 
-        data.cursor.offsetY = 4;
-        data.cursor.offsetX = size.x + 4;
+        data.prevCursorX = data.cursor.offsetX;
+
+        data.cursor.offsetY = TEXT_PADDING;
+        data.cursor.offsetX = C3D::Clamp(textSize.x + CURSOR_PADDING, 0.f, (f32)data.clip.size.x);
+
+        data.textComponent.offsetX = -C3D::Max(textSize.x - data.clip.size.x, -TEXT_PADDING);
+    }
+
+    void Textbox::CalculateHighlight(Component& self, bool shiftDown)
+    {
+        auto& data = self.GetInternal<InternalData>();
+
+        // <- offsetX-- and width++
+        // -> width++
+
+        DEBUG_LOG("CharacterIndexStart: {}", data.characterIndexStart);
+        DEBUG_LOG("CharacterIndexCurrent: {}", data.characterIndexCurrent);
+        DEBUG_LOG("CharacterIndexEnd: {}", data.characterIndexEnd);
+
+        if (shiftDown)
+        {
+            if (!(data.flags & FlagHighlight))
+            {
+                // Just starting highlighting
+                data.highlightStartX = data.prevCursorX;
+            }
+
+            data.flags |= FlagHighlight;
+
+            // Total highlight width is determined by the absolute difference between original starting position and current cursor
+            auto width = C3D::Abs(data.cursor.offsetX - data.highlightStartX);
+            data.highlight.OnResize(self, u16vec2(width, data.highlight.size.y));
+
+            auto delta = data.cursor.offsetX - data.highlightStartX;
+            if (delta < 0)
+            {
+                // We are moving left
+                data.highlight.offsetX = data.highlightStartX - width;
+            }
+            else
+            {
+                // we are moving right
+                data.highlight.offsetX = data.highlightStartX;
+            }
+        }
+        else
+        {
+            data.flags &= ~FlagHighlight;
+        }
     }
 
     void Textbox::OnTextChanged(Component& self)
@@ -131,38 +224,165 @@ namespace C3D::UI_2D
             return true;
         }
 
-        if (keyCode == KeyBackspace)
+        if (keyCode == KeyBackspace || keyCode == KeyDelete)
         {
             if (!text.Empty())
             {
-                data.textComponent.RemoveAt(self, data.characterIndex - 1);
-                data.characterIndex--;
+                if (data.characterIndexStart == data.characterIndexEnd)
+                {
+                    data.textComponent.RemoveAt(self, data.characterIndexCurrent - 1);
+                    data.characterIndexStart--;
+                }
+                else
+                {
+                    data.textComponent.RemoveRange(self, data.characterIndexStart, data.characterIndexEnd);
+                }
+
+                data.characterIndexEnd     = data.characterIndexStart;
+                data.characterIndexCurrent = data.characterIndexStart;
+
                 OnTextChanged(self);
-            }
-            return true;
-        }
-
-        if (keyCode == KeyArrowLeft)
-        {
-            if (data.characterIndex > 0)
-            {
-                data.characterIndex--;
-                CalculateCursorOffset(self);
-            }
-            return true;
-        }
-
-        if (keyCode == KeyArrowRight)
-        {
-            if (data.characterIndex <= text.Size())
-            {
-                data.characterIndex++;
-                CalculateCursorOffset(self);
+                CalculateHighlight(self, false);
             }
             return true;
         }
 
         const auto shiftHeld = inputSystem.IsShiftDown();
+
+        if (keyCode == KeyArrowLeft)
+        {
+            if (data.characterIndexCurrent > data.characterIndexStart)
+            {
+                // Moving right currently
+                if (shiftHeld)
+                {
+                    // We are highlighting
+                    data.characterIndexEnd--;
+                    data.characterIndexCurrent = data.characterIndexEnd;
+                }
+                else
+                {
+                    // Shift is not held and we are highlighting so we should stop and move to the start of the highlight
+                    data.characterIndexEnd     = data.characterIndexStart;
+                    data.characterIndexCurrent = data.characterIndexStart;
+                }
+            }
+            else if (data.characterIndexStart > 0)
+            {
+                // Moving left currently
+                if (shiftHeld)
+                {
+                    // We are highlighting
+                    data.characterIndexStart--;
+                    data.characterIndexCurrent = data.characterIndexStart;
+                }
+                else
+                {
+                    // Shift is not held
+                    if (data.characterIndexStart != data.characterIndexEnd)
+                    {
+                        // We are highlighting and we should stop
+                        data.characterIndexEnd     = data.characterIndexStart;
+                        data.characterIndexCurrent = data.characterIndexStart;
+                    }
+                    else
+                    {
+                        // Not highlighting
+                        data.characterIndexStart--;
+                        data.characterIndexEnd     = data.characterIndexStart;
+                        data.characterIndexCurrent = data.characterIndexStart;
+                    }
+                }
+            }
+
+            CalculateCursorOffset(self);
+            CalculateHighlight(self, shiftHeld);
+            return true;
+        }
+
+        if (keyCode == KeyArrowRight)
+        {
+            if (data.characterIndexCurrent < data.characterIndexEnd)
+            {
+                // Moving left currently
+                if (shiftHeld)
+                {
+                    // We are highlighting
+                    data.characterIndexStart++;
+                    data.characterIndexCurrent = data.characterIndexStart;
+                }
+                else
+                {
+                    // Shift is not held and we are highlighting so we should stop and move to the end of the highlight
+                    data.characterIndexStart   = data.characterIndexEnd;
+                    data.characterIndexCurrent = data.characterIndexEnd;
+                }
+            }
+            else if (data.characterIndexEnd < text.Size())
+            {
+                // Moving right currently
+                if (shiftHeld)
+                {
+                    // We are highlighting
+                    data.characterIndexEnd++;
+                    data.characterIndexCurrent = data.characterIndexEnd;
+                }
+                else
+                {
+                    // Shift is not held
+                    if (data.characterIndexStart != data.characterIndexEnd)
+                    {
+                        // We are highlighting and we should stop
+                        data.characterIndexStart   = data.characterIndexEnd;
+                        data.characterIndexCurrent = data.characterIndexEnd;
+                    }
+                    else
+                    {
+                        // Not highlighting
+                        data.characterIndexStart++;
+                        data.characterIndexEnd     = data.characterIndexStart;
+                        data.characterIndexCurrent = data.characterIndexStart;
+                    }
+                }
+            }
+
+            CalculateCursorOffset(self);
+            CalculateHighlight(self, shiftHeld);
+
+            return true;
+        }
+
+        if (keyCode == KeyHome)
+        {
+            data.characterIndexStart   = 0;
+            data.characterIndexCurrent = data.characterIndexStart;
+            if (!shiftHeld)
+            {
+                data.characterIndexEnd = data.characterIndexStart;
+            }
+
+            CalculateCursorOffset(self);
+            CalculateHighlight(self, shiftHeld);
+            return true;
+        }
+
+        if (keyCode == KeyEnd)
+        {
+            // 123456
+            data.characterIndexEnd     = text.Size();
+            data.characterIndexCurrent = data.characterIndexEnd;
+            if (!shiftHeld)
+            {
+                data.characterIndexStart = data.characterIndexEnd;
+            }
+
+            CalculateCursorOffset(self);
+            CalculateHighlight(self, shiftHeld);
+            return true;
+        }
+
+        const auto capsLockActive = inputSystem.IsCapslockActive();
+
         char typedChar;
 
         if (keyCode >= KeyA && keyCode <= KeyZ)
@@ -173,7 +393,7 @@ namespace C3D::UI_2D
             // Characters
             typedChar = static_cast<char>(keyCode);
             // If shift is not held we want don't want capital letters
-            if (!shiftHeld) typedChar += 32;
+            if (!shiftHeld && !capsLockActive) typedChar += 32;
         }
         else if (keyCode == KeySpace)
         {
@@ -206,46 +426,7 @@ namespace C3D::UI_2D
         else if (keyCode >= Key0 && keyCode <= Key9)
         {
             // Numbers
-            typedChar = static_cast<char>(keyCode);
-            if (shiftHeld)
-            {
-                switch (keyCode)
-                {
-                    case Key0:
-                        typedChar = ')';
-                        break;
-                    case Key1:
-                        typedChar = '!';
-                        break;
-                    case Key2:
-                        typedChar = '@';
-                        break;
-                    case Key3:
-                        typedChar = '#';
-                        break;
-                    case Key4:
-                        typedChar = '$';
-                        break;
-                    case Key5:
-                        typedChar = '%';
-                        break;
-                    case Key6:
-                        typedChar = '^';
-                        break;
-                    case Key7:
-                        typedChar = '&';
-                        break;
-                    case Key8:
-                        typedChar = '*';
-                        break;
-                    case Key9:
-                        typedChar = '(';
-                        break;
-                    default:
-                        FATAL_LOG("Unknown char found while trying to parse numbers for console '{}'.", keyCode);
-                        break;
-                }
-            }
+            typedChar = shiftHeld ? SHIFT_NUMBER_KEY_MAP[keyCode - Key0] : static_cast<char>(keyCode);
         }
         else
         {
@@ -253,8 +434,21 @@ namespace C3D::UI_2D
             return false;
         }
 
-        data.textComponent.Insert(self, data.characterIndex, typedChar);
-        data.characterIndex++;
+        if (data.characterIndexStart != data.characterIndexEnd)
+        {
+            // We first remove the highlighted area from the string (and skip regeneration since we will do it in the next step)
+            data.textComponent.RemoveRange(self, data.characterIndexStart, data.characterIndexEnd, false);
+            // Set our current index to the start of the highlighted area since we just removed it
+            data.characterIndexCurrent = data.characterIndexStart;
+            CalculateHighlight(self, false);
+        }
+
+        // Then at that position insert our new char
+        data.textComponent.Insert(self, data.characterIndexCurrent, typedChar);
+        // And reset our cursor indices
+        data.characterIndexStart++;
+        data.characterIndexEnd     = data.characterIndexStart;
+        data.characterIndexCurrent = data.characterIndexStart;
 
         OnTextChanged(self);
         return true;
@@ -280,9 +474,13 @@ namespace C3D::UI_2D
     void Textbox::Destroy(Component& self, const DynamicAllocator* pAllocator)
     {
         auto& data = self.GetInternal<InternalData>();
+
         data.nineSlice.Destroy(self);
         data.textComponent.Destroy(self);
         data.cursor.Destroy(self);
+        data.clip.Destroy(self);
+        data.highlight.Destroy(self);
+
         self.DestroyInternal(pAllocator);
     }
 }  // namespace C3D::UI_2D

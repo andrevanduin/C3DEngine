@@ -1,10 +1,11 @@
 
 #pragma once
+#include "config.h"
 #include "containers/dynamic_array.h"
 #include "containers/string.h"
 #include "core/defines.h"
 #include "core/uuid.h"
-#include "handlers.h"
+#include "internal/handlers.h"
 #include "renderer/geometry.h"
 #include "renderer/transform.h"
 #include "renderer/vertex.h"
@@ -17,7 +18,8 @@ namespace C3D::UI_2D
     class Component;
 
     /** @brief Function pointers to general funcitonality. */
-    using OnDestroyFunc = void (*)(Component& self, const DynamicAllocator* pAllocator);
+    using OnInitializeFunc = bool (*)(Component& self, const Config& config);
+    using OnDestroyFunc    = void (*)(Component& self, const DynamicAllocator* pAllocator);
 
     using OnUpdateFunc = void (*)(Component& self);
     using OnRenderFunc = void (*)(Component& self, const FrameData& frameData, const ShaderLocations& locations);
@@ -42,7 +44,7 @@ namespace C3D::UI_2D
     public:
         Component(const SystemManager* systemsManager);
 
-        void Initialize(const u16vec2& pos, const u16vec2& size, ComponentType _type);
+        bool Initialize(ComponentType _type, const Config& config);
         void Destroy(const DynamicAllocator* pAllocator);
 
         bool AddChild(Component& child);
@@ -127,7 +129,8 @@ namespace C3D::UI_2D
 
         OnKeyDownFunc onKeyDown = nullptr;
 
-        OnDestroyFunc onDestroy = nullptr;
+        OnInitializeFunc onInitialize = nullptr;
+        OnDestroyFunc onDestroy       = nullptr;
 
         UserHandlers* pUserHandlers = nullptr;
 

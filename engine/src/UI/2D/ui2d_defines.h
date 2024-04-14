@@ -62,10 +62,12 @@ namespace C3D::UI_2D
     /** @brief IDs for all the different atlas types. For fast lookup. */
     enum AtlasID : u8
     {
-        AtlasIDPanel,
+        AtlasIDPanel = 0,
         AtlasIDButton,
         AtlasIDTextboxNineSlice,
         AtlasIDTextboxCursor,
+        AtlasIDTextboxHighlight,
+        AtlasIDMax
     };
 
     struct AtlasDescriptions

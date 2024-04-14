@@ -95,7 +95,7 @@ namespace C3D
          *
          * @param reference The reference to use when stencil testing/writing
          */
-        void SetStencilReference(u8 reference) const;
+        void SetStencilReference(u32 reference) const;
 
         /**
          * @brief Sets the Stencil Compare Mask.

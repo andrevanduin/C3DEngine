@@ -63,6 +63,8 @@ namespace C3D
         void ProcessMouseMove(i32 xPos, i32 yPos);
         void ProcessMouseWheel(i32 delta) const;
 
+        void SetCapslockState(bool active);
+
         [[nodiscard]] C3D_API bool IsKeyDown(u8 key) const;
         [[nodiscard]] C3D_API bool IsKeyUp(u8 key) const;
         [[nodiscard]] C3D_API bool IsKeyPressed(u8 key) const;
@@ -81,6 +83,7 @@ namespace C3D
         [[nodiscard]] C3D_API bool IsShiftDown() const;
         [[nodiscard]] C3D_API bool IsCtrlDown() const;
         [[nodiscard]] C3D_API bool IsAltDown() const;
+        [[nodiscard]] C3D_API bool IsCapslockActive() const;
 
         [[nodiscard]] C3D_API const ivec2& GetMousePosition() const;
         [[nodiscard]] C3D_API const ivec2& GetPreviousMousePosition() const;
@@ -94,5 +97,7 @@ namespace C3D
 
         u8 m_downKeys[MAX_HELD_KEYS]       = {};
         u8 m_downButtons[MAX_HELD_BUTTONS] = {};
+
+        bool m_capslockActive = false;
     };
 }  // namespace C3D

@@ -1,8 +1,9 @@
 
 #pragma once
 #include "UI/2D/component.h"
+#include "UI/2D/config.h"
+#include "UI/2D/internal/ui_pass.h"
 #include "UI/2D/ui2d_defines.h"
-#include "UI/2D/ui_pass.h"
 #include "containers/dynamic_array.h"
 #include "containers/hash_map.h"
 #include "core/defines.h"
@@ -40,10 +41,10 @@ namespace C3D
 
         /* ------ Components Start ------ */
 
-        Handle AddPanel(const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize);
-        Handle AddButton(const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize);
-        Handle AddLabel(const u16vec2& pos, const String& text, FontHandle font);
-        Handle AddTextbox(const u16vec2& pos, const u16vec2& size, const String& text, FontHandle font);
+        Handle AddPanel(const UI_2D::Config& config);
+        Handle AddButton(const UI_2D::Config& config);
+        Handle AddLabel(const UI_2D::Config& config);
+        Handle AddTextbox(const UI_2D::Config& config);
 
         /* ------- Components End -------  */
 
@@ -186,6 +187,6 @@ namespace C3D
 
         DynamicArray<RegisteredEventCallback> m_callbacks;
 
-        UI_2D::AtlasDescriptions m_atlasBank[8];
+        UI_2D::AtlasDescriptions m_atlasBank[UI_2D::AtlasIDMax];
     };
 }  // namespace C3D

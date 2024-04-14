@@ -289,6 +289,21 @@ namespace C3D
         return static_cast<f64>(nowTime.QuadPart) * m_clockFrequency;
     }
 
+    bool Platform::GetCurrentCapsLockState() const
+    {
+        /* From Microsoft documentation:
+         SHORT GetKeyState(int nVirtKey)
+
+        The return value specifies the status of the specified virtual key, as follows:
+        If the high-order bit is 1, the key is down; otherwise, it is up.
+        If the low-order bit is 1, the key is toggled. A key, such as the CAPS LOCK key, is toggled if it is turned on.
+        The key is off and untoggled if the low-order bit is 0.
+        A toggle key's indicator light (if any) on the keyboard will be on when the key is toggled, and off when the key is untoggled.
+        */
+        SHORT state = GetKeyState(VK_CAPITAL);
+        return LOBYTE(state);
+    }
+
     void Platform::SleepMs(const u64 ms) { Sleep(static_cast<u32>(ms)); }
 
     i32 Platform::GetProcessorCount()

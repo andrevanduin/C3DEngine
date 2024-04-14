@@ -243,11 +243,11 @@ u8 StringInsert()
     C3D::String heapTest("aaaaaaaaaaaaaaaa");
     heapTest.Insert(16, 'b');
     ExpectToBeTrue(heapTest == C3D::String("aaaaaaaaaaaaaaaab"));
-    ExpectShouldBe(16, heapTest.Size());
+    ExpectShouldBe(17, heapTest.Size());
 
     heapTest.Insert(5, '5');
     ExpectToBeTrue(heapTest == C3D::String("aaaaa5aaaaaaaaaaab"));
-    ExpectShouldBe(17, heapTest.Size());
+    ExpectShouldBe(18, heapTest.Size());
 
     return true;
 }
@@ -278,6 +278,60 @@ u8 StringRemoveAt()
     return true;
 }
 
+u8 StringRemoveRange()
+{
+    {
+        // Remove range at the start of the string
+        C3D::String test("0123456789");
+        test.RemoveRange(0, 4);
+        ExpectToBeTrue(test == C3D::String("56789"));
+    }
+
+    {
+        // Remove range at the end of the string
+        C3D::String test("0123456789");
+        test.RemoveRange(7, 9);
+        ExpectToBeTrue(test == C3D::String("0123456"));
+    }
+
+    {
+        // Remove range in the middle of the string
+        C3D::String test("0123456789");
+        test.RemoveRange(3, 5);
+        ExpectToBeTrue(test == C3D::String("0126789"));
+    }
+
+    {
+        // Remove range of length 1
+        C3D::String test("0123456789");
+        test.RemoveRange(2, 2);
+        ExpectToBeTrue(test == C3D::String("013456789"));
+    }
+
+    {
+        // Ignore ranges starting > str.Size()
+        C3D::String test("01234");
+        test.RemoveRange(8, 9);
+        ExpectToBeTrue(test == C3D::String("01234"));
+    }
+
+    {
+        // Ignore ranges ending > str.Size()
+        C3D::String test("01234");
+        test.RemoveRange(2, 10);
+        ExpectToBeTrue(test == C3D::String("01234"));
+    }
+
+    {
+        // Ignore ranges start > end
+        C3D::String test("01234");
+        test.RemoveRange(3, 1);
+        ExpectToBeTrue(test == C3D::String("01234"));
+    }
+
+    return true;
+}
+
 void String::RegisterTests(TestManager& manager)
 {
     manager.StartType("String");
@@ -294,4 +348,5 @@ void String::RegisterTests(TestManager& manager)
     REGISTER_TEST(StringShouldSplit, "String should properly split into parts.");
     REGISTER_TEST(StringInsert, "String should allow chars to be inserted at arbitrary points.");
     REGISTER_TEST(StringRemoveAt, "String should allow chars to be removed at arbitrary locations.");
+    REGISTER_TEST(StringRemoveRange, "String should allow arbitrary ranges of chars to be removed.");
 }

@@ -10,17 +10,17 @@ namespace C3D::UI_2D
         Component component(systemsManager);
 
         component.MakeInternal<InternalData>(pAllocator);
-        component.onDestroy = &Destroy;
-        component.onRender  = &OnRender;
+        component.onInitialize = &Initialize;
+        component.onDestroy    = &Destroy;
+        component.onRender     = &OnRender;
 
         return component;
     }
 
-    bool Label::Initialize(Component& self, const u16vec2& pos, const String& text, FontHandle font)
+    bool Label::Initialize(Component& self, const Config& config)
     {
-        self.Initialize(pos, u16vec2(0, 0), ComponentTypeLabel);
         auto& data = self.GetInternal<InternalData>();
-        data.textComponent.Initialize(self, font, text);
+        data.textComponent.Initialize(self, config);
         return true;
     }
 

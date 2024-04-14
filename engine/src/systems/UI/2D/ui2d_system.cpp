@@ -124,6 +124,13 @@ namespace C3D
         // Size
         textboxCursorAtlasses.size = u16vec2(512, 512);
 
+        auto& textboxHighlightAtlasses = m_atlasBank[AtlasIDTextboxHighlight];
+        // Default
+        textboxHighlightAtlasses.defaultMin = u16vec2(1, 35);
+        textboxHighlightAtlasses.defaultMax = u16vec2(2, 36);
+        // Size
+        textboxHighlightAtlasses.size = u16vec2(512, 512);
+
         return true;
     }
 
@@ -166,10 +173,10 @@ namespace C3D
         return true;
     }
 
-    ComponentHandle UI2DSystem::AddPanel(const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize)
+    ComponentHandle UI2DSystem::AddPanel(const Config& config)
     {
         auto panel = Panel::Create(m_pSystemsManager, &m_allocator);
-        if (!Panel::Initialize(panel, pos, size, cornerSize))
+        if (!panel.Initialize(ComponentTypePanel, config))
         {
             ERROR_LOG("Failed to Initialize Panel.");
             return UUID::Invalid();
@@ -177,10 +184,10 @@ namespace C3D
         return SetComponent(panel);
     }
 
-    ComponentHandle UI2DSystem::AddButton(const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize)
+    ComponentHandle UI2DSystem::AddButton(const Config& config)
     {
         auto button = Button::Create(m_pSystemsManager, &m_allocator);
-        if (!Button::Initialize(button, pos, size, cornerSize))
+        if (!button.Initialize(ComponentTypeButton, config))
         {
             ERROR_LOG("Failed to Initialize Button.");
             return UUID::Invalid();
@@ -188,10 +195,10 @@ namespace C3D
         return SetComponent(button);
     }
 
-    Handle UI2DSystem::AddLabel(const u16vec2& pos, const String& text, FontHandle font)
+    Handle UI2DSystem::AddLabel(const Config& config)
     {
         auto label = Label::Create(m_pSystemsManager, &m_allocator);
-        if (!Label::Initialize(label, pos, text, font))
+        if (!label.Initialize(ComponentTypeLabel, config))
         {
             ERROR_LOG("Failed to Initialize Label.");
             return UUID::Invalid();
@@ -199,10 +206,10 @@ namespace C3D
         return SetComponent(label);
     }
 
-    Handle UI2DSystem::AddTextbox(const u16vec2& pos, const u16vec2& size, const String& text, FontHandle font)
+    Handle UI2DSystem::AddTextbox(const Config& config)
     {
         auto textbox = Textbox::Create(m_pSystemsManager, &m_allocator);
-        if (!Textbox::Initialize(textbox, pos, size, text, font))
+        if (!textbox.Initialize(ComponentTypeTextbox, config))
         {
             ERROR_LOG("Failed to Initialize Textbox.");
             return UUID::Invalid();

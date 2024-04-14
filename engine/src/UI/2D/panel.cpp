@@ -2,12 +2,11 @@
 #include "panel.h"
 
 #include "core/colors.h"
-#include "nine_slice_component.h"
+#include "internal/nine_slice_component.h"
 
 namespace C3D::UI_2D
 {
     constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
-    constexpr auto BACKGROUND_COLOR     = vec4(0.05, 0.05, 0.05, 1.0);
 
     struct PanelData
     {
@@ -19,18 +18,18 @@ namespace C3D::UI_2D
         Component component(systemsManager);
 
         component.MakeInternal<PanelData>(pAllocator);
-        component.onDestroy = &Destroy;
-        component.onRender  = &OnRender;
-        component.onResize  = &OnResize;
+        component.onInitialize = &Initialize;
+        component.onDestroy    = &Destroy;
+        component.onRender     = &OnRender;
+        component.onResize     = &OnResize;
 
         return component;
     }
 
-    bool Panel::Initialize(Component& self, const u16vec2& pos, const u16vec2& size, const u16vec2& cornerSize)
+    bool Panel::Initialize(Component& self, const Config& config)
     {
-        self.Initialize(pos, size, ComponentTypePanel);
         auto& data = self.GetInternal<PanelData>();
-        data.nineSlice.Initialize(self, "Panel", AtlasIDPanel, size, cornerSize, BACKGROUND_COLOR);
+        data.nineSlice.Initialize(self, "Panel", AtlasIDPanel, config.size, config.cornerSize, config.backgroundColor);
         return true;
     }
 

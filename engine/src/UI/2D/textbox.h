@@ -1,28 +1,49 @@
 
 #pragma once
 #include "component.h"
-#include "nine_slice_component.h"
-#include "quad_component.h"
-#include "text_component.h"
+#include "config.h"
+#include "internal/clipping_component.h"
+#include "internal/nine_slice_component.h"
+#include "internal/quad_component.h"
+#include "internal/text_component.h"
 
 namespace C3D::UI_2D
 {
     namespace Textbox
     {
+        enum FlagBits : u8
+        {
+            FlagNone      = 0x0,
+            FlagCursor    = 0x1,
+            FlagHighlight = 0x2
+        };
+
+        using Flags = u8;
+
         struct InternalData
         {
             TextComponent textComponent;
             NineSliceComponent nineSlice;
+            ClippingComponent clip;
 
-            bool showCursor = false;
             QuadComponent cursor;
-            f64 nextBlink      = 0.0;
-            u32 characterIndex = 0;
+            QuadComponent highlight;
+
+            Flags flags = FlagNone;
+
+            f64 nextBlink = 0.0;
+
+            u16 characterIndexStart   = 0;
+            u16 characterIndexCurrent = 0;
+            u16 characterIndexEnd     = 0;
+
+            f32 prevCursorX     = 0;
+            f32 highlightStartX = 0;
         };
 
         Component Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator);
 
-        bool Initialize(Component& self, const u16vec2& pos, const u16vec2& size, const String& text, FontHandle font);
+        bool Initialize(Component& self, const Config& config);
         void OnUpdate(Component& self);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
         void OnResize(Component& self);
@@ -30,6 +51,8 @@ namespace C3D::UI_2D
         void SetText(Component& self, const char* text);
 
         void CalculateCursorOffset(Component& self);
+        void CalculateHighlight(Component& self, bool shiftDown);
+
         void OnTextChanged(Component& self);
 
         bool OnKeyDown(Component& self, const KeyEventContext& ctx);

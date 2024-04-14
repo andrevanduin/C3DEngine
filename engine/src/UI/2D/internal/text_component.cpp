@@ -43,14 +43,15 @@ namespace C3D::UI_2D
         return 0;
     }
 
-    bool TextComponent::Initialize(Component& self, FontHandle f, const String& t)
+    bool TextComponent::Initialize(Component& self, const Config& config)
     {
-        font = f;
-        text = t;
+        font  = config.font;
+        text  = config.text;
+        color = config.color;
 
         if (!font)
         {
-            ERROR_LOG("Failed to Acquire Font: '{}'.", f);
+            ERROR_LOG("Failed to Acquire Font: '{}'.", font);
             return false;
         }
 
@@ -98,16 +99,13 @@ namespace C3D::UI_2D
 
         shaderSystem.BindInstance(renderable.instanceId);
 
-        shaderSystem.SetUniformByIndex(locations.properties, &WHITE);
+        shaderSystem.SetUniformByIndex(locations.properties, &color);
         shaderSystem.SetUniformByIndex(locations.diffuseTexture, &fontData.atlas);
         shaderSystem.ApplyInstance(needsUpdate);
 
         // Sync frame number
         renderable.frameNumber = frameData.frameNumber;
         renderable.drawIndex   = frameData.drawIndex;
-
-        renderer.SetStencilWriteMask(0x0);
-        renderer.SetStencilTestingEnabled(false);
 
         // Apply local
         auto model = self.GetWorld();
@@ -305,6 +303,12 @@ namespace C3D::UI_2D
     {
         text.RemoveAt(index);
         Regenerate(self);
+    }
+
+    void TextComponent::RemoveRange(Component& self, u32 characterIndexStart, u32 characterIndexEnd, bool regenerate)
+    {
+        text.RemoveRange(characterIndexStart, characterIndexEnd);
+        if (regenerate) Regenerate(self);
     }
 
     void TextComponent::Destroy(Component& self)

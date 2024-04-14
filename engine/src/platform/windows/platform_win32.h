@@ -109,6 +109,12 @@ namespace C3D
         const Win32HandleInfo& GetHandleInfo() const { return m_handle; }
 
         /**
+         * @brief Gets the current state of CapsLock (on or off)
+         * @return bool The state of the CapsLock
+         */
+        bool GetCurrentCapsLockState() const;
+
+        /**
          * @brief Sleeps the current thread for the provided amount of ms.
          *
          * @param ms The number of milliseconds that the system should sleep.

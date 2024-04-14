@@ -12,7 +12,7 @@ namespace C3D::UI_2D
 {
     constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
 
-    bool QuadComponent::Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& size, const vec4& _color)
+    bool QuadComponent::Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& _size, const vec4& _color)
     {
         auto& uiSystem       = self.GetSystem<UI2DSystem>();
         auto& geometrySystem = self.GetSystem<GeometrySystem>();
@@ -20,6 +20,7 @@ namespace C3D::UI_2D
 
         atlasID = _atlasID;
         color   = _color;
+        size    = _size;
 
         auto& descriptions = uiSystem.GetAtlasDescriptions(atlasID);
         atlasMin           = descriptions.defaultMin;
@@ -63,9 +64,6 @@ namespace C3D::UI_2D
         renderable.frameNumber = frameData.frameNumber;
         renderable.drawIndex   = frameData.drawIndex;
 
-        renderer.SetStencilWriteMask(0x0);
-        renderer.SetStencilTestingEnabled(false);
-
         // Apply local
         auto model = self.GetWorld();
         model[3][0] += offsetX;
@@ -76,10 +74,12 @@ namespace C3D::UI_2D
         renderer.DrawGeometry(renderable.renderData);
     }
 
-    void QuadComponent::OnResize(Component& self, const u16vec2& size)
+    void QuadComponent::OnResize(Component& self, const u16vec2& _size)
     {
         auto& uiSystem     = self.GetSystem<UI2DSystem>();
         auto& renderSystem = self.GetSystem<RenderSystem>();
+
+        size = _size;
 
         auto& descriptions = uiSystem.GetAtlasDescriptions(atlasID);
 

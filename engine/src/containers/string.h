@@ -632,10 +632,30 @@ namespace C3D
         {
             if (index < m_size && m_size > 0)
             {
-                // Move the chars in the range [index + 1, end] tp [index, end - 1]
+                // Move the chars in the range [index + 1, end] to index
                 std::move(begin() + index + 1, end(), begin() + index);
                 // Decrement our size
                 m_size--;
+                // Ensure we end in a '\0'
+                m_data[m_size] = '\0';
+            }
+        }
+
+        /** @brief Removes the chars in the range [rangeStart, rangeEnd). */
+        void RemoveRange(u32 rangeStart, u32 rangeEnd)
+        {
+            // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+            // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+            if (m_size > 0 && rangeEnd <= m_size && rangeStart < rangeEnd)
+            {
+                if (rangeEnd < m_size)
+                {
+                    // Move the chars in the range [rangeEnd, end()] to rangeStart
+                    std::move(begin() + rangeEnd, end(), begin() + rangeStart);
+                }
+
+                // Decrease our size by the delta
+                m_size -= (rangeEnd - rangeStart);
                 // Ensure we end in a '\0'
                 m_data[m_size] = '\0';
             }
