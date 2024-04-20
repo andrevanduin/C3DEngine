@@ -154,9 +154,6 @@ namespace C3D
 
         /** @brief An array of pipelines used by this shader. */
         DynamicArray<VulkanPipeline*> pipelines;
-        /** @brief An array of pipelines used by this shader for clockwise topology.
-         * (Only used when system does not support dynamic winding natively or by extension)*/
-        DynamicArray<VulkanPipeline*> clockwisePipelines;
 
         u8 boundPipeline = INVALID_ID_U8;
 

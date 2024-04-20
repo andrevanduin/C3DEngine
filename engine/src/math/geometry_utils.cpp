@@ -9,6 +9,8 @@
 
 namespace C3D::GeometryUtils
 {
+    constexpr const char* INSTANCE_NAME = "GEOMETRY_UITLS";
+
     void GenerateTangents(DynamicArray<Vertex3D>& vertices, const DynamicArray<u32>& indices)
     {
         for (u32 i = 0; i < indices.Size(); i += 3)
@@ -116,8 +118,9 @@ namespace C3D::GeometryUtils
         u64 uniqueVertexCount = 0;
         // Store the current vertex count
         const u64 oldVertexCount = config.vertices.Size();
-        // Allocate enough memory for the worst case where every vertex is unique
-        auto* uniqueVertices = Memory.Allocate<Vertex3D>(MemoryType::Array, oldVertexCount);
+        // Create dynamic array with enough memory for the worst case where every vertex is unique
+        auto uniqueVertices = DynamicArray<Vertex3D>();
+        uniqueVertices.Resize(oldVertexCount);
 
         u32 foundCount = 0;
         for (u32 v = 0; v < oldVertexCount; v++)
@@ -143,14 +146,11 @@ namespace C3D::GeometryUtils
             }
         }
 
-        // Copy over the unique vertices (resizing the dynamic array to fit the smaller amount)
-        config.vertices.Copy(uniqueVertices, uniqueVertexCount);
-        // Destroy our temporary array
-        Memory.Free(uniqueVertices);
+        // Move the unique vertices into the old vertices array
+        config.vertices = std::move(uniqueVertices);
 
         u64 removedCount = oldVertexCount - uniqueVertexCount;
-        Logger::Debug("GeometryUtils::DeduplicateVertices() - removed {} vertices, Originally: {} | Now: {}", removedCount, oldVertexCount,
-                      uniqueVertexCount);
+        INFO_LOG("Removed {} vertices, Originally: {} | Now: {}", removedCount, oldVertexCount, uniqueVertexCount);
     }
 
     UIGeometryConfig GenerateUIQuadConfig(const char* name, const u16vec2& size, const u16vec2& atlasSize, const u16vec2& atlasMin,

@@ -435,30 +435,10 @@ namespace C3D
             // Native support
             vkCmdSetFrontFace(commandBuffer.handle, frontFace);
         }
-        else if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
+        else
         {
             // Support by means of extension
             m_context.pfnCmdSetFrontFaceEXT(commandBuffer.handle, frontFace);
-        }
-        else
-        {
-            // No support (so we fallback to binding a different pipeline)
-            if (m_context.boundShader)
-            {
-                auto vulkanShader = static_cast<VulkanShader*>(m_context.boundShader->apiSpecificData);
-                if (winding == RendererWinding::CounterClockwise)
-                {
-                    vulkanShader->pipelines[vulkanShader->boundPipeline]->Bind(&commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
-                }
-                else
-                {
-                    vulkanShader->clockwisePipelines[vulkanShader->boundPipeline]->Bind(&commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
-                }
-            }
-            else
-            {
-                ERROR_LOG("Unable to set Winding since there is no currently bound shader.");
-            }
         }
     }
 
@@ -720,7 +700,7 @@ namespace C3D
 
         const auto image             = static_cast<VulkanImage*>(texture->internalData);
         const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height * texture->channelCount *
-                                       (texture->type == TextureType::TypeCube ? 6 : 1);
+                                       (texture->type == TextureTypeCube ? 6 : 1);
 
         // NOTE: Assumes 8 bits per channel
         constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
@@ -1177,17 +1157,7 @@ namespace C3D
                     Memory.Delete(pipeline);
                 }
             }
-            // Do the same for our Clockwise Pipelines
-            for (const auto pipeline : vulkanShader->clockwisePipelines)
-            {
-                if (pipeline)
-                {
-                    pipeline->Destroy();
-                    Memory.Delete(pipeline);
-                }
-            }
             vulkanShader->pipelines.Destroy();
-            vulkanShader->clockwisePipelines.Destroy();
 
             // Cleanup Shader Modules
             for (u32 i = 0; i < vulkanShader->config.stageCount; i++)
@@ -1240,7 +1210,7 @@ namespace C3D
 
         // Static lookup table for our types -> Vulkan ones.
         static VkFormat* types = nullptr;
-        static VkFormat t[12];
+        static VkFormat t[10];
         if (!types)
         {
             t[Attribute_Float32]   = VK_FORMAT_R32_SFLOAT;
@@ -1292,6 +1262,17 @@ namespace C3D
             VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
             layoutInfo.bindingCount                    = vulkanShader->config.descriptorSets[i].bindingCount;
             layoutInfo.pBindings                       = vulkanShader->config.descriptorSets[i].bindings;
+
+            // Partial binding is required for descriptor aliasing (i.e using different types on the same set/binding)
+            VkDescriptorBindingFlags bindingFlags                       = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT;
+            VkDescriptorSetLayoutBindingFlagsCreateInfoEXT extendedInfo = {
+                VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT
+            };
+            extendedInfo.bindingCount                             = vulkanShader->config.descriptorSets[i].bindingCount;
+            VkDescriptorBindingFlagsEXT descriptorBindingFlags[2] = { 0, bindingFlags };
+            extendedInfo.pBindingFlags                            = descriptorBindingFlags;
+            layoutInfo.pNext                                      = &extendedInfo;
+
             result = vkCreateDescriptorSetLayout(logicalDevice, &layoutInfo, vkAllocator, &vulkanShader->descriptorSetLayouts[i]);
             if (!VulkanUtils::IsSuccess(result))
             {
@@ -1325,7 +1306,7 @@ namespace C3D
             stageCreateInfos[i] = vulkanShader->stages[i].shaderStageCreateInfo;
         }
 
-        // Create one pipeline per topology class if dynamic topology is supported (either natively or by extension)
+        // NOTE: We only support dynamic topology.
         if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE) ||
             m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
         {
@@ -1359,68 +1340,9 @@ namespace C3D
         }
         else
         {
-            // We have no support for dynamic topology so we need to create a pipeline per topology type (6 in total)
-            // We also need to create seperate pipelines for clockwise and counter-clockwise since this is also not supported without
-            // extended dynamic state
-            vulkanShader->pipelines.Resize(6);
-            vulkanShader->clockwisePipelines.Resize(6);
-
-            // Point list
-            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST)
-            {
-                // Counter-clockwise
-                vulkanShader->pipelines[0] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST);
-                // Clockwise
-                vulkanShader->clockwisePipelines[0] =
-                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST, RendererWinding::Clockwise);
-            }
-
-            // Line list
-            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST)
-            {
-                // Counter-clockwise
-                vulkanShader->pipelines[1] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST);
-                // Clockwise
-                vulkanShader->clockwisePipelines[1] =
-                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST, RendererWinding::Clockwise);
-            }
-            // Line strip
-            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP)
-            {
-                // Counter-clockwise
-                vulkanShader->pipelines[2] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP);
-                // Clockwise
-                vulkanShader->clockwisePipelines[2] =
-                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP, RendererWinding::Clockwise);
-            }
-
-            // Triangle list
-            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST)
-            {
-                // Counter-clockwise
-                vulkanShader->pipelines[3] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST);
-                // Clockwise
-                vulkanShader->clockwisePipelines[3] =
-                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST, RendererWinding::Clockwise);
-            }
-            // Triangle strip
-            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP)
-            {
-                // Counter-clockwise
-                vulkanShader->pipelines[4] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP);
-                // Clockwise
-                vulkanShader->clockwisePipelines[4] =
-                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP, RendererWinding::Clockwise);
-            }
-            // Triangle fan
-            if (vulkanShader->config.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN)
-            {
-                // Counter-clockwise
-                vulkanShader->pipelines[5] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN);
-                // Clockwise
-                vulkanShader->clockwisePipelines[5] =
-                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN, RendererWinding::Clockwise);
-            }
+            // We have no support for dynamic topology. It's probably better if we use a different backend
+            FATAL_LOG("Dynamic Topology is not supported by your current setup. Please use a different Rendering backend.");
+            return false;
         }
 
         for (u32 i = 0; i < VULKAN_TOPOLOGY_CLASS_MAX; i++)
@@ -1636,18 +1558,24 @@ namespace C3D
                 {
                     // TODO: only update in the list if actually needing an update
                     TextureMap* map = internal->instanceStates[shader.boundInstanceId].instanceTextureMaps[i];
-                    if (map->internalId == INVALID_ID)
-                    {
-                        // No valid sampler available so we skip this texture map.
-                        continue;
-                    }
 
                     const Texture* t = map->texture;
                     // Ensure the texture is valid.
-                    if (!t || t->generation == INVALID_ID)
+                    if (!t)
                     {
-                        // If we are using the default texture, invalidate the map's generation so it's updated next run.
-                        t               = Textures.GetDefault();
+                        t = Textures.GetDefault();
+                        // If we are using the default texture, invalidate the maps generation so it's updated next run.
+                        map->generation = INVALID_ID;
+                    }
+                    else if (t->generation == INVALID_ID)
+                    {
+                        // generation is always invalid for default textures so let's check if we are using one
+                        if (!Textures.IsDefault(t))
+                        {
+                            // If the generation is invalid and we are not using a default texture we set a default one
+                            t = Textures.GetDefault();
+                        }
+                        // If we are using the default texture, invalidate the maps generation so it's updated next run.
                         map->generation = INVALID_ID;
                     }
                     else
@@ -1678,18 +1606,15 @@ namespace C3D
                     updateSamplerCount++;
                 }
 
-                if (updateSamplerCount > 0)
-                {
-                    VkWriteDescriptorSet samplerDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-                    samplerDescriptor.dstSet               = objectDescriptorSet;
-                    samplerDescriptor.dstBinding           = descriptorIndex;
-                    samplerDescriptor.descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                    samplerDescriptor.descriptorCount      = updateSamplerCount;
-                    samplerDescriptor.pImageInfo           = imageInfos;
+                VkWriteDescriptorSet samplerDescriptor = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+                samplerDescriptor.dstSet               = objectDescriptorSet;
+                samplerDescriptor.dstBinding           = descriptorIndex;
+                samplerDescriptor.descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                samplerDescriptor.descriptorCount      = updateSamplerCount;
+                samplerDescriptor.pImageInfo           = imageInfos;
 
-                    descriptorWrites[descriptorCount] = samplerDescriptor;
-                    descriptorCount++;
-                }
+                descriptorWrites[descriptorCount] = samplerDescriptor;
+                descriptorCount++;
             }
 
             if (descriptorCount > 0)
@@ -2079,7 +2004,7 @@ namespace C3D
             return false;
         }
 
-        shaderc_compile_options_set_optimization_level(compileOptions, shaderc_optimization_level_performance);
+        // shaderc_compile_options_set_optimization_level(compileOptions, shaderc_optimization_level_performance);
 
         shaderc_compilation_result_t compilationResult = shaderc_compile_into_spv(
             m_context.shaderCompiler, res.text.Data(), res.text.Size(), shaderKind, config.fileName.Data(), "main", compileOptions);

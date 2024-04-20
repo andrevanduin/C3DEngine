@@ -7,8 +7,8 @@ shader = Shader.Builtin.UI
 
 [map]
 name = diffuse
-minifyFilter = linear
-magnifyfilter = linear
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat

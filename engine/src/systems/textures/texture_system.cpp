@@ -82,7 +82,7 @@ namespace C3D
             return &m_defaultNormalTexture;
         }
 
-        Texture* texture = ProcessTextureReference(name, TextureType::Type2D, 1, autoRelease, false);
+        Texture* texture = ProcessTextureReference(name, TextureType2D, 1, autoRelease, false);
         if (!texture)
         {
             ERROR_LOG("Failed to obtain a new texture id.");
@@ -101,7 +101,7 @@ namespace C3D
             return &m_defaultTexture;
         }
 
-        Texture* texture = ProcessTextureReference(name, TextureType::TypeCube, 1, autoRelease, false);
+        Texture* texture = ProcessTextureReference(name, TextureTypeCube, 1, autoRelease, false);
         if (!texture)
         {
             ERROR_LOG("Failed to obtain a new texture id.");
@@ -115,7 +115,7 @@ namespace C3D
     {
         /* Wrapped textures are never auto-released because it means that their
                resources are created and managed somewhere within the renderer internals. */
-        Texture* t = ProcessTextureReference(name, TextureType::Type2D, 1, false, true);
+        Texture* t = ProcessTextureReference(name, TextureType2D, 1, false, true);
         if (!t)
         {
             ERROR_LOG("Failed to obtain a new texture id.");
@@ -125,7 +125,7 @@ namespace C3D
         TextureFlagBits flags = hasTransparency ? HasTransparency : 0;
         flags |= IsWritable;
 
-        t->Set(TextureType::Type2D, name, width, height, channelCount, flags);
+        t->Set(TextureType2D, name, width, height, channelCount, flags);
         Renderer.CreateWritableTexture(t);
         return t;
     }
@@ -138,7 +138,7 @@ namespace C3D
             return;
         }
 
-        ProcessTextureReference(name.Data(), TextureType::Type2D, -1, false, false);
+        ProcessTextureReference(name.Data(), TextureType2D, -1, false, false);
     }
 
     void TextureSystem::WrapInternal(const char* name, const u32 width, const u32 height, const u8 channelCount, const bool hasTransparency,
@@ -149,7 +149,7 @@ namespace C3D
         {
             // NOTE: Wrapped textures are never auto-released because it means that their
             // resources are created and managed somewhere within the renderer internals.
-            t = ProcessTextureReference(name, TextureType::Type2D, 1, false, true);
+            t = ProcessTextureReference(name, TextureType2D, 1, false, true);
             if (!t)
             {
                 ERROR_LOG("Failed to obtain a new texture id.");
@@ -172,7 +172,7 @@ namespace C3D
         flags |= isWritable ? IsWritable : 0;
         flags |= IsWrapped;
 
-        t->Set(TextureType::Type2D, name, width, height, channelCount, flags, internalData);
+        t->Set(TextureType2D, name, width, height, channelCount, flags, internalData);
     }
 
     bool TextureSystem::SetInternal(Texture* t, void* internalData)
@@ -261,100 +261,279 @@ namespace C3D
         return &m_defaultNormalTexture;
     }
 
+    Texture* TextureSystem::GetDefaultMetallic()
+    {
+        if (!m_initialized)
+        {
+            ERROR_LOG("Was called before initialization. Returning nullptr.");
+            return nullptr;
+        }
+        return &m_defaultMetallicTexture;
+    }
+
+    Texture* TextureSystem::GetDefaultRoughness()
+    {
+        if (!m_initialized)
+        {
+            ERROR_LOG("Was called before initialization. Returning nullptr.");
+            return nullptr;
+        }
+        return &m_defaultRoughnessTexture;
+    }
+
+    Texture* TextureSystem::GetDefaultAo()
+    {
+        if (!m_initialized)
+        {
+            ERROR_LOG("Was called before initialization. Returning nullptr.");
+            return nullptr;
+        }
+        return &m_defaultAoTexture;
+    }
+
+    Texture* TextureSystem::GetDefaultCube()
+    {
+        if (!m_initialized)
+        {
+            ERROR_LOG("Was called before initialization. Returning nullptr.");
+            return nullptr;
+        }
+        return &m_defaultCubeTexture;
+    }
+
+    bool TextureSystem::IsDefault(const Texture* t) const
+    {
+        if (!m_initialized)
+        {
+            ERROR_LOG("Was called before initialization. Returning false.");
+            return false;
+        }
+        return (t == &m_defaultTexture) || (t == &m_defaultDiffuseTexture) || (t == &m_defaultNormalTexture) ||
+               (t == &m_defaultSpecularTexture) || (t == &m_defaultMetallicTexture) || (t == &m_defaultRoughnessTexture) ||
+               (t == &m_defaultAoTexture) || (t == &m_defaultCubeTexture);
+    }
+
     bool TextureSystem::CreateDefaultTextures()
     {
-        // NOTE: Create a default texture, a 256x256 blue/white checkerboard pattern
-        // this is done in code to eliminate dependencies
-        TRACE("Create default texture...");
-        constexpr u32 textureDimensions = 256;
+        // NOTE: Create a default texture, a 16x16 blue/white checkerboard pattern
+        constexpr u32 textureDimensions = 16;
         constexpr u32 channels          = 4;
         constexpr u32 pixelCount        = textureDimensions * textureDimensions;
 
-        const auto pixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(pixelCount) * channels);
-        std::memset(pixels, 255, sizeof(u8) * pixelCount * channels);
-
-        for (u64 row = 0; row < textureDimensions; row++)
         {
-            for (u64 col = 0; col < textureDimensions; col++)
+            TRACE("Create default texture...");
+
+            const auto pixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(pixelCount) * channels);
+            std::memset(pixels, 255, sizeof(u8) * pixelCount * channels);
+
+            for (u64 row = 0; row < textureDimensions; row++)
             {
-                const u64 index        = (row * textureDimensions) + col;
-                const u64 indexChannel = index * channels;
-                if (row % 2)
+                for (u64 col = 0; col < textureDimensions; col++)
                 {
-                    if (col % 2)
+                    const u64 index        = (row * textureDimensions) + col;
+                    const u64 indexChannel = index * channels;
+                    if (row % 2)
                     {
-                        pixels[indexChannel + 0] = 0;
-                        pixels[indexChannel + 1] = 0;
+                        if (col % 2)
+                        {
+                            pixels[indexChannel + 0] = 0;
+                            pixels[indexChannel + 1] = 0;
+                        }
                     }
-                }
-                else
-                {
-                    if (!(col % 2))
+                    else
                     {
-                        pixels[indexChannel + 0] = 0;
-                        pixels[indexChannel + 1] = 0;
+                        if (!(col % 2))
+                        {
+                            pixels[indexChannel + 0] = 0;
+                            pixels[indexChannel + 1] = 0;
+                        }
                     }
                 }
             }
+
+            m_defaultTexture = Texture(DEFAULT_TEXTURE_NAME, TextureType2D, textureDimensions, textureDimensions, channels);
+            Renderer.CreateTexture(pixels, &m_defaultTexture);
+            // Manually set the texture generation to invalid since this is the default texture
+            m_defaultTexture.generation = INVALID_ID;
+
+            Memory.Free(pixels);
         }
 
-        m_defaultTexture = Texture(DEFAULT_TEXTURE_NAME, TextureType::Type2D, textureDimensions, textureDimensions, channels);
-        Renderer.CreateTexture(pixels, &m_defaultTexture);
-        // Manually set the texture generation to invalid since this is the default texture
-        m_defaultTexture.generation = INVALID_ID;
-
-        // Diffuse texture
-        TRACE("Create default diffuse texture...");
-        const auto diffusePixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
-        // Default diffuse texture is all white
-        std::memset(diffusePixels, 255, sizeof(u8) * 16 * 16 * 4);  // Default diffuse map is all white
-
-        m_defaultDiffuseTexture = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, TextureType::Type2D, 16, 16, 4);
-        Renderer.CreateTexture(diffusePixels, &m_defaultDiffuseTexture);
-        // Manually set the texture generation to invalid since this is the default texture
-        m_defaultDiffuseTexture.generation = INVALID_ID;
-
-        // Specular texture.
-        TRACE("Create default specular texture...");
-        const auto specPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
-        std::memset(specPixels, 0, sizeof(u8) * 16 * 16 * 4);  // Default specular map is black (no specular)
-
-        m_defaultSpecularTexture = Texture(DEFAULT_SPECULAR_TEXTURE_NAME, TextureType::Type2D, 16, 16, 4);
-        Renderer.CreateTexture(specPixels, &m_defaultSpecularTexture);
-        // Manually set the texture generation to invalid since this is the default texture
-        m_defaultSpecularTexture.generation = INVALID_ID;
-
-        // Normal texture.
-        TRACE("Create default normal texture...");
-        const auto normalPixels = Memory.Allocate<u8>(MemoryType::Array, static_cast<u64>(16) * 16 * 4);
-        std::memset(normalPixels, 0, sizeof(u8) * 16 * 16 * 4);
-
-        // Each pixel
-        for (u64 row = 0; row < 16; row++)
         {
-            for (u64 col = 0; col < 16; col++)
-            {
-                const u64 index    = (row * 16) + col;
-                const u64 indexBpp = index * channels;
+            // Diffuse texture
+            TRACE("Create default diffuse texture...");
+            const auto diffusePixels = Memory.Allocate<u8>(MemoryType::Array, pixelCount * channels);
+            // Default diffuse texture is all white
+            std::memset(diffusePixels, 255, sizeof(u8) * pixelCount * channels);  // Default diffuse map is all white
 
-                // Set blue, z-axis by default and alpha
-                normalPixels[indexBpp + 0] = 128;
-                normalPixels[indexBpp + 1] = 128;
-                normalPixels[indexBpp + 2] = 255;
-                normalPixels[indexBpp + 3] = 255;
+            m_defaultDiffuseTexture = Texture(DEFAULT_DIFFUSE_TEXTURE_NAME, TextureType2D, textureDimensions, textureDimensions, channels);
+            Renderer.CreateTexture(diffusePixels, &m_defaultDiffuseTexture);
+            // Manually set the texture generation to invalid since this is the default texture
+            m_defaultDiffuseTexture.generation = INVALID_ID;
+
+            Memory.Free(diffusePixels);
+        }
+
+        {
+            // Specular texture.
+            TRACE("Create default specular texture...");
+            const auto specPixels = Memory.Allocate<u8>(MemoryType::Array, pixelCount * channels);
+            std::memset(specPixels, 0, sizeof(u8) * pixelCount * channels);  // Default specular map is black (no specular)
+
+            m_defaultSpecularTexture =
+                Texture(DEFAULT_SPECULAR_TEXTURE_NAME, TextureType2D, textureDimensions, textureDimensions, channels);
+            Renderer.CreateTexture(specPixels, &m_defaultSpecularTexture);
+            // Manually set the texture generation to invalid since this is the default texture
+            m_defaultSpecularTexture.generation = INVALID_ID;
+
+            Memory.Free(specPixels);
+        }
+
+        {
+            // Normal texture.
+            TRACE("Create default normal texture...");
+            const auto normalPixels = Memory.Allocate<u8>(MemoryType::Array, pixelCount * channels);
+            std::memset(normalPixels, 255, sizeof(u8) * pixelCount * channels);
+
+            // Each pixel
+            for (u64 row = 0; row < 16; row++)
+            {
+                for (u64 col = 0; col < 16; col++)
+                {
+                    const u64 index    = (row * 16) + col;
+                    const u64 indexBpp = index * channels;
+
+                    // Set blue, z-axis by default and alpha
+                    normalPixels[indexBpp + 0] = 128;
+                    normalPixels[indexBpp + 1] = 128;
+                }
+            }
+
+            m_defaultNormalTexture = Texture(DEFAULT_NORMAL_TEXTURE_NAME, TextureType2D, textureDimensions, textureDimensions, channels);
+            Renderer.CreateTexture(normalPixels, &m_defaultNormalTexture);
+            // Manually set the texture generation to invalid since this is the default texture
+            m_defaultNormalTexture.generation = INVALID_ID;
+
+            Memory.Free(normalPixels);
+        }
+
+        {
+            // Metallic texture.
+            TRACE("Create default metallic texture...");
+            const auto metallicPixels = Memory.Allocate<u8>(MemoryType::Array, pixelCount * channels);
+            std::memset(metallicPixels, 0, sizeof(u8) * pixelCount * channels);  // Default metallic map is black (no metallic)
+
+            m_defaultMetallicTexture =
+                Texture(DEFAULT_METALLIC_TEXTURE_NAME, TextureType2D, textureDimensions, textureDimensions, channels);
+            Renderer.CreateTexture(metallicPixels, &m_defaultMetallicTexture);
+            // Manually set the texture generation to invalid since this is the default texture
+            m_defaultMetallicTexture.generation = INVALID_ID;
+
+            Memory.Free(metallicPixels);
+        }
+
+        {
+            // Roughness texture.
+            TRACE("Create default roughness texture...");
+            const auto roughnessPixels = Memory.Allocate<u8>(MemoryType::Array, pixelCount * channels);
+            std::memset(roughnessPixels, 255, sizeof(u8) * pixelCount * channels);
+
+            // Each pixel
+            for (u64 row = 0; row < 16; row++)
+            {
+                for (u64 col = 0; col < 16; col++)
+                {
+                    const u64 index    = (row * 16) + col;
+                    const u64 indexBpp = index * channels;
+
+                    // Set to gray
+                    roughnessPixels[indexBpp + 0] = 128;
+                    roughnessPixels[indexBpp + 1] = 128;
+                    roughnessPixels[indexBpp + 2] = 128;
+                }
+            }
+
+            m_defaultRoughnessTexture =
+                Texture(DEFAULT_ROUGHNESS_TEXTURE_NAME, TextureType2D, textureDimensions, textureDimensions, channels);
+            Renderer.CreateTexture(roughnessPixels, &m_defaultRoughnessTexture);
+            // Manually set the texture generation to invalid since this is the default texture
+            m_defaultRoughnessTexture.generation = INVALID_ID;
+
+            Memory.Free(roughnessPixels);
+        }
+
+        {
+            // AO texture.
+            TRACE("Create default ao texture...");
+            const auto aoPixels = Memory.Allocate<u8>(MemoryType::Array, pixelCount * channels);
+            std::memset(aoPixels, 255, sizeof(u8) * pixelCount * channels);  // Default ao map is white
+
+            m_defaultAoTexture = Texture(DEFAULT_AO_TEXTURE_NAME, TextureType2D, textureDimensions, textureDimensions, channels);
+            Renderer.CreateTexture(aoPixels, &m_defaultAoTexture);
+            // Manually set the texture generation to invalid since this is the default texture
+            m_defaultAoTexture.generation = INVALID_ID;
+
+            Memory.Free(aoPixels);
+        }
+
+        {
+            // Cube texture.
+            TRACE("Create default cube texture...");
+            u8 cubeSidePixels[pixelCount * channels];
+            std::memset(cubeSidePixels, 255, sizeof(u8) * pixelCount * channels);
+
+            // Each pixel.
+            for (u64 row = 0; row < textureDimensions; ++row)
+            {
+                for (u64 col = 0; col < textureDimensions; ++col)
+                {
+                    u64 index    = (row * textureDimensions) + col;
+                    u64 indexBpp = index * channels;
+                    if (row % 2)
+                    {
+                        if (col % 2)
+                        {
+                            cubeSidePixels[indexBpp + 1] = 0;
+                            cubeSidePixels[indexBpp + 2] = 0;
+                        }
+                    }
+                    else
+                    {
+                        if (!(col % 2))
+                        {
+                            cubeSidePixels[indexBpp + 1] = 0;
+                            cubeSidePixels[indexBpp + 2] = 0;
+                        }
+                    }
+                }
+            }
+
+            u8* pixels    = 0;
+            u64 imageSize = 0;
+            for (u8 i = 0; i < 6; ++i)
+            {
+                if (!pixels)
+                {
+                    m_defaultCubeTexture =
+                        Texture(DEFAULT_CUBE_TEXTURE_NAME, TextureTypeCube, textureDimensions, textureDimensions, channels);
+                    m_defaultCubeTexture.generation = 0;
+
+                    imageSize = m_defaultCubeTexture.width * m_defaultCubeTexture.height * m_defaultCubeTexture.channelCount;
+                    pixels    = Memory.Allocate<u8>(MemoryType::Array, imageSize * 6);
+                }
+
+                // Copy to the relevant portion of the array.
+                std::memcpy(pixels + imageSize * i, cubeSidePixels, imageSize);
+            }
+
+            // Acquire internal texture resources and upload to GPU.
+            Renderer.CreateTexture(pixels, &m_defaultCubeTexture);
+
+            if (pixels)
+            {
+                Memory.Free(pixels);
             }
         }
-
-        m_defaultNormalTexture = Texture(DEFAULT_NORMAL_TEXTURE_NAME, TextureType::Type2D, 16, 16, 4);
-        Renderer.CreateTexture(normalPixels, &m_defaultNormalTexture);
-        // Manually set the texture generation to invalid since this is the default texture
-        m_defaultNormalTexture.generation = INVALID_ID;
-
-        // Cleanup our pixel arrays
-        Memory.Free(pixels);
-        Memory.Free(diffusePixels);
-        Memory.Free(specPixels);
-        Memory.Free(normalPixels);
 
         return true;
     }
@@ -365,6 +544,10 @@ namespace C3D
         DestroyTexture(&m_defaultDiffuseTexture);
         DestroyTexture(&m_defaultSpecularTexture);
         DestroyTexture(&m_defaultNormalTexture);
+        DestroyTexture(&m_defaultMetallicTexture);
+        DestroyTexture(&m_defaultRoughnessTexture);
+        DestroyTexture(&m_defaultAoTexture);
+        DestroyTexture(&m_defaultCubeTexture);
     }
 
     bool TextureSystem::LoadTexture(const char* name, Texture* texture)
@@ -548,7 +731,7 @@ namespace C3D
                 }
                 else
                 {
-                    if (type == TextureType::TypeCube)
+                    if (type == TextureTypeCube)
                     {
                         std::array<CString<TEXTURE_NAME_MAX_LENGTH>, 6> textureNames{};
                         textureNames[0].FromFormat("{}_r", name);  // Right texture

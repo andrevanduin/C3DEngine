@@ -19,13 +19,15 @@
 #include <systems/system_manager.h>
 
 #include "resources/scenes/simple_scene.h"
+#include "resources/skybox.h"
 
 constexpr const char* INSTANCE_NAME        = "SCENE_PASS";
 constexpr const char* MATERIAL_SHADER_NAME = "Shader.Builtin.Material";
 constexpr const char* TERRAIN_SHADER_NAME  = "Shader.Builtin.Terrain";
 constexpr const char* COLOR_3D_SHADER_NAME = "Shader.Builtin.Color3D";
+constexpr const char* PBR_SHADER_NAME      = "Shader.PBR";
 
-constexpr const char* SHADER_NAMES[3] = { MATERIAL_SHADER_NAME, TERRAIN_SHADER_NAME, COLOR_3D_SHADER_NAME };
+constexpr const char* SHADER_NAMES[4] = { MATERIAL_SHADER_NAME, TERRAIN_SHADER_NAME, COLOR_3D_SHADER_NAME, PBR_SHADER_NAME };
 
 ScenePass::ScenePass() : RendergraphPass() {}
 
@@ -64,8 +66,8 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
         return false;
     }
 
-    C3D::Shader* SHADERS[3] = { 0, 0, 0 };
-    for (u8 i = 0; i < 3; i++)
+    C3D::Shader* SHADERS[4] = { 0, 0, 0, 0 };
+    for (u8 i = 0; i < 4; i++)
     {
         const char* name = SHADER_NAMES[i];
 
@@ -94,12 +96,11 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
     m_shader        = SHADERS[0];
     m_terrainShader = SHADERS[1];
     m_colorShader   = SHADERS[2];
+    m_pbrShader     = SHADERS[3];
 
     m_debugLocations.view       = m_colorShader->GetUniformIndex("view");
     m_debugLocations.projection = m_colorShader->GetUniformIndex("projection");
     m_debugLocations.model      = m_colorShader->GetUniformIndex("model");
-
-    m_ambientColor = vec4(0.25f, 0.25f, 0.25f, 1.0f);
 
     m_geometries.SetAllocator(frameAllocator);
     m_terrains.SetAllocator(frameAllocator);
@@ -115,9 +116,10 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
     m_terrains.Reset();
     m_debugGeometries.Reset();
 
-    m_viewport   = viewport;
-    m_camera     = camera;
-    m_renderMode = renderMode;
+    m_viewport              = viewport;
+    m_camera                = camera;
+    m_renderMode            = renderMode;
+    m_irradianceCubeTexture = scene.GetSkybox()->cubeMap.texture;
 
     // Update the frustum
     vec3 forward = camera->GetForward();
@@ -167,11 +169,14 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
 
     for (auto& terrain : scene.m_terrains)
     {
-        // TODO: Check terrain generation
-        // TODO: Frustum culling
-        m_terrains.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
-        // TODO: Seperate counter for terrain meshes/geometry
-        frameData.drawnMeshCount++;
+        if (terrain.GetId())
+        {
+            // TODO: Check terrain generation
+            // TODO: Frustum culling
+            m_terrains.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
+            // TODO: Seperate counter for terrain meshes/geometry
+            frameData.drawnMeshCount++;
+        }
     }
 
     // Debug geometry
@@ -224,6 +229,8 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
     const auto& viewMatrix       = m_camera->GetViewMatrix();
     const auto& viewPosition     = m_camera->GetPosition();
 
+    Materials.SetIrradiance(m_irradianceCubeTexture);
+
     // Terrains
     if (!m_terrains.Empty())
     {
@@ -234,8 +241,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
 
         // Apply globals
-        if (!Materials.ApplyGlobal(m_terrainShader->id, frameData, &projectionMatrix, &viewMatrix, &m_ambientColor, &viewPosition,
-                                   m_renderMode))
+        if (!Materials.ApplyGlobal(m_terrainShader->id, frameData, &projectionMatrix, &viewMatrix, &viewPosition, m_renderMode))
         {
             ERROR_LOG("Failed to apply globals for Terrain Shader.");
             return false;
@@ -264,11 +270,26 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
     }
 
-    u32 currentMaterialId = INVALID_ID;
+    u32 currentMaterialId                 = INVALID_ID;
+    C3D::MaterialType currentMaterialType = C3D::MaterialType::Phong;
 
     // Static geometry
     if (!m_geometries.Empty())
     {
+        // Update globals for material and PBR shader
+        if (!Shaders.UseById(m_pbrShader->id))
+        {
+            ERROR_LOG("Failed to use PBR Shader.");
+            return false;
+        }
+
+        // Apply globals
+        if (!Materials.ApplyGlobal(m_pbrShader->id, frameData, &projectionMatrix, &viewMatrix, &viewPosition, m_renderMode))
+        {
+            ERROR_LOG("Failed to apply globals for PBR Shader.");
+            return false;
+        }
+
         if (!Shaders.UseById(m_shader->id))
         {
             ERROR_LOG("Failed to use Material Shader.");
@@ -276,21 +297,33 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
 
         // Apply globals
-        if (!Materials.ApplyGlobal(m_shader->id, frameData, &projectionMatrix, &viewMatrix, &m_ambientColor, &viewPosition, m_renderMode))
+        if (!Materials.ApplyGlobal(m_shader->id, frameData, &projectionMatrix, &viewMatrix, &viewPosition, m_renderMode))
         {
-            ERROR_LOG("Failed to apply globals for Terrain Shader.");
+            ERROR_LOG("Failed to apply globals for Material Shader.");
             return false;
         }
 
         for (const auto& data : m_geometries)
         {
             C3D::Material* m = data.material ? data.material : Materials.GetDefault();
+
+            // Swap shaders if the material type changes
+            if (m->type != currentMaterialType)
+            {
+                if (!Shaders.UseById(m->type == C3D::MaterialType::PBR ? m_pbrShader->id : m_shader->id))
+                {
+                    ERROR_LOG("Failed to switch shaders on material change.");
+                    return false;
+                }
+                currentMaterialType = m->type;
+            }
+
             if (m->internalId != currentMaterialId)
             {
                 bool needsUpdate = m->renderFrameNumber != frameData.frameNumber || m->renderDrawIndex != frameData.drawIndex;
                 if (!Materials.ApplyInstance(m, frameData, needsUpdate))
                 {
-                    WARN_LOG("Failed to apply Terrain Material: '{}'. Skipping.", m->name);
+                    WARN_LOG("Failed to apply Material: '{}'. Skipping.", m->name);
                     continue;
                 }
 

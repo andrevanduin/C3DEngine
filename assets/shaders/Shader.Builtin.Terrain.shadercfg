@@ -1,7 +1,6 @@
 # Terrain Shader config file
 version = 1.0
 name = Shader.Builtin.Terrain
-renderPass = RenderPass.Builtin.World
 stages = vertex, fragment
 stageFiles = shaders/Builtin.TerrainShader.vert, shaders/Builtin.TerrainShader.frag
 depthTest  = true
@@ -19,33 +18,43 @@ attribute = vec4, inMaterialWeights
 # Global
 uniform = mat4, global, projection
 uniform = mat4, global, view
-uniform = vec4, global, ambientColor
 uniform = vec3, global, viewPosition
 uniform = u32, global, mode
 uniform = struct32, global, dirLight
 
 # Samplers
 # Instance
-uniform = samp, instance, diffuseTexture_0
-uniform = samp, instance, specularTexture_0
+uniform = samp, instance, albedoTexture_0
 uniform = samp, instance, normalTexture_0
+uniform = samp, instance, metallicTexture_0
+uniform = samp, instance, roughnessTexture_0
+uniform = samp, instance, aoTexture_0
 
-uniform = samp, instance, diffuseTexture_1
-uniform = samp, instance, specularTexture_1
+uniform = samp, instance, albedoTexture_1
 uniform = samp, instance, normalTexture_1
+uniform = samp, instance, metallicTexture_1
+uniform = samp, instance, roughnessTexture_1
+uniform = samp, instance, aoTexture_1
 
-uniform = samp, instance, diffuseTexture_2
-uniform = samp, instance, specularTexture_2
+uniform = samp, instance, albedoTexture_2
 uniform = samp, instance, normalTexture_2
+uniform = samp, instance, metallicTexture_2
+uniform = samp, instance, roughnessTexture_2
+uniform = samp, instance, aoTexture_2
 
-uniform = samp, instance, diffuseTexture_3
-uniform = samp, instance, specularTexture_3
+uniform = samp, instance, albedoTexture_3
 uniform = samp, instance, normalTexture_3
+uniform = samp, instance, metallicTexture_3
+uniform = samp, instance, roughnessTexture_3
+uniform = samp, instance, aoTexture_3
+
+# Irradiance
+uniform = samp, instance, iblCubeTexture
 
 uniform = struct160, instance, properties
 uniform = struct480, instance, pLights
 uniform = vec3, instance, padding
-uniform = u32, instance, numPLights
+uniform = i32, instance, numPLights
 
 # Local 
 uniform = mat4, local, model

@@ -146,7 +146,7 @@ namespace C3D
         Event.Register(EventCodeApplicationQuit,
                        [this](const u16 code, void* sender, const EventContext& context) { return OnQuitEvent(code, sender, context); });
 
-        constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
+        constexpr MaterialSystemConfig materialSystemConfig{ 4077 };
         constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
         m_systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System

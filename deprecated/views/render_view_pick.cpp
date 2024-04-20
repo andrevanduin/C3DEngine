@@ -618,7 +618,7 @@ bool RenderViewPick::RegenerateAttachmentTarget(u32 passIndex, C3D::RenderTarget
     constexpr bool hasTransparency = false;
 
     attachment->texture->id     = INVALID_ID;
-    attachment->texture->type   = C3D::TextureType::Type2D;
+    attachment->texture->type   = C3D::TextureType2D;
     attachment->texture->name   = textureNameUUID.value;
     attachment->texture->width  = width;
     attachment->texture->height = height;

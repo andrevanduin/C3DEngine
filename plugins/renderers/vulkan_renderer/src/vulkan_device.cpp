@@ -84,10 +84,7 @@ namespace C3D
             queueCreateInfo.pQueuePriorities = queuePriorities;
         }
 
-        VkPhysicalDeviceFeatures deviceFeatures = {};
-        deviceFeatures.samplerAnisotropy        = VK_TRUE;  // Request Anisotropy
-
-        DynamicArray<const char*> requestedExtensions(4);
+        DynamicArray<const char*> requestedExtensions(5);
         // We always require the swapchain extension
         requestedExtensions.PushBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -125,22 +122,22 @@ namespace C3D
             requestedExtensions.PushBack(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
         }
 
-        VkDeviceCreateInfo deviceCreateInfo      = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
-        deviceCreateInfo.queueCreateInfoCount    = indexCount;
-        deviceCreateInfo.pQueueCreateInfos       = queueCreateInfos;
-        deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
-        deviceCreateInfo.enabledExtensionCount   = requestedExtensions.Size();
-        deviceCreateInfo.ppEnabledExtensionNames = requestedExtensions.GetData();
+        VkPhysicalDeviceFeatures deviceFeatures = {};
+        deviceFeatures.samplerAnisotropy        = VK_TRUE;  // Request Anisotropy
+        deviceFeatures.fillModeNonSolid         = VK_TRUE;
 
-        // These are deprecated and ignored so we null them
-        deviceCreateInfo.enabledLayerCount   = 0;
-        deviceCreateInfo.ppEnabledLayerNames = nullptr;
+        VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures = {
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT
+        };
+        // Partial binding is required for descriptor aliasing.
+        // TODO: Check if supported?
+        descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
 
         VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicState = {
             VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT
         };
         extendedDynamicState.extendedDynamicState = VK_TRUE;
-        deviceCreateInfo.pNext                    = &extendedDynamicState;
+        descriptorIndexingFeatures.pNext          = &extendedDynamicState;
 
         if (HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_LINE_SMOOTH_RASTERIZATION))
         {
@@ -151,6 +148,18 @@ namespace C3D
             lineRasterization.smoothLines = VK_TRUE;
             extendedDynamicState.pNext    = &lineRasterization;
         }
+
+        VkDeviceCreateInfo deviceCreateInfo      = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+        deviceCreateInfo.queueCreateInfoCount    = indexCount;
+        deviceCreateInfo.pQueueCreateInfos       = queueCreateInfos;
+        deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
+        deviceCreateInfo.enabledExtensionCount   = requestedExtensions.Size();
+        deviceCreateInfo.ppEnabledExtensionNames = requestedExtensions.GetData();
+        deviceCreateInfo.pNext                   = &descriptorIndexingFeatures;
+
+        // These are deprecated and ignored so we null them
+        deviceCreateInfo.enabledLayerCount   = 0;
+        deviceCreateInfo.ppEnabledLayerNames = nullptr;
 
         // Actually create our logical device
         VK_CHECK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, m_context->allocator, &m_logicalDevice));
@@ -292,6 +301,7 @@ namespace C3D
 #endif
 
         requirements.extensionNames.EmplaceBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        requirements.extensionNames.EmplaceBack(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
         // Iterate physical devices to find one that we can use
         VkPhysicalDevice physicalDevices[32];

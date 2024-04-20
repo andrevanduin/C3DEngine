@@ -9,8 +9,8 @@ shader = Shader.Builtin.Material
 
 [map]
 name = diffuse
-minifyFilter = linear
-magnifyfilter = linear
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
@@ -19,8 +19,8 @@ textureName = cobblestone
 
 [map]
 name = specular
-minifyFilter = linear
-magnifyfilter = linear
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
@@ -29,8 +29,8 @@ textureName = cobblestone_specular
 
 [map]
 name = normal
-minifyFilter = linear
-magnifyfilter = linear
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat

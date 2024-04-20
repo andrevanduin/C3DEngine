@@ -39,15 +39,14 @@ namespace C3D
 
         DynamicArray& operator=(const DynamicArray& other)
         {
-            if (this != &other)
-            {
-                Copy(other);
-            }
+            Copy(other);
             return *this;
         }
 
         DynamicArray& operator=(DynamicArray&& other) noexcept
         {
+            Free();
+
             m_elements  = other.GetData();
             m_allocator = other.m_allocator;
             m_size      = other.Size();
@@ -312,7 +311,7 @@ namespace C3D
             std::move(first, last, begin() + index);
         }
 
-        /*
+        /**
          * @brief Emplaces an element at the provided iterator
          * This will cause a resize if size + 1 >= capacity
          */
@@ -336,7 +335,7 @@ namespace C3D
             new (&m_elements[index]) T(std::forward<Args>(args)...);
         }
 
-        /*
+        /**
          * @brief Copies over the elements at the provided pointer
          * This is a destructive operation that will first delete all the memory in the
          * dynamic array if there is any. This will resize the dynamic array to count.
@@ -361,7 +360,7 @@ namespace C3D
             }
         }
 
-        /*
+        /**
          * @brief Copies over the elements from the provided DynamicArray
          * This is a destructive operation that will first delete all the memory in the
          * dynamic array if there is any and resize the dynamic array to the capacity and size of the provided array

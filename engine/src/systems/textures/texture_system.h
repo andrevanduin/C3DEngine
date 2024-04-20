@@ -12,11 +12,16 @@
 
 namespace C3D
 {
-    constexpr auto DEFAULT_TEXTURE_NAME          = "default";
-    constexpr auto DEFAULT_DIFFUSE_TEXTURE_NAME  = "defaultDiffuse";
-    constexpr auto DEFAULT_SPECULAR_TEXTURE_NAME = "defaultSpecular";
-    constexpr auto DEFAULT_NORMAL_TEXTURE_NAME   = "defaultNormal";
-    constexpr auto MAX_LOADING_TEXTURES          = 128;
+    constexpr auto DEFAULT_TEXTURE_NAME           = "default";
+    constexpr auto DEFAULT_DIFFUSE_TEXTURE_NAME   = "defaultDiffuse";
+    constexpr auto DEFAULT_SPECULAR_TEXTURE_NAME  = "defaultSpecular";
+    constexpr auto DEFAULT_NORMAL_TEXTURE_NAME    = "defaultNormal";
+    constexpr auto DEFAULT_METALLIC_TEXTURE_NAME  = "defaultMetallic";
+    constexpr auto DEFAULT_ROUGHNESS_TEXTURE_NAME = "defaultRoughness";
+    constexpr auto DEFAULT_AO_TEXTURE_NAME        = "defaultAo";
+    constexpr auto DEFAULT_CUBE_TEXTURE_NAME      = "defaultCube";
+
+    constexpr auto MAX_LOADING_TEXTURES = 128;
 
     struct TextureSystemConfig
     {
@@ -69,6 +74,12 @@ namespace C3D
         Texture* GetDefaultDiffuse();
         Texture* GetDefaultSpecular();
         Texture* GetDefaultNormal();
+        Texture* GetDefaultMetallic();
+        Texture* GetDefaultRoughness();
+        Texture* GetDefaultAo();
+        Texture* GetDefaultCube();
+
+        bool IsDefault(const Texture* texture) const;
 
         bool CreateDefaultTextures();
 
@@ -92,6 +103,10 @@ namespace C3D
         Texture m_defaultDiffuseTexture;
         Texture m_defaultSpecularTexture;
         Texture m_defaultNormalTexture;
+        Texture m_defaultMetallicTexture;
+        Texture m_defaultRoughnessTexture;
+        Texture m_defaultAoTexture;
+        Texture m_defaultCubeTexture;
 
         HashMap<String, TextureReference> m_registeredTextures;
 

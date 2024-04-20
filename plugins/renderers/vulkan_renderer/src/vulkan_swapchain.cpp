@@ -294,7 +294,7 @@ namespace C3D
             // Create a depth/stencil image and it's view
             const auto name  = String::FromFormat("__C3D_DEFAULT_DEPTH_STENCIL_TEXTURE_{}", i);
             const auto image = Memory.New<VulkanImage>(MemoryType::Texture);
-            image->Create(m_context, name, TextureType::Type2D, extent.width, extent.height, m_context->device.GetDepthFormat(),
+            image->Create(m_context, name, TextureType2D, extent.width, extent.height, m_context->device.GetDepthFormat(),
                           VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true,
                           1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 

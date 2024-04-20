@@ -20,7 +20,6 @@ layout(set = 0, binding = 0) uniform globalUniformObject
 {
     mat4 projection;
     mat4 view;
-    vec4 ambientColor;
     vec3 viewPosition;
     int mode;
     DirectionalLight dirLight;
@@ -36,7 +35,6 @@ layout(location = 0) out int outMode;
 // Data transfer object
 layout(location = 1) out struct dto 
 {
-    vec4 ambientColor;
     vec2 texCoord;
     vec3 normal;
     vec3 viewPosition;
@@ -61,7 +59,6 @@ void main()
     outDto.normal = normalize(m3Model * inNormal);
     outDto.tangent = normalize(m3Model * inTangent.xyz);
 
-    outDto.ambientColor = globalUbo.ambientColor;
     outDto.viewPosition = globalUbo.viewPosition;
     
     gl_Position = globalUbo.projection * globalUbo.view * uPushConstants.model * vec4(inPosition, 1.0);

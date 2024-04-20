@@ -35,13 +35,15 @@ private:
     C3D::Shader* m_shader        = nullptr;
     C3D::Shader* m_terrainShader = nullptr;
     C3D::Shader* m_colorShader   = nullptr;
+    C3D::Shader* m_pbrShader     = nullptr;
 
     C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> m_geometries;
     C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> m_terrains;
     C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> m_debugGeometries;
 
+    C3D::Texture* m_irradianceCubeTexture = nullptr;
+
     u32 m_renderMode;
-    vec4 m_ambientColor;
 
     DebugColorShaderLocations m_debugLocations;
 };

@@ -1,10 +1,48 @@
 #material file
 
-version = 1
+version = 2
+type = pbr
 name = Material__298
-diffuseColor = 0.588000 0.588000 0.588000 1.000000
-shininess = 10.000000
-diffuseMapName = background
-specularMapName = background_spec
-normalMapName = background_ddn
-shader = Shader.Builtin.Material
+shader = Shader.PBR
+[map]
+name = albedo
+filterMin = linear
+filterMag = linear
+repeatU = repeat
+repeatV = repeat
+repeatW = repeat
+textureName = background
+[/map]
+[map]
+name = roughness
+filterMin = linear
+filterMag = linear
+repeatU = repeat
+repeatV = repeat
+repeatW = repeat
+textureName = background_roughness
+[/map]
+[map]
+name = normal
+filterMin = linear
+filterMag = linear
+repeatU = repeat
+repeatV = repeat
+repeatW = repeat
+textureName = background_ddn
+[/map]
+[prop]
+name = diffuseColor
+type = vec4
+value = 0.588 0.588 0.588 1
+[/prop]
+[prop]
+name = padding
+type = vec3
+value = 0 0 0
+[/prop]
+[prop]
+name = shininess
+type = f32
+value = 10
+[/prop]

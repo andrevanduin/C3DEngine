@@ -76,9 +76,9 @@ namespace C3D
         FrontAndBack = 0x3
     };
 
-    enum class TextureType
+    enum TextureType
     {
-        Type2D,
-        TypeCube,
+        TextureType2D,
+        TextureTypeCube,
     };
 }  // namespace C3D

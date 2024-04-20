@@ -57,7 +57,7 @@ namespace C3D
 
         // Setup HashMap for uniform lookups
         // NOTE: Way more than we will ever need but it prevents collisions in our hashtable
-        shader.uniforms.Create(1024);
+        shader.uniforms.Create(977);
 
         // Copy over the flags specified in the config
         shader.flags = config.flags;
@@ -74,7 +74,11 @@ namespace C3D
         // Add attributes
         for (const auto& attribute : config.attributes)
         {
-            AddAttribute(shader, attribute);
+            if (!AddAttribute(shader, attribute))
+            {
+                ERROR_LOG("Failed to add Attribute: {} to Shader: {}", attribute.name, config.name);
+                return false;
+            }
         }
 
         // Add Samplers and other uniforms
@@ -82,11 +86,19 @@ namespace C3D
         {
             if (uniform.type == Uniform_Sampler)
             {
-                AddSampler(shader, uniform);
+                if (!AddSampler(shader, uniform))
+                {
+                    ERROR_LOG("Failed to add Sampler: {} to Shader: {}", uniform.name, config.name);
+                    return false;
+                }
             }
             else
             {
-                AddUniform(shader, uniform);
+                if (!AddUniform(shader, uniform))
+                {
+                    ERROR_LOG("Failed to add Uniform: {} to Shader: {}", uniform.name, config.name);
+                    return false;
+                }
             }
         }
 

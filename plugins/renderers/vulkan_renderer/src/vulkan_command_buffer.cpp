@@ -2,6 +2,7 @@
 #include "vulkan_command_buffer.h"
 
 #include "vulkan_types.h"
+#include "vulkan_utils.h"
 
 namespace C3D
 {
@@ -65,7 +66,14 @@ namespace C3D
         submitInfo.pCommandBuffers    = &handle;
         VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, 0));
 
-        VK_CHECK(vkQueueWaitIdle(queue));
+        auto result = vkQueueWaitIdle(queue);
+        if (!VulkanUtils::IsSuccess(result))
+        {
+            INSTANCE_ERROR_LOG("VULKAN_COMMAND_BUFFER", "vkQueueWaitIdle failed with following error: {}.",
+                               VulkanUtils::ResultString(result));
+        }
+
+        // VK_CHECK(vkQueueWaitIdle(queue));
 
         Free(context, pool);
     }

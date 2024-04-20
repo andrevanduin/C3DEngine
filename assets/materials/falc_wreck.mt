@@ -1,14 +1,13 @@
 #material file
 
 version = 2
-type = custom
+type = pbr
 name = falc_wreck
-shader = Shader.Builtin.Material
 
 [map]
-name = diffuse
-minifyFilter = linear
-magnifyfilter = linear
+name = albedo
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
@@ -16,19 +15,29 @@ textureName = falc_wreck_low_DefaultMaterial_AlbedoTransparency
 [/map]
 
 [map]
-name = specular
-minifyFilter = linear
-magnifyfilter = linear
+name = metallic
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = falc_wreck_low_DefaultMaterial_MetallicSmoothness
+textureName = falc_wreck_low_DefaultMaterial_Metallic
+[/map]
+
+[map]
+name = roughness
+filterMin = linear
+filterMag = linear
+repeatU = repeat
+repeatV = repeat
+repeatW = repeat
+textureName = falc_wreck_low_DefaultMaterial_Roughness
 [/map]
 
 [map]
 name = normal
-minifyFilter = linear
-magnifyfilter = linear
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
@@ -36,19 +45,17 @@ textureName = falc_wreck_low_DefaultMaterial_Normal
 [/map]
 
 [prop]
-name = diffuseColor
-type = vec4
-value = 0.800000 0.800000 0.800000 1.000000
+name = shininess
+type = f32
+value = 10
 [/prop]
-
 [prop]
 name = padding
 type = vec3
-value = 0.0 0.0 0.0
+value = 0.000000 0.000000 0.000000
 [/prop]
-
 [prop]
-name = shininess
-type = f32
-value = 8.0
+name = diffuseColor
+type = vec4
+value=0.588000 0.588000 0.588000 1.000000
 [/prop]

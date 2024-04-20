@@ -267,6 +267,27 @@ namespace C3D
         return t * t * (3.0 - 2.0 * t);
     }
 
+    /**
+     * @brief Returns the attenuation of x based off distance from the midpoint of min and max.
+     *
+     * @param min The minimum value.
+     * @param max The maximum value.
+     * @param x The value to attenuate.
+     * @return The attenuation of x based on distance of the midpoint of min and max.
+     */
+    C3D_API C3D_INLINE f32 AttenuationMinMax(f32 min, f32 max, f32 x)
+    {
+        // TODO: Maybe a good function here would be one with a min/max and falloff value...
+        // so if the range was 0.4 to 0.8 with a falloff of 1.0, weight for x between
+        // 0.5 and 0.7 would be 1.0, with it dwindling to 0 as it approaches 0.4 or 0.8.
+        f32 halfRange = Abs(max - min) * 0.5;
+        f32 mid       = min + halfRange;  // midpoint
+        f32 distance  = Abs(x - mid);     // dist from mid
+        // scale dist from midpoint to halfrange
+        f32 att = Clamp((halfRange - distance) / halfRange, 0.f, 1.f);
+        return att;
+    }
+
     /** @brief Compares x with edge. Returns 0.0f if x < edge otherwise returns 1.0f. */
     C3D_API C3D_INLINE f32 Step(const f32 edge, const f32 x) { return x < edge ? 0.0f : 1.0f; }
 

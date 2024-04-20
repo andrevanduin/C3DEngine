@@ -446,18 +446,21 @@ namespace C3D
                     break;
                 }
                 case 'N':
-                    if (line[1] == 's')
-                    {
-                        auto parts = line.Split(' ');
-                        auto prop  = MaterialConfigProp("shininess", ShaderUniformType::Uniform_Float32, parts[1].ToF32());
-                        if (std::get<f32>(prop.value) <= 0.0f)
-                        {
-                            // Set a minimal shininess value to reduce rendering artifacts
-                            prop.value = 8.0f;
-                        }
-                        currentConfig.props.EmplaceBack(prop);
-                    }
                     break;
+                    {
+                        // HACK: Disable in order not to break current PBR material state
+                        if (line[1] == 's')
+                        {
+                            auto parts = line.Split(' ');
+                            auto prop  = MaterialConfigProp("shininess", ShaderUniformType::Uniform_Float32, parts[1].ToF32());
+                            if (std::get<f32>(prop.value) <= 0.0f)
+                            {
+                                // Set a minimal shininess value to reduce rendering artifacts
+                                prop.value = 8.0f;
+                            }
+                            currentConfig.props.EmplaceBack(prop);
+                        }
+                    }
                 case 'm':
                     ObjMaterialParseMapLine(line, currentConfig);
                     break;
@@ -466,9 +469,37 @@ namespace C3D
                     auto parts = line.Split(' ');
                     if (parts[0].IEquals("bump"))
                     {
-                        currentConfig.maps.EmplaceBack(MaterialConfigMap("bump", FileSystem::FileNameFromPath(parts[1])));
+                        currentConfig.maps.EmplaceBack(MaterialConfigMap("normal", FileSystem::FileNameFromPath(parts[1])));
                     }
                     break;
+                }
+                case 'd':
+                {
+                    // Dissolved value which describes how transparent the material (range of 0.0 to 1.0)
+                    // Here 0 means fully transparent and 1.0 would mean fully opaque. We ignore this property for now.
+                    continue;
+                }
+                case 'i':
+                {
+                    // illumnation model which we ingore for now
+                    continue;
+                }
+                case 'T':
+                {
+                    if (line[1] == 'r')
+                    {
+                        // Transparency Tr = 1 - d meaing 0 means fully opaque and 1 means fully transparent. Ignored for now.
+                        continue;
+                    }
+                    else if (line[1] == 'f')
+                    {
+                        // Transmission filter color. Ignored for now.
+                        continue;
+                    }
+                    else
+                    {
+                        ERROR_LOG("Unknown character after 'T': {} on line {}.", line[1], line);
+                    }
                 }
                 case 'n':
                     ObjMaterialParseNewMtlLine(line, currentConfig, hitName, mtlFilePath);
@@ -478,8 +509,6 @@ namespace C3D
                     break;
             }
         }
-
-        currentConfig.shaderName = "Builtin.Shader.Material";
 
         if (!WriteMtFile(mtlFilePath, currentConfig))
         {
@@ -504,6 +533,7 @@ namespace C3D
                 break;
             }
             case 's':  // Specular color
+            case 'e':  // Emmisive color
             {
                 char t[3];
                 // NOTE: this is not used for now
@@ -522,20 +552,30 @@ namespace C3D
         auto parts = line.Split(' ');
         MaterialConfigMap map;
 
-        if (parts[1].IEquals("map_Kd"))
+        if (parts[0].IEquals("map_Kd"))
         {
-            // Diffuse texture map
-            map.name = "diffuse";
+            // Diffuse/albedo texture map
+            map.name = "albedo";
         }
-        else if (parts[1].IEquals("map_Ks"))
+        else if (parts[0].IEquals("map_Ks"))
         {
-            // Diffuse texture map
+            // Specular texture map
             map.name = "specular";
         }
-        else if (parts[1].IEquals("map_bump"))
+        else if (parts[0].IEquals("map_bump"))
         {
-            // Diffuse texture map
+            // Normal texture map
             map.name = "normal";
+        }
+        else if (parts[0].IEquals("map_Ka"))
+        {
+            // Ambient texture map, we skip this for now
+            return;
+        }
+        else if (parts[0].IEquals("map_d"))
+        {
+            // The alpha texture map, we skip this for now
+            return;
         }
         else
         {
@@ -558,11 +598,6 @@ namespace C3D
         if (StringUtils::IEquals(substr, "newmtl", 6))
         {
             // It's a material name
-
-            // NOTE: Hardcoded default material shader name because all objects imported this way will be treated the
-            // same
-            config.shaderName = "Builtin.Shader.Material";
-
             if (hitName)
             {
                 // Write out a mt file and move on.
@@ -572,7 +607,9 @@ namespace C3D
                     return;
                 }
 
-                config = {};
+                // Empty out the config
+                config         = {};
+                config.version = 2;
             }
 
             hitName     = true;
@@ -587,7 +624,7 @@ namespace C3D
         File file;
         String directory = FileSystem::DirectoryFromPath(mtlFilePath);
 
-        auto fullPath = String::FromFormat("%s../materials/%s.%s", directory, config.name, "mt");
+        auto fullPath = String::FromFormat("{}../materials/{}.{}", directory, config.name, "mt");
         if (!file.Open(fullPath, FileModeWrite))
         {
             ERROR_LOG("Failed to open material file for writing: '{}'.", fullPath);
@@ -622,10 +659,10 @@ namespace C3D
             lineBuffer.FromFormat("name = {}", map.name);
             file.WriteLine(lineBuffer);
 
-            lineBuffer.FromFormat("minifyFilter = {}", ToString(map.minifyFilter));
+            lineBuffer.FromFormat("filterMin = {}", ToString(map.minifyFilter));
             file.WriteLine(lineBuffer);
 
-            lineBuffer.FromFormat("magnifyFilter = {}", ToString(map.magnifyFilter));
+            lineBuffer.FromFormat("filterMag = {}", ToString(map.magnifyFilter));
             file.WriteLine(lineBuffer);
 
             lineBuffer.FromFormat("repeatU = {}", ToString(map.repeatU));

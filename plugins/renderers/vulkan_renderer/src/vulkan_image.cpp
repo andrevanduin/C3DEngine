@@ -19,9 +19,9 @@ namespace C3D
         /*
         switch (type)
         {
-                case TextureType::Type2D:
+                case TextureType2D:
                         return VK_IMAGE_TYPE_2D;
-                case TextureType::TypeCube:
+                case TextureTypeCube:
                         return VK_IMAGE_TYPE_2D;
         }*/ // TODO: This currently is not used
         return VK_IMAGE_TYPE_2D;
@@ -31,9 +31,9 @@ namespace C3D
     {
         switch (type)
         {
-            case TextureType::Type2D:
+            case TextureType2D:
                 return VK_IMAGE_VIEW_TYPE_2D;
-            case TextureType::TypeCube:
+            case TextureTypeCube:
                 return VK_IMAGE_VIEW_TYPE_CUBE;
         }
         return VK_IMAGE_VIEW_TYPE_2D;
@@ -65,7 +65,7 @@ namespace C3D
         // TODO: Support different depth.
         imageCreateInfo.extent.depth  = 1;
         imageCreateInfo.mipLevels     = m_mipLevels;
-        imageCreateInfo.arrayLayers   = type == TextureType::TypeCube ? 6 : 1;
+        imageCreateInfo.arrayLayers   = type == TextureTypeCube ? 6 : 1;
         imageCreateInfo.format        = format;
         imageCreateInfo.tiling        = tiling;
         imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -74,7 +74,7 @@ namespace C3D
         imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         // TODO: Configurable sharing mode.
         imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        if (type == TextureType::TypeCube)
+        if (type == TextureTypeCube)
         {
             imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
@@ -130,7 +130,7 @@ namespace C3D
         viewCreateInfo.subresourceRange.baseMipLevel   = 0;
         viewCreateInfo.subresourceRange.levelCount     = m_mipLevels;
         viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-        viewCreateInfo.subresourceRange.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        viewCreateInfo.subresourceRange.layerCount     = type == TextureTypeCube ? 6 : 1;
 
         VK_CHECK(vkCreateImageView(m_context->device.GetLogical(), &viewCreateInfo, m_context->allocator, &view));
 
@@ -251,7 +251,7 @@ namespace C3D
         barrier.subresourceRange.baseMipLevel   = 0;
         barrier.subresourceRange.levelCount     = m_mipLevels;
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        barrier.subresourceRange.layerCount     = type == TextureTypeCube ? 6 : 1;
 
         VkPipelineStageFlags sourceStage, destStage;
 
@@ -313,7 +313,7 @@ namespace C3D
         region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel       = 0;
         region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        region.imageSubresource.layerCount     = type == TextureTypeCube ? 6 : 1;
 
         region.imageExtent.width  = width;
         region.imageExtent.height = height;
@@ -332,7 +332,7 @@ namespace C3D
         region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel       = 0;
         region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        region.imageSubresource.layerCount     = type == TextureTypeCube ? 6 : 1;
 
         region.imageExtent.width  = width;
         region.imageExtent.height = height;
@@ -352,7 +352,7 @@ namespace C3D
         region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel       = 0;
         region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        region.imageSubresource.layerCount     = type == TextureTypeCube ? 6 : 1;
 
         region.imageOffset.x      = static_cast<i32>(x);
         region.imageOffset.y      = static_cast<i32>(y);
