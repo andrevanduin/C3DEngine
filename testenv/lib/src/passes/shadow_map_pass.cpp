@@ -330,7 +330,10 @@ bool ShadowMapPass::Prepare(const SimpleScene& scene)
     // Add terrain(s)
     for (auto& terrain : scene.m_terrains)
     {
-        m_terrains.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
+        if (terrain.GetId())
+        {
+            m_terrains.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
+        }
     }
 
     m_prepared = true;
@@ -360,7 +363,7 @@ bool ShadowMapPass::Execute(const C3D::FrameData& frameData)
 
     if (!Shaders.SetUniformByIndex(m_locations.view, &m_viewMatrix))
     {
-        ERROR_LOG("Failed to set projection.");
+        ERROR_LOG("Failed to set view.");
         return false;
     }
 
@@ -444,7 +447,6 @@ bool ShadowMapPass::Execute(const C3D::FrameData& frameData)
     }
 
     // Terrain
-    /*
     Shaders.UseById(m_terrainShader->id);
 
     // Apply globals
@@ -452,13 +454,13 @@ bool ShadowMapPass::Execute(const C3D::FrameData& frameData)
     // NOTE: We use our internal projection matrix (not the one passed in)
     if (!Shaders.SetUniformByIndex(m_terrainLocations.projection, &m_projectionMatrix))
     {
-        ERROR_LOG("Failed to set projection.");
+        ERROR_LOG("Failed to set projection for terrain.");
         return false;
     }
 
     if (!Shaders.SetUniformByIndex(m_terrainLocations.view, &m_viewMatrix))
     {
-        ERROR_LOG("Failed to set projection.");
+        ERROR_LOG("Failed to set view for terrain.");
         return false;
     }
 
@@ -485,7 +487,6 @@ bool ShadowMapPass::Execute(const C3D::FrameData& frameData)
         // Draw it
         Renderer.DrawGeometry(terrain);
     }
-    */
 
     End();
 
