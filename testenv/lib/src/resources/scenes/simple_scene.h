@@ -157,6 +157,7 @@ private:
     C3D::Transform m_transform;
 
     friend class ScenePass;
+    friend class ShadowMapPass;
 
     const C3D::SystemManager* m_pSystemsManager = nullptr;
 };

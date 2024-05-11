@@ -24,7 +24,7 @@ namespace C3D
         bool OnInit(const ShaderSystemConfig& config) override;
         void OnShutdown() override;
 
-        bool Create(RenderPass* pass, const ShaderConfig& config);
+        bool Create(void* pass, const ShaderConfig& config);
 
         u32 GetId(const String& name) const;
 

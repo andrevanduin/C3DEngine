@@ -141,7 +141,7 @@ namespace C3D
 
         VulkanShaderConfig config;
 
-        VulkanRenderPass* renderPass = nullptr;
+        VulkanRenderpass* renderpass = nullptr;
 
         VulkanShaderStage stages[VULKAN_SHADER_MAX_STAGES];
 

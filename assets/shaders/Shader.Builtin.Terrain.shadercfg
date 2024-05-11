@@ -18,9 +18,14 @@ attribute = vec4, inMaterialWeights
 # Global
 uniform = mat4, global, projection
 uniform = mat4, global, view
+uniform = mat4, global, lightSpace
+uniform = vec4, global, ambientColor
+uniform = struct32, global, dirLight
 uniform = vec3, global, viewPosition
 uniform = u32, global, mode
-uniform = struct32, global, dirLight
+uniform = u32, global, usePCF
+uniform = f32, global, bias
+uniform = vec2, global, globalPadding
 
 # Samplers
 # Instance
@@ -48,6 +53,8 @@ uniform = samp, instance, metallicTexture_3
 uniform = samp, instance, roughnessTexture_3
 uniform = samp, instance, aoTexture_3
 
+# Shadow Map
+uniform = samp, instance, shadowTexture
 # Irradiance
 uniform = samp, instance, iblCubeTexture
 

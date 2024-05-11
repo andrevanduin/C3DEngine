@@ -20,9 +20,14 @@ layout(set = 0, binding = 0) uniform globalUniformObject
 {
     mat4 projection;
     mat4 view;
+    mat4 lightSpace;
+    vec4 ambientColor;
+    DirectionalLight dirLight;
     vec3 viewPosition;
     int mode;
-    DirectionalLight dirLight;
+    int usePCF;
+    float bias;
+    vec2 padding;
 } globalUbo;
 
 layout(push_constant) uniform PushConstants
@@ -31,10 +36,13 @@ layout(push_constant) uniform PushConstants
 } uPushConstants;
 
 layout(location = 0) out int outMode;
+layout(location = 1) out int usePCF;
 
 // Data transfer object
-layout(location = 1) out struct dto 
+layout(location = 2) out struct dto 
 {
+    vec4 lightSpaceFragPosition;
+    vec4 ambient;
     vec2 texCoord;
     vec3 normal;
     vec3 viewPosition;
@@ -42,7 +50,17 @@ layout(location = 1) out struct dto
     vec4 color;
     vec3 tangent;
     vec4 materialWeights;
+    int usePCF;
+    float bias;
 } outDto;
+
+// Vulkan's Y axis is flipped and Z range is halved.
+const mat4 bias = mat4( 
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.5, 0.5, 0.0, 1.0 
+);
 
 void main()
 {
@@ -58,10 +76,14 @@ void main()
     // Convert local normal to "world space"
     outDto.normal = normalize(m3Model * inNormal);
     outDto.tangent = normalize(m3Model * inTangent.xyz);
-
+    outDto.ambient = globalUbo.ambientColor;
     outDto.viewPosition = globalUbo.viewPosition;
     
     gl_Position = globalUbo.projection * globalUbo.view * uPushConstants.model * vec4(inPosition, 1.0);
 
+    outDto.lightSpaceFragPosition = (bias * globalUbo.lightSpace) * vec4(outDto.fragPosition, 1.0);
+
     outMode = globalUbo.mode;
+    usePCF = globalUbo.usePCF;
+    outDto.bias = globalUbo.bias;
 }

@@ -148,10 +148,10 @@ namespace C3D
 
         void DrawGeometry(const GeometryRenderData& data) const;
 
-        bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) const;
-        bool EndRenderPass(RenderPass* pass) const;
+        void BeginRenderpass(void* pass, const RenderTarget& target) const;
+        void EndRenderpass(void* pass) const;
 
-        bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const;
+        bool CreateShader(Shader* shader, const ShaderConfig& config, void* pass) const;
         void DestroyShader(Shader& shader) const;
 
         bool InitializeShader(Shader& shader) const;
@@ -171,11 +171,11 @@ namespace C3D
 
         bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) const;
 
-        void CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) const;
+        void CreateRenderTarget(void* pass, RenderTarget& target, u32 width, u32 height) const;
         void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory) const;
 
-        [[nodiscard]] RenderPass* CreateRenderPass(const RenderPassConfig& config) const;
-        bool DestroyRenderPass(RenderPass* pass) const;
+        void CreateRenderpassInternals(const RenderpassConfig& config, void** internalData) const;
+        void DestroyRenderpassInternals(void* internalData) const;
 
         [[nodiscard]] Texture* GetWindowAttachment(u8 index) const;
         [[nodiscard]] Texture* GetDepthAttachment(u8 index) const;

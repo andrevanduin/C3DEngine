@@ -14,6 +14,7 @@
 #include "editor/editor_gizmo.h"
 #include "passes/editor_pass.h"
 #include "passes/scene_pass.h"
+#include "passes/shadow_map_pass.h"
 #include "passes/skybox_pass.h"
 #include "resources/scenes/simple_scene.h"
 
@@ -61,6 +62,7 @@ struct GameState final : C3D::ApplicationState
 
     C3D::Rendergraph frameGraph;
     SkyboxPass skyboxPass;
+    ShadowMapPass shadowPass;
     ScenePass scenePass;
     EditorPass editorPass;
 

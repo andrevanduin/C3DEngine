@@ -5,13 +5,13 @@
 #include <renderer/camera.h>
 #include <renderer/geometry.h>
 #include <renderer/renderer_frontend.h>
-#include <renderer/renderpass.h>
 #include <renderer/viewport.h>
 #include <resources/debug/debug_box_3d.h>
 #include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
 #include <resources/shaders/shader_types.h>
 #include <resources/terrain/terrain.h>
+#include <resources/textures/texture.h>
 #include <systems/lights/light_system.h>
 #include <systems/materials/material_system.h>
 #include <systems/resources/resource_system.h>
@@ -29,14 +29,14 @@ constexpr const char* PBR_SHADER_NAME      = "Shader.PBR";
 
 constexpr const char* SHADER_NAMES[4] = { MATERIAL_SHADER_NAME, TERRAIN_SHADER_NAME, COLOR_3D_SHADER_NAME, PBR_SHADER_NAME };
 
-ScenePass::ScenePass() : RendergraphPass() {}
+ScenePass::ScenePass() : Renderpass() {}
 
-ScenePass::ScenePass(const C3D::SystemManager* pSystemsManager) : RendergraphPass("SCENE", pSystemsManager) {}
+ScenePass::ScenePass(const C3D::SystemManager* pSystemsManager) : Renderpass("SCENE", pSystemsManager) {}
 
 bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
 {
-    C3D::RenderPassConfig pass;
-    pass.name       = "RenderPass.Scene";
+    C3D::RenderpassConfig pass;
+    pass.name       = "Renderpass.Scene";
     pass.clearColor = { 0, 0, 0.2f, 1.0f };
     pass.clearFlags = C3D::ClearDepthBuffer | C3D::ClearStencilBuffer;
     pass.depth      = 1.0f;
@@ -59,10 +59,9 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
     pass.target.attachments.PushBack(targetAttachments[1]);
     pass.renderTargetCount = Renderer.GetWindowAttachmentCount();
 
-    m_pass = Renderer.CreateRenderPass(pass);
-    if (!m_pass)
+    if (!CreateInternals(pass))
     {
-        ERROR_LOG("Failed to create RenderPass.");
+        ERROR_LOG("Failed to create Renderpass internals.");
         return false;
     }
 
@@ -78,7 +77,7 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
             return false;
         }
 
-        if (!Shaders.Create(m_pass, config))
+        if (!Shaders.Create(m_pInternalData, config))
         {
             ERROR_LOG("Failed to Create: '{}'.", name);
             return false;
@@ -105,21 +104,59 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
     m_geometries.SetAllocator(frameAllocator);
     m_terrains.SetAllocator(frameAllocator);
     m_debugGeometries.SetAllocator(frameAllocator);
+    m_transparentGeometries.SetAllocator(frameAllocator);
+
+    return true;
+}
+
+bool ScenePass::LoadResources()
+{
+    auto shadowMapSink = GetSinkByName("SHADOW_MAP");
+    if (!shadowMapSink)
+    {
+        ERROR_LOG("No Sink could be found for the SHADOW_MAP.");
+        return false;
+    }
+
+    m_shadowMapSource = shadowMapSink->boundSource;
+    m_shadowMaps.Resize(Renderer.GetWindowAttachmentCount());
+    for (u32 i = 0; i < m_shadowMaps.Size(); i++)
+    {
+        auto& shadowMap         = m_shadowMaps[i];
+        shadowMap.repeatU       = C3D::TextureRepeat::ClampToEdge;
+        shadowMap.repeatV       = C3D::TextureRepeat::ClampToEdge;
+        shadowMap.minifyFilter  = C3D::TextureFilter::ModeLinear;
+        shadowMap.magnifyFilter = C3D::TextureFilter::ModeLinear;
+        shadowMap.texture       = m_shadowMapSource->textures[i];
+        shadowMap.generation    = INVALID_ID;
+
+        if (!Renderer.AcquireTextureMapResources(shadowMap))
+        {
+            ERROR_LOG("Failed to acquire texture map resources for shadow map.");
+            return false;
+        }
+    }
 
     return true;
 }
 
 bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::FrameData& frameData, const SimpleScene& scene, u32 renderMode,
-                        const C3D::DynamicArray<C3D::DebugLine3D>& debugLines, const C3D::DynamicArray<C3D::DebugBox3D>& debugBoxes)
+                        const C3D::DynamicArray<C3D::DebugLine3D>& debugLines, const C3D::DynamicArray<C3D::DebugBox3D>& debugBoxes,
+                        const mat4& shadowCameraLookat, const mat4& shadowCameraProjection)
 {
     m_geometries.Reset();
     m_terrains.Reset();
     m_debugGeometries.Reset();
+    m_transparentGeometries.Reset();
 
-    m_viewport              = viewport;
-    m_camera                = camera;
-    m_renderMode            = renderMode;
-    m_irradianceCubeTexture = scene.GetSkybox()->cubeMap.texture;
+    m_viewport   = viewport;
+    m_camera     = camera;
+    m_renderMode = renderMode;
+
+    // HACK: Use our skybox cube as irradiance texture for now
+    m_irradianceCubeTexture      = scene.GetSkybox()->cubeMap.texture;
+    m_directionalLightView       = shadowCameraLookat;
+    m_directionalLightProjection = shadowCameraProjection;
 
     // Update the frustum
     vec3 forward = camera->GetForward();
@@ -160,11 +197,46 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
 
                 if (frustum.IntersectsWithAABB({ center, halfExtents }))
                 {
+                    C3D::GeometryRenderData data(mesh.GetId(), model, geometry, windingInverted);
+
+                    // Check if transparent. If so, put into a separate, temp array to be
+                    // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
+                    if (geometry->material->type == C3D::MaterialType::Phong &&
+                        geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
+                    {
+                        // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
+                        // Get the center, extract the global position from the model matrix and add it to the center,
+                        // then calculate the distance between it and the camera, and finally save it to a list to be sorted.
+                        // NOTE: This isn't perfect for translucent meshes that intersect, but is enough for our purposes now.
+                        vec3 center  = model * vec4(geometry->center, 1.0f);
+                        f32 distance = glm::distance(center, m_camera->GetPosition());
+
+                        m_transparentGeometries.EmplaceBack(data, distance);
+                    }
+                    else
+                    {
+                        m_geometries.PushBack(data);
+                    }
+
                     m_geometries.EmplaceBack(mesh.GetId(), model, geometry, windingInverted);
                     frameData.drawnMeshCount++;
                 }
             }
         }
+    }
+
+    // Sort opaque geometries by material.
+    std::sort(m_geometries.begin(), m_geometries.end(), [](const C3D::GeometryRenderData& a, const C3D::GeometryRenderData& b) {
+        return a.material->internalId < b.material->internalId;
+    });
+
+    // Sort transparent geometries, then add them to our geometries array.
+    std::sort(m_transparentGeometries.begin(), m_transparentGeometries.end(),
+              [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance > b.distance; });
+
+    for (auto& tg : m_transparentGeometries)
+    {
+        m_geometries.PushBack(tg.g);
     }
 
     for (auto& terrain : scene.m_terrains)
@@ -219,17 +291,23 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
 
 bool ScenePass::Execute(const C3D::FrameData& frameData)
 {
-    if (!Renderer.BeginRenderPass(m_pass, frameData))
-    {
-        ERROR_LOG("Failed to begin RenderPass.");
-        return false;
-    }
+    Renderer.SetActiveViewport(m_viewport);
+
+    Begin(frameData);
 
     const auto& projectionMatrix = m_viewport->GetProjection();
     const auto& viewMatrix       = m_camera->GetViewMatrix();
     const auto& viewPosition     = m_camera->GetPosition();
 
     Materials.SetIrradiance(m_irradianceCubeTexture);
+
+    // HACK: This is just here for padding
+    vec4 ambientColor = vec4(0.99, 0.98, 0.97, 0.96);
+
+    mat4 lightSpace = m_directionalLightProjection * m_directionalLightView;
+    Materials.SetDirectionalLightSpaceMatrix(lightSpace);
+    // TODO: index for cascading
+    Materials.SetShadowMap(m_shadowMapSource->textures[frameData.renderTargetIndex], 0);
 
     // Terrains
     if (!m_terrains.Empty())
@@ -241,7 +319,8 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
 
         // Apply globals
-        if (!Materials.ApplyGlobal(m_terrainShader->id, frameData, &projectionMatrix, &viewMatrix, &viewPosition, m_renderMode))
+        if (!Materials.ApplyGlobal(m_terrainShader->id, frameData, &projectionMatrix, &viewMatrix, &ambientColor, &viewPosition,
+                                   m_renderMode))
         {
             ERROR_LOG("Failed to apply globals for Terrain Shader.");
             return false;
@@ -270,26 +349,10 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
     }
 
-    u32 currentMaterialId                 = INVALID_ID;
-    C3D::MaterialType currentMaterialType = C3D::MaterialType::Phong;
-
     // Static geometry
     if (!m_geometries.Empty())
     {
         // Update globals for material and PBR shader
-        if (!Shaders.UseById(m_pbrShader->id))
-        {
-            ERROR_LOG("Failed to use PBR Shader.");
-            return false;
-        }
-
-        // Apply globals
-        if (!Materials.ApplyGlobal(m_pbrShader->id, frameData, &projectionMatrix, &viewMatrix, &viewPosition, m_renderMode))
-        {
-            ERROR_LOG("Failed to apply globals for PBR Shader.");
-            return false;
-        }
-
         if (!Shaders.UseById(m_shader->id))
         {
             ERROR_LOG("Failed to use Material Shader.");
@@ -297,11 +360,27 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
 
         // Apply globals
-        if (!Materials.ApplyGlobal(m_shader->id, frameData, &projectionMatrix, &viewMatrix, &viewPosition, m_renderMode))
+        if (!Materials.ApplyGlobal(m_shader->id, frameData, &projectionMatrix, &viewMatrix, &ambientColor, &viewPosition, m_renderMode))
         {
             ERROR_LOG("Failed to apply globals for Material Shader.");
             return false;
         }
+
+        if (!Shaders.UseById(m_pbrShader->id))
+        {
+            ERROR_LOG("Failed to use PBR Shader.");
+            return false;
+        }
+
+        // Apply globals
+        if (!Materials.ApplyGlobal(m_pbrShader->id, frameData, &projectionMatrix, &viewMatrix, &ambientColor, &viewPosition, m_renderMode))
+        {
+            ERROR_LOG("Failed to apply globals for PBR Shader.");
+            return false;
+        }
+
+        u32 currentMaterialId                 = INVALID_ID;
+        C3D::MaterialType currentMaterialType = C3D::MaterialType::Unkown;
 
         for (const auto& data : m_geometries)
         {
@@ -318,7 +397,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
                 currentMaterialType = m->type;
             }
 
-            if (m->internalId != currentMaterialId)
+            if (m->id != currentMaterialId)
             {
                 bool needsUpdate = m->renderFrameNumber != frameData.frameNumber || m->renderDrawIndex != frameData.drawIndex;
                 if (!Materials.ApplyInstance(m, frameData, needsUpdate))
@@ -331,7 +410,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
                 m->renderFrameNumber = frameData.frameNumber;
                 m->renderDrawIndex   = frameData.drawIndex;
 
-                currentMaterialId = m->internalId;
+                currentMaterialId = m->id;
             }
 
             // Apply the locals
@@ -372,11 +451,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         m_colorShader->drawIndex   = frameData.drawIndex;
     }
 
-    if (!Renderer.EndRenderPass(m_pass))
-    {
-        ERROR_LOG("Failed to end RenderPass.");
-        return false;
-    }
+    End();
 
     return true;
 }

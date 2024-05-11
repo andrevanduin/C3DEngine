@@ -353,14 +353,14 @@ namespace C3D
         }
     }
 
-    bool RenderSystem::BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) const
+    void RenderSystem::BeginRenderpass(void* pass, const RenderTarget& target) const
     {
-        return m_backendPlugin->BeginRenderPass(pass, frameData);
+        m_backendPlugin->BeginRenderpass(pass, GetActiveViewport(), target);
     }
 
-    bool RenderSystem::EndRenderPass(RenderPass* pass) const { return m_backendPlugin->EndRenderPass(pass); }
+    void RenderSystem::EndRenderpass(void* pass) const { m_backendPlugin->EndRenderpass(pass); }
 
-    bool RenderSystem::CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const
+    bool RenderSystem::CreateShader(Shader* shader, const ShaderConfig& config, void* pass) const
     {
         return m_backendPlugin->CreateShader(shader, config, pass);
     }
@@ -408,7 +408,7 @@ namespace C3D
         return m_backendPlugin->SetUniform(shader, uniform, value);
     }
 
-    void RenderSystem::CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) const
+    void RenderSystem::CreateRenderTarget(void* pass, RenderTarget& target, u32 width, u32 height) const
     {
         m_backendPlugin->CreateRenderTarget(pass, target, width, height);
     }
@@ -418,9 +418,12 @@ namespace C3D
         m_backendPlugin->DestroyRenderTarget(target, freeInternalMemory);
     }
 
-    RenderPass* RenderSystem::CreateRenderPass(const RenderPassConfig& config) const { return m_backendPlugin->CreateRenderPass(config); }
+    void RenderSystem::CreateRenderpassInternals(const RenderpassConfig& config, void** internalData) const
+    {
+        m_backendPlugin->CreateRenderpassInternals(config, internalData);
+    }
 
-    bool RenderSystem::DestroyRenderPass(RenderPass* pass) const { return m_backendPlugin->DestroyRenderPass(pass); }
+    void RenderSystem::DestroyRenderpassInternals(void* internalData) const { m_backendPlugin->DestroyRenderpassInternals(internalData); }
 
     Texture* RenderSystem::GetWindowAttachment(const u8 index) const { return m_backendPlugin->GetWindowAttachment(index); }
 

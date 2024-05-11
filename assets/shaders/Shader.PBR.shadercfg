@@ -18,8 +18,13 @@ attribute = vec3, inTangent
 # Global
 uniform = mat4, global, projection
 uniform = mat4, global, view
+uniform = mat4, global, lightSpace
+uniform = vec4, global, ambientColor
 uniform = vec3, global, viewPosition
 uniform = u32, global, mode
+uniform = u32, global, usePCF
+uniform = f32, global, bias
+uniform = vec2, global, padding
 
 # Instance
 
@@ -29,6 +34,7 @@ uniform = samp, instance, normalTexture
 uniform = samp, instance, metallicTexture
 uniform = samp, instance, roughnessTexture
 uniform = samp, instance, aoTexture
+uniform = samp, instance, shadowTexture
 uniform = samp, instance, iblCubeTexture
 
 # Structs

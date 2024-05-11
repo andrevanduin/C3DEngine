@@ -31,13 +31,13 @@ void RenderViewPick::OnSetupPasses()
 
     C3D::RenderTargetAttachmentConfig worldPickTargetAttachments[2];
     worldPickTargetAttachments[0].type           = C3D::RenderTargetAttachmentType::Color;
-    worldPickTargetAttachments[0].source         = C3D::RenderTargetAttachmentSource::View;
+    worldPickTargetAttachments[0].source         = C3D::RenderTargetAttachmentSource::Self;
     worldPickTargetAttachments[0].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
     worldPickTargetAttachments[0].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
     worldPickTargetAttachments[0].presentAfter   = false;
 
     worldPickTargetAttachments[1].type           = C3D::RenderTargetAttachmentType::Depth;
-    worldPickTargetAttachments[1].source         = C3D::RenderTargetAttachmentSource::View;
+    worldPickTargetAttachments[1].source         = C3D::RenderTargetAttachmentSource::Self;
     worldPickTargetAttachments[1].loadOperation  = C3D::RenderTargetAttachmentLoadOperation::DontCare;
     worldPickTargetAttachments[1].storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
     worldPickTargetAttachments[1].presentAfter   = false;
@@ -54,7 +54,7 @@ void RenderViewPick::OnSetupPasses()
 
     C3D::RenderTargetAttachmentConfig uiPickTargetAttachment{};
     uiPickTargetAttachment.type           = C3D::RenderTargetAttachmentType::Color;
-    uiPickTargetAttachment.source         = C3D::RenderTargetAttachmentSource::View;
+    uiPickTargetAttachment.source         = C3D::RenderTargetAttachmentSource::Self;
     uiPickTargetAttachment.loadOperation  = C3D::RenderTargetAttachmentLoadOperation::Load;
     uiPickTargetAttachment.storeOperation = C3D::RenderTargetAttachmentStoreOperation::Store;
     uiPickTargetAttachment.presentAfter   = false;

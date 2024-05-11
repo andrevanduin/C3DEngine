@@ -571,7 +571,7 @@ namespace C3D
         }
     }
 
-    void VulkanRendererPlugin::CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height)
+    void VulkanRendererPlugin::CreateRenderTarget(void* pass, RenderTarget& target, u32 width, u32 height)
     {
         VkImageView attachmentViews[32] = { 0 };
         for (u32 i = 0; i < target.attachments.Size(); i++)
@@ -581,7 +581,7 @@ namespace C3D
 
         // Setup our frameBuffer creation
         VkFramebufferCreateInfo frameBufferCreateInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-        frameBufferCreateInfo.renderPass              = dynamic_cast<VulkanRenderPass*>(pass)->handle;
+        frameBufferCreateInfo.renderPass              = static_cast<VulkanRenderpass*>(pass)->handle;
         frameBufferCreateInfo.attachmentCount         = target.attachments.Size();
         frameBufferCreateInfo.pAttachments            = attachmentViews;
         frameBufferCreateInfo.width                   = width;
@@ -590,6 +590,10 @@ namespace C3D
 
         VK_CHECK(vkCreateFramebuffer(m_context.device.GetLogical(), &frameBufferCreateInfo, m_context.allocator,
                                      reinterpret_cast<VkFramebuffer*>(&target.internalFrameBuffer)));
+
+        auto vulkanPass = static_cast<VulkanRenderpass*>(pass);
+        const auto name = String::FromFormat("PASS_{}_FRAMEBUFFER_{}x{}", vulkanPass->GetName(), width, height);
+        VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_FRAMEBUFFER, target.internalFrameBuffer, name);
     }
 
     void VulkanRendererPlugin::DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory)
@@ -607,23 +611,25 @@ namespace C3D
         }
     }
 
-    RenderPass* VulkanRendererPlugin::CreateRenderPass(const RenderPassConfig& config)
+    bool VulkanRendererPlugin::CreateRenderpassInternals(const RenderpassConfig& config, void** internalData)
     {
-        const auto pass = Memory.New<VulkanRenderPass>(MemoryType::RenderSystem, m_pSystemsManager, &m_context, config);
-        if (!pass->Create(config))
+        auto pass = Memory.New<VulkanRenderpass>(MemoryType::RenderSystem);
+        if (!pass->Create(config, &m_context))
         {
-            ERROR_LOG("Failed to create RenderPass: '{}'.", config.name);
-            return nullptr;
+            Memory.Delete(pass);
+            ERROR_LOG("Failed to create Renderpass internal data for: '{}'.", config.name);
+            return false;
         }
-        return pass;
+
+        *internalData = pass;
+        return true;
     }
 
-    bool VulkanRendererPlugin::DestroyRenderPass(RenderPass* pass)
+    void VulkanRendererPlugin::DestroyRenderpassInternals(void* internalData)
     {
-        const auto vulkanPass = dynamic_cast<VulkanRenderPass*>(pass);
-        vulkanPass->Destroy();
+        auto pass = static_cast<VulkanRenderpass*>(internalData);
+        pass->Destroy();
         Memory.Delete(pass);
-        return true;
     }
 
     RenderBuffer* VulkanRendererPlugin::CreateRenderBuffer(const String& name, const RenderBufferType bufferType, const u64 totalSize,
@@ -677,20 +683,18 @@ namespace C3D
 
     bool VulkanRendererPlugin::IsFlagEnabled(const RendererConfigFlagBits flag) const { return m_config.flags & flag; }
 
-    bool VulkanRendererPlugin::BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData)
+    void VulkanRendererPlugin::BeginRenderpass(void* pass, const Viewport* viewport, const RenderTarget& target)
     {
         VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-        const auto vulkanPass              = dynamic_cast<VulkanRenderPass*>(pass);
-        vulkanPass->Begin(commandBuffer, frameData);
-        return true;
+        const auto vulkanPass              = static_cast<VulkanRenderpass*>(pass);
+        vulkanPass->Begin(commandBuffer, viewport, target);
     }
 
-    bool VulkanRendererPlugin::EndRenderPass(RenderPass* pass)
+    void VulkanRendererPlugin::EndRenderpass(void* pass)
     {
         VulkanCommandBuffer* commandBuffer = &m_context.graphicsCommandBuffers[m_context.imageIndex];
-        const auto vulkanPass              = dynamic_cast<VulkanRenderPass*>(pass);
+        const auto vulkanPass              = static_cast<VulkanRenderpass*>(pass);
         vulkanPass->End(commandBuffer);
-        return true;
     }
 
     void VulkanRendererPlugin::CreateTexture(const u8* pixels, Texture* texture)
@@ -742,7 +746,7 @@ namespace C3D
 
         if (texture->flags & TextureFlag::IsDepth)
         {
-            usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            usage       = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
             aspect      = VK_IMAGE_ASPECT_DEPTH_BIT;
             imageFormat = m_context.device.GetDepthFormat();
         }
@@ -931,7 +935,7 @@ namespace C3D
         }
     }
 
-    bool VulkanRendererPlugin::CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const
+    bool VulkanRendererPlugin::CreateShader(Shader* shader, const ShaderConfig& config, void* pass) const
     {
         // Allocate enough memory for the
         shader->apiSpecificData = Memory.New<VulkanShader>(MemoryType::Shader, &m_context);
@@ -964,7 +968,7 @@ namespace C3D
 
         // Get a pointer to our Vulkan specific shader stuff
         const auto vulkanShader                    = static_cast<VulkanShader*>(shader->apiSpecificData);
-        vulkanShader->renderPass                   = dynamic_cast<VulkanRenderPass*>(pass);
+        vulkanShader->renderpass                   = static_cast<VulkanRenderpass*>(pass);
         vulkanShader->config.maxDescriptorSetCount = maxDescriptorAllocateCount;
 
         vulkanShader->config.stageCount = 0;
@@ -1354,7 +1358,7 @@ namespace C3D
             config.pushConstantRanges.Copy(shader.pushConstantRanges, shader.pushConstantRangeCount);
             config.descriptorSetLayouts.Copy(vulkanShader->descriptorSetLayouts, vulkanShader->config.descriptorSetCount);
             config.stages.Copy(stageCreateInfos, vulkanShader->config.stageCount);
-            config.renderPass  = vulkanShader->renderPass;
+            config.renderpass  = vulkanShader->renderpass;
             config.stride      = shader.attributeStride;
             config.viewport    = viewport;
             config.scissor     = scissor;
@@ -2094,7 +2098,7 @@ namespace C3D
         // TODO: Configurable
         samplerInfo.anisotropyEnable        = VK_TRUE;
         samplerInfo.maxAnisotropy           = 16;
-        samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
         samplerInfo.compareEnable           = VK_FALSE;
         samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;

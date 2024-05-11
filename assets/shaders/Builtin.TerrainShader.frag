@@ -29,9 +29,14 @@ layout(set = 0, binding = 0) uniform globalUniformObject
 {
 	mat4 projection;
 	mat4 view;
+    mat4 lightSpace;
+    vec4 ambientColor;
+    DirectionalLight dirLight;
 	vec3 viewPosition;
 	int mode;
-    DirectionalLight dirLight;
+    int usePcf;
+    float bias;
+    vec2 padding;
 } globalUbo;
 
 struct MaterialPhongProperties
@@ -63,20 +68,25 @@ const int SAMP_NORMAL_OFFSET = 1;
 const int SAMP_METALLIC_OFFSET = 2;
 const int SAMP_ROUGHNESS_OFFSET = 3;
 const int SAMP_AO_OFFSET = 4;
-// Irradiance cube comes after all material textures
-const int SAMP_IRRADIANCE_CUBE = 5 * MAX_MATERIALS;
+// ShadowMap comes after all material textures
+const int SAMP_SHADOW_MAP = 5 * MAX_MATERIALS;
+// Irradiance cube comes after the ShadowMap
+const int SAMP_IRRADIANCE_CUBE = SAMP_SHADOW_MAP + 1;
 
 const float PI = 3.14159265359;
 
 // albedo, normal, metallic, roughness, ao, etc...
-layout(set = 1, binding = 1) uniform sampler2D samplers[(5 * MAX_MATERIALS)];
+layout(set = 1, binding = 1) uniform sampler2D samplers[2 + (5 * MAX_MATERIALS)];
 // IBL - alias to get cube samplers from the same samplers array
-layout(set = 1, binding = 1) uniform samplerCube cubeSamplers [1 + (5 * MAX_MATERIALS)];
+layout(set = 1, binding = 1) uniform samplerCube cubeSamplers [2 + (5 * MAX_MATERIALS)];
 
 layout(location = 0) flat in int inMode;
+layout(location = 1) flat in int usePCF;
 
-layout(location = 1) in struct dto
+layout(location = 2) in struct dto
 {
+    vec4 lightSpaceFragPosition;
+    vec4 ambient;
 	vec2 texCoord;
 	vec3 normal;
 	vec3 viewPosition;
@@ -84,6 +94,8 @@ layout(location = 1) in struct dto
 	vec4 color;
 	vec3 tangent;
 	vec4 materialWeights;
+    float bias;
+    vec3 padding;
 } inDto;
 
 // Matrix to take normals from texture space to world space
@@ -93,17 +105,12 @@ layout(location = 1) in struct dto
 // 	normal
 mat3 TBN;
 
+float CalculateShadow(vec4 lightSpaceFragPosition);
+
 // This is based off the Cook-Torrance BRDF (Bidirectional Reflective Distribution Function).
 // Which uses a micro-facet model to use roughness and metallic properties of materials to produce a physically accurate representation of material refelectance.
 // See: https://graphicscompendium.com/gamedev/15-pbr
-
-float GeometrySchlickGGX(float normalDotDirection, float roughness)
-{
-    roughness += 1.0;
-    float k = (roughness * roughness) / 8.0;
-    return normalDotDirection / (normalDotDirection * (1.0 - k) + k);
-}
-
+float GeometrySchlickGGX(float normalDotDirection, float roughness);
 vec3 CalculateDirectionalLightRadiance(DirectionalLight light, vec3 viewDirection);
 vec3 CalculateReflectance(vec3 albedo, vec3 normal, vec3 viewDirection, vec3 lightDirection, float metallic, float roughness, vec3 baseReflectivity, vec3 radiance);
 vec3 CalculatePointLightRadiance(PointLight light, vec3 viewDirection, vec3 fragPositionXyz);
@@ -121,6 +128,8 @@ void main()
     vec4 metallics[MAX_MATERIALS];
     vec4 roughnesses[MAX_MATERIALS];
     vec4 aos[MAX_MATERIALS];
+
+    vec4 shadow = texture(samplers[SAMP_SHADOW_MAP], inDto.texCoord);
 
     // Sample each material
     for (int m = 0; m < instanceUbo.properties.numMaterials; ++m)
@@ -209,9 +218,13 @@ void main()
         // Irradiance holds all the scene's indirect diffuse light. Use the surface normal to sample from it.
         vec3 irradiance = texture(cubeSamplers[SAMP_IRRADIANCE_CUBE], normal).rgb;
 
+        // Shadow
+        float shadow = CalculateShadow(inDto.lightSpaceFragPosition);
+
 		// Combine irradiance with albedo and ambient occlusion. Also add the total reflectance that we have accumulated.
 		vec3 ambient = irradiance * albedo.xyz * ao;
-		vec3 color = ambient + totalReflectance;
+
+		vec3 color = ambient + totalReflectance * shadow;
 
 		// HDR tonemapping
 		color = color / (color + vec3(1.0));
@@ -225,6 +238,56 @@ void main()
 	{
 		outColor = vec4(abs(normal), 1.0);
 	}
+}
+
+// Percentage-Closer Filtering
+float CalculatePCF(vec3 projected)
+{
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(samplers[SAMP_SHADOW_MAP], 0);
+
+    for (int x = -1; x <= 1; ++x) 
+    {
+        for(int y = -1; y <= 1; ++y) 
+        {
+            float pcfDepth = texture(samplers[SAMP_SHADOW_MAP], projected.xy + vec2(x, y) * texelSize).r;
+            shadow += projected.z - inDto.bias > pcfDepth ? 1.0 : 0.0;
+        }
+    }
+    shadow /= 9;
+    return 1.0 - shadow;
+}
+
+float CalculateUnfiltered(vec3 projected) 
+{
+    // Sample the shadow map.
+    float mapDepth = texture(samplers[SAMP_SHADOW_MAP], projected.xy).r;
+
+    // TODO: cast/get rid of branch.
+    float shadow = projected.z - inDto.bias > mapDepth ? 0.0 : 1.0;
+    return shadow;
+}
+
+float CalculateShadow(vec4 lightSpaceFragPosition)
+{
+    // Perspective divide
+    vec3 projected = lightSpaceFragPosition.xyz / lightSpaceFragPosition.w;
+    // Reverse Y
+    projected.y = 1.0 - projected.y;
+
+    if (usePCF == 1)
+    {
+        return CalculatePCF(projected);
+    }
+
+    return CalculateUnfiltered(projected);
+}
+
+float GeometrySchlickGGX(float normalDotDirection, float roughness)
+{
+    roughness += 1.0;
+    float k = (roughness * roughness) / 8.0;
+    return normalDotDirection / (normalDotDirection * (1.0 - k) + k);
 }
 
 vec3 CalculateReflectance(vec3 albedo, vec3 normal, vec3 viewDirection, vec3 lightDirection, float metallic, float roughness, vec3 baseReflectivity, vec3 radiance)

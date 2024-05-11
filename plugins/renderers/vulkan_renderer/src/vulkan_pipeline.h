@@ -9,7 +9,7 @@ namespace C3D
 {
     struct VulkanPipelineConfig
     {
-        VulkanRenderPass* renderPass;
+        VulkanRenderpass* renderpass;
         u32 stride;
 
         /** @brief Array of Vertex Input Attribute descriptions that are part of this pipeline. */

@@ -9,7 +9,7 @@
 #include "core/defines.h"
 #include "core/events/event_context.h"
 #include "memory/allocators/dynamic_allocator.h"
-#include "renderer/rendergraph/rendergraph_pass.h"
+#include "renderer/rendergraph/renderpass.h"
 #include "resources/geometry_config.h"
 #include "resources/textures/texture_map.h"
 #include "systems/events/event_system.h"

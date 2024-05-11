@@ -19,6 +19,8 @@ namespace C3D
 
         bool PointIsInside(const vec2& point) const;
 
+        void SetProjectionMatrix(const mat4& matrix);
+
         const Rect2D& GetRect2D() const { return m_rect; }
         const mat4& GetProjection() const { return m_projection; }
 

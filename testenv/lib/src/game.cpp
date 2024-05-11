@@ -100,9 +100,15 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     const auto simpleSceneLoader = Memory.New<C3D::ResourceLoader<SimpleSceneConfig>>(C3D::MemoryType::ResourceLoader, m_pSystemsManager);
     Resources.RegisterLoader(simpleSceneLoader);
 
+    if (!m_state->frameGraph.LoadResources())
+    {
+        ERROR_LOG("Failed to load resources for Framegraph.");
+        return false;
+    }
+
     m_state->camera = Cam.Acquire("WORLD_CAM");
-    m_state->camera->SetPosition({ 16.07f, 4.5f, 25.0f });
-    m_state->camera->SetEulerRotation({ -20.0f, 51.0f, 0.0f });
+    m_state->camera->SetPosition({ -24.5f, 19.3f, 30.2f });
+    m_state->camera->SetEulerRotation({ -23.9f, -42.4f, 0.0f });
 
     m_state->wireframeCamera = Cam.Acquire("WIREFRAME_CAM");
     m_state->wireframeCamera->SetPosition({ 8.0f, 0.0f, 10.0f });
@@ -410,11 +416,14 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 
     m_state->skyboxPass.Prepare(&m_state->worldViewport, m_state->camera, m_state->simpleScene.GetSkybox());
 
+    m_state->shadowPass.Prepare(m_state->simpleScene);
+
     // When the scene is loaded we prepare the skybox and scene pass
     if (m_state->simpleScene.GetState() == SceneState::Loaded)
     {
         m_state->scenePass.Prepare(&m_state->worldViewport, m_state->camera, frameData, m_state->simpleScene, m_state->renderMode,
-                                   m_state->testLines, m_state->testBoxes);
+                                   m_state->testLines, m_state->testBoxes, m_state->shadowPass.GetShadowCameraLookat(),
+                                   m_state->shadowPass.GetShadowCameraProjection());
 
         // Prepare the editor pass
         m_state->editorPass.Prepare(&m_state->worldViewport, m_state->camera, &m_state->gizmo);
@@ -653,6 +662,33 @@ bool TestEnv::ConfigureRendergraph() const
         return false;
     }
 
+    // ShadowMap pass
+    ShadowMapPassConfig config;
+    config.resolution   = 2048;
+    config.fov          = 0;
+    config.bounds       = C3D::Rect2D(-20, 20, -20, 20);
+    config.nearClip     = 1.0f;
+    config.farClip      = 150.0f;
+    config.matrixType   = C3D::RendererProjectionMatrixType::Orthographic;
+    m_state->shadowPass = ShadowMapPass(m_pSystemsManager, config);
+    if (!m_state->frameGraph.AddPass("SHADOW", &m_state->shadowPass))
+    {
+        ERROR_LOG("Failed to add SHADOW pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("SHADOW", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
+                                       C3D::RendergraphSourceOrigin::Self))
+    {
+        ERROR_LOG("Failed to add COLOR_BUFFER to SHADOW pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("SHADOW", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
+                                       C3D::RendergraphSourceOrigin::Self))
+    {
+        ERROR_LOG("Failed to add DEPTH_BUFFER to SHADOW pass.");
+        return false;
+    }
+
     // Scene pass
     m_state->scenePass = ScenePass(m_pSystemsManager);
     if (!m_state->frameGraph.AddPass("SCENE", &m_state->scenePass))
@@ -670,6 +706,11 @@ bool TestEnv::ConfigureRendergraph() const
         ERROR_LOG("Failed to add DEPTH_BUFFER sink to Scene pass.");
         return false;
     }
+    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP"))
+    {
+        ERROR_LOG("Failed to add SHADOW_MAP sink to Scene pass.");
+        return false;
+    }
     if (!m_state->frameGraph.AddSource("SCENE", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
                                        C3D::RendergraphSourceOrigin::Other))
     {
@@ -677,7 +718,7 @@ bool TestEnv::ConfigureRendergraph() const
         return false;
     }
     if (!m_state->frameGraph.AddSource("SCENE", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
-                                       C3D::RendergraphSourceOrigin::Other))
+                                       C3D::RendergraphSourceOrigin::Global))
     {
         ERROR_LOG("Failed to add DEPTH_BUFFER source to Scene pass.");
         return false;
@@ -690,6 +731,11 @@ bool TestEnv::ConfigureRendergraph() const
     if (!m_state->frameGraph.Link("DEPTH_BUFFER", "SCENE", "DEPTH_BUFFER"))
     {
         ERROR_LOG("Failed to link Global DEPTH_BUFFER source to SCENE DEPTH_BUFFER sink.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("SHADOW", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP"))
+    {
+        ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
         return false;
     }
 

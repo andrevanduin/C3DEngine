@@ -17,13 +17,19 @@ namespace C3D
     constexpr auto DEFAULT_TERRAIN_MATERIAL_NAME = "default_terrain";
     constexpr auto DEFAULT_PBR_MATERIAL_NAME     = "default_pbr";
 
-    constexpr auto PBR_MATERIAL_MAP_COUNT = 6;
+    constexpr auto PBR_MATERIAL_MAP_COUNT = 7;
     constexpr auto PBR_SAMP_ALBEDO        = 0;
     constexpr auto PBR_SAMP_NORMAL        = 1;
     constexpr auto PBR_SAMP_METALLIC      = 2;
     constexpr auto PBR_SAMP_ROUGHNESS     = 3;
     constexpr auto PBR_SAMP_AO            = 4;
-    constexpr auto PBR_SAMP_IBL_CUBE      = 5;
+    constexpr auto PBR_SAMP_SHADOW_MAP    = 5;
+    constexpr auto PBR_SAMP_IBL_CUBE      = 6;
+
+    constexpr auto TERRAIN_PER_MATERIAL_SAMP_COUNT = 5;
+    constexpr auto TERRAIN_SAMP_COUNT_TOTAL        = 2 + (TERRAIN_PER_MATERIAL_SAMP_COUNT * TERRAIN_MAX_MATERIAL_COUNT);
+    constexpr auto TERRAIN_SAMP_SHADOW_MAP         = TERRAIN_PER_MATERIAL_SAMP_COUNT * TERRAIN_MAX_MATERIAL_COUNT;
+    constexpr auto TERRAIN_SAMP_IRRADIANCE_MAP     = TERRAIN_SAMP_SHADOW_MAP + 1;
 
     struct MaterialSystemConfig
     {
@@ -60,6 +66,7 @@ namespace C3D
     {
         u16 projection   = INVALID_ID_U16;
         u16 view         = INVALID_ID_U16;
+        u16 ambientColor = INVALID_ID_U16;
         u16 viewPosition = INVALID_ID_U16;
         u16 model        = INVALID_ID_U16;
         u16 renderMode   = INVALID_ID_U16;
@@ -69,13 +76,18 @@ namespace C3D
 
         u16 properties     = INVALID_ID_U16;
         u16 iblCubeTexture = INVALID_ID_U16;
+        u16 shadowTexture  = INVALID_ID_U16;
+        u16 lightSpace     = INVALID_ID_U16;
         u16 samplers[TERRAIN_MAX_MATERIAL_COUNT * 5];  // Albedo, normal, metallic, roughness, ao
+        u16 usePCF = INVALID_ID_U16;
+        u16 bias   = INVALID_ID_U16;
     };
 
     struct PbrUniformLocations
     {
         u16 projection       = INVALID_ID_U16;
         u16 view             = INVALID_ID_U16;
+        u16 ambientColor     = INVALID_ID_U16;
         u16 viewPosition     = INVALID_ID_U16;
         u16 properties       = INVALID_ID_U16;
         u16 iblCubeTexture   = INVALID_ID_U16;
@@ -84,8 +96,12 @@ namespace C3D
         u16 metallicTexture  = INVALID_ID_U16;
         u16 roughnessTexture = INVALID_ID_U16;
         u16 aoTexture        = INVALID_ID_U16;
+        u16 shadowTexture    = INVALID_ID_U16;
+        u16 lightSpace       = INVALID_ID_U16;
         u16 model            = INVALID_ID_U16;
         u16 renderMode       = INVALID_ID_U16;
+        u16 usePCF           = INVALID_ID_U16;
+        u16 bias             = INVALID_ID_U16;
         u16 dirLight         = INVALID_ID_U16;
         u16 pLights          = INVALID_ID_U16;
         u16 numPLights       = INVALID_ID_U16;
@@ -118,8 +134,24 @@ namespace C3D
         /** @brief Reset the current irradiance cubemap texture to the default. */
         void ResetIrradiance();
 
-        bool ApplyGlobal(u32 shaderId, const FrameData& frameData, const mat4* projection, const mat4* view, const vec3* viewPosition,
-                         u32 renderMode) const;
+        /**
+         * @brief Sets the provided shadowmap texture to be used for all future draw calls.
+         *
+         * @param shadowTexture The texture that should be used as shadow map
+         * @param index - Not used yet (for cascading)
+         * @return True if successful; false otherwise
+         */
+        bool SetShadowMap(Texture* shadowTexture, u8 index);
+
+        /**
+         * @brief Sets the Directional light-space matrix to be used for future draw calls.
+         *
+         * @param lightSpace The directional light-space matrix
+         */
+        void SetDirectionalLightSpaceMatrix(const mat4& lightSpace);
+
+        bool ApplyGlobal(u32 shaderId, const FrameData& frameData, const mat4* projection, const mat4* view, const vec4* ambientColor,
+                         const vec3* viewPosition, u32 renderMode) const;
         bool ApplyInstance(Material* material, const FrameData& frameData, bool needsUpdate) const;
         bool ApplyLocal(Material* material, const mat4* model) const;
 
@@ -135,7 +167,7 @@ namespace C3D
         Material& AcquireReference(const String& name, bool autoRelease, bool& needsCreation);
 
         bool AssignMap(TextureMap& map, const MaterialConfigMap& config, Texture* defaultTexture) const;
-        bool ApplyLights(Material* material, u16 dirLightLoc, u16 pLightsLoc, u16 numPLightsLoc) const;
+        bool ApplyPointLights(Material* material, u16 pLightsLoc, u16 numPLightsLoc) const;
 
         bool LoadMaterial(const MaterialConfig& config, Material& mat) const;
 
@@ -145,7 +177,11 @@ namespace C3D
         /** @brief HashMap to map names to material-references */
         HashMap<String, MaterialReference> m_registeredMaterials;
 
+        /** @brief Current irradiance and shadow textures. */
         Texture* m_currentIrradianceTexture = nullptr;
+        Texture* m_currentShadowTexture     = nullptr;
+
+        mat4 m_directionalLightSpace = mat4(1.0f);
 
         // Known locations for the Material Shader
         MaterialUniformLocations m_materialLocations;
@@ -158,5 +194,8 @@ namespace C3D
         // Known locations for the PBR Shader
         PbrUniformLocations m_pbrLocations;
         u32 m_pbrShaderId = INVALID_ID;
+
+        // Flag indicating if we should be using PCF
+        i32 m_usePCF = 1;
     };
 }  // namespace C3D

@@ -2,11 +2,35 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "containers/string.h"
+#include "core/colors.h"
 #include "core/defines.h"
+#include "renderer/render_target.h"
 
 namespace C3D
 {
     struct Texture;
+
+    enum RenderpassClearFlag : u8
+    {
+        ClearNone          = 0x0,
+        ClearColorBuffer   = 0x1,
+        ClearDepthBuffer   = 0x2,
+        ClearStencilBuffer = 0x4
+    };
+
+    struct RenderpassConfig
+    {
+        String name;
+        f32 depth   = 0.f;
+        u32 stencil = 0;
+
+        vec4 clearColor = WHITE;
+
+        u8 clearFlags = ClearNone;
+
+        u8 renderTargetCount = 0;
+        RenderTargetConfig target;
+    };
 
     enum class RendergraphSourceType
     {

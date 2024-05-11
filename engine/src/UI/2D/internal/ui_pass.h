@@ -6,13 +6,13 @@
 #include "core/defines.h"
 #include "memory/allocators/linear_allocator.h"
 #include "renderer/renderer_types.h"
-#include "renderer/rendergraph/rendergraph_pass.h"
+#include "renderer/rendergraph/renderpass.h"
 
 namespace C3D
 {
     class Shader;
 
-    class C3D_API UI2DPass : public RendergraphPass
+    class C3D_API UI2DPass : public Renderpass
     {
     public:
         UI2DPass();

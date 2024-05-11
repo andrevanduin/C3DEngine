@@ -13,12 +13,41 @@ namespace C3D
 
     bool Rendergraph::Create(const String& name, const Application* application)
     {
-        INFO_LOG("Initializing Rendergraph: '{}'.", name);
+        INFO_LOG("Creating Rendergraph: '{}'.", name);
 
         m_pSystemsManager = application->GetSystemsManager();
         m_name            = name;
         m_application     = application;
 
+        return true;
+    }
+
+    bool Rendergraph::LoadResources()
+    {
+        for (auto pass : m_passes)
+        {
+            for (auto& source : pass->m_sources)
+            {
+                if (source.origin == RendergraphSourceOrigin::Self)
+                {
+                    u32 textureType = (source.type == RendergraphSourceType::RenderTargetColor)
+                                          ? RenderTargetAttachmentTypeColor
+                                          : (RenderTargetAttachmentTypeDepth | RenderTargetAttachmentTypeStencil);
+
+                    u32 frameCount = Renderer.GetWindowAttachmentCount();
+                    source.textures.Resize(frameCount);
+                    for (u32 i = 0; i < frameCount; i++)
+                    {
+                        source.textures[i] = pass->GetAttachmentTexture(textureType, i);
+                    }
+                }
+            }
+
+            if (!pass->LoadResources())
+            {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -57,7 +86,7 @@ namespace C3D
         return true;
     }
 
-    bool Rendergraph::AddPass(const String& name, RendergraphPass* pass)
+    bool Rendergraph::AddPass(const String& name, Renderpass* pass)
     {
         for (const auto pass : m_passes)
         {
@@ -202,7 +231,7 @@ namespace C3D
 
         // Traverse the sinks and find the pass that is associated with the global color source, this will be our "first user"
         // We do this to ensure that we have something linked to the global color source since otherwise we can't ever draw something
-        RendergraphPass* firstUser = nullptr;
+        Renderpass* firstUser = nullptr;
         for (auto pass : m_passes)
         {
             for (auto sink : pass->m_sinks)
@@ -237,15 +266,31 @@ namespace C3D
                             // This source is not linked to a sink on any pass so we assume it is linked to the final global sink
                             m_globalSink.boundSource = &source;
                             pass->m_presentsAfter    = true;
-                            break;
                         }
                     }
                 }
-
-                // TODO: More source checks per pass
+                else if (source.type == RendergraphSourceType::RenderTargetDepthStencil)
+                {
+                    if (source.origin == RendergraphSourceOrigin::Other)
+                    {
+                        // Other means this source's origin is hooked up to the sink of another pass
+                        if (!SourceHasLinkedSink(&source))
+                        {
+                            WARN_LOG("NO source found with depth stencil texture available.");
+                        }
+                    }
+                    else if (source.origin == RendergraphSourceOrigin::Self)
+                    {
+                        // If the origin is self, we hook up the textures to the source
+                        u32 frameCount = Renderer.GetWindowAttachmentCount();
+                        source.textures.Resize(frameCount);
+                        for (u32 i = 0; i < frameCount; i++)
+                        {
+                            source.textures[i] = pass->GetAttachmentTexture(RenderTargetAttachmentTypeDepth, i);
+                        }
+                    }
+                }
             }
-
-            // TODO: More pass checks
         }
 
         if (!m_globalSink.boundSource)
@@ -296,10 +341,10 @@ namespace C3D
         return true;
     }
 
-    RendergraphPass* Rendergraph::GetPassByName(const String& name) const
+    Renderpass* Rendergraph::GetPassByName(const String& name) const
     {
         // First we check if the pass even exists
-        auto it = std::find_if(m_passes.begin(), m_passes.end(), [&](const RendergraphPass* pass) { return pass->GetName() == name; });
+        auto it = std::find_if(m_passes.begin(), m_passes.end(), [&](const Renderpass* pass) { return pass->GetName() == name; });
         if (it == m_passes.end())
         {
             ERROR_LOG("The pass: '{}' could not be found.", name);

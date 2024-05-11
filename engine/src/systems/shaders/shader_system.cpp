@@ -39,7 +39,7 @@ namespace C3D
         m_shaders.Destroy();
     }
 
-    bool ShaderSystem::Create(RenderPass* pass, const ShaderConfig& config)
+    bool ShaderSystem::Create(void* pass, const ShaderConfig& config)
     {
         if (m_shaders.Has(config.name))
         {

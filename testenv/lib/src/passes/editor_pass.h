@@ -4,7 +4,7 @@
 #include <core/defines.h>
 #include <memory/allocators/linear_allocator.h>
 #include <renderer/renderer_types.h>
-#include <renderer/rendergraph/rendergraph_pass.h>
+#include <renderer/rendergraph/renderpass.h>
 
 #include "test_env_types.h"
 
@@ -17,7 +17,7 @@ namespace C3D
 
 class EditorGizmo;
 
-class EditorPass : public C3D::RendergraphPass
+class EditorPass : public C3D::Renderpass
 {
 public:
     EditorPass();
