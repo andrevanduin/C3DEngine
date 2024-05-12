@@ -10,6 +10,7 @@
 #include "renderer/renderer_types.h"
 #include "resources/loaders/material_loader.h"
 #include "resources/shaders/shader.h"
+#include "systems/cvars/cvar_system.h"
 #include "systems/lights/light_system.h"
 #include "systems/resources/resource_system.h"
 #include "systems/shaders/shader_system.h"
@@ -137,6 +138,12 @@ namespace C3D
         // Set our current irradiance texture to the default
         m_currentIrradianceTexture = Textures.GetDefaultCube();
         m_currentShadowTexture     = Textures.GetDefaultDiffuse();
+
+        if (!CVars.Create("usePCF", m_usePCF, [this](const CVar& cvar) { m_usePCF = cvar.GetValue<u8>(); }))
+        {
+            ERROR_LOG("Failed to create usePCF CVar.");
+            return false;
+        }
 
         m_initialized = true;
         return true;

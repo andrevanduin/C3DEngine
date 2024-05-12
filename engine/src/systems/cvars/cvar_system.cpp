@@ -3,6 +3,18 @@
 
 #include "core/engine.h"
 
+#define IMPLEMENT_CVAR_CREATE_FUNC(TypeName)                                                       \
+    bool CVarSystem::Create(const CVarName& name, TypeName value)                                  \
+    {                                                                                              \
+        if (Exists(name))                                                                          \
+        {                                                                                          \
+            INSTANCE_ERROR_LOG("Failed to create CVar. A CVar named: '{}' already exists!", name); \
+            return false;                                                                          \
+        }                                                                                          \
+        m_cVars.Set(name, CVar(CVarType::T##TypeName, name, value));                               \
+        return true;                                                                               \
+    }
+
 namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "CVAR_SYSTEM";
@@ -18,26 +30,10 @@ namespace C3D
 
         m_cVars.Create(config.maxCVars);
 
-        if (!CreateDefaultCVars())
-        {
-            ERROR_LOG("Failed to create default CVars.");
-            return false;
-        }
+        if (!Create("vsync", true)) return false;
 
         m_initialized = true;
         return true;
-    }
-
-    void CVarSystem::OnShutdown()
-    {
-        INFO_LOG("Shutting down.");
-
-        for (const auto cVar : m_cVars)
-        {
-            Remove(cVar->name);
-        }
-        m_cVars.Destroy();
-        m_initialized = false;
     }
 
     bool CVarSystem::Remove(const CVarName& name)
@@ -48,14 +44,27 @@ namespace C3D
             return false;
         }
 
-        const auto cVar = m_cVars.Get(name);
         m_cVars.Delete(name);
-
-        Memory.Delete(cVar);
         return true;
     }
 
     bool CVarSystem::Exists(const CVarName& name) const { return m_cVars.Has(name); }
+
+    CVar& CVarSystem::Get(const CVarName& name)
+    {
+        if (!Exists(name))
+        {
+            FATAL_LOG("Failed to find a CVar with the name: '{}'.", name);
+        }
+        return m_cVars.Get(name);
+    }
+
+    void CVarSystem::OnShutdown()
+    {
+        INFO_LOG("Shutting down.");
+        m_cVars.Destroy();
+        m_initialized = false;
+    }
 
     bool CVarSystem::Print(const CVarName& name, CString<256>& output)
     {
@@ -65,16 +74,16 @@ namespace C3D
             return false;
         }
 
-        output = m_cVars.Get(name)->ToString();
+        output = m_cVars.Get(name).AsString();
         return true;
     }
 
     String CVarSystem::PrintAll() const
     {
         String vars = "";
-        for (const auto cVar : m_cVars)
+        for (const auto& cVar : m_cVars)
         {
-            vars += cVar->ToString();
+            vars += cVar.AsString();
             vars += "\n";
         }
         return vars;
@@ -84,13 +93,6 @@ namespace C3D
     {
         m_pConsole->RegisterCommand("cvar",
                                     [this](const DynamicArray<ArgName>& args, String& output) { return OnCVarCommand(args, output); });
-    }
-
-    bool CVarSystem::CreateDefaultCVars()
-    {
-        if (!Create("vsync", true)) return false;
-
-        return true;
     }
 
     bool CVarSystem::OnCVarCommand(const DynamicArray<ArgName>& args, String& output)
@@ -129,17 +131,17 @@ namespace C3D
             }
 
             const auto cVar = m_cVars.Get(arg2);
-            output += cVar->ToString();
+            output += cVar.AsString();
             return true;
         }
 
-        // cvar set name type value
+        // cvar set name value
         if (commandType == "set")
         {
             // Set command
-            if (args.Size() != 5)
+            if (args.Size() != 4)
             {
-                output = "The set command requires the name of a CVar, the type and a value to set";
+                output = "The set command requires the name of a CVar and the value to set";
                 return false;
             }
 
@@ -150,32 +152,62 @@ namespace C3D
                 return false;
             }
 
-            const auto type     = args[3];
-            const auto valueStr = args[4];
+            auto& cVar          = Get(cVarName);
+            const auto valueStr = args[3];
 
-            if (type == "i32" || type == "int")
+            switch (cVar.GetType())
             {
-                SetCVar(cVarName, valueStr.ToI32(), output);
-                return true;
+                case CVarType::U8:
+                    cVar.SetValue(valueStr.ToU8());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::U16:
+                    cVar.SetValue(valueStr.ToU16());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::U32:
+                    cVar.SetValue(valueStr.ToU32());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::U64:
+                    cVar.SetValue(valueStr.ToU64());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::I8:
+                    cVar.SetValue(valueStr.ToI8());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::I16:
+                    cVar.SetValue(valueStr.ToI16());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::I32:
+                    cVar.SetValue(valueStr.ToI32());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::I64:
+                    cVar.SetValue(valueStr.ToI64());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::F32:
+                    cVar.SetValue(valueStr.ToF32());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::F64:
+                    cVar.SetValue(valueStr.ToF32());
+                    output += cVar.AsString();
+                    return true;
+                case CVarType::Bool:
+                    cVar.SetValue(valueStr.ToBool());
+                    output += cVar.AsString();
+                    return true;
+                default:
+                    output = String::FromFormat("Unknown type: '{}'.", ToString(cVar.GetType()));
+                    return false;
             }
-
-            if (type == "u32")
-            {
-                SetCVar(cVarName, valueStr.ToU32(), output);
-                return true;
-            }
-
-            if (type == "bool")
-            {
-                SetCVar(cVarName, valueStr.ToBool(), output);
-                return true;
-            }
-
-            output = String::FromFormat("Unknown type: '{}'", type);
-            return false;
         }
 
-        output = String::FromFormat("Unknown argument '{}'", commandType);
+        output = String::FromFormat("Unknown argument '{}'.", commandType);
         return false;
     }
 }  // namespace C3D

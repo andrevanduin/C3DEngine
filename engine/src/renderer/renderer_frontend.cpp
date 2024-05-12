@@ -65,8 +65,8 @@ namespace C3D
         }
         m_geometryIndexBuffer->Bind(0);
 
-        auto& vSync = CVars.Get<bool>("vsync");
-        vSync.AddOnChangedCallback([this](const bool& b) { SetFlagEnabled(FlagVSyncEnabled, b); });
+        auto& vSync = CVars.Get("vsync");
+        vSync.AddOnChangeCallback([this](const CVar& cvar) { SetFlagEnabled(FlagVSyncEnabled, cvar.GetValue<bool>()); });
 
         INFO_LOG("Successfully initialized Rendering System.");
         return true;
