@@ -203,36 +203,19 @@ bool ShadowMapPass::LoadResources()
         return false;
     }
 
-    // Calculate viewport
-    // HACK: Defaulting to ortho viewport. Point lights need perspective and a FOV.
+    // Setup default viewport. We only use the underlying viewport rect but for rendering it's required to set the viewport.
+    // The projection matrix in here is not used which is why we can ignore fov and clip planes
     C3D::Rect2D viewportRect = { 0, 0, static_cast<f32>(m_config.resolution), static_cast<f32>(m_config.resolution) };
-    if (!m_viewport.Create(viewportRect, m_config.fov, m_config.nearClip, m_config.farClip,
-                           C3D::RendererProjectionMatrixType::Orthographic))
+    if (!m_viewport.Create(viewportRect, 0.0f, 0.0f, 0.0f, C3D::RendererProjectionMatrixType::Orthographic))
     {
         ERROR_LOG("Failed to create viewport.");
         return false;
     }
 
-    // NOTE: for cascading, might need several.
-    // NOTE: Don't use the viewport projection matrix, as this will result in really small objects.
-    // TODO: Create the projection matrix based on the extents of all visible shadow-casting/recieving objects.
-    if (m_config.matrixType == C3D::RendererProjectionMatrixType::Orthographic)
-    {
-        m_projectionMatrix = glm::ortho(m_config.bounds.x, m_config.bounds.y, m_config.bounds.width, m_config.bounds.height,
-                                        m_config.nearClip, m_config.farClip);
-    }
-    else
-    {
-        m_projectionMatrix =
-            glm::perspective(m_config.fov, (m_config.bounds.width / m_config.bounds.height), m_config.nearClip, m_config.farClip);
-    }
-
-    m_viewport.SetProjectionMatrix(m_projectionMatrix);
-
     return true;
 }
 
-bool ShadowMapPass::Prepare(const SimpleScene& scene)
+bool ShadowMapPass::Prepare(const SimpleScene& scene, const mat4& viewMatrix, const mat4& projectionMatrix)
 {
     m_geometries.Reset();
     m_transparentGeometries.Reset();
@@ -244,18 +227,67 @@ bool ShadowMapPass::Prepare(const SimpleScene& scene)
     mat4 shadowCameraProjection = mat4(1.0f);
 
     vec3 lightDir = glm::normalize(vec3(m_directionalLight->data.direction));
-    // NOTE: each pass for cascades will need to do this
-    // Light direction is down (negative) so we need to go up
-    vec3 shadowCamPos  = lightDir * -100.0f;
-    shadowCameraLookat = glm::lookAt(shadowCamPos, vec3(0), C3D::VEC3_UP);
 
-    // NOTE: this pass will use its own viewport.
-    /* state->shadowmap_pass.pass_data.vp = &state->world_viewport; */
-    // HACK: TODO: View matrix needs to be inverse.
-    m_viewMatrix = shadowCameraLookat;
+    mat4 camViewProjection = projectionMatrix * viewMatrix;
+    camViewProjection      = glm::transpose(camViewProjection);
 
-    // Read internal projection matrix.
-    shadowCameraProjection = m_projectionMatrix;
+    // Get the corners of the view frustum in world-space.
+    vec4 corners[8];
+    C3D::FrustumCornerPointsInWorldSpace(camViewProjection, corners);
+    // Calculate the center of the camera's frustum by averaging the points.
+    // This is also used as the lookat point for the shadow "camera".
+    vec3 center = vec3(0);
+    for (u32 i = 0; i < 8; ++i)
+    {
+        center += vec3(corners[i]);
+    }
+    center /= 8.0f;
+    // Get the furthest-out point from the center and use that as our extents.
+    f32 radius = 0.f;
+    for (u32 i = 0; i < 8; ++i)
+    {
+        f32 distance = glm::distance(vec3(corners[i]), center);
+        radius       = C3D::Max(radius, distance);
+    }
+    // Calculate the extents by using the radius
+    C3D::Extents3D extents;
+    extents.max = vec3(radius);
+    extents.min = extents.max * -1.0f;
+
+    // "Pull" the min inward and "push" the max outwards on the z-axis to ensure that shadow casters outside ofr the view are also captured.
+    // TODO: Make this configurable
+    constexpr f32 zMultiplier = 10.0f;
+    if (extents.min.z < 0)
+    {
+        extents.min.z *= zMultiplier;
+    }
+    else
+    {
+        extents.min.z /= zMultiplier;
+    }
+
+    if (extents.max.z < 0)
+    {
+        extents.max.z /= zMultiplier;
+    }
+    else
+    {
+        extents.max.z *= zMultiplier;
+    }
+
+    // Generate lookat by moving along the opposite direction of the directional light by the
+    // minimum extents. This is negated because the directional light points "down" and the camera
+    // needs to be "up".
+    vec3 shadowCameraPosition = center - (lightDir * -extents.min.z);
+    shadowCameraLookat        = glm::lookAt(shadowCameraPosition, center, C3D::VEC3_UP);
+
+    // Generate ortho projection based on extents
+    shadowCameraProjection =
+        glm::ortho(extents.min.x, extents.max.x, extents.min.y, extents.max.y, extents.min.z, extents.max.z - extents.min.z);
+
+    // Save these values to be used in Execute()
+    m_viewMatrix       = shadowCameraLookat;
+    m_projectionMatrix = shadowCameraProjection;
 
     // Iterate the scene and get a list of all geometries within the view of the light.
     m_geometries.Reserve(512);

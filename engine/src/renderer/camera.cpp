@@ -37,11 +37,11 @@ namespace C3D
     {
         if (m_needsUpdate)
         {
-            const mat4 rx = glm::eulerAngleX(m_eulerRotation.x);
-            const mat4 ry = glm::eulerAngleY(m_eulerRotation.y);
-            const mat4 rz = glm::eulerAngleZ(m_eulerRotation.z);
+            // const mat4 rx = glm::eulerAngleX(m_eulerRotation.x);
+            // const mat4 ry = glm::eulerAngleY(m_eulerRotation.y);
+            // const mat4 rz = glm::eulerAngleZ(m_eulerRotation.z);
 
-            const mat4 rotation = rz * ry * rx;  // glm::eulerAngleXYZ(m_eulerRotation.x, m_eulerRotation.y, m_eulerRotation.z);
+            const mat4 rotation = glm ::eulerAngleZYX(m_eulerRotation.z, m_eulerRotation.y, m_eulerRotation.x);  // rz * ry * rx;
 
             m_viewMatrix = translate(m_position) * rotation;
             m_viewMatrix = inverse(m_viewMatrix);

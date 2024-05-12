@@ -13,7 +13,7 @@ cubemapName = skybox
 
 [DirectionalLight]
 name = sun
-color = 80.0 80.0 70.0 1.0
+color = 30.0 30.0 25.0 1.0
 direction = 0.1 -1.0 0.1 1.0
 [/DirectionalLight]
 

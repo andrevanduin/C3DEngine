@@ -34,6 +34,10 @@ namespace C3D
         TimeData timeData;
         /** @brief The number of meshes drawn in the last frame. */
         u32 drawnMeshCount = 0;
+        /** @brief The number of terrain meshes drawn in the last frame. */
+        u32 drawnTerrainCount = 0;
+        /** @brief The number of shadow meshes drawn in the last frame. */
+        u32 drawnShadowMeshCount = 0;
         /** @brief A pointer to the engine's frame allocator. */
         LinearAllocator* allocator = nullptr;
         /** @brief The current frame number, typically used for data synchronization. */

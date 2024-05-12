@@ -25,11 +25,6 @@ class SimpleScene;
 struct ShadowMapPassConfig
 {
     u16 resolution;
-    f32 nearClip;
-    f32 farClip;
-    C3D::RendererProjectionMatrixType matrixType;
-    C3D::Rect2D bounds;
-    f32 fov;
 };
 
 struct ShadowMapShaderLocations
@@ -48,7 +43,7 @@ public:
 
     bool Initialize(const C3D::LinearAllocator* frameAllocator) override;
     bool LoadResources() override;
-    bool Prepare(const SimpleScene& scene);
+    bool Prepare(const SimpleScene& scene, const mat4& viewMatrix, const mat4& projectionMatrix);
     bool Execute(const C3D::FrameData& frameData) override;
     void Destroy() override;
 

@@ -68,8 +68,8 @@ bool TestEnv::OnBoot()
     }
 
     // Setup viewports
-    C3D::Rect2D worldViewportRect = { 0.0f, 0.0f, 1280.0f, 720.0f };
-    if (!m_state->worldViewport.Create(worldViewportRect, C3D::DegToRad(45.0f), 0.1f, 4000.0f,
+    C3D::Rect2D worldViewportRect = { 0.0f, 0.0f, 1280.0f - 40, 720.0f };
+    if (!m_state->worldViewport.Create(worldViewportRect, C3D::DegToRad(45.0f), 0.1f, 400.0f,
                                        C3D::RendererProjectionMatrixType::Perspective))
     {
         ERROR_LOG("Failed to create World Viewport.");
@@ -107,8 +107,8 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     }
 
     m_state->camera = Cam.Acquire("WORLD_CAM");
-    m_state->camera->SetPosition({ -24.5f, 19.3f, 30.2f });
-    m_state->camera->SetEulerRotation({ -23.9f, -42.4f, 0.0f });
+    m_state->camera->SetPosition({ 5.83f, 4.35f, 18.68f });
+    m_state->camera->SetEulerRotation({ -29.43f, -42.41f, 0.0f });
 
     m_state->wireframeCamera = Cam.Acquire("WIREFRAME_CAM");
     m_state->wireframeCamera->SetPosition({ 8.0f, 0.0f, 10.0f });
@@ -416,7 +416,7 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 
     m_state->skyboxPass.Prepare(&m_state->worldViewport, m_state->camera, m_state->simpleScene.GetSkybox());
 
-    m_state->shadowPass.Prepare(m_state->simpleScene);
+    m_state->shadowPass.Prepare(m_state->simpleScene, m_state->camera->GetViewMatrix(), m_state->worldViewport.GetProjection());
 
     // When the scene is loaded we prepare the skybox and scene pass
     if (m_state->simpleScene.GetState() == SceneState::Loaded)
@@ -665,11 +665,6 @@ bool TestEnv::ConfigureRendergraph() const
     // ShadowMap pass
     ShadowMapPassConfig config;
     config.resolution   = 2048;
-    config.fov          = 0;
-    config.bounds       = C3D::Rect2D(-20, 20, -20, 20);
-    config.nearClip     = 1.0f;
-    config.farClip      = 150.0f;
-    config.matrixType   = C3D::RendererProjectionMatrixType::Orthographic;
     m_state->shadowPass = ShadowMapPass(m_pSystemsManager, config);
     if (!m_state->frameGraph.AddPass("SHADOW", &m_state->shadowPass))
     {

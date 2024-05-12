@@ -139,7 +139,7 @@ namespace C3D
         m_currentIrradianceTexture = Textures.GetDefaultCube();
         m_currentShadowTexture     = Textures.GetDefaultDiffuse();
 
-        if (!CVars.Create("usePCF", m_usePCF, [this](const CVar& cvar) { m_usePCF = cvar.GetValue<u8>(); }))
+        if (!CVars.Create("usePCF", m_usePCF, [this](const CVar& cvar) { m_usePCF = cvar.GetValue<i32>(); }))
         {
             ERROR_LOG("Failed to create usePCF CVar.");
             return false;

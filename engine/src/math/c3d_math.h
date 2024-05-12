@@ -82,15 +82,21 @@ namespace C3D
     }
 
     template <typename T>
+    C3D_INLINE constexpr C3D_API T ACos(T x)
+    {
+        return std::acos(x);
+    }
+
+    template <typename T>
     C3D_INLINE constexpr C3D_API T Tan(T x)
     {
         return std::tan(x);
     }
 
     template <typename T>
-    C3D_INLINE constexpr C3D_API T ACos(T x)
+    C3D_INLINE constexpr C3D_API T ATan(T x)
     {
-        return std::acos(x);
+        return std::atan(x);
     }
 
     template <typename T>
@@ -175,6 +181,18 @@ namespace C3D
     C3D_API C3D_INLINE T Floor(T x)
     {
         return std::floor(x);
+    }
+
+    /**
+     * @brief A method that returns the smallest integer value not less than x.
+     *
+     * @param x The number you want to ceil
+     * @return the smallest integer value not less than x
+     */
+    template <typename T>
+    C3D_API C3D_INLINE T Ceil(T x)
+    {
+        return std::ceil(x);
     }
 
     /**
