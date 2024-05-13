@@ -23,6 +23,7 @@ struct PointLight
 };
 
 const int MAX_POINT_LIGHTS = 10;
+const int MAX_SHADOW_CASCADES = 4;
 
 struct PbrProperties
 {
@@ -30,6 +31,19 @@ struct PbrProperties
     vec3 padding;
     float shininess;
 };
+
+layout(set = 0, binding = 0) uniform globalUniformObject
+{
+    mat4 projection;
+    mat4 view;
+    mat4 lightSpace[MAX_SHADOW_CASCADES];
+    vec4 cascadeSplits;
+    vec3 viewPosition;
+    int mode;
+    int usePCF;
+    float bias;
+    vec2 padding;
+} globalUbo;
 
 layout(set = 1, binding = 0) uniform instanceUniformObject
 {
@@ -46,15 +60,18 @@ const int SAMP_NORMAL = 1;
 const int SAMP_METALLIC = 2;
 const int SAMP_ROUGHNESS = 3;
 const int SAMP_AO = 4;
-const int SAMP_SHADOW_MAP = 5;
-const int SAMP_IBL_CUBE = 6;
+const int SAMP_SHADOW_MAP_0 = 5;
+const int SAMP_SHADOW_MAP_1 = 6;
+const int SAMP_SHADOW_MAP_2 = 7;
+const int SAMP_SHADOW_MAP_3 = 8;
+const int SAMP_IBL_CUBE = 9;
 
 const float PI = 3.14159265359;
 
 // Samplers: albedo, normal, metallic, roughness, ao
-layout(set = 1, binding = 1) uniform sampler2D samplers[7];
+layout(set = 1, binding = 1) uniform sampler2D samplers[10];
 // IBL
-layout(set = 1, binding = 1) uniform samplerCube cubeSamplers[7]; // Alias to get cube sampler
+layout(set = 1, binding = 1) uniform samplerCube cubeSamplers[10]; // Alias to get cube sampler
 
 layout(location = 0) flat in int inMode;
 layout(location = 1) flat in int usePCF;
@@ -62,8 +79,8 @@ layout(location = 1) flat in int usePCF;
 // Data transfer object
 layout(location = 2) in struct Dto
 {
-    vec4 lightSpaceFragPosition;
-    vec4 ambient;
+    vec4 lightSpaceFragPosition[MAX_SHADOW_CASCADES];
+    vec4 cascadeSplits;
     vec2 texCoord;
     vec3 normal;
     vec3 viewPosition;
@@ -76,7 +93,7 @@ layout(location = 2) in struct Dto
 
 mat3 TBN;
 
-float CalculateShadow(vec4 lightSpaceFragPosition);
+float CalculateShadow(vec4 lightSpaceFragPosition, int cascadeIndex);
 
 // This is based off the Cook-Torrance BRDF (Bidirectional Reflective Distribution Function).
 // Which uses a micro-facet model to use roughness and metallic properties of materials to produce a physically accurate representation of material refelectance.
@@ -110,7 +127,7 @@ void main()
     vec3 baseReflectivity = vec3(0.04);
     baseReflectivity = mix(baseReflectivity, albedo, metallic);
 
-    if (inMode == 0 || inMode == 1) // (default or lighting-only mode)
+    if (inMode == 0 || inMode == 1 || inMode == 3) // (default, lighting-only mode or cascade mode)
     {
         vec3 viewDirection = normalize(inDto.viewPosition - inDto.fragPosition);
 
@@ -143,8 +160,21 @@ void main()
         // Irradiance holds all the scene's indirect diffuse light. We use the surface normal to sample from it.
         vec3 irradiance = texture(cubeSamplers[SAMP_IBL_CUBE], normal).rgb;
 
-        // Shadow
-        float shadow = CalculateShadow(inDto.lightSpaceFragPosition);
+        // Generate shadow value based on current fragment position against the shadow map
+        // TODO: Also take point lights into account when generating shadows
+        vec4 fragPositionViewSpace = globalUbo.view * vec4(inDto.fragPosition, 1.0f);
+        float depth = abs(fragPositionViewSpace).z;
+        // Get the cascade index from the current fragment's position
+        int cascadeIndex = MAX_SHADOW_CASCADES;
+        for (int i = 0; i < MAX_SHADOW_CASCADES; ++i)
+        {
+            if (depth < inDto.cascadeSplits[i])
+            {
+                cascadeIndex = i;
+                break;
+            }
+        }
+        float shadow = CalculateShadow(inDto.lightSpaceFragPosition[cascadeIndex], cascadeIndex);
 
         // Add in the albedo and ambient occlusion.
         vec3 ambient = irradiance * albedo * ao;
@@ -156,6 +186,25 @@ void main()
         // Gamma correction
         color = pow(color, vec3(1.0 / 2.2));
 
+        if (inMode == 3) // inMode == Cascades
+        {
+            switch (cascadeIndex)
+            {
+                case 0:
+                    color *= vec3(1.0, 0.25, 0.25);
+                    break;
+                case 1:
+                    color *= vec3(0.25, 1.0, 0.25);
+                    break;
+                case 2:
+                    color *= vec3(0.25, 0.25, 1.0);
+                    break;
+                case 3:
+                    color *= vec3(1.0, 1.0, 0.25);
+                    break;
+            }
+        }
+
         // Ensure the alpha is based on the albedo's original alpha value.
         outColor = vec4(color, albedoSamp.a);
     }
@@ -166,16 +215,16 @@ void main()
 }
 
 // Percentage-Closer Filtering
-float CalculatePCF(vec3 projected)
+float CalculatePCF(vec3 projected, int cascadeIndex)
 {
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(samplers[SAMP_SHADOW_MAP], 0);
+    vec2 texelSize = 1.0 / textureSize(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], 0);
 
     for (int x = -1; x <= 1; ++x) 
     {
         for(int y = -1; y <= 1; ++y) 
         {
-            float pcfDepth = texture(samplers[SAMP_SHADOW_MAP], projected.xy + vec2(x, y) * texelSize).r;
+            float pcfDepth = texture(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], projected.xy + vec2(x, y) * texelSize).r;
             shadow += projected.z - inDto.bias > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -183,17 +232,17 @@ float CalculatePCF(vec3 projected)
     return 1.0 - shadow;
 }
 
-float CalculateUnfiltered(vec3 projected) 
+float CalculateUnfiltered(vec3 projected, int cascadeIndex) 
 {
     // Sample the shadow map.
-    float mapDepth = texture(samplers[SAMP_SHADOW_MAP], projected.xy).r;
+    float mapDepth = texture(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], projected.xy).r;
 
     // TODO: cast/get rid of branch.
     float shadow = projected.z - inDto.bias > mapDepth ? 0.0 : 1.0;
     return shadow;
 }
 
-float CalculateShadow(vec4 lightSpaceFragPosition)
+float CalculateShadow(vec4 lightSpaceFragPosition, int cascadeIndex)
 {
     // Perspective divide
     vec3 projected = lightSpaceFragPosition.xyz / lightSpaceFragPosition.w;
@@ -202,10 +251,10 @@ float CalculateShadow(vec4 lightSpaceFragPosition)
 
     if (usePCF == 1)
     {
-        return CalculatePCF(projected);
+        return CalculatePCF(projected, cascadeIndex);
     }
 
-    return CalculateUnfiltered(projected);
+    return CalculateUnfiltered(projected, cascadeIndex);
 }
 
 float GeometrySchlickGGX(float normalDotDirection, float roughness)

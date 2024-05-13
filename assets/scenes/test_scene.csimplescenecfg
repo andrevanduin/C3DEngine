@@ -13,7 +13,7 @@ cubemapName = skybox
 
 [DirectionalLight]
 name = sun
-color = 30.0 30.0 25.0 1.0
+color = 50.0 50.0 38.0 1.0
 direction = 0.1 -1.0 0.1 1.0
 [/DirectionalLight]
 
@@ -31,7 +31,7 @@ transform = 10.0 0.8 20.0 0.0 0.0 0.0 1.0 -0.35 0.35 0.35
 
 [PointLight]
 name = point_light_0
-color = 1.0 0.0 0.0 1.0
+color = 90.0 0.0 0.0 1.0
 position = 4.0 1.25 18.0 0.0
 constant = 1.0
 linear = 0.35
@@ -40,7 +40,7 @@ quadratic = 0.44
 
 [PointLight]
 name = point_light_1
-color = 0.0 1.0 0.0 1.0
+color = 0.0 90.0 0.0 1.0
 position = 7.0 1.25 20.0 0.0
 constant = 1.0
 linear = 0.35
@@ -49,7 +49,7 @@ quadratic = 0.44
 
 [PointLight]
 name = point_light_2
-color = 0.0 0.0 1.0 1.0
+color = 0.0 0.0 90.0 1.0
 position = 7.0 1.25 22.0 0.0
 constant = 1.0
 linear = 0.35

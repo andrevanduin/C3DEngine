@@ -2,6 +2,7 @@
 #pragma once
 #include <containers/dynamic_array.h>
 #include <core/defines.h>
+#include <core/frame_data.h>
 #include <memory/allocators/linear_allocator.h>
 #include <renderer/renderer_types.h>
 #include <renderer/rendergraph/renderpass.h>
@@ -39,11 +40,12 @@ class ShadowMapPass : public C3D::Renderpass
 {
 public:
     ShadowMapPass();
-    ShadowMapPass(const C3D::SystemManager* pSystemsManager, const ShadowMapPassConfig& config);
+    ShadowMapPass(const C3D::SystemManager* pSystemsManager, const C3D::String& name, const ShadowMapPassConfig& config);
 
     bool Initialize(const C3D::LinearAllocator* frameAllocator) override;
     bool LoadResources() override;
-    bool Prepare(const SimpleScene& scene, const mat4& viewMatrix, const mat4& projectionMatrix);
+    bool Prepare(C3D::FrameData& frameData, const SimpleScene& scene, const mat4& viewMatrix, const mat4& projectionMatrix,
+                 i32 cascadeIndex, f32 splitDist, f32 lastSplitDist);
     bool Execute(const C3D::FrameData& frameData) override;
     void Destroy() override;
 
@@ -59,6 +61,9 @@ private:
     C3D::Shader* m_terrainShader = nullptr;
 
     ShadowMapShaderLocations m_locations, m_terrainLocations;
+
+    f32 m_splitDepth   = 0.f;
+    i32 m_cascadeIndex = 0;
 
     mat4 m_projectionMatrix;
     mat4 m_viewMatrix;
@@ -80,5 +85,4 @@ private:
 
     C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> m_geometries;
     C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> m_terrains;
-    C3D::DynamicArray<GeometryDistance, C3D::LinearAllocator> m_transparentGeometries;
 };

@@ -71,7 +71,7 @@ namespace C3D
         String windowName = String::FromFormat("C3DEngine - {}", appState->name);
 
         constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
-        constexpr ShaderSystemConfig shaderSystemConfig{ 128, 128, 31, 31 };
+        constexpr ShaderSystemConfig shaderSystemConfig{ 127, 128, 31, 31 };
         const PlatformSystemConfig platformConfig{ windowName.Data(), appState->windowConfig };
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
         const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled };

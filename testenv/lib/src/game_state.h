@@ -62,7 +62,7 @@ struct GameState final : C3D::ApplicationState
 
     C3D::Rendergraph frameGraph;
     SkyboxPass skyboxPass;
-    ShadowMapPass shadowPass;
+    ShadowMapPass shadowPass[4];
     ScenePass scenePass;
     EditorPass editorPass;
 

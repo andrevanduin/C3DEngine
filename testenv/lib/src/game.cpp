@@ -241,6 +241,13 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             Event.Fire(C3D::EventCodeSetRenderMode, this, context);
         }
 
+        if (Input.IsKeyPressed(C3D::KeyF4))
+        {
+            C3D::EventContext context = {};
+            context.data.i32[0]       = C3D::RendererViewMode::Cascades;
+            Event.Fire(C3D::EventCodeSetRenderMode, this, context);
+        }
+
         // Gizmo mode keys
         if (Input.IsKeyPressed('1'))
         {
@@ -416,14 +423,49 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 
     m_state->skyboxPass.Prepare(&m_state->worldViewport, m_state->camera, m_state->simpleScene.GetSkybox());
 
-    m_state->shadowPass.Prepare(m_state->simpleScene, m_state->camera->GetViewMatrix(), m_state->worldViewport.GetProjection());
+    f32 nearClip  = m_state->worldViewport.GetNearClip();
+    f32 farClip   = m_state->worldViewport.GetFarClip();
+    f32 clipRange = farClip - nearClip;
+
+    f32 minZ  = nearClip;
+    f32 maxZ  = nearClip + clipRange;
+    f32 range = maxZ - minZ;
+    f32 ratio = maxZ / minZ;
+
+    constexpr const f32 cascadeSplitMultiplier = 0.95f;
+
+    vec4 splits, splitDepth;
+    for (u32 c = 0; c < MAX_SHADOW_CASCADE_COUNT; ++c)
+    {
+        f32 p       = (c + 1) / static_cast<f32>(MAX_SHADOW_CASCADE_COUNT);
+        f32 log     = minZ * C3D::Pow(ratio, p);
+        f32 uniform = minZ + range * p;
+
+        f32 d     = cascadeSplitMultiplier * (log - uniform) + uniform;
+        splits[c] = (d - nearClip) / clipRange;
+    }
+
+    mat4 shadowCameraLookats[4];
+    mat4 shadowCameraProjections[4];
+
+    auto lastSplitDist = 0.f;
+    for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
+    {
+        m_state->shadowPass[i].Prepare(frameData, m_state->simpleScene, m_state->camera->GetViewMatrix(),
+                                       m_state->worldViewport.GetProjection(), i, splits[i], lastSplitDist);
+
+        shadowCameraLookats[i]     = m_state->shadowPass[i].GetShadowCameraLookat();
+        shadowCameraProjections[i] = m_state->shadowPass[i].GetShadowCameraProjection();
+
+        lastSplitDist = splits[i];
+        splitDepth[i] = nearClip + splits[i] * clipRange;
+    }
 
     // When the scene is loaded we prepare the skybox and scene pass
     if (m_state->simpleScene.GetState() == SceneState::Loaded)
     {
         m_state->scenePass.Prepare(&m_state->worldViewport, m_state->camera, frameData, m_state->simpleScene, m_state->renderMode,
-                                   m_state->testLines, m_state->testBoxes, m_state->shadowPass.GetShadowCameraLookat(),
-                                   m_state->shadowPass.GetShadowCameraProjection());
+                                   m_state->testLines, m_state->testBoxes, shadowCameraLookats, shadowCameraProjections, splitDepth);
 
         // Prepare the editor pass
         m_state->editorPass.Prepare(&m_state->worldViewport, m_state->camera, &m_state->gizmo);
@@ -573,6 +615,10 @@ void TestEnv::OnLibraryLoad()
                 DEBUG_LOG("Renderer mode set to normals.");
                 m_state->renderMode = C3D::RendererViewMode::Normals;
                 break;
+            case C3D::RendererViewMode::Cascades:
+                DEBUG_LOG("Renderer mode set to cascades.");
+                m_state->renderMode = C3D::RendererViewMode::Cascades;
+                break;
             default:
                 FATAL_LOG("Unknown render mode.");
                 break;
@@ -664,24 +710,29 @@ bool TestEnv::ConfigureRendergraph() const
 
     // ShadowMap pass
     ShadowMapPassConfig config;
-    config.resolution   = 2048;
-    m_state->shadowPass = ShadowMapPass(m_pSystemsManager, config);
-    if (!m_state->frameGraph.AddPass("SHADOW", &m_state->shadowPass))
+    config.resolution = 2048;
+    for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
     {
-        ERROR_LOG("Failed to add SHADOW pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("SHADOW", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
-                                       C3D::RendergraphSourceOrigin::Self))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER to SHADOW pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("SHADOW", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
-                                       C3D::RendergraphSourceOrigin::Self))
-    {
-        ERROR_LOG("Failed to add DEPTH_BUFFER to SHADOW pass.");
-        return false;
+        auto name = C3D::String::FromFormat("SHADOW_{}", i);
+
+        m_state->shadowPass[i] = ShadowMapPass(m_pSystemsManager, name, config);
+        if (!m_state->frameGraph.AddPass(name, &m_state->shadowPass[i]))
+        {
+            ERROR_LOG("Failed to add: '{}' pass.", name);
+            return false;
+        }
+        if (!m_state->frameGraph.AddSource(name, "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
+                                           C3D::RendergraphSourceOrigin::Self))
+        {
+            ERROR_LOG("Failed to add COLOR_BUFFER to: '{}' pass.", name);
+            return false;
+        }
+        if (!m_state->frameGraph.AddSource(name, "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
+                                           C3D::RendergraphSourceOrigin::Self))
+        {
+            ERROR_LOG("Failed to add DEPTH_BUFFER to: '{}' pass.", name);
+            return false;
+        }
     }
 
     // Scene pass
@@ -701,9 +752,24 @@ bool TestEnv::ConfigureRendergraph() const
         ERROR_LOG("Failed to add DEPTH_BUFFER sink to Scene pass.");
         return false;
     }
-    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP"))
+    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP_0"))
     {
-        ERROR_LOG("Failed to add SHADOW_MAP sink to Scene pass.");
+        ERROR_LOG("Failed to add SHADOW_MAP_0 sink to Scene pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP_1"))
+    {
+        ERROR_LOG("Failed to add SHADOW_MAP_1 sink to Scene pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP_2"))
+    {
+        ERROR_LOG("Failed to add SHADOW_MAP_2 sink to Scene pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP_3"))
+    {
+        ERROR_LOG("Failed to add SHADOW_MAP_3 sink to Scene pass.");
         return false;
     }
     if (!m_state->frameGraph.AddSource("SCENE", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
@@ -728,7 +794,22 @@ bool TestEnv::ConfigureRendergraph() const
         ERROR_LOG("Failed to link Global DEPTH_BUFFER source to SCENE DEPTH_BUFFER sink.");
         return false;
     }
-    if (!m_state->frameGraph.Link("SHADOW", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP"))
+    if (!m_state->frameGraph.Link("SHADOW_0", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP_0"))
+    {
+        ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("SHADOW_1", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP_1"))
+    {
+        ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("SHADOW_2", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP_2"))
+    {
+        ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
+        return false;
+    }
+    if (!m_state->frameGraph.Link("SHADOW_3", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP_3"))
     {
         ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
         return false;

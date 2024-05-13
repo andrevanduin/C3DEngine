@@ -18,8 +18,11 @@ attribute = vec3, inTangent
 # Global
 uniform = mat4, global, projection
 uniform = mat4, global, view
-uniform = mat4, global, lightSpace
-uniform = vec4, global, ambientColor
+uniform = mat4, global, lightSpace_0
+uniform = mat4, global, lightSpace_1
+uniform = mat4, global, lightSpace_2
+uniform = mat4, global, lightSpace_3
+uniform = vec4, global, cascadeSplits
 uniform = vec3, global, viewPosition
 uniform = u32, global, mode
 uniform = u32, global, usePCF
@@ -34,7 +37,10 @@ uniform = samp, instance, normalTexture
 uniform = samp, instance, metallicTexture
 uniform = samp, instance, roughnessTexture
 uniform = samp, instance, aoTexture
-uniform = samp, instance, shadowTexture
+uniform = samp, instance, shadowTexture_0
+uniform = samp, instance, shadowTexture_1
+uniform = samp, instance, shadowTexture_2
+uniform = samp, instance, shadowTexture_3
 uniform = samp, instance, iblCubeTexture
 
 # Structs

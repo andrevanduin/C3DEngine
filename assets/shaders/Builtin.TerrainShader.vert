@@ -10,6 +10,8 @@ layout(location = 4) in vec4 inTangent;
 // NOTE: Supports 4 materials max
 layout(location = 5) in vec4 inMaterialWeights;
 
+const int MAX_SHADOW_CASCADES = 4;
+
 struct DirectionalLight 
 {
     vec4 color;
@@ -20,8 +22,8 @@ layout(set = 0, binding = 0) uniform globalUniformObject
 {
     mat4 projection;
     mat4 view;
-    mat4 lightSpace;
-    vec4 ambientColor;
+    mat4 lightSpace[MAX_SHADOW_CASCADES];
+    vec4 cascadeSplits;
     DirectionalLight dirLight;
     vec3 viewPosition;
     int mode;
@@ -41,8 +43,8 @@ layout(location = 1) out int usePCF;
 // Data transfer object
 layout(location = 2) out struct dto 
 {
-    vec4 lightSpaceFragPosition;
-    vec4 ambient;
+    vec4 lightSpaceFragPosition[MAX_SHADOW_CASCADES];
+    vec4 cascadeSplits;
     vec2 texCoord;
     vec3 normal;
     vec3 viewPosition;
@@ -50,8 +52,8 @@ layout(location = 2) out struct dto
     vec4 color;
     vec3 tangent;
     vec4 materialWeights;
-    int usePCF;
     float bias;
+    vec3 padding;
 } outDto;
 
 // Vulkan's Y axis is flipped and Z range is halved.
@@ -76,12 +78,15 @@ void main()
     // Convert local normal to "world space"
     outDto.normal = normalize(m3Model * inNormal);
     outDto.tangent = normalize(m3Model * inTangent.xyz);
-    outDto.ambient = globalUbo.ambientColor;
+    outDto.cascadeSplits = globalUbo.cascadeSplits;
     outDto.viewPosition = globalUbo.viewPosition;
     
     gl_Position = globalUbo.projection * globalUbo.view * uPushConstants.model * vec4(inPosition, 1.0);
 
-    outDto.lightSpaceFragPosition = (bias * globalUbo.lightSpace) * vec4(outDto.fragPosition, 1.0);
+    for (int i = 0; i < MAX_SHADOW_CASCADES; ++i)
+    {
+        outDto.lightSpaceFragPosition[i] = (bias * globalUbo.lightSpace[i]) * vec4(outDto.fragPosition, 1.0);
+    }
 
     outMode = globalUbo.mode;
     usePCF = globalUbo.usePCF;

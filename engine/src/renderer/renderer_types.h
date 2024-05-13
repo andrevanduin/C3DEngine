@@ -26,6 +26,7 @@ namespace C3D
         Default  = 0,
         Lighting = 1,
         Normals  = 2,
+        Cascades = 3,
     };
 
     enum RendererConfigFlagBits : u8

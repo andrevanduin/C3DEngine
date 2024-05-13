@@ -26,8 +26,8 @@ constexpr const char* TERRAIN_SHADER_NAME = "Shader.ShadowMapTerrain";
 
 ShadowMapPass::ShadowMapPass() : Renderpass() {}
 
-ShadowMapPass::ShadowMapPass(const C3D::SystemManager* pSystemsManager, const ShadowMapPassConfig& config)
-    : Renderpass("SHADOW", pSystemsManager), m_config(config)
+ShadowMapPass::ShadowMapPass(const C3D::SystemManager* pSystemsManager, const C3D::String& name, const ShadowMapPassConfig& config)
+    : Renderpass(name, pSystemsManager), m_config(config)
 {}
 
 bool ShadowMapPass::Initialize(const C3D::LinearAllocator* frameAllocator)
@@ -97,13 +97,16 @@ bool ShadowMapPass::Initialize(const C3D::LinearAllocator* frameAllocator)
         return false;
     }
 
+    auto shaderName = String::FromFormat("{}_{}", SHADER_NAME, m_name);
+
     C3D::ShaderConfig config;
     if (!Resources.Load(SHADER_NAME, config))
     {
         ERROR_LOG("Failed to load ShaderResource for: '{}'.", SHADER_NAME);
         return false;
     }
-
+    // Override name of the shader in the config to get a unique shader
+    config.name = shaderName;
     if (!Shaders.Create(m_pInternalData, config))
     {
         ERROR_LOG("Failed to Create: '{}'.", SHADER_NAME);
@@ -111,18 +114,22 @@ bool ShadowMapPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     }
     Resources.Unload(config);
 
-    m_shader = Shaders.Get(SHADER_NAME);
+    m_shader = Shaders.Get(shaderName);
     if (!m_shader)
     {
-        ERROR_LOG("Failed to get the: '{}'.", SHADER_NAME);
+        ERROR_LOG("Failed to get the: '{}'.", shaderName);
         return false;
     }
+
+    auto terrainShaderName = String::FromFormat("{}_{}", TERRAIN_SHADER_NAME, m_name);
 
     if (!Resources.Load(TERRAIN_SHADER_NAME, config))
     {
         ERROR_LOG("Failed to load ShaderResource for: '{}'.", TERRAIN_SHADER_NAME);
         return false;
     }
+    // Override name of the shader in the config to get a unique shader
+    config.name = terrainShaderName;
 
     if (!Shaders.Create(m_pInternalData, config))
     {
@@ -131,10 +138,10 @@ bool ShadowMapPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     }
     Resources.Unload(config);
 
-    m_terrainShader = Shaders.Get(TERRAIN_SHADER_NAME);
+    m_terrainShader = Shaders.Get(terrainShaderName);
     if (!m_terrainShader)
     {
-        ERROR_LOG("Failed to get the: '{}'.", TERRAIN_SHADER_NAME);
+        ERROR_LOG("Failed to get the: '{}'.", terrainShaderName);
         return false;
     }
 
@@ -150,7 +157,6 @@ bool ShadowMapPass::Initialize(const C3D::LinearAllocator* frameAllocator)
 
     m_geometries.SetAllocator(frameAllocator);
     m_terrains.SetAllocator(frameAllocator);
-    m_transparentGeometries.SetAllocator(frameAllocator);
 
     return true;
 }
@@ -215,25 +221,33 @@ bool ShadowMapPass::LoadResources()
     return true;
 }
 
-bool ShadowMapPass::Prepare(const SimpleScene& scene, const mat4& viewMatrix, const mat4& projectionMatrix)
+bool ShadowMapPass::Prepare(C3D::FrameData& frameData, const SimpleScene& scene, const mat4& viewMatrix, const mat4& projectionMatrix,
+                            i32 cascadeIndex, f32 splitDist, f32 lastSplitDist)
 {
     m_geometries.Reset();
-    m_transparentGeometries.Reset();
     m_terrains.Reset();
 
     m_directionalLight = Lights.GetDirectionalLight();
+    m_cascadeIndex     = cascadeIndex;
 
     mat4 shadowCameraLookat     = mat4(1.0f);
     mat4 shadowCameraProjection = mat4(1.0f);
 
     vec3 lightDir = glm::normalize(vec3(m_directionalLight->data.direction));
 
-    mat4 camViewProjection = projectionMatrix * viewMatrix;
-    camViewProjection      = glm::transpose(camViewProjection);
+    mat4 camViewProjection = glm::transpose(projectionMatrix * viewMatrix);
 
     // Get the corners of the view frustum in world-space.
     vec4 corners[8];
     C3D::FrustumCornerPointsInWorldSpace(camViewProjection, corners);
+
+    for (u32 i = 0; i < 4; i++)
+    {
+        vec4 dist      = corners[i + 4] - corners[i];
+        corners[i + 4] = corners[i] + (dist * splitDist);
+        corners[i]     = corners[i] + (dist * lastSplitDist);
+    }
+
     // Calculate the center of the camera's frustum by averaging the points.
     // This is also used as the lookat point for the shadow "camera".
     vec3 center = vec3(0);
@@ -291,82 +305,18 @@ bool ShadowMapPass::Prepare(const SimpleScene& scene, const mat4& viewMatrix, co
 
     // Iterate the scene and get a list of all geometries within the view of the light.
     m_geometries.Reserve(512);
-    m_transparentGeometries.Reserve(16);
     m_terrains.Reserve(16);
 
-    for (auto& mesh : scene.m_meshes)
-    {
-        if (mesh.generation != INVALID_ID_U8)
-        {
-            mat4 model           = mesh.transform.GetWorld();
-            bool windingInverted = mesh.transform.GetDeterminant() < 0;
+    // Get all the meshes from the scene
+    // TODO: Frust culling here
+    scene.QueryMeshes(frameData, m_geometries);
+    // Keep track of how many meshes are being used in our shadow pass
+    frameData.drawnShadowMeshCount = m_geometries.Size();
 
-            for (const auto geometry : mesh.geometries)
-            {
-                // AABB calculation
-                {
-                    // // Translate/scale the extents.
-                    // // vec3 extents_min = vec3_mul_mat4(g->extents.min, model);
-                    // vec3 extents_max = vec3_mul_mat4(g->extents.max, model);
-
-                    // // Translate/scale the center.
-                    // vec3 center = vec3_mul_mat4(g->center, model);
-                    // vec3 half_extents = {
-                    //     kabs(extents_max.x - center.x),
-                    //     kabs(extents_max.y - center.y),
-                    //     kabs(extents_max.z - center.z),
-                    // };
-
-                    // if (frustum_intersects_aabb(&f, &center, &half_extents)) {
-                    // Add it to the list to be rendered.
-                    C3D::GeometryRenderData data(mesh.GetId(), model, geometry, windingInverted);
-
-                    // Check if transparent. If so, put into a separate, temp array to be
-                    // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
-                    if (geometry->material->type == C3D::MaterialType::Phong &&
-                        geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
-                    {
-                        // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
-                        // Get the center, extract the global position from the model matrix and add it to the center,
-                        // then calculate the distance between it and the camera, and finally save it to a list to be sorted.
-                        // NOTE: This isn't perfect for translucent meshes that intersect, but is enough for our purposes now.
-                        vec3 center  = model * vec4(geometry->center, 1.0f);
-                        f32 distance = glm::distance(center, m_camera->GetPosition());
-
-                        m_transparentGeometries.EmplaceBack(data, distance);
-                    }
-                    else
-                    {
-                        m_geometries.PushBack(data);
-                    }
-                    // }
-                }
-            }
-        }
-    }
-
-    // Sort opaque geometries by material.
-    std::sort(m_geometries.begin(), m_geometries.end(), [](const C3D::GeometryRenderData& a, const C3D::GeometryRenderData& b) {
-        return a.material->internalId < b.material->internalId;
-    });
-
-    // Sort transparent geometries, then add them to our geometries array.
-    std::sort(m_transparentGeometries.begin(), m_transparentGeometries.end(),
-              [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance > b.distance; });
-
-    for (auto& tg : m_transparentGeometries)
-    {
-        m_geometries.PushBack(tg.g);
-    }
-
-    // Add terrain(s)
-    for (auto& terrain : scene.m_terrains)
-    {
-        if (terrain.GetId())
-        {
-            m_terrains.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
-        }
-    }
+    // Get all the terrains from the scene
+    scene.QueryTerrains(frameData, m_terrains);
+    // Also keep track of how many terrains are being used in our shadow pass
+    frameData.drawnShadowMeshCount += m_terrains.Size();
 
     m_prepared = true;
     return true;

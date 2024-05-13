@@ -6,7 +6,7 @@ stages = vertex, fragment
 stageFiles = shaders/ShadowMapTerrainShader.vert, shaders/ShadowMapTerrainShader.frag
 depthTest  = true
 depthWrite = true
-cullMode = front
+cullMode = none
 
 # Attributes: (type, name)
 attribute = vec3, inPosition

@@ -1605,6 +1605,11 @@ namespace C3D
                     imageInfos[i].imageView   = internalData->image.view;
                     imageInfos[i].sampler     = m_context.samplers[map->internalId];
 
+                    if (!imageInfos[i].sampler)
+                    {
+                        ERROR_LOG("ALARM!");
+                    }
+
                     // TODO: change up descriptor state to handle this properly.
                     // Sync frame generation if not using a default texture.
                     updateSamplerCount++;

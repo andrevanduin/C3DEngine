@@ -104,36 +104,42 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
     m_geometries.SetAllocator(frameAllocator);
     m_terrains.SetAllocator(frameAllocator);
     m_debugGeometries.SetAllocator(frameAllocator);
-    m_transparentGeometries.SetAllocator(frameAllocator);
 
     return true;
 }
 
 bool ScenePass::LoadResources()
 {
-    auto shadowMapSink = GetSinkByName("SHADOW_MAP");
-    if (!shadowMapSink)
-    {
-        ERROR_LOG("No Sink could be found for the SHADOW_MAP.");
-        return false;
-    }
+    auto frameCount = Renderer.GetWindowAttachmentCount();
 
-    m_shadowMapSource = shadowMapSink->boundSource;
-    m_shadowMaps.Resize(Renderer.GetWindowAttachmentCount());
-    for (u32 i = 0; i < m_shadowMaps.Size(); i++)
+    for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
     {
-        auto& shadowMap         = m_shadowMaps[i];
-        shadowMap.repeatU       = C3D::TextureRepeat::ClampToEdge;
-        shadowMap.repeatV       = C3D::TextureRepeat::ClampToEdge;
-        shadowMap.minifyFilter  = C3D::TextureFilter::ModeLinear;
-        shadowMap.magnifyFilter = C3D::TextureFilter::ModeLinear;
-        shadowMap.texture       = m_shadowMapSource->textures[i];
-        shadowMap.generation    = INVALID_ID;
-
-        if (!Renderer.AcquireTextureMapResources(shadowMap))
+        auto name          = C3D::String::FromFormat("SHADOW_MAP_{}", i);
+        auto shadowMapSink = GetSinkByName(name);
+        if (!shadowMapSink)
         {
-            ERROR_LOG("Failed to acquire texture map resources for shadow map.");
+            ERROR_LOG("No Sink could be found with the name: '{}'.", name);
             return false;
+        }
+
+        m_shadowMapSources[i] = shadowMapSink->boundSource;
+        m_cascades[i].shadowMaps.Resize(frameCount);
+        for (u32 s = 0; s < m_cascades[i].shadowMaps.Size(); s++)
+        {
+            auto& shadowMap         = m_cascades[i].shadowMaps[s];
+            shadowMap.repeatU       = C3D::TextureRepeat::ClampToBorder;
+            shadowMap.repeatV       = C3D::TextureRepeat::ClampToBorder;
+            shadowMap.repeatW       = C3D::TextureRepeat::ClampToBorder;
+            shadowMap.minifyFilter  = C3D::TextureFilter::ModeLinear;
+            shadowMap.magnifyFilter = C3D::TextureFilter::ModeLinear;
+            shadowMap.texture       = m_shadowMapSources[i]->textures[s];
+            shadowMap.generation    = INVALID_ID;
+
+            if (!Renderer.AcquireTextureMapResources(shadowMap))
+            {
+                ERROR_LOG("Failed to acquire texture map resources for shadow map.");
+                return false;
+            }
         }
     }
 
@@ -142,21 +148,26 @@ bool ScenePass::LoadResources()
 
 bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::FrameData& frameData, const SimpleScene& scene, u32 renderMode,
                         const C3D::DynamicArray<C3D::DebugLine3D>& debugLines, const C3D::DynamicArray<C3D::DebugBox3D>& debugBoxes,
-                        const mat4& shadowCameraLookat, const mat4& shadowCameraProjection)
+                        mat4* shadowCameraLookats, mat4* shadowCameraProjections, const vec4& cascadeSplits)
 {
     m_geometries.Reset();
     m_terrains.Reset();
     m_debugGeometries.Reset();
-    m_transparentGeometries.Reset();
 
     m_viewport   = viewport;
     m_camera     = camera;
     m_renderMode = renderMode;
 
     // HACK: Use our skybox cube as irradiance texture for now
-    m_irradianceCubeTexture      = scene.GetSkybox()->cubeMap.texture;
-    m_directionalLightView       = shadowCameraLookat;
-    m_directionalLightProjection = shadowCameraProjection;
+    m_irradianceCubeTexture = scene.GetSkybox()->cubeMap.texture;
+
+    for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
+    {
+        m_directionalLightViews[i]       = shadowCameraLookats[i];
+        m_directionalLightProjections[i] = shadowCameraProjections[i];
+    }
+
+    m_cascadeSplits = cascadeSplits;
 
     // Update the frustum
     vec3 forward = camera->GetForward();
@@ -164,122 +175,26 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
     vec3 up      = camera->GetUp();
 
     const auto viewportRect = viewport->GetRect2D();
+    const auto cameraPos    = camera->GetPosition();
 
-    C3D::Frustum frustum = C3D::Frustum(camera->GetPosition(), forward, right, up, viewport);
+    C3D::Frustum frustum = C3D::Frustum(cameraPos, forward, right, up, viewport);
 
-    for (const auto& mesh : scene.m_meshes)
-    {
-        if (mesh.generation != INVALID_ID_U8)
-        {
-            mat4 model           = mesh.transform.GetWorld();
-            bool windingInverted = mesh.transform.GetDeterminant() < 0;
+    // Get all the meshes in our current frustum from the scene
+    scene.QueryMeshes(frameData, frustum, cameraPos, m_geometries);
 
-            if (mesh.HasDebugBox())
-            {
-                const auto box = mesh.GetDebugBox();
-                if (box->IsValid())
-                {
-                    m_debugGeometries.EmplaceBack(box->GetId(), box->GetModel(), box->GetGeometry());
-                }
-            }
+    // Get all terrains in our current frustum from the scene
+    scene.QueryTerrains(frameData, frustum, cameraPos, m_terrains);
 
-            for (const auto geometry : mesh.geometries)
-            {
-                // AABB Calculation
-                const vec3 extentsMax = model * vec4(geometry->extents.max, 1.0f);
-                const vec3 center     = model * vec4(geometry->center, 1.0f);
+    // Get all debug geometry from the scene
+    scene.QueryDebugGeometry(frameData, m_debugGeometries);
 
-                const vec3 halfExtents = {
-                    C3D::Abs(extentsMax.x - center.x),
-                    C3D::Abs(extentsMax.y - center.y),
-                    C3D::Abs(extentsMax.z - center.z),
-                };
-
-                if (frustum.IntersectsWithAABB({ center, halfExtents }))
-                {
-                    C3D::GeometryRenderData data(mesh.GetId(), model, geometry, windingInverted);
-
-                    // Check if transparent. If so, put into a separate, temp array to be
-                    // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
-                    if (geometry->material->type == C3D::MaterialType::Phong &&
-                        geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
-                    {
-                        // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
-                        // Get the center, extract the global position from the model matrix and add it to the center,
-                        // then calculate the distance between it and the camera, and finally save it to a list to be sorted.
-                        // NOTE: This isn't perfect for translucent meshes that intersect, but is enough for our purposes now.
-                        vec3 center  = model * vec4(geometry->center, 1.0f);
-                        f32 distance = glm::distance(center, m_camera->GetPosition());
-
-                        m_transparentGeometries.EmplaceBack(data, distance);
-                    }
-                    else
-                    {
-                        m_geometries.PushBack(data);
-                    }
-
-                    m_geometries.EmplaceBack(mesh.GetId(), model, geometry, windingInverted);
-                    frameData.drawnMeshCount++;
-                }
-            }
-        }
-    }
-
-    // Sort opaque geometries by material.
-    std::sort(m_geometries.begin(), m_geometries.end(), [](const C3D::GeometryRenderData& a, const C3D::GeometryRenderData& b) {
-        return a.material->internalId < b.material->internalId;
-    });
-
-    // Sort transparent geometries, then add them to our geometries array.
-    std::sort(m_transparentGeometries.begin(), m_transparentGeometries.end(),
-              [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance > b.distance; });
-
-    for (auto& tg : m_transparentGeometries)
-    {
-        m_geometries.PushBack(tg.g);
-    }
-
-    for (auto& terrain : scene.m_terrains)
-    {
-        if (terrain.GetId())
-        {
-            // TODO: Check terrain generation
-            // TODO: Frustum culling
-            m_terrains.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
-            // TODO: Seperate counter for terrain meshes/geometry
-            frameData.drawnMeshCount++;
-        }
-    }
-
-    // Debug geometry
-    // Grid
-    constexpr auto identity = mat4(1.0f);
-    auto gridGeometry       = scene.m_grid.GetGeometry();
-    if (gridGeometry->generation != INVALID_ID_U16)
-    {
-        m_debugGeometries.EmplaceBack(scene.m_grid.GetId(), identity, gridGeometry);
-    }
-
-    // TODO: Directional lights
-
-    // Point Lights
-    for (auto& name : scene.m_pointLights)
-    {
-        auto light = Lights.GetPointLight(name);
-        auto debug = static_cast<LightDebugData*>(light->debugData);
-
-        if (debug)
-        {
-            m_debugGeometries.EmplaceBack(debug->box.GetId(), debug->box.GetModel(), debug->box.GetGeometry());
-        }
-    }
-
-    // Debug geometry
+    // Get all debug lines from our main game
     for (const auto& line : debugLines)
     {
         m_debugGeometries.EmplaceBack(line.GetId(), line.GetModel(), line.GetGeometry());
     }
 
+    // Get all debug boxes from our main game
     for (const auto& box : debugBoxes)
     {
         m_debugGeometries.EmplaceBack(box.GetId(), box.GetModel(), box.GetGeometry());
@@ -301,13 +216,12 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
 
     Materials.SetIrradiance(m_irradianceCubeTexture);
 
-    // HACK: This is just here for padding
-    vec4 ambientColor = vec4(0.99, 0.98, 0.97, 0.96);
-
-    mat4 lightSpace = m_directionalLightProjection * m_directionalLightView;
-    Materials.SetDirectionalLightSpaceMatrix(lightSpace);
-    // TODO: index for cascading
-    Materials.SetShadowMap(m_shadowMapSource->textures[frameData.renderTargetIndex], 0);
+    for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
+    {
+        mat4 lightSpace = m_directionalLightProjections[i] * m_directionalLightViews[i];
+        Materials.SetDirectionalLightSpaceMatrix(lightSpace, i);
+        Materials.SetShadowMap(m_shadowMapSources[i]->textures[frameData.renderTargetIndex], i);
+    }
 
     // Terrains
     if (!m_terrains.Empty())
@@ -319,7 +233,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
 
         // Apply globals
-        if (!Materials.ApplyGlobal(m_terrainShader->id, frameData, &projectionMatrix, &viewMatrix, &ambientColor, &viewPosition,
+        if (!Materials.ApplyGlobal(m_terrainShader->id, frameData, &projectionMatrix, &viewMatrix, &m_cascadeSplits, &viewPosition,
                                    m_renderMode))
         {
             ERROR_LOG("Failed to apply globals for Terrain Shader.");
@@ -360,7 +274,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
 
         // Apply globals
-        if (!Materials.ApplyGlobal(m_shader->id, frameData, &projectionMatrix, &viewMatrix, &ambientColor, &viewPosition, m_renderMode))
+        if (!Materials.ApplyGlobal(m_shader->id, frameData, &projectionMatrix, &viewMatrix, &m_cascadeSplits, &viewPosition, m_renderMode))
         {
             ERROR_LOG("Failed to apply globals for Material Shader.");
             return false;
@@ -373,7 +287,8 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
 
         // Apply globals
-        if (!Materials.ApplyGlobal(m_pbrShader->id, frameData, &projectionMatrix, &viewMatrix, &ambientColor, &viewPosition, m_renderMode))
+        if (!Materials.ApplyGlobal(m_pbrShader->id, frameData, &projectionMatrix, &viewMatrix, &m_cascadeSplits, &viewPosition,
+                                   m_renderMode))
         {
             ERROR_LOG("Failed to apply globals for PBR Shader.");
             return false;

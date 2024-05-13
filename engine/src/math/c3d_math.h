@@ -76,6 +76,12 @@ namespace C3D
     }
 
     template <typename T>
+    C3D_INLINE constexpr C3D_API T ASin(T x)
+    {
+        return std::asin(x);
+    }
+
+    template <typename T>
     C3D_INLINE constexpr C3D_API T Cos(T x)
     {
         return std::cos(x);
@@ -158,6 +164,20 @@ namespace C3D
     }
 
     /**
+     * @brief A method that returns the largest number that was provided as an argument.
+     *
+     * @param a The first number
+     * @param b The second number
+     * @param c The third number
+     * @return The number that is largest
+     */
+    template <typename T>
+    C3D_API C3D_INLINE T Max(T a, T b, T c)
+    {
+        return std::max(std::max(a, b), c);
+    }
+
+    /**
      * @brief A method that returns the provided value clamped in the range of [min, max]
      *
      * @param value The value you want to clamp
@@ -208,17 +228,16 @@ namespace C3D
     }
 
     /**
-     * @brief A method that returns the largest number that was provided as an argument.
+     * @brief A method that returns the input x taken to the power of input y.
      *
-     * @param a The first number
-     * @param b The second number
-     * @param c The third number
-     * @return The number that is largest
+     * @param x The number you want to use as a base
+     * @param y The number you want to use as an exponent
+     * @return Input x taken to the power of input y
      */
     template <typename T>
-    C3D_API C3D_INLINE T Max(T a, T b, T c)
+    C3D_API C3D_INLINE T Pow(T x, T y)
     {
-        return std::max(std::max(a, b), c);
+        return std::pow(x, y);
     }
 
     /** @brief Checks if the provided f32 value x is not a number. */

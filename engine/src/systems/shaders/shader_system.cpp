@@ -43,8 +43,8 @@ namespace C3D
     {
         if (m_shaders.Has(config.name))
         {
-            ERROR_LOG("A shader with the name '{}' already exists.", config.name);
-            return false;
+            INFO_LOG("A shader with the name: '{}' already exists.", config.name);
+            return true;
         }
 
         Shader shader;

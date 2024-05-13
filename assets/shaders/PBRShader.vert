@@ -7,12 +7,14 @@ layout(location = 2) in vec2 inTexCoord;
 layout(location = 3) in vec4 inColor;
 layout(location = 4) in vec3 inTangent;
 
+const int MAX_SHADOW_CASCADES = 4;
+
 layout(set = 0, binding = 0) uniform globalUniformObject 
 {
 	mat4 projection;
 	mat4 view;
-	mat4 lightSpace;
-	vec4 ambientColor;
+	mat4 lightSpace[MAX_SHADOW_CASCADES];
+	vec4 cascadeSplits;
 	vec3 viewPosition;
 	int mode;
 	int usePCF;
@@ -32,8 +34,8 @@ layout(location = 1) out int usePCF;
 // Data transfer object
 layout(location = 2) out struct dto 
 {
-	vec4 lightSpaceFragPosition;
-	vec4 ambient;
+	vec4 lightSpaceFragPosition[MAX_SHADOW_CASCADES];
+	vec4 cascadeSplits;
 	vec2 texCoord;
 	vec3 normal;
 	vec3 viewPosition;
@@ -65,12 +67,15 @@ void main()
 	// Convert local normal to "world space"
 	outDto.normal = normalize(m3Model * inNormal);
 	outDto.tangent = normalize(m3Model * inTangent);
-	outDto.ambient = globalUbo.ambientColor;
+	outDto.cascadeSplits = globalUbo.cascadeSplits;
 	outDto.viewPosition = globalUbo.viewPosition;
 	
 	gl_Position = globalUbo.projection * globalUbo.view * uPushConstants.model * vec4(inPosition, 1.0);
 
-	outDto.lightSpaceFragPosition = (bias * globalUbo.lightSpace) * vec4(outDto.fragPosition, 1.0);
+	for (int i = 0; i < MAX_SHADOW_CASCADES; ++i)
+    {
+        outDto.lightSpaceFragPosition[i] = (bias * globalUbo.lightSpace[i]) * vec4(outDto.fragPosition, 1.0);
+    }
 
 	outMode = globalUbo.mode;
 	usePCF = globalUbo.usePCF;
