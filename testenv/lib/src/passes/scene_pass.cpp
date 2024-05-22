@@ -8,6 +8,7 @@
 #include <renderer/viewport.h>
 #include <resources/debug/debug_box_3d.h>
 #include <resources/debug/debug_line_3d.h>
+#include <resources/loaders/shader_loader.h>
 #include <resources/mesh.h>
 #include <resources/shaders/shader_types.h>
 #include <resources/terrain/terrain.h>
@@ -22,12 +23,15 @@
 #include "resources/skybox.h"
 
 constexpr const char* INSTANCE_NAME        = "SCENE_PASS";
-constexpr const char* MATERIAL_SHADER_NAME = "Shader.Builtin.Material";
+constexpr const char* PBR_SHADER_NAME      = "Shader.PBR";
 constexpr const char* TERRAIN_SHADER_NAME  = "Shader.Builtin.Terrain";
 constexpr const char* COLOR_3D_SHADER_NAME = "Shader.Builtin.Color3D";
-constexpr const char* PBR_SHADER_NAME      = "Shader.PBR";
 
-constexpr const char* SHADER_NAMES[4] = { MATERIAL_SHADER_NAME, TERRAIN_SHADER_NAME, COLOR_3D_SHADER_NAME, PBR_SHADER_NAME };
+constexpr const char* SHADER_NAMES[3] = {
+    PBR_SHADER_NAME,
+    TERRAIN_SHADER_NAME,
+    COLOR_3D_SHADER_NAME,
+};
 
 ScenePass::ScenePass() : Renderpass() {}
 
@@ -65,8 +69,8 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
         return false;
     }
 
-    C3D::Shader* SHADERS[4] = { 0, 0, 0, 0 };
-    for (u8 i = 0; i < 4; i++)
+    C3D::Shader* SHADERS[] = { 0, 0, 0 };
+    for (u8 i = 0; i < 3; i++)
     {
         const char* name = SHADER_NAMES[i];
 
@@ -92,10 +96,9 @@ bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
         }
     }
 
-    m_shader        = SHADERS[0];
+    m_pbrShader     = SHADERS[0];
     m_terrainShader = SHADERS[1];
     m_colorShader   = SHADERS[2];
-    m_pbrShader     = SHADERS[3];
 
     m_debugLocations.view       = m_colorShader->GetUniformIndex("view");
     m_debugLocations.projection = m_colorShader->GetUniformIndex("projection");
@@ -112,34 +115,30 @@ bool ScenePass::LoadResources()
 {
     auto frameCount = Renderer.GetWindowAttachmentCount();
 
-    for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
+    auto shadowMapSink = GetSinkByName("SHADOW_MAP");
+    if (!shadowMapSink)
     {
-        auto name          = C3D::String::FromFormat("SHADOW_MAP_{}", i);
-        auto shadowMapSink = GetSinkByName(name);
-        if (!shadowMapSink)
+        ERROR_LOG("No Sink could be found with the name: 'SHADOW_MAP'.");
+        return false;
+    }
+
+    m_shadowMapSource = shadowMapSink->boundSource;
+    m_shadowMaps.Resize(frameCount);
+    for (u32 s = 0; s < m_shadowMaps.Size(); s++)
+    {
+        auto& shadowMap         = m_shadowMaps[s];
+        shadowMap.repeatU       = C3D::TextureRepeat::ClampToBorder;
+        shadowMap.repeatV       = C3D::TextureRepeat::ClampToBorder;
+        shadowMap.repeatW       = C3D::TextureRepeat::ClampToBorder;
+        shadowMap.minifyFilter  = C3D::TextureFilter::ModeLinear;
+        shadowMap.magnifyFilter = C3D::TextureFilter::ModeLinear;
+        shadowMap.texture       = m_shadowMapSource->textures[s];
+        shadowMap.generation    = INVALID_ID;
+
+        if (!Renderer.AcquireTextureMapResources(shadowMap))
         {
-            ERROR_LOG("No Sink could be found with the name: '{}'.", name);
+            ERROR_LOG("Failed to acquire texture map resources for shadow map.");
             return false;
-        }
-
-        m_shadowMapSources[i] = shadowMapSink->boundSource;
-        m_cascades[i].shadowMaps.Resize(frameCount);
-        for (u32 s = 0; s < m_cascades[i].shadowMaps.Size(); s++)
-        {
-            auto& shadowMap         = m_cascades[i].shadowMaps[s];
-            shadowMap.repeatU       = C3D::TextureRepeat::ClampToBorder;
-            shadowMap.repeatV       = C3D::TextureRepeat::ClampToBorder;
-            shadowMap.repeatW       = C3D::TextureRepeat::ClampToBorder;
-            shadowMap.minifyFilter  = C3D::TextureFilter::ModeLinear;
-            shadowMap.magnifyFilter = C3D::TextureFilter::ModeLinear;
-            shadowMap.texture       = m_shadowMapSources[i]->textures[s];
-            shadowMap.generation    = INVALID_ID;
-
-            if (!Renderer.AcquireTextureMapResources(shadowMap))
-            {
-                ERROR_LOG("Failed to acquire texture map resources for shadow map.");
-                return false;
-            }
         }
     }
 
@@ -148,7 +147,7 @@ bool ScenePass::LoadResources()
 
 bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::FrameData& frameData, const SimpleScene& scene, u32 renderMode,
                         const C3D::DynamicArray<C3D::DebugLine3D>& debugLines, const C3D::DynamicArray<C3D::DebugBox3D>& debugBoxes,
-                        mat4* shadowCameraLookats, mat4* shadowCameraProjections, const vec4& cascadeSplits)
+                        C3D::ShadowMapCascadeData* cascadeData)
 {
     m_geometries.Reset();
     m_terrains.Reset();
@@ -163,11 +162,11 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
 
     for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
     {
-        m_directionalLightViews[i]       = shadowCameraLookats[i];
-        m_directionalLightProjections[i] = shadowCameraProjections[i];
+        m_directionalLightViews[i]       = cascadeData[i].view;
+        m_directionalLightProjections[i] = cascadeData[i].projection;
     }
 
-    m_cascadeSplits = cascadeSplits;
+    m_cascadeSplits = vec4(cascadeData[0].splitDepth, cascadeData[1].splitDepth, cascadeData[2].splitDepth, cascadeData[3].splitDepth);
 
     // Update the frustum
     vec3 forward = camera->GetForward();
@@ -181,12 +180,15 @@ bool ScenePass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Frame
 
     // Get all the meshes in our current frustum from the scene
     scene.QueryMeshes(frameData, frustum, cameraPos, m_geometries);
+    frameData.drawnMeshCount = m_geometries.Size();
 
     // Get all terrains in our current frustum from the scene
     scene.QueryTerrains(frameData, frustum, cameraPos, m_terrains);
+    frameData.drawnTerrainCount = m_terrains.Size();
 
     // Get all debug geometry from the scene
     scene.QueryDebugGeometry(frameData, m_debugGeometries);
+    frameData.drawnDebugCount = m_debugGeometries.Size();
 
     // Get all debug lines from our main game
     for (const auto& line : debugLines)
@@ -220,7 +222,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
     {
         mat4 lightSpace = m_directionalLightProjections[i] * m_directionalLightViews[i];
         Materials.SetDirectionalLightSpaceMatrix(lightSpace, i);
-        Materials.SetShadowMap(m_shadowMapSources[i]->textures[frameData.renderTargetIndex], i);
+        Materials.SetShadowMap(m_shadowMapSource->textures[frameData.renderTargetIndex], i);
     }
 
     // Terrains
@@ -256,7 +258,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
             m->renderDrawIndex   = frameData.drawIndex;
 
             // Apply the locals
-            Materials.ApplyLocal(m, &terrain.model);
+            Materials.ApplyLocal(frameData, m, &terrain.model);
 
             // Draw the terrain
             Renderer.DrawGeometry(terrain);
@@ -266,20 +268,6 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
     // Static geometry
     if (!m_geometries.Empty())
     {
-        // Update globals for material and PBR shader
-        if (!Shaders.UseById(m_shader->id))
-        {
-            ERROR_LOG("Failed to use Material Shader.");
-            return false;
-        }
-
-        // Apply globals
-        if (!Materials.ApplyGlobal(m_shader->id, frameData, &projectionMatrix, &viewMatrix, &m_cascadeSplits, &viewPosition, m_renderMode))
-        {
-            ERROR_LOG("Failed to apply globals for Material Shader.");
-            return false;
-        }
-
         if (!Shaders.UseById(m_pbrShader->id))
         {
             ERROR_LOG("Failed to use PBR Shader.");
@@ -294,23 +282,11 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
             return false;
         }
 
-        u32 currentMaterialId                 = INVALID_ID;
-        C3D::MaterialType currentMaterialType = C3D::MaterialType::Unkown;
+        u32 currentMaterialId = INVALID_ID;
 
         for (const auto& data : m_geometries)
         {
             C3D::Material* m = data.material ? data.material : Materials.GetDefault();
-
-            // Swap shaders if the material type changes
-            if (m->type != currentMaterialType)
-            {
-                if (!Shaders.UseById(m->type == C3D::MaterialType::PBR ? m_pbrShader->id : m_shader->id))
-                {
-                    ERROR_LOG("Failed to switch shaders on material change.");
-                    return false;
-                }
-                currentMaterialType = m->type;
-            }
 
             if (m->id != currentMaterialId)
             {
@@ -329,7 +305,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
             }
 
             // Apply the locals
-            Materials.ApplyLocal(m, &data.model);
+            Materials.ApplyLocal(frameData, m, &data.model);
 
             // Draw the static geometry
             Renderer.DrawGeometry(data);
@@ -349,13 +325,15 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         Shaders.SetUniformByIndex(m_debugLocations.projection, &projectionMatrix);
         Shaders.SetUniformByIndex(m_debugLocations.view, &viewMatrix);
 
-        Shaders.ApplyGlobal(true);
+        Shaders.ApplyGlobal(frameData, true);
 
         for (const auto& debug : m_debugGeometries)
         {
             // NOTE: No instance-level uniforms to be set here
             // Locals
+            Shaders.BindLocal();
             Shaders.SetUniformByIndex(m_debugLocations.model, &debug.model);
+            Shaders.ApplyLocal(frameData);
 
             // Draw it
             Renderer.DrawGeometry(debug);

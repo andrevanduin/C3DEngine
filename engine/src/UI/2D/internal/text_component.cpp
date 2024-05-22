@@ -64,8 +64,19 @@ namespace C3D::UI_2D
         if (textSize < 1) textSize = 1;
 
         // Acquire shader instance resources
-        const TextureMap* maps[1] = { &fontSystem.GetFontData(font).atlas };
-        if (!renderSystem.AcquireShaderInstanceResources(uiSystem.GetShader(), 1, maps, &renderable.instanceId))
+        auto& shader = uiSystem.GetShader();
+
+        TextureMap* maps[1] = { &fontSystem.GetFontData(font).atlas };
+
+        ShaderInstanceUniformTextureConfig textureConfig;
+        textureConfig.uniformLocation = shader.GetUniformIndex("diffuseTexture");
+        textureConfig.textureMaps     = maps;
+
+        ShaderInstanceResourceConfig instanceConfig;
+        instanceConfig.uniformConfigs     = &textureConfig;
+        instanceConfig.uniformConfigCount = 1;
+
+        if (!renderSystem.AcquireShaderInstanceResources(shader, instanceConfig, renderable.instanceId))
         {
             ERROR_LOG("Failed to Acquire Shader Instance resources.");
             return false;
@@ -98,10 +109,9 @@ namespace C3D::UI_2D
         bool needsUpdate = renderable.frameNumber != frameData.frameNumber || renderable.drawIndex != frameData.drawIndex;
 
         shaderSystem.BindInstance(renderable.instanceId);
-
         shaderSystem.SetUniformByIndex(locations.properties, &color);
         shaderSystem.SetUniformByIndex(locations.diffuseTexture, &fontData.atlas);
-        shaderSystem.ApplyInstance(needsUpdate);
+        shaderSystem.ApplyInstance(frameData, needsUpdate);
 
         // Sync frame number
         renderable.frameNumber = frameData.frameNumber;
@@ -112,7 +122,9 @@ namespace C3D::UI_2D
         model[3][0] += offsetX;
         model[3][1] += offsetY;
 
+        shaderSystem.BindLocal();
         shaderSystem.SetUniformByIndex(locations.model, &model);
+        shaderSystem.ApplyLocal(frameData);
 
         renderer.DrawGeometry(renderable.renderData);
     }

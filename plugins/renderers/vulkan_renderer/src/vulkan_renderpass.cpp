@@ -44,7 +44,7 @@ namespace C3D
 
                 if (attachmentConfig.source == RenderTargetAttachmentSource::Default)
                 {
-                    attachmentDescription.format = m_context->swapChain.imageFormat.format;
+                    attachmentDescription.format = m_context->swapchain.imageFormat.format;
                 }
                 else
                 {
@@ -140,7 +140,8 @@ namespace C3D
                 // Determine which load operation to use
                 if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::DontCare)
                 {
-                    attachmentDescription.loadOp = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    attachmentDescription.loadOp        = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    attachmentDescription.stencilLoadOp = doClearStencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 }
                 else
                 {
@@ -184,28 +185,28 @@ namespace C3D
                 // Determine the store operation to use.
                 if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperation::DontCare)
                 {
-                    attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                    attachmentDescription.storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                    attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 }
                 else if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperation::Store)
                 {
-                    attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                    attachmentDescription.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+                    attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
                 }
                 else
                 {
                     FATAL_LOG("Invalid store operation ({}) set for depth attachment. Check your configuration.",
                               ToUnderlying(attachmentConfig.storeOperation));
+                    return false;
                 }
 
-                // TODO: Configurability for stencil attachments.
-                attachmentDescription.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-                attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 // If coming from a previous pass, should already be VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL.
                 // Otherwise undefined.
                 attachmentDescription.initialLayout = attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load
                                                           ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                           : VK_IMAGE_LAYOUT_UNDEFINED;
 
-                attachmentDescription.finalLayout = attachmentConfig.presentAfter ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                attachmentDescription.finalLayout = attachmentConfig.presentAfter ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                                                                                   : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
                 depthAttachmentDescriptions.PushBack(attachmentDescription);
@@ -345,8 +346,17 @@ namespace C3D
         if (m_clearFlags & ClearColorBuffer)
         {
             std::memcpy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+            beginInfo.clearValueCount++;
         }
-        beginInfo.clearValueCount++;
+        else
+        {
+            // If the first attachment is color, add a clear value anyway, but don't bother copying data since it will be ignored.
+            // This must be done bbecause each attachment must have a clear value, even if we aren't using it.
+            if (target.attachments[0].type == RenderTargetAttachmentTypeColor)
+            {
+                beginInfo.clearValueCount++;
+            }
+        }
 
         const bool doClearDepth   = (m_clearFlags & ClearDepthBuffer);
         const bool doClearStencil = (m_clearFlags & ClearStencilBuffer);

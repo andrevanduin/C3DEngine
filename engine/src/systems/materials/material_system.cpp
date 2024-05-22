@@ -35,16 +35,49 @@ namespace C3D
 
         m_config = config;
 
-        m_materialShaderId = INVALID_ID;
-
         // Create our hashmap for the materials
         m_registeredMaterials.Create(config.maxMaterialCount);
 
-        if (!CreateDefaultMaterial())
-        {
-            ERROR_LOG("Failed to create Default Material.");
-            return false;
-        }
+        // Get the uniform indices and save them off for quick lookups
+        // Start with the PBR shader
+        Shader* shader                  = Shaders.Get("Shader.PBR");
+        m_pbrShaderId                   = shader->id;
+        m_pbrLocations.projection       = Shaders.GetUniformIndex(shader, "projection");
+        m_pbrLocations.view             = Shaders.GetUniformIndex(shader, "view");
+        m_pbrLocations.lightSpaces      = Shaders.GetUniformIndex(shader, "lightSpaces");
+        m_pbrLocations.cascadeSplits    = Shaders.GetUniformIndex(shader, "cascadeSplits");
+        m_pbrLocations.viewPosition     = Shaders.GetUniformIndex(shader, "viewPosition");
+        m_pbrLocations.properties       = Shaders.GetUniformIndex(shader, "properties");
+        m_pbrLocations.iblCubeTexture   = Shaders.GetUniformIndex(shader, "iblCubeTexture");
+        m_pbrLocations.materialTextures = Shaders.GetUniformIndex(shader, "materialTextures");
+        m_pbrLocations.shadowTextures   = Shaders.GetUniformIndex(shader, "shadowTextures");
+        m_pbrLocations.model            = Shaders.GetUniformIndex(shader, "model");
+        m_pbrLocations.renderMode       = Shaders.GetUniformIndex(shader, "mode");
+        m_pbrLocations.dirLight         = Shaders.GetUniformIndex(shader, "dirLight");
+        m_pbrLocations.pLights          = Shaders.GetUniformIndex(shader, "pLights");
+        m_pbrLocations.numPLights       = Shaders.GetUniformIndex(shader, "numPLights");
+        m_pbrLocations.usePCF           = Shaders.GetUniformIndex(shader, "usePCF");
+        m_pbrLocations.bias             = Shaders.GetUniformIndex(shader, "bias");
+
+        // Finally the Terrain Shader
+        shader                              = Shaders.Get("Shader.Builtin.Terrain");
+        m_terrainShaderId                   = shader->id;
+        m_terrainLocations.projection       = Shaders.GetUniformIndex(shader, "projection");
+        m_terrainLocations.view             = Shaders.GetUniformIndex(shader, "view");
+        m_terrainLocations.lightSpaces      = Shaders.GetUniformIndex(shader, "lightSpaces");
+        m_terrainLocations.cascadeSplits    = Shaders.GetUniformIndex(shader, "cascadeSplits");
+        m_terrainLocations.viewPosition     = Shaders.GetUniformIndex(shader, "viewPosition");
+        m_terrainLocations.model            = Shaders.GetUniformIndex(shader, "model");
+        m_terrainLocations.renderMode       = Shaders.GetUniformIndex(shader, "mode");
+        m_terrainLocations.dirLight         = Shaders.GetUniformIndex(shader, "dirLight");
+        m_terrainLocations.pLights          = Shaders.GetUniformIndex(shader, "pLights");
+        m_terrainLocations.numPLights       = Shaders.GetUniformIndex(shader, "numPLights");
+        m_terrainLocations.properties       = Shaders.GetUniformIndex(shader, "properties");
+        m_terrainLocations.materialTextures = Shaders.GetUniformIndex(shader, "materialTextures");
+        m_terrainLocations.shadowTextures   = Shaders.GetUniformIndex(shader, "shadowTextures");
+        m_terrainLocations.iblCubeTexture   = Shaders.GetUniformIndex(shader, "iblCubeTexture");
+        m_terrainLocations.usePCF           = Shaders.GetUniformIndex(shader, "usePCF");
+        m_terrainLocations.bias             = Shaders.GetUniformIndex(shader, "bias");
 
         if (!CreateDefaultPbrMaterial())
         {
@@ -58,102 +91,10 @@ namespace C3D
             return false;
         }
 
-        // Get the uniform indices and save them off for quick lookups
-        // Start with the Material shader
-        Shader* shader                      = Shaders.Get("Shader.Builtin.Material");
-        m_materialShaderId                  = shader->id;
-        m_materialLocations.projection      = Shaders.GetUniformIndex(shader, "projection");
-        m_materialLocations.view            = Shaders.GetUniformIndex(shader, "view");
-        m_materialLocations.ambientColor    = Shaders.GetUniformIndex(shader, "ambientColor");
-        m_materialLocations.properties      = Shaders.GetUniformIndex(shader, "properties");
-        m_materialLocations.viewPosition    = Shaders.GetUniformIndex(shader, "viewPosition");
-        m_materialLocations.diffuseTexture  = Shaders.GetUniformIndex(shader, "diffuseTexture");
-        m_materialLocations.specularTexture = Shaders.GetUniformIndex(shader, "specularTexture");
-        m_materialLocations.normalTexture   = Shaders.GetUniformIndex(shader, "normalTexture");
-        m_materialLocations.model           = Shaders.GetUniformIndex(shader, "model");
-        m_materialLocations.renderMode      = Shaders.GetUniformIndex(shader, "mode");
-        m_materialLocations.dirLight        = Shaders.GetUniformIndex(shader, "dirLight");
-        m_materialLocations.pLights         = Shaders.GetUniformIndex(shader, "pLights");
-        m_materialLocations.numPLights      = Shaders.GetUniformIndex(shader, "numPLights");
-
-        // Then get the PBR Shader
-        shader                          = Shaders.Get("Shader.PBR");
-        m_pbrShaderId                   = shader->id;
-        m_pbrLocations.projection       = Shaders.GetUniformIndex(shader, "projection");
-        m_pbrLocations.view             = Shaders.GetUniformIndex(shader, "view");
-        m_pbrLocations.lightSpace_0     = Shaders.GetUniformIndex(shader, "lightSpace_0");
-        m_pbrLocations.lightSpace_1     = Shaders.GetUniformIndex(shader, "lightSpace_1");
-        m_pbrLocations.lightSpace_2     = Shaders.GetUniformIndex(shader, "lightSpace_2");
-        m_pbrLocations.lightSpace_3     = Shaders.GetUniformIndex(shader, "lightSpace_3");
-        m_pbrLocations.cascadeSplits    = Shaders.GetUniformIndex(shader, "cascadeSplits");
-        m_pbrLocations.viewPosition     = Shaders.GetUniformIndex(shader, "viewPosition");
-        m_pbrLocations.properties       = Shaders.GetUniformIndex(shader, "properties");
-        m_pbrLocations.iblCubeTexture   = Shaders.GetUniformIndex(shader, "iblCubeTexture");
-        m_pbrLocations.albedoTexture    = Shaders.GetUniformIndex(shader, "albedoTexture");
-        m_pbrLocations.normalTexture    = Shaders.GetUniformIndex(shader, "normalTexture");
-        m_pbrLocations.metallicTexture  = Shaders.GetUniformIndex(shader, "metallicTexture");
-        m_pbrLocations.roughnessTexture = Shaders.GetUniformIndex(shader, "roughnessTexture");
-        m_pbrLocations.aoTexture        = Shaders.GetUniformIndex(shader, "aoTexture");
-        m_pbrLocations.shadowTexture_0  = Shaders.GetUniformIndex(shader, "shadowTexture_0");
-        m_pbrLocations.shadowTexture_1  = Shaders.GetUniformIndex(shader, "shadowTexture_1");
-        m_pbrLocations.shadowTexture_2  = Shaders.GetUniformIndex(shader, "shadowTexture_2");
-        m_pbrLocations.shadowTexture_3  = Shaders.GetUniformIndex(shader, "shadowTexture_3");
-        m_pbrLocations.model            = Shaders.GetUniformIndex(shader, "model");
-        m_pbrLocations.renderMode       = Shaders.GetUniformIndex(shader, "mode");
-        m_pbrLocations.dirLight         = Shaders.GetUniformIndex(shader, "dirLight");
-        m_pbrLocations.pLights          = Shaders.GetUniformIndex(shader, "pLights");
-        m_pbrLocations.numPLights       = Shaders.GetUniformIndex(shader, "numPLights");
-        m_pbrLocations.usePCF           = Shaders.GetUniformIndex(shader, "usePCF");
-        m_pbrLocations.bias             = Shaders.GetUniformIndex(shader, "bias");
-
-        // Finally the Terrain Shader
-        shader                             = Shaders.Get("Shader.Builtin.Terrain");
-        m_terrainShaderId                  = shader->id;
-        m_terrainLocations.projection      = Shaders.GetUniformIndex(shader, "projection");
-        m_terrainLocations.view            = Shaders.GetUniformIndex(shader, "view");
-        m_terrainLocations.lightSpace_0    = Shaders.GetUniformIndex(shader, "lightSpace_0");
-        m_terrainLocations.lightSpace_1    = Shaders.GetUniformIndex(shader, "lightSpace_1");
-        m_terrainLocations.lightSpace_2    = Shaders.GetUniformIndex(shader, "lightSpace_2");
-        m_terrainLocations.lightSpace_3    = Shaders.GetUniformIndex(shader, "lightSpace_3");
-        m_terrainLocations.cascadeSplits   = Shaders.GetUniformIndex(shader, "cascadeSplits");
-        m_terrainLocations.viewPosition    = Shaders.GetUniformIndex(shader, "viewPosition");
-        m_terrainLocations.model           = Shaders.GetUniformIndex(shader, "model");
-        m_terrainLocations.renderMode      = Shaders.GetUniformIndex(shader, "mode");
-        m_terrainLocations.dirLight        = Shaders.GetUniformIndex(shader, "dirLight");
-        m_terrainLocations.pLights         = Shaders.GetUniformIndex(shader, "pLights");
-        m_terrainLocations.numPLights      = Shaders.GetUniformIndex(shader, "numPLights");
-        m_terrainLocations.properties      = Shaders.GetUniformIndex(shader, "properties");
-        m_terrainLocations.iblCubeTexture  = Shaders.GetUniformIndex(shader, "iblCubeTexture");
-        m_terrainLocations.shadowTexture_0 = Shaders.GetUniformIndex(shader, "shadowTexture_0");
-        m_terrainLocations.shadowTexture_1 = Shaders.GetUniformIndex(shader, "shadowTexture_1");
-        m_terrainLocations.shadowTexture_2 = Shaders.GetUniformIndex(shader, "shadowTexture_2");
-        m_terrainLocations.shadowTexture_3 = Shaders.GetUniformIndex(shader, "shadowTexture_3");
-        m_terrainLocations.usePCF          = Shaders.GetUniformIndex(shader, "usePCF");
-        m_terrainLocations.bias            = Shaders.GetUniformIndex(shader, "bias");
-
-        for (u32 i = 0; i < TERRAIN_MAX_MATERIAL_COUNT; i++)
-        {
-            auto num           = String(i);
-            auto albedoName    = "albedoTexture_" + num;
-            auto normalName    = "normalTexture_" + num;
-            auto metallicName  = "metallicTexture_" + num;
-            auto roughnessName = "roughnessTexture_" + num;
-            auto aoName        = "aoTexture_" + num;
-
-            m_terrainLocations.samplers[i * TERRAIN_PER_MATERIAL_SAMP_COUNT + 0] = Shaders.GetUniformIndex(shader, albedoName.Data());
-            m_terrainLocations.samplers[i * TERRAIN_PER_MATERIAL_SAMP_COUNT + 1] = Shaders.GetUniformIndex(shader, normalName.Data());
-            m_terrainLocations.samplers[i * TERRAIN_PER_MATERIAL_SAMP_COUNT + 2] = Shaders.GetUniformIndex(shader, metallicName.Data());
-            m_terrainLocations.samplers[i * TERRAIN_PER_MATERIAL_SAMP_COUNT + 3] = Shaders.GetUniformIndex(shader, roughnessName.Data());
-            m_terrainLocations.samplers[i * TERRAIN_PER_MATERIAL_SAMP_COUNT + 4] = Shaders.GetUniformIndex(shader, aoName.Data());
-        }
-
         // Set our current irradiance texture to the default
         m_currentIrradianceTexture = Textures.GetDefaultCube();
-        // Set all shadow textures to default diffuse
-        for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
-        {
-            m_currentShadowTexture[i] = Textures.GetDefaultDiffuse();
-        }
+        // Set our current shadow texture to default diffuse
+        m_currentShadowTexture = Textures.GetDefaultAlbedo();
 
         if (!CVars.Create("usePCF", m_usePCF, [this](const CVar& cvar) { m_usePCF = cvar.GetValue<i32>(); }))
         {
@@ -177,7 +118,6 @@ namespace C3D
         }
 
         INFO_LOG("Destroying default materials.");
-        DestroyMaterial(m_defaultMaterial);
         DestroyMaterial(m_defaultTerrainMaterial);
         DestroyMaterial(m_defaultPbrMaterial);
 
@@ -256,13 +196,35 @@ namespace C3D
         Material& mat = AcquireReference(name, autoRelease, needsCreation);
         if (needsCreation)
         {
-            const auto materialCount = materialNames.Size();
+            // Loop over all materials that we want to include in this terrain and load their config
+            // Then extract the individual texture names from each material and collect them
+            DynamicArray<String> textureNames(materialNames.Size() * PBR_MATERIAL_TEXTURE_COUNT);
 
-            // Acquire all the internal materials by name
-            DynamicArray<Material*> materials(materialCount);
             for (const auto& name : materialNames)
             {
-                materials.PushBack(Acquire(name));
+                // Load each individual material config
+                MaterialConfig config;
+                if (!Resources.Load(name, config))
+                {
+                    ERROR_LOG("Failed to load material resources: '{}'.", name)
+                    return nullptr;
+                }
+
+                // Only PBR materials are supported
+                if (config.type != MaterialType::PBR)
+                {
+                    ERROR_LOG("Material: '{}' is not of type PBR which is required for terrains.", config.name);
+                    return nullptr;
+                }
+
+                // Extract the texture names from the maps in the material
+                for (auto& map : config.maps)
+                {
+                    textureNames.PushBack(map.textureName);
+                }
+
+                // Cleanup our config
+                Resources.Unload(config);
             }
 
             // Create a new Terrain Material that will hold all these internal materials
@@ -278,75 +240,47 @@ namespace C3D
 
             auto props          = static_cast<MaterialTerrainProperties*>(mat.properties);
             props->padding      = vec3(0);
-            props->numMaterials = materialCount;
+            props->numMaterials = materialNames.Size();
             props->padding2     = vec4(0);
 
-            // 5 Maps per material + one for the irradiance map and one for the shadow map. Allocate enough space for all materials
-            mat.maps.Resize(TERRAIN_SAMP_COUNT_TOTAL);
+            // Array texture for all material textures, array texture for shadow maps and a texture for the irradiance map
+            mat.maps.Resize(TERRAIN_TOTAL_MAP_COUNT);
 
-            // Map names and default fallback textures
-            const char* mapNames[TERRAIN_PER_MATERIAL_SAMP_COUNT]     = { "diffuse", "normal", "metallic", "roughness", "ao" };
-            Texture* defaultTextures[TERRAIN_PER_MATERIAL_SAMP_COUNT] = { Textures.GetDefaultDiffuse(), Textures.GetDefaultNormal(),
-                                                                          Textures.GetDefaultMetallic(), Textures.GetDefaultRoughness(),
-                                                                          Textures.GetDefaultAo() };
-
-            // Use the Default Material for unassigned slots
-            Material* defaultMaterial = GetDefaultPbr();
-
-            // Phong properties and maps for each material
-            for (u32 materialIndex = 0; materialIndex < TERRAIN_MAX_MATERIAL_COUNT; materialIndex++)
             {
-                // Properties
-                auto& matProps = props->materials[materialIndex];
-                // Use default material unless within the materialCount
-                Material* refMat = defaultMaterial;
-                if (materialIndex < materialCount)
+                // First we load the material textures into one big array texture
+                auto& map = mat.maps[TERRAIN_SAMP_MATERIALS];
+                // For every terrain material we have 4 PBR materials (3 maps per material)
+                u32 layerCount = PBR_MATERIAL_TEXTURE_COUNT * TERRAIN_MAX_MATERIAL_COUNT;
+                map.texture    = Textures.AcquireArray(mat.name.Data(), layerCount, textureNames, true);
+                if (!map.texture)
                 {
-                    refMat = materials[materialIndex];
+                    WARN_LOG("Unable to load Array texture for terrain: '{}'. Using default texture.", name);
+                    map.texture = Textures.GetDefaultTerrain();
                 }
-
-                auto p                = static_cast<MaterialPhongProperties*>(refMat->properties);
-                matProps.diffuseColor = p->diffuseColor;
-                matProps.padding      = vec3(0);
-                matProps.shininess    = p->shininess;
-
-                // For PBR we have 5 maps (Albedo, Normal, Metallic, Roughness and AO)
-                for (u32 mapIndex = 0; mapIndex < TERRAIN_PER_MATERIAL_SAMP_COUNT; mapIndex++)
+                if (!Renderer.AcquireTextureMapResources(map))
                 {
-                    MaterialConfigMap mapConfig;
-                    mapConfig.name          = mapNames[mapIndex];
-                    mapConfig.repeatU       = refMat->maps[mapIndex].repeatU;
-                    mapConfig.repeatV       = refMat->maps[mapIndex].repeatV;
-                    mapConfig.repeatW       = refMat->maps[mapIndex].repeatW;
-                    mapConfig.minifyFilter  = refMat->maps[mapIndex].minifyFilter;
-                    mapConfig.magnifyFilter = refMat->maps[mapIndex].magnifyFilter;
-                    mapConfig.textureName   = refMat->maps[mapIndex].texture->name;
-                    if (!AssignMap(mat.maps[(materialIndex * TERRAIN_PER_MATERIAL_SAMP_COUNT) + mapIndex], mapConfig,
-                                   defaultTextures[mapIndex]))
-                    {
-                        ERROR_LOG("Failed to assign: '{}' texture map for terrain material index: {}.", mapNames[mapIndex], materialIndex);
-                        return nullptr;
-                    }
+                    ERROR_LOG("Failed to acquire resources for texture map.");
+                    return nullptr;
                 }
             }
 
+            // Cleanup our texture names
+            textureNames.Destroy();
+
             // Shadow map
             {
-                for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
+                MaterialConfigMap mapConfig;
+                mapConfig.name          = "shadowMap";
+                mapConfig.repeatU       = TextureRepeat::ClampToBorder;
+                mapConfig.repeatV       = TextureRepeat::ClampToBorder;
+                mapConfig.repeatW       = TextureRepeat::ClampToBorder;
+                mapConfig.minifyFilter  = TextureFilter::ModeLinear;
+                mapConfig.magnifyFilter = TextureFilter::ModeLinear;
+                mapConfig.textureName   = "";
+                if (!AssignMap(mat.maps[TERRAIN_SAMP_SHADOW_MAP], mapConfig, Textures.GetDefaultDiffuse()))
                 {
-                    MaterialConfigMap mapConfig;
-                    mapConfig.name          = "shadowMap";
-                    mapConfig.repeatU       = TextureRepeat::ClampToBorder;
-                    mapConfig.repeatV       = TextureRepeat::ClampToBorder;
-                    mapConfig.repeatW       = TextureRepeat::ClampToBorder;
-                    mapConfig.minifyFilter  = TextureFilter::ModeLinear;
-                    mapConfig.magnifyFilter = TextureFilter::ModeLinear;
-                    mapConfig.textureName   = "";
-                    if (!AssignMap(mat.maps[TERRAIN_SAMP_SHADOW_MAP + i], mapConfig, Textures.GetDefaultDiffuse()))
-                    {
-                        ERROR_LOG("Failed to assign: {} texture map for terrain shadow map.", mapConfig.name);
-                        return nullptr;
-                    }
+                    ERROR_LOG("Failed to assign: {} texture map for terrain shadow map.", mapConfig.name);
+                    return nullptr;
                 }
             }
 
@@ -367,32 +301,49 @@ namespace C3D
                 }
             }
 
-            // Release the reference materials
-            for (const auto& name : materialNames)
-            {
-                Release(name);
-            }
-
-            materials.Clear();
-
             // Acquire instance resource for all our maps
-            const TextureMap** maps = Memory.Allocate<const TextureMap*>(MemoryType::Array, TERRAIN_PER_MATERIAL_SAMP_COUNT);
-            // Assign our material's maps
-            for (u32 i = 0; i < TERRAIN_PER_MATERIAL_SAMP_COUNT; i++)
-            {
-                maps[i] = &mat.maps[i];
-            }
+            ShaderInstanceResourceConfig instanceConfig;
+            // 3 configs: material maps, shadows maps and irradiance map
+            instanceConfig.uniformConfigCount = 3;
+            instanceConfig.uniformConfigs =
+                Memory.Allocate<ShaderInstanceUniformTextureConfig>(MemoryType::Array, instanceConfig.uniformConfigCount);
 
-            bool result = Renderer.AcquireShaderInstanceResources(*shader, TERRAIN_PER_MATERIAL_SAMP_COUNT, maps, &mat.internalId);
-            if (!result)
+            // Material textures (1 array texture of MATERIAL_COUNT * PBR_MATERIAL_TEXTURE_COUNT textures)
+            auto& matTextures           = instanceConfig.uniformConfigs[0];
+            matTextures.uniformLocation = m_terrainLocations.materialTextures;
+            matTextures.textureMapCount = 1;
+            matTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, matTextures.textureMapCount);
+            matTextures.textureMaps[0]  = &mat.maps[TERRAIN_SAMP_MATERIALS];
+
+            // Shadow textures
+            auto& shadowTextures           = instanceConfig.uniformConfigs[1];
+            shadowTextures.uniformLocation = m_terrainLocations.shadowTextures;
+            shadowTextures.textureMapCount = 1;
+            shadowTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, shadowTextures.textureMapCount);
+            shadowTextures.textureMaps[0]  = &mat.maps[TERRAIN_SAMP_SHADOW_MAP];
+
+            // Irradiance cube texture
+            auto& iblTextures           = instanceConfig.uniformConfigs[2];
+            iblTextures.uniformLocation = m_terrainLocations.iblCubeTexture;
+            iblTextures.textureMapCount = 1;
+            iblTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, iblTextures.textureMapCount);
+            iblTextures.textureMaps[0]  = &mat.maps[TERRAIN_SAMP_IRRADIANCE_MAP];
+
+            if (!Renderer.AcquireShaderInstanceResources(*shader, instanceConfig, mat.internalId))
             {
                 ERROR_LOG("Failed to acquire renderer resources for material: '{}'.", mat.name);
             }
 
-            if (maps)
+            // Free our uniform config texture maps
+            for (u32 i = 0; i < instanceConfig.uniformConfigCount; i++)
             {
-                Memory.Free(maps);
+                auto& cfg = instanceConfig.uniformConfigs[i];
+                Memory.Free(cfg.textureMaps);
+                cfg.textureMaps = nullptr;
             }
+
+            // Free our uniform configs array
+            Memory.Free(instanceConfig.uniformConfigs);
 
             if (mat.generation == INVALID_ID)
             {
@@ -409,10 +360,10 @@ namespace C3D
 
     Material* MaterialSystem::AcquireFromConfig(const MaterialConfig& config)
     {
-        // Return Default Material
-        if (config.name.IEquals(DEFAULT_MATERIAL_NAME))
+        // Return Default PBR Material
+        if (config.name.IEquals(DEFAULT_PBR_MATERIAL_NAME))
         {
-            return &m_defaultMaterial;
+            return &m_defaultPbrMaterial;
         }
 
         // Return Default Terrain Material
@@ -447,7 +398,7 @@ namespace C3D
 
     void MaterialSystem::Release(const String& name)
     {
-        if (name.IEquals(DEFAULT_MATERIAL_NAME) || name.IEquals(DEFAULT_UI_MATERIAL_NAME) || name.IEquals(DEFAULT_TERRAIN_MATERIAL_NAME))
+        if (name.IEquals(DEFAULT_PBR_MATERIAL_NAME) || name.IEquals(DEFAULT_TERRAIN_MATERIAL_NAME))
         {
             WARN_LOG("Tried to release Default Material. This happens automatically on shutdown.");
             return;
@@ -507,10 +458,7 @@ namespace C3D
 
     bool MaterialSystem::SetShadowMap(Texture* shadowTexture, u8 cascadeIndex)
     {
-        if (shadowTexture)
-        {
-            m_currentShadowTexture[cascadeIndex] = shadowTexture;
-        }
+        m_currentShadowTexture = shadowTexture ? shadowTexture : Textures.GetDefaultAlbedo();
         return true;
     }
 
@@ -519,11 +467,11 @@ namespace C3D
         m_directionalLightSpace[cascadeIndex] = lightSpace;
     }
 
-#define MATERIAL_APPLY_OR_FAIL(expr)             \
-    if (!(expr))                                 \
-    {                                            \
-        ERROR_LOG("Failed to apply: {}.", expr); \
-        return false;                            \
+#define MATERIAL_APPLY_OR_FAIL(expr)               \
+    if (!(expr))                                   \
+    {                                              \
+        ERROR_LOG("Failed to apply: {}.", (expr)); \
+        return false;                              \
     }
 
     bool MaterialSystem::ApplyGlobal(u32 shaderId, const FrameData& frameData, const mat4* projection, const mat4* view,
@@ -541,25 +489,19 @@ namespace C3D
             return true;
         }
 
-        if (shaderId == m_materialShaderId)
-        {
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.projection, projection));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.view, view));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.viewPosition, viewPosition));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.renderMode, &renderMode));
-        }
-        else if (shaderId == m_terrainShaderId)
+        if (shaderId == m_terrainShaderId)
         {
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.projection, projection));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.view, view));
+            // TODO: Set cascade splits like dir light and shadow map etc.
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.cascadeSplits, cascadeSplits));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.viewPosition, viewPosition));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.renderMode, &renderMode));
             // Light space for shadow mapping
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.lightSpace_0, &m_directionalLightSpace[0]));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.lightSpace_1, &m_directionalLightSpace[1]));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.lightSpace_2, &m_directionalLightSpace[2]));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.lightSpace_3, &m_directionalLightSpace[3]));
+            for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; i++)
+            {
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetArrayUniformByIndex(m_terrainLocations.lightSpaces, i, &m_directionalLightSpace[i]));
+            }
 
             // Directional light is global for terrains
             const auto dirLight = Lights.GetDirectionalLight();
@@ -576,14 +518,15 @@ namespace C3D
         {
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.projection, projection));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.view, view));
+            // TODO: Set cascade splits like dir light and shadow map etc.
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.cascadeSplits, cascadeSplits))
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.viewPosition, viewPosition));
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.renderMode, &renderMode));
             // Light space for shadow mapping
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.lightSpace_0, &m_directionalLightSpace[0]));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.lightSpace_1, &m_directionalLightSpace[1]));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.lightSpace_2, &m_directionalLightSpace[2]));
-            MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.lightSpace_3, &m_directionalLightSpace[3]));
+            for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; i++)
+            {
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetArrayUniformByIndex(m_pbrLocations.lightSpaces, i, &m_directionalLightSpace[i]));
+            }
             // Global shader options
             MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.usePCF, &m_usePCF));
 
@@ -597,7 +540,7 @@ namespace C3D
             return false;
         }
 
-        MATERIAL_APPLY_OR_FAIL(Shaders.ApplyGlobal(true));
+        MATERIAL_APPLY_OR_FAIL(Shaders.ApplyGlobal(frameData, true));
 
         // Sync the frameNumber and draw index
         s->frameNumber = frameData.frameNumber;
@@ -621,89 +564,61 @@ namespace C3D
         MATERIAL_APPLY_OR_FAIL(Shaders.BindInstance(material->internalId))
         if (needsUpdate)
         {
-            if (material->shaderId == m_materialShaderId)
+            if (material->shaderId == m_pbrShaderId)
             {
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.properties, material->properties));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.diffuseTexture, &material->maps[0]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.specularTexture, &material->maps[1]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.normalTexture, &material->maps[2]));
+                // PBR Shader
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.properties, material->properties));
 
+                // Material maps
+                MATERIAL_APPLY_OR_FAIL(
+                    Shaders.SetArrayUniformByIndex(m_pbrLocations.materialTextures, PBR_SAMP_ALBEDO, &material->maps[PBR_SAMP_ALBEDO]));
+                MATERIAL_APPLY_OR_FAIL(
+                    Shaders.SetArrayUniformByIndex(m_pbrLocations.materialTextures, PBR_SAMP_NORMAL, &material->maps[PBR_SAMP_NORMAL]));
+                MATERIAL_APPLY_OR_FAIL(
+                    Shaders.SetArrayUniformByIndex(m_pbrLocations.materialTextures, PBR_SAMP_COMBINED, &material->maps[PBR_SAMP_COMBINED]));
+
+                // Shadow map
+                material->maps[PBR_SAMP_SHADOW_MAP].texture = m_currentShadowTexture;
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.shadowTextures, &material->maps[PBR_SAMP_SHADOW_MAP]));
+
+                // Irradiance map
+                material->maps[PBR_SAMP_IRRADIANCE_MAP].texture =
+                    material->irradianceTexture ? material->irradianceTexture : m_currentIrradianceTexture;
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.iblCubeTexture, &material->maps[PBR_SAMP_IRRADIANCE_MAP]));
+
+                // Directional light
                 const auto dirLight = Lights.GetDirectionalLight();
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_materialLocations.dirLight, &dirLight->data));
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.dirLight, &dirLight->data));
 
-                if (!ApplyPointLights(material, m_materialLocations.pLights, m_materialLocations.numPLights))
+                // Point lights
+                if (!ApplyPointLights(material, m_pbrLocations.pLights, m_pbrLocations.numPLights))
                 {
                     return false;
                 }
             }
             else if (material->shaderId == m_terrainShaderId)
             {
-                // Apply Properties
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.properties, material->properties));
-
-                // Apply Maps
-                for (u32 i = 0; i < TERRAIN_MAX_MATERIAL_COUNT * TERRAIN_PER_MATERIAL_SAMP_COUNT; i++)
-                {
-                    MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.samplers[i], &material->maps[i]));
-                }
-
-                // Apply shadow map
-                for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
-                {
-                    material->maps[TERRAIN_SAMP_SHADOW_MAP + i].texture = m_currentShadowTexture[i];
-                }
-
+                // Apply Material maps
                 MATERIAL_APPLY_OR_FAIL(
-                    Shaders.SetUniformByIndex(m_terrainLocations.shadowTexture_0, &material->maps[TERRAIN_SAMP_SHADOW_MAP + 0]));
-                MATERIAL_APPLY_OR_FAIL(
-                    Shaders.SetUniformByIndex(m_terrainLocations.shadowTexture_1, &material->maps[TERRAIN_SAMP_SHADOW_MAP + 1]));
-                MATERIAL_APPLY_OR_FAIL(
-                    Shaders.SetUniformByIndex(m_terrainLocations.shadowTexture_2, &material->maps[TERRAIN_SAMP_SHADOW_MAP + 2]));
-                MATERIAL_APPLY_OR_FAIL(
-                    Shaders.SetUniformByIndex(m_terrainLocations.shadowTexture_3, &material->maps[TERRAIN_SAMP_SHADOW_MAP + 3]));
+                    Shaders.SetUniformByIndex(m_terrainLocations.materialTextures, &material->maps[TERRAIN_SAMP_MATERIALS]));
 
-                // Apply irradiance map
+                // Apply Shadow map
+                material->maps[TERRAIN_SAMP_SHADOW_MAP].texture = m_currentShadowTexture;
+                MATERIAL_APPLY_OR_FAIL(
+                    Shaders.SetUniformByIndex(m_terrainLocations.shadowTextures, &material->maps[TERRAIN_SAMP_SHADOW_MAP]));
+
+                // Apply Irradiance map
                 material->maps[TERRAIN_SAMP_IRRADIANCE_MAP].texture =
                     material->irradianceTexture ? material->irradianceTexture : m_currentIrradianceTexture;
 
                 MATERIAL_APPLY_OR_FAIL(
                     Shaders.SetUniformByIndex(m_terrainLocations.iblCubeTexture, &material->maps[TERRAIN_SAMP_IRRADIANCE_MAP]));
 
+                // Apply properties
+                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_terrainLocations.properties, material->properties));
+
+                // Apply point lights
                 if (!ApplyPointLights(material, m_terrainLocations.pLights, m_terrainLocations.numPLights))
-                {
-                    return false;
-                }
-            }
-            else if (material->shaderId == m_pbrShaderId)
-            {
-                // PBR Shader
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.properties, material->properties));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.albedoTexture, &material->maps[SAMP_ALBEDO]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.normalTexture, &material->maps[SAMP_NORMAL]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.metallicTexture, &material->maps[SAMP_METALLIC]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.roughnessTexture, &material->maps[SAMP_ROUGHNESS]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.aoTexture, &material->maps[SAMP_AO]));
-
-                // Shadow map
-                for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
-                {
-                    material->maps[PBR_SAMP_SHADOW_MAP_0 + i].texture = m_currentShadowTexture[i];
-                }
-
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.shadowTexture_0, &material->maps[PBR_SAMP_SHADOW_MAP_0]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.shadowTexture_1, &material->maps[PBR_SAMP_SHADOW_MAP_1]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.shadowTexture_2, &material->maps[PBR_SAMP_SHADOW_MAP_2]));
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.shadowTexture_3, &material->maps[PBR_SAMP_SHADOW_MAP_3]));
-
-                // Irradiance map
-                material->maps[PBR_SAMP_IBL_CUBE].texture =
-                    material->irradianceTexture ? material->irradianceTexture : m_currentIrradianceTexture;
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.iblCubeTexture, &material->maps[PBR_SAMP_IBL_CUBE]));
-
-                const auto dirLight = Lights.GetDirectionalLight();
-                MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.dirLight, &dirLight->data));
-
-                if (!ApplyPointLights(material, m_pbrLocations.pLights, m_pbrLocations.numPLights))
                 {
                     return false;
                 }
@@ -715,27 +630,29 @@ namespace C3D
             }
         }
 
-        MATERIAL_APPLY_OR_FAIL(Shaders.ApplyInstance(needsUpdate))
+        MATERIAL_APPLY_OR_FAIL(Shaders.ApplyInstance(frameData, needsUpdate))
         return true;
     }
 
-    bool MaterialSystem::ApplyLocal(Material* material, const mat4* model) const
+    bool MaterialSystem::ApplyLocal(const FrameData& frameData, Material* material, const mat4* model) const
     {
-        if (material->shaderId == m_materialShaderId)
-        {
-            return Shaders.SetUniformByIndex(m_materialLocations.model, model);
-        }
+        Shaders.BindLocal();
+        bool result = false;
         if (material->shaderId == m_pbrShaderId)
         {
-            return Shaders.SetUniformByIndex(m_pbrLocations.model, model);
+            result = Shaders.SetUniformByIndex(m_pbrLocations.model, model);
         }
         if (material->shaderId == m_terrainShaderId)
         {
-            return Shaders.SetUniformByIndex(m_terrainLocations.model, model);
+            result = Shaders.SetUniformByIndex(m_terrainLocations.model, model);
         }
+        Shaders.ApplyLocal(frameData);
 
-        ERROR_LOG("Unrecognized shader id: '{}' on material: '{}'.", material->shaderId, material->name);
-        return false;
+        if (!result)
+        {
+            ERROR_LOG("Unrecognized shader id: '{}' on material: '{}'.", material->shaderId, material->name);
+        }
+        return result;
     }
 
     Material* MaterialSystem::GetDefault()
@@ -745,7 +662,7 @@ namespace C3D
             FATAL_LOG("Tried to get the default Material before system is initialized.");
             return nullptr;
         }
-        return &m_defaultMaterial;
+        return &m_defaultPbrMaterial;
     }
 
     Material* MaterialSystem::GetDefaultTerrain()
@@ -768,36 +685,6 @@ namespace C3D
         return &m_defaultPbrMaterial;
     }
 
-    bool MaterialSystem::CreateDefaultMaterial()
-    {
-        m_defaultMaterial.name           = DEFAULT_MATERIAL_NAME;
-        m_defaultMaterial.type           = MaterialType::Phong;
-        m_defaultMaterial.propertiesSize = sizeof(MaterialPhongProperties);
-        m_defaultMaterial.properties     = Memory.Allocate<MaterialPhongProperties>(MemoryType::MaterialInstance);
-
-        auto props          = static_cast<MaterialPhongProperties*>(m_defaultMaterial.properties);
-        props->diffuseColor = vec4(1);
-        props->shininess    = 8.0f;
-
-        m_defaultMaterial.maps.Resize(3);
-        m_defaultMaterial.maps[0].texture = Textures.GetDefaultDiffuse();
-        m_defaultMaterial.maps[1].texture = Textures.GetDefaultSpecular();
-        m_defaultMaterial.maps[2].texture = Textures.GetDefaultNormal();
-
-        const TextureMap* maps[3] = { &m_defaultMaterial.maps[0], &m_defaultMaterial.maps[1], &m_defaultMaterial.maps[2] };
-
-        Shader* shader = Shaders.Get("Shader.Builtin.Material");
-        if (!Renderer.AcquireShaderInstanceResources(*shader, 3, maps, &m_defaultMaterial.internalId))
-        {
-            ERROR_LOG("Failed to acquire renderer resources for the Default Material.");
-            return false;
-        }
-
-        // Assign the shader id to the default material
-        m_defaultMaterial.shaderId = shader->id;
-        return true;
-    }
-
     bool MaterialSystem::CreateDefaultTerrainMaterial()
     {
         m_defaultTerrainMaterial.name           = DEFAULT_TERRAIN_MATERIAL_NAME;
@@ -806,42 +693,65 @@ namespace C3D
         m_defaultTerrainMaterial.properties     = Memory.Allocate<MaterialTerrainProperties>(MemoryType::MaterialInstance);
 
         auto props                       = static_cast<MaterialTerrainProperties*>(m_defaultTerrainMaterial.properties);
-        props->numMaterials              = 1;
+        props->numMaterials              = TERRAIN_MAX_MATERIAL_COUNT;
         props->materials[0].diffuseColor = vec4(1);
         props->materials[0].shininess    = 8.0f;
         props->materials[0].padding      = vec3(0);
 
-        m_defaultTerrainMaterial.maps.Resize(TERRAIN_SAMP_COUNT_TOTAL);
-        m_defaultTerrainMaterial.maps[SAMP_ALBEDO].texture    = Textures.GetDefaultDiffuse();
-        m_defaultTerrainMaterial.maps[SAMP_NORMAL].texture    = Textures.GetDefaultNormal();
-        m_defaultTerrainMaterial.maps[SAMP_METALLIC].texture  = Textures.GetDefaultMetallic();
-        m_defaultTerrainMaterial.maps[SAMP_ROUGHNESS].texture = Textures.GetDefaultRoughness();
-        m_defaultTerrainMaterial.maps[SAMP_AO].texture        = Textures.GetDefaultAo();
+        m_defaultTerrainMaterial.maps.Resize(TERRAIN_TOTAL_MAP_COUNT);
+        m_defaultTerrainMaterial.maps[TERRAIN_SAMP_MATERIALS].texture  = Textures.GetDefaultTerrain();
+        m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP].texture = Textures.GetDefaultDiffuse();
+        // Ensure that the shadow texture map has repeat mode of ClampToBorder
+        m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP].repeatU     = TextureRepeat::ClampToBorder;
+        m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP].repeatV     = TextureRepeat::ClampToBorder;
+        m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP].repeatW     = TextureRepeat::ClampToBorder;
+        m_defaultTerrainMaterial.maps[TERRAIN_SAMP_IRRADIANCE_MAP].texture = Textures.GetDefaultCube();
 
-        for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; i++)
+        auto& mat = m_defaultTerrainMaterial;
+
+        // Acquire instance resource for all our maps
+        ShaderInstanceResourceConfig instanceResourceConfig;
+        // 3 configs: material maps, shadows maps and irradiance map
+        instanceResourceConfig.uniformConfigCount = 3;
+        instanceResourceConfig.uniformConfigs     = Memory.Allocate<ShaderInstanceUniformTextureConfig>(MemoryType::Array, 3);
+
+        // Material textures
+        auto& matTextures           = instanceResourceConfig.uniformConfigs[0];
+        matTextures.uniformLocation = m_terrainLocations.materialTextures;
+        matTextures.textureMapCount = 1;
+        matTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, matTextures.textureMapCount);
+        matTextures.textureMaps[0]  = &mat.maps[TERRAIN_SAMP_MATERIALS];
+
+        // Shadow textures
+        auto& shadowTextures           = instanceResourceConfig.uniformConfigs[1];
+        shadowTextures.uniformLocation = m_terrainLocations.shadowTextures;
+        shadowTextures.textureMapCount = 1;
+        shadowTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, shadowTextures.textureMapCount);
+        shadowTextures.textureMaps[0]  = &mat.maps[TERRAIN_SAMP_SHADOW_MAP];
+
+        // Irradiance cube texture
+        auto& iblTextures           = instanceResourceConfig.uniformConfigs[2];
+        iblTextures.uniformLocation = m_terrainLocations.iblCubeTexture;
+        iblTextures.textureMapCount = 1;
+        iblTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, iblTextures.textureMapCount);
+        iblTextures.textureMaps[0]  = &mat.maps[TERRAIN_SAMP_IRRADIANCE_MAP];
+
+        Shader* shader = Shaders.GetById(m_terrainShaderId);
+        if (!Renderer.AcquireShaderInstanceResources(*shader, instanceResourceConfig, mat.internalId))
         {
-            m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP + i].texture = Textures.GetDefaultDiffuse();
-            m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP + i].repeatU = TextureRepeat::ClampToBorder;
-            m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP + i].repeatV = TextureRepeat::ClampToBorder;
-            m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP + i].repeatW = TextureRepeat::ClampToBorder;
+            ERROR_LOG("Failed to acquire renderer resources for material: '{}'.", mat.name);
         }
 
-        const TextureMap* maps[9] = { &m_defaultTerrainMaterial.maps[SAMP_ALBEDO],
-                                      &m_defaultTerrainMaterial.maps[SAMP_NORMAL],
-                                      &m_defaultTerrainMaterial.maps[SAMP_METALLIC],
-                                      &m_defaultTerrainMaterial.maps[SAMP_ROUGHNESS],
-                                      &m_defaultTerrainMaterial.maps[SAMP_AO],
-                                      &m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP + 0],
-                                      &m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP + 1],
-                                      &m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP + 2],
-                                      &m_defaultTerrainMaterial.maps[TERRAIN_SAMP_SHADOW_MAP + 3] };
-
-        Shader* shader = Shaders.Get("Shader.Builtin.Terrain");
-        if (!Renderer.AcquireShaderInstanceResources(*shader, 9, maps, &m_defaultTerrainMaterial.internalId))
+        // Free our uniform config texture maps
+        for (u32 i = 0; i < instanceResourceConfig.uniformConfigCount; i++)
         {
-            ERROR_LOG("Failed to acquire renderer resources for the Default Terrain Material.");
-            return false;
+            auto& cfg = instanceResourceConfig.uniformConfigs[i];
+            Memory.Free(cfg.textureMaps);
+            cfg.textureMaps = nullptr;
         }
+
+        // Free our uniform configs array
+        Memory.Free(instanceResourceConfig.uniformConfigs);
 
         m_defaultTerrainMaterial.shaderId = shader->id;
 
@@ -859,40 +769,68 @@ namespace C3D
         props->diffuseColor = vec4(1);
         props->shininess    = 8.0f;
 
-        m_defaultPbrMaterial.maps.Resize(PBR_MATERIAL_MAP_COUNT);
-        m_defaultPbrMaterial.maps[SAMP_ALBEDO].texture       = Textures.GetDefaultDiffuse();
-        m_defaultPbrMaterial.maps[SAMP_NORMAL].texture       = Textures.GetDefaultNormal();
-        m_defaultPbrMaterial.maps[SAMP_METALLIC].texture     = Textures.GetDefaultMetallic();
-        m_defaultPbrMaterial.maps[SAMP_ROUGHNESS].texture    = Textures.GetDefaultRoughness();
-        m_defaultPbrMaterial.maps[SAMP_AO].texture           = Textures.GetDefaultAo();
-        m_defaultPbrMaterial.maps[PBR_SAMP_IBL_CUBE].texture = Textures.GetDefaultCube();
-
+        m_defaultPbrMaterial.maps.Resize(PBR_TOTAL_MAP_COUNT);
+        m_defaultPbrMaterial.maps[PBR_SAMP_ALBEDO].texture = Textures.GetDefault();
+        // Set minify and magnify to nearest to reduce bluriness on checkerboard default texture
+        m_defaultPbrMaterial.maps[PBR_SAMP_ALBEDO].minifyFilter  = TextureFilter::ModeNearest;
+        m_defaultPbrMaterial.maps[PBR_SAMP_ALBEDO].magnifyFilter = TextureFilter::ModeNearest;
+        m_defaultPbrMaterial.maps[PBR_SAMP_NORMAL].texture       = Textures.GetDefaultNormal();
+        m_defaultPbrMaterial.maps[PBR_SAMP_COMBINED].texture     = Textures.GetDefaultCombined();
+        m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP].texture   = Textures.GetDefaultAlbedo();
         // Change the clamp mode for the default shadow maps to border
-        for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; i++)
-        {
-            m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP_0 + i].texture = Textures.GetDefaultDiffuse();
-            m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP_0 + i].repeatU = TextureRepeat::ClampToBorder;
-            m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP_0 + i].repeatV = TextureRepeat::ClampToBorder;
-            m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP_0 + i].repeatW = TextureRepeat::ClampToBorder;
-        }
+        m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP].repeatU = TextureRepeat::ClampToBorder;
+        m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP].repeatV = TextureRepeat::ClampToBorder;
+        m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP].repeatW = TextureRepeat::ClampToBorder;
 
-        const TextureMap* maps[PBR_MATERIAL_MAP_COUNT] = { &m_defaultPbrMaterial.maps[SAMP_ALBEDO],
-                                                           &m_defaultPbrMaterial.maps[SAMP_NORMAL],
-                                                           &m_defaultPbrMaterial.maps[SAMP_METALLIC],
-                                                           &m_defaultPbrMaterial.maps[SAMP_ROUGHNESS],
-                                                           &m_defaultPbrMaterial.maps[SAMP_AO],
-                                                           &m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP_0],
-                                                           &m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP_1],
-                                                           &m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP_2],
-                                                           &m_defaultPbrMaterial.maps[PBR_SAMP_SHADOW_MAP_3],
-                                                           &m_defaultPbrMaterial.maps[PBR_SAMP_IBL_CUBE] };
+        m_defaultPbrMaterial.maps[PBR_SAMP_IRRADIANCE_MAP].texture = Textures.GetDefaultCube();
 
-        Shader* shader = Shaders.Get("Shader.PBR");
-        if (!Renderer.AcquireShaderInstanceResources(*shader, PBR_MATERIAL_MAP_COUNT, maps, &m_defaultPbrMaterial.internalId))
+        auto& mat = m_defaultPbrMaterial;
+
+        ShaderInstanceResourceConfig instanceConfig;
+        instanceConfig.uniformConfigCount = 3;
+        instanceConfig.uniformConfigs =
+            Memory.Allocate<ShaderInstanceUniformTextureConfig>(MemoryType::Array, instanceConfig.uniformConfigCount);
+
+        // Material textures
+        auto& matTextures                          = instanceConfig.uniformConfigs[0];
+        matTextures.uniformLocation                = m_pbrLocations.materialTextures;
+        matTextures.textureMapCount                = PBR_MATERIAL_TEXTURE_COUNT;
+        matTextures.textureMaps                    = Memory.Allocate<TextureMap*>(MemoryType::Array, matTextures.textureMapCount);
+        matTextures.textureMaps[PBR_SAMP_ALBEDO]   = &mat.maps[PBR_SAMP_ALBEDO];
+        matTextures.textureMaps[PBR_SAMP_NORMAL]   = &mat.maps[PBR_SAMP_NORMAL];
+        matTextures.textureMaps[PBR_SAMP_COMBINED] = &mat.maps[PBR_SAMP_COMBINED];
+
+        // Shadow textures
+        auto& shadowTextures           = instanceConfig.uniformConfigs[1];
+        shadowTextures.uniformLocation = m_pbrLocations.shadowTextures;
+        shadowTextures.textureMapCount = 1;
+        shadowTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, shadowTextures.textureMapCount);
+        shadowTextures.textureMaps[0]  = &mat.maps[PBR_SAMP_SHADOW_MAP];
+
+        // Irradiance cube texture
+        auto& irradianceTextures           = instanceConfig.uniformConfigs[2];
+        irradianceTextures.uniformLocation = m_pbrLocations.shadowTextures;
+        irradianceTextures.textureMapCount = 1;
+        irradianceTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, irradianceTextures.textureMapCount);
+        irradianceTextures.textureMaps[0]  = &mat.maps[PBR_SAMP_IRRADIANCE_MAP];
+
+        Shader* shader = Shaders.GetById(m_pbrShaderId);
+        if (!Renderer.AcquireShaderInstanceResources(*shader, instanceConfig, mat.internalId))
         {
             ERROR_LOG("Failed to acquire renderer resources for the Default PBR Material.");
             return false;
         }
+
+        // Free our uniform config texture maps
+        for (u32 i = 0; i < instanceConfig.uniformConfigCount; i++)
+        {
+            auto& cfg = instanceConfig.uniformConfigs[i];
+            Memory.Free(cfg.textureMaps);
+            cfg.textureMaps = nullptr;
+        }
+
+        // Free our uniform configs array
+        Memory.Free(instanceConfig.uniformConfigs);
 
         // Assign the shader id to the default material
         m_defaultPbrMaterial.shaderId = shader->id;
@@ -936,7 +874,7 @@ namespace C3D
 
         u32 mapCount = 0;
 
-        if (config.type == MaterialType::Phong)
+        if (config.type == MaterialType::PBR)
         {
             mat.propertiesSize = sizeof(MaterialPhongProperties);
             mat.properties     = Memory.Allocate<MaterialPhongProperties>(MemoryType::MaterialInstance);
@@ -958,107 +896,19 @@ namespace C3D
                 }
             }
 
-            // For Phong materials we expect 3 maps (diffuse, specular and normal)
-            mat.maps.Resize(3);
-            mapCount = 3;
+            // For PBR materials we expect 3 material maps (albedo, normal and combined(metallic, roughness and ao)) + shadow and irradiance
+            mat.maps.Resize(PBR_TOTAL_MAP_COUNT);
 
-            bool diffuseAssigned  = false;
-            bool specularAssigned = false;
+            bool albedoAssigned   = false;
             bool normalAssigned   = false;
-
-            for (const auto& map : config.maps)
-            {
-                if (map.name.IEquals("diffuse"))
-                {
-                    if (!AssignMap(mat.maps[0], map, Textures.GetDefaultDiffuse()))
-                    {
-                        return false;
-                    }
-                    diffuseAssigned = true;
-                }
-                else if (map.name.IEquals("specular"))
-                {
-                    if (!AssignMap(mat.maps[1], map, Textures.GetDefaultSpecular()))
-                    {
-                        return false;
-                    }
-                    specularAssigned = true;
-                }
-                else if (map.name.IEquals("normal"))
-                {
-                    if (!AssignMap(mat.maps[2], map, Textures.GetDefaultNormal()))
-                    {
-                        return false;
-                    }
-                    normalAssigned = true;
-                }
-            }
-
-            if (!diffuseAssigned)
-            {
-                MaterialConfigMap map("diffuse", "");
-                if (!AssignMap(mat.maps[0], map, Textures.GetDefaultDiffuse()))
-                {
-                    return false;
-                }
-            }
-
-            if (!specularAssigned)
-            {
-                MaterialConfigMap map("specular", "");
-                if (!AssignMap(mat.maps[1], map, Textures.GetDefaultSpecular()))
-                {
-                    return false;
-                }
-            }
-
-            if (!normalAssigned)
-            {
-                MaterialConfigMap map("normal", "");
-                if (!AssignMap(mat.maps[2], map, Textures.GetDefaultNormal()))
-                {
-                    return false;
-                }
-            }
-        }
-        else if (config.type == MaterialType::PBR)
-        {
-            mat.propertiesSize = sizeof(MaterialPhongProperties);
-            mat.properties     = Memory.Allocate<MaterialPhongProperties>(MemoryType::MaterialInstance);
-            // Defaults
-            auto props          = static_cast<MaterialPhongProperties*>(mat.properties);
-            props->diffuseColor = vec4(1);
-            props->shininess    = 32.0f;
-            props->padding      = vec3(0);
-
-            for (const auto& prop : config.props)
-            {
-                if (prop.name.IEquals("diffuseColor"))
-                {
-                    props->diffuseColor = std::get<vec4>(prop.value);
-                }
-                else if (prop.name.IEquals("shininess"))
-                {
-                    props->shininess = std::get<f32>(prop.value);
-                }
-            }
-
-            // For PBR materials we expect 5 maps (albedo, normal, metallic, roughness and ao)
-            mat.maps.Resize(PBR_MATERIAL_MAP_COUNT);
-            mapCount = PBR_MATERIAL_MAP_COUNT;
-
-            bool albedoAssigned    = false;
-            bool normalAssigned    = false;
-            bool metallicAssigned  = false;
-            bool roughnessAssigned = false;
-            bool aoAssigned        = false;
-            bool cubeAssigned      = false;
+            bool combinedAssigned = false;
+            bool cubeAssigned     = false;
 
             for (const auto& map : config.maps)
             {
                 if (map.name.IEquals("albedo"))
                 {
-                    if (!AssignMap(mat.maps[SAMP_ALBEDO], map, Textures.GetDefaultDiffuse()))
+                    if (!AssignMap(mat.maps[PBR_SAMP_ALBEDO], map, Textures.GetDefaultAlbedo()))
                     {
                         return false;
                     }
@@ -1066,39 +916,23 @@ namespace C3D
                 }
                 else if (map.name.IEquals("normal"))
                 {
-                    if (!AssignMap(mat.maps[SAMP_NORMAL], map, Textures.GetDefaultNormal()))
+                    if (!AssignMap(mat.maps[PBR_SAMP_NORMAL], map, Textures.GetDefaultNormal()))
                     {
                         return false;
                     }
                     normalAssigned = true;
                 }
-                else if (map.name.IEquals("metallic"))
+                else if (map.name.IEquals("combined"))
                 {
-                    if (!AssignMap(mat.maps[SAMP_METALLIC], map, Textures.GetDefaultMetallic()))
+                    if (!AssignMap(mat.maps[PBR_SAMP_COMBINED], map, Textures.GetDefaultCombined()))
                     {
                         return false;
                     }
-                    metallicAssigned = true;
-                }
-                else if (map.name.IEquals("roughness"))
-                {
-                    if (!AssignMap(mat.maps[SAMP_ROUGHNESS], map, Textures.GetDefaultRoughness()))
-                    {
-                        return false;
-                    }
-                    roughnessAssigned = true;
-                }
-                else if (map.name.IEquals("ao"))
-                {
-                    if (!AssignMap(mat.maps[SAMP_AO], map, Textures.GetDefaultAo()))
-                    {
-                        return false;
-                    }
-                    aoAssigned = true;
+                    combinedAssigned = true;
                 }
                 else if (map.name.IEquals("iblCube"))
                 {
-                    if (!AssignMap(mat.maps[PBR_SAMP_IBL_CUBE], map, Textures.GetDefaultCube()))
+                    if (!AssignMap(mat.maps[PBR_SAMP_IRRADIANCE_MAP], map, Textures.GetDefaultCube()))
                     {
                         return false;
                     }
@@ -1108,27 +942,24 @@ namespace C3D
 
             // Shadow map
             {
-                for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
+                MaterialConfigMap mapConfig;
+                mapConfig.minifyFilter  = TextureFilter::ModeLinear;
+                mapConfig.magnifyFilter = TextureFilter::ModeLinear;
+                mapConfig.repeatU       = TextureRepeat::ClampToBorder;
+                mapConfig.repeatV       = TextureRepeat::ClampToBorder;
+                mapConfig.repeatW       = TextureRepeat::ClampToBorder;
+                mapConfig.name          = "shadowMap";
+                mapConfig.textureName   = "";
+                if (!AssignMap(mat.maps[PBR_SAMP_SHADOW_MAP], mapConfig, Textures.GetDefaultAlbedo()))
                 {
-                    MaterialConfigMap mapConfig;
-                    mapConfig.minifyFilter  = TextureFilter::ModeLinear;
-                    mapConfig.magnifyFilter = TextureFilter::ModeLinear;
-                    mapConfig.repeatU       = TextureRepeat::ClampToBorder;
-                    mapConfig.repeatV       = TextureRepeat::ClampToBorder;
-                    mapConfig.repeatW       = TextureRepeat::ClampToBorder;
-                    mapConfig.name          = "shadowMap";
-                    mapConfig.textureName   = "";
-                    if (!AssignMap(mat.maps[PBR_SAMP_SHADOW_MAP_0 + i], mapConfig, Textures.GetDefaultDiffuse()))
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
 
             if (!albedoAssigned)
             {
                 MaterialConfigMap map("albedo", "");
-                if (!AssignMap(mat.maps[SAMP_ALBEDO], map, Textures.GetDefaultDiffuse()))
+                if (!AssignMap(mat.maps[PBR_SAMP_ALBEDO], map, Textures.GetDefaultAlbedo()))
                 {
                     return false;
                 }
@@ -1137,34 +968,16 @@ namespace C3D
             if (!normalAssigned)
             {
                 MaterialConfigMap map("normal", "");
-                if (!AssignMap(mat.maps[SAMP_NORMAL], map, Textures.GetDefaultNormal()))
+                if (!AssignMap(mat.maps[PBR_SAMP_NORMAL], map, Textures.GetDefaultNormal()))
                 {
                     return false;
                 }
             }
 
-            if (!metallicAssigned)
+            if (!combinedAssigned)
             {
-                MaterialConfigMap map("metallic", "");
-                if (!AssignMap(mat.maps[SAMP_METALLIC], map, Textures.GetDefaultMetallic()))
-                {
-                    return false;
-                }
-            }
-
-            if (!roughnessAssigned)
-            {
-                MaterialConfigMap map("roughness", "");
-                if (!AssignMap(mat.maps[SAMP_ROUGHNESS], map, Textures.GetDefaultRoughness()))
-                {
-                    return false;
-                }
-            }
-
-            if (!aoAssigned)
-            {
-                MaterialConfigMap map("ao", "");
-                if (!AssignMap(mat.maps[SAMP_AO], map, Textures.GetDefaultAo()))
+                MaterialConfigMap map("combined", "");
+                if (!AssignMap(mat.maps[PBR_SAMP_COMBINED], map, Textures.GetDefaultCombined()))
                 {
                     return false;
                 }
@@ -1173,27 +986,10 @@ namespace C3D
             if (!cubeAssigned)
             {
                 MaterialConfigMap map("iblCube", "");
-                if (!AssignMap(mat.maps[PBR_SAMP_IBL_CUBE], map, Textures.GetDefaultCube()))
+                if (!AssignMap(mat.maps[PBR_SAMP_IRRADIANCE_MAP], map, Textures.GetDefaultCube()))
                 {
                     return false;
                 }
-            }
-        }
-        else if (config.type == MaterialType::UI)
-        {
-            // NOTE: UI's only have one map and one property so we only use those
-            // TODO: If this changes we need to make sure we handle it here properly
-            mat.maps.Resize(1);
-            mapCount = 1;
-
-            mat.propertiesSize = sizeof(MaterialUIProperties);
-            mat.properties     = Memory.Allocate<MaterialUIProperties>(MemoryType::MaterialInstance);
-            // Defaults
-            auto props          = static_cast<MaterialUIProperties*>(mat.properties);
-            props->diffuseColor = std::get<vec4>(config.props[0].value);
-            if (!AssignMap(mat.maps[0], config.maps[0], Textures.GetDefaultDiffuse()))
-            {
-                return false;
             }
         }
         else if (config.type == MaterialType::Custom)
@@ -1240,57 +1036,97 @@ namespace C3D
             return false;
         }
 
+        ShaderInstanceResourceConfig instanceConfig;
+
         Shader* shader = nullptr;
         switch (config.type)
         {
-            case MaterialType::Phong:
-                shader = Shaders.Get(config.shaderName.Empty() ? "Shader.Builtin.Material" : config.shaderName);
-                break;
             case MaterialType::PBR:
+            {
                 shader = Shaders.Get(config.shaderName.Empty() ? "Shader.PBR" : config.shaderName);
-                break;
-            case MaterialType::Terrain:
-                shader = Shaders.Get(config.shaderName.Empty() ? "Shader.Builtin.Terrain" : config.shaderName);
-                break;
-            case MaterialType::UI:
-                shader = Shaders.Get(config.shaderName.Empty() ? "Shader.Builtin.UI" : config.shaderName);
-                break;
+
+                instanceConfig.uniformConfigCount = 3;
+                instanceConfig.uniformConfigs =
+                    Memory.Allocate<ShaderInstanceUniformTextureConfig>(MemoryType::Array, instanceConfig.uniformConfigCount);
+
+                // Material textures
+                auto& matTextures                          = instanceConfig.uniformConfigs[0];
+                matTextures.uniformLocation                = m_pbrLocations.materialTextures;
+                matTextures.textureMapCount                = PBR_MATERIAL_TEXTURE_COUNT;
+                matTextures.textureMaps                    = Memory.Allocate<TextureMap*>(MemoryType::Array, matTextures.textureMapCount);
+                matTextures.textureMaps[PBR_SAMP_ALBEDO]   = &mat.maps[PBR_SAMP_ALBEDO];
+                matTextures.textureMaps[PBR_SAMP_NORMAL]   = &mat.maps[PBR_SAMP_NORMAL];
+                matTextures.textureMaps[PBR_SAMP_COMBINED] = &mat.maps[PBR_SAMP_COMBINED];
+
+                // Shadow textures
+                auto& shadowTextures           = instanceConfig.uniformConfigs[1];
+                shadowTextures.uniformLocation = m_pbrLocations.shadowTextures;
+                shadowTextures.textureMapCount = 1;
+                shadowTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, shadowTextures.textureMapCount);
+                shadowTextures.textureMaps[0]  = &mat.maps[PBR_SAMP_SHADOW_MAP];
+
+                // Irradiance cube texture
+                auto& irradianceTextures           = instanceConfig.uniformConfigs[2];
+                irradianceTextures.uniformLocation = m_pbrLocations.shadowTextures;
+                irradianceTextures.textureMapCount = 1;
+                irradianceTextures.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, irradianceTextures.textureMapCount);
+                irradianceTextures.textureMaps[0]  = &mat.maps[PBR_SAMP_IRRADIANCE_MAP];
+            }
+            break;
             case MaterialType::Custom:
+            {
                 if (config.shaderName.Empty())
                 {
                     FATAL_LOG("Custom Material: '{}' does not have a Shader name which is required.", config.name);
                     return false;
                 }
                 shader = Shaders.Get(config.shaderName);
-                break;
+
+                u32 globalSamplerCount   = shader->globalUniformSamplerCount;
+                u32 instanceSamplerCount = shader->instanceUniformSamplerCount;
+
+                instanceConfig.uniformConfigCount = globalSamplerCount + instanceSamplerCount;
+                instanceConfig.uniformConfigs =
+                    Memory.Allocate<ShaderInstanceUniformTextureConfig>(MemoryType::Array, instanceConfig.uniformConfigCount);
+
+                // Tack the number of maps used by global uniforms first and offset by that
+                u32 mapOffset = globalSamplerCount;
+
+                for (u32 i = 0; i < instanceSamplerCount; ++i)
+                {
+                    auto& u                       = shader->uniforms.GetByIndex(shader->instanceSamplerIndices[i]);
+                    auto& uniformConfig           = instanceConfig.uniformConfigs[i];
+                    uniformConfig.uniformLocation = u.location;
+                    uniformConfig.textureMapCount = Max(u.arrayLength, (u8)1);
+                    uniformConfig.textureMaps     = Memory.Allocate<TextureMap*>(MemoryType::Array, uniformConfig.textureMapCount);
+                    for (u32 j = 0; j < uniformConfig.textureMapCount; ++j)
+                    {
+                        uniformConfig.textureMaps[j] = &mat.maps[i + mapOffset];
+                    }
+                }
+            }
+            break;
             default:
                 ERROR_LOG("Unsupported Material type: '{}'.", ToString(config.type));
                 return false;
         }
 
-        if (!shader)
-        {
-            ERROR_LOG("Failed to load Material because its shader was not found.");
-            return false;
-        }
-
-        // Gather a list of pointers to our texture maps
-        const TextureMap** maps = Memory.Allocate<const TextureMap*>(MemoryType::Array, mapCount);
-        for (u32 i = 0; i < mapCount; i++)
-        {
-            maps[i] = &mat.maps[i];
-        }
-
-        bool result = Renderer.AcquireShaderInstanceResources(*shader, mapCount, maps, &mat.internalId);
+        auto result = Renderer.AcquireShaderInstanceResources(*shader, instanceConfig, mat.internalId);
         if (!result)
         {
             ERROR_LOG("Failed to acquire renderer resources for Material: '{}'.", mat.name);
         }
 
-        if (maps)
+        // Free our uniform config texture maps
+        for (u32 i = 0; i < instanceConfig.uniformConfigCount; i++)
         {
-            Memory.Free(maps);
+            auto& cfg = instanceConfig.uniformConfigs[i];
+            Memory.Free(cfg.textureMaps);
+            cfg.textureMaps = nullptr;
         }
+
+        // Free our uniform configs array
+        Memory.Free(instanceConfig.uniformConfigs);
 
         return result;
     }

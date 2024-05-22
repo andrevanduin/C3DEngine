@@ -31,7 +31,7 @@ namespace C3D
         i32 transferFamilyIndex = -1;
     };
 
-    struct VulkanSwapChainSupportInfo
+    struct VulkanSwapchainSupportInfo
     {
         VkSurfaceCapabilitiesKHR capabilities;
         DynamicArray<VkSurfaceFormatKHR> formats;
@@ -132,7 +132,7 @@ namespace C3D
         VkPhysicalDeviceFeatures m_features;
         VkPhysicalDeviceMemoryProperties m_memory;
 
-        mutable VulkanSwapChainSupportInfo m_swapChainSupport;
+        mutable VulkanSwapchainSupportInfo m_swapChainSupport;
 
         /** @brief Boolean is set to true if we require the portability extension in order to run.
          * This extension is used for platforms that do not natively fully support Vulkan like Mac OS.

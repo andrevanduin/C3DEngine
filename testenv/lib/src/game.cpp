@@ -13,6 +13,7 @@
 #include <systems/UI/2D/ui2d_system.h>
 #include <systems/audio/audio_system.h>
 #include <systems/cameras/camera_system.h>
+#include <systems/cvars/cvar_system.h>
 #include <systems/events/event_system.h>
 #include <systems/geometry/geometry_system.h>
 #include <systems/input/input_system.h>
@@ -172,6 +173,9 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     });
     */
 
+    CVars.Create("moveSpeed", m_state->moveSpeed, [this](const CVar& cvar) { m_state->moveSpeed = cvar.GetValue<f64>(); });
+    CVars.Create("moveSpeedFast", m_state->moveSpeed, [this](const CVar& cvar) { m_state->moveSpeedFast = cvar.GetValue<f64>(); });
+
     m_state->testMusic = Audio.LoadStream("Woodland Fantasy");
 
     Audio.SetMasterVolume(0.1f);
@@ -289,40 +293,40 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             m_state->camera->AddPitch(-1.0 * deltaTime);
         }
 
-        f64 move_speed = 50.0;
+        f64 moveSpeed = m_state->moveSpeed;
         if (Input.IsKeyDown(C3D::KeyLControl))
         {
-            move_speed = 150.0;
+            moveSpeed = m_state->moveSpeedFast;
         }
 
         if (Input.IsKeyDown('W'))
         {
-            m_state->camera->MoveForward(move_speed * deltaTime);
+            m_state->camera->MoveForward(moveSpeed * deltaTime);
         }
 
         if (Input.IsKeyDown('S'))
         {
-            m_state->camera->MoveBackward(move_speed * deltaTime);
+            m_state->camera->MoveBackward(moveSpeed * deltaTime);
         }
 
         if (Input.IsKeyDown('Q'))
         {
-            m_state->camera->MoveLeft(move_speed * deltaTime);
+            m_state->camera->MoveLeft(moveSpeed * deltaTime);
         }
 
         if (Input.IsKeyDown('E'))
         {
-            m_state->camera->MoveRight(move_speed * deltaTime);
+            m_state->camera->MoveRight(moveSpeed * deltaTime);
         }
 
         if (Input.IsKeyDown(C3D::KeySpace))
         {
-            m_state->camera->MoveUp(move_speed * deltaTime);
+            m_state->camera->MoveUp(moveSpeed * deltaTime);
         }
 
         if (Input.IsKeyDown(C3D::KeyX))
         {
-            m_state->camera->MoveDown(move_speed * deltaTime);
+            m_state->camera->MoveDown(moveSpeed * deltaTime);
         }
     }
 
@@ -392,13 +396,13 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     buffer.FromFormat(
         "{:<10} : Pos({:.3f}, {:.3f}, {:.3f}) Rot({:.3f}, {:.3f}, {:.3f})\n"
         "{:<10} : Pos({:.2f}, {:.2f}) Buttons({}, {}, {}) Hovered: {}\n"
-        "{:<10} : DrawCount: {} FPS: {} VSync: {}\n"
+        "{:<10} : DrawCount: (Mesh: {}, Terrain: {}, ShadowMap: {}) FPS: {} VSync: {}\n"
         "{:<10} : Prepare: {:.4f} Render: {:.4f} Present: {:.4f} Update: {:.4f} Total: {:.4f}",
         "Cam", pos.x, pos.y, pos.z, C3D::RadToDeg(rot.x), C3D::RadToDeg(rot.y), C3D::RadToDeg(rot.z), "Mouse", mouseNdcX, mouseNdcY,
-        leftButton, middleButton, rightButton, hoveredBuffer, "Renderer", frameData.drawnMeshCount, Metrics.GetFps(),
-        Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No", "Timings", frameData.timeData.avgPrepareFrameTimeMs,
-        frameData.timeData.avgRenderTimeMs, frameData.timeData.avgPresentTimeMs, frameData.timeData.avgUpdateTimeMs,
-        frameData.timeData.avgRunTimeMs);
+        leftButton, middleButton, rightButton, hoveredBuffer, "Renderer", frameData.drawnMeshCount, frameData.drawnTerrainCount,
+        frameData.drawnShadowMeshCount, Metrics.GetFps(), Renderer.IsFlagEnabled(C3D::FlagVSyncEnabled) ? "Yes" : "No", "Timings",
+        frameData.timeData.avgPrepareFrameTimeMs, frameData.timeData.avgRenderTimeMs, frameData.timeData.avgPresentTimeMs,
+        frameData.timeData.avgUpdateTimeMs, frameData.timeData.avgRunTimeMs);
 
     UI2D.SetText(m_state->debugInfoLabel, buffer.Data());
 
@@ -423,49 +427,36 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 
     m_state->skyboxPass.Prepare(&m_state->worldViewport, m_state->camera, m_state->simpleScene.GetSkybox());
 
-    f32 nearClip  = m_state->worldViewport.GetNearClip();
-    f32 farClip   = m_state->worldViewport.GetFarClip();
-    f32 clipRange = farClip - nearClip;
-
-    f32 minZ  = nearClip;
-    f32 maxZ  = nearClip + clipRange;
-    f32 range = maxZ - minZ;
-    f32 ratio = maxZ / minZ;
-
-    constexpr const f32 cascadeSplitMultiplier = 0.95f;
-
-    vec4 splits, splitDepth;
-    for (u32 c = 0; c < MAX_SHADOW_CASCADE_COUNT; ++c)
-    {
-        f32 p       = (c + 1) / static_cast<f32>(MAX_SHADOW_CASCADE_COUNT);
-        f32 log     = minZ * C3D::Pow(ratio, p);
-        f32 uniform = minZ + range * p;
-
-        f32 d     = cascadeSplitMultiplier * (log - uniform) + uniform;
-        splits[c] = (d - nearClip) / clipRange;
-    }
-
-    mat4 shadowCameraLookats[4];
-    mat4 shadowCameraProjections[4];
-
-    auto lastSplitDist = 0.f;
-    for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
-    {
-        m_state->shadowPass[i].Prepare(frameData, m_state->simpleScene, m_state->camera->GetViewMatrix(),
-                                       m_state->worldViewport.GetProjection(), i, splits[i], lastSplitDist);
-
-        shadowCameraLookats[i]     = m_state->shadowPass[i].GetShadowCameraLookat();
-        shadowCameraProjections[i] = m_state->shadowPass[i].GetShadowCameraProjection();
-
-        lastSplitDist = splits[i];
-        splitDepth[i] = nearClip + splits[i] * clipRange;
-    }
-
-    // When the scene is loaded we prepare the skybox and scene pass
+    // Only when the scene is loaded we prepare the shadow, scene and editor pass
     if (m_state->simpleScene.GetState() == SceneState::Loaded)
     {
+        // Prepare the shadow pass
+        m_state->shadowPass.Prepare(frameData, m_state->worldViewport, m_state->camera);
+
+        const auto& cullingData = m_state->shadowPass.GetCullingData();
+
+        // Populate the geometries and terrains
+        for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; i++)
+        {
+            auto& data = m_state->shadowPass.GetCascadeData(i);
+            data.geometries.Reserve(512);
+            data.terrains.Reserve(16);
+
+            // Get all the relevant meshes from the scene
+            m_state->simpleScene.QueryMeshes(frameData, cullingData.lightDirection, cullingData.center, cullingData.radius,
+                                             data.geometries);
+            // Keep track of how many meshes are being used in our shadow pass
+            frameData.drawnShadowMeshCount = data.geometries.Size();
+
+            // Get all the relevant terrains from the scene
+            m_state->simpleScene.QueryTerrains(frameData, data.terrains);
+            // Also keep track of how many terrains are being used in our shadow pass
+            frameData.drawnShadowMeshCount += data.terrains.Size();
+        }
+
+        // Prepare the scene pass
         m_state->scenePass.Prepare(&m_state->worldViewport, m_state->camera, frameData, m_state->simpleScene, m_state->renderMode,
-                                   m_state->testLines, m_state->testBoxes, shadowCameraLookats, shadowCameraProjections, splitDepth);
+                                   m_state->testLines, m_state->testBoxes, m_state->shadowPass.GetCascadeData());
 
         // Prepare the editor pass
         m_state->editorPass.Prepare(&m_state->worldViewport, m_state->camera, &m_state->gizmo);
@@ -710,29 +701,19 @@ bool TestEnv::ConfigureRendergraph() const
 
     // ShadowMap pass
     ShadowMapPassConfig config;
-    config.resolution = 2048;
-    for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; ++i)
-    {
-        auto name = C3D::String::FromFormat("SHADOW_{}", i);
+    config.resolution = 4096;
 
-        m_state->shadowPass[i] = ShadowMapPass(m_pSystemsManager, name, config);
-        if (!m_state->frameGraph.AddPass(name, &m_state->shadowPass[i]))
-        {
-            ERROR_LOG("Failed to add: '{}' pass.", name);
-            return false;
-        }
-        if (!m_state->frameGraph.AddSource(name, "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
-                                           C3D::RendergraphSourceOrigin::Self))
-        {
-            ERROR_LOG("Failed to add COLOR_BUFFER to: '{}' pass.", name);
-            return false;
-        }
-        if (!m_state->frameGraph.AddSource(name, "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
-                                           C3D::RendergraphSourceOrigin::Self))
-        {
-            ERROR_LOG("Failed to add DEPTH_BUFFER to: '{}' pass.", name);
-            return false;
-        }
+    m_state->shadowPass = ShadowMapPass(m_pSystemsManager, "SHADOW", config);
+    if (!m_state->frameGraph.AddPass("SHADOW", &m_state->shadowPass))
+    {
+        ERROR_LOG("Failed to add: SHADOW pass.");
+        return false;
+    }
+    if (!m_state->frameGraph.AddSource("SHADOW", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
+                                       C3D::RendergraphSourceOrigin::Self))
+    {
+        ERROR_LOG("Failed to add DEPTH_BUFFER to Shadow pass.");
+        return false;
     }
 
     // Scene pass
@@ -752,24 +733,9 @@ bool TestEnv::ConfigureRendergraph() const
         ERROR_LOG("Failed to add DEPTH_BUFFER sink to Scene pass.");
         return false;
     }
-    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP_0"))
+    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP"))
     {
         ERROR_LOG("Failed to add SHADOW_MAP_0 sink to Scene pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP_1"))
-    {
-        ERROR_LOG("Failed to add SHADOW_MAP_1 sink to Scene pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP_2"))
-    {
-        ERROR_LOG("Failed to add SHADOW_MAP_2 sink to Scene pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP_3"))
-    {
-        ERROR_LOG("Failed to add SHADOW_MAP_3 sink to Scene pass.");
         return false;
     }
     if (!m_state->frameGraph.AddSource("SCENE", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
@@ -794,22 +760,7 @@ bool TestEnv::ConfigureRendergraph() const
         ERROR_LOG("Failed to link Global DEPTH_BUFFER source to SCENE DEPTH_BUFFER sink.");
         return false;
     }
-    if (!m_state->frameGraph.Link("SHADOW_0", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP_0"))
-    {
-        ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("SHADOW_1", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP_1"))
-    {
-        ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("SHADOW_2", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP_2"))
-    {
-        ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("SHADOW_3", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP_3"))
+    if (!m_state->frameGraph.Link("SHADOW", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP"))
     {
         ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
         return false;

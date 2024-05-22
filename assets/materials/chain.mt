@@ -4,6 +4,7 @@ version = 2
 type = pbr
 name = chain
 shader = Shader.PBR
+
 [map]
 name = albedo
 filterMin = linear
@@ -13,24 +14,17 @@ repeatV = repeat
 repeatW = repeat
 textureName = chain_texture
 [/map]
+
 [map]
-name = specular
+name = combined
 filterMin = linear
 filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = chain_texture_spec
+textureName = chain_texture_combined
 [/map]
-[map]
-name = normal
-filterMin = linear
-filterMag = linear
-repeatU = repeat
-repeatV = repeat
-repeatW = repeat
-textureName = chain_texture_ddn
-[/map]
+
 [map]
 name = normal
 filterMin = linear
@@ -40,6 +34,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = chain_texture_ddn
 [/map]
+
 [prop]
 name = diffuseColor
 type = vec4

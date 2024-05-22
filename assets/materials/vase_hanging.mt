@@ -4,6 +4,7 @@ version = 2
 type = pbr
 name = vase_hanging
 shader = Shader.PBR
+
 [map]
 name = albedo
 filterMin = linear
@@ -13,6 +14,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = vase_hanging
 [/map]
+
 [map]
 name = normal
 filterMin = linear
@@ -22,15 +24,17 @@ repeatV = repeat
 repeatW = repeat
 textureName = vase_hanging_ddn
 [/map]
+
 [map]
-name = normal
+name = combined
 filterMin = linear
 filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = vase_hanging_ddn
+textureName = vase_hanging_combined
 [/map]
+
 [prop]
 name = diffuseColor
 type = vec4

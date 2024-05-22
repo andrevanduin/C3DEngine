@@ -58,7 +58,7 @@ namespace C3D
 
         void DestroyTexture(Texture* texture) override;
 
-        bool CreateShader(Shader* shader, const ShaderConfig& config, void* pass) const override;
+        bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const override;
         void DestroyShader(Shader& shader) override;
 
         bool InitializeShader(Shader& shader) override;
@@ -66,21 +66,22 @@ namespace C3D
 
         bool BindShaderGlobals(Shader& shader) override;
         bool BindShaderInstance(Shader& shader, u32 instanceId) override;
+        bool BindShaderLocal(Shader& shader) override;
 
-        bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) override;
-        bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) override;
+        bool ShaderApplyGlobals(const FrameData& frameData, const Shader& shader, bool needsUpdate) override;
+        bool ShaderApplyInstance(const FrameData& frameData, const Shader& shader, bool needsUpdate) override;
+        bool ShaderApplyLocal(const FrameData& frameData, const Shader& shader) override;
 
-        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps,
-                                            u32* outInstanceId) override;
+        bool AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config, u32& outInstanceId) override;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) override;
 
         bool AcquireTextureMapResources(TextureMap& map) override;
         void ReleaseTextureMapResources(TextureMap& map) override;
         bool RefreshTextureMapResources(TextureMap& map) override;
 
-        bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) override;
+        bool SetUniform(Shader& shader, const ShaderUniform& uniform, u32 arrayIndex, const void* value) override;
 
-        void CreateRenderTarget(void* pass, RenderTarget& target, u32 width, u32 height) override;
+        void CreateRenderTarget(void* pass, RenderTarget& target, u16 layerIndex, u32 width, u32 height) override;
         void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory) override;
 
         bool CreateRenderpassInternals(const RenderpassConfig& config, void** internalData) override;
@@ -106,7 +107,7 @@ namespace C3D
 
         bool RecreateSwapChain();
 
-        bool CreateShaderModule(const VulkanShaderStageConfig& config, VulkanShaderStage* shaderStage) const;
+        bool CreateShaderModule(const ShaderStageConfig& config, VulkanShaderStage& outStage) const;
 
         VkSampler CreateSampler(TextureMap& map);
 

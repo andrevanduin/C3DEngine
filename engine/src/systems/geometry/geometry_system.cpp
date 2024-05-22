@@ -192,7 +192,7 @@ namespace C3D
         }
         else
         {
-            config.materialName = DEFAULT_MATERIAL_NAME;
+            config.materialName = DEFAULT_PBR_MATERIAL_NAME;
         }
 
         return config;
@@ -341,7 +341,7 @@ namespace C3D
         }
         else
         {
-            config.materialName = DEFAULT_MATERIAL_NAME;
+            config.materialName = DEFAULT_PBR_MATERIAL_NAME;
         }
 
         GeometryUtils::GenerateTangents(config.vertices, config.indices);

@@ -17,6 +17,7 @@ namespace C3D
     struct Texture;
     struct ShaderUniform;
     struct ShaderConfig;
+    struct ShaderInstanceResourceConfig;
     struct FrameData;
     struct TextureMap;
     struct RenderPassConfig;
@@ -103,7 +104,7 @@ namespace C3D
         virtual void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) = 0;
         virtual void DestroyTexture(Texture* texture)                             = 0;
 
-        virtual bool CreateShader(Shader* shader, const ShaderConfig& config, void* pass) const = 0;
+        virtual bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const = 0;
         virtual void DestroyShader(Shader& shader)                                              = 0;
 
         virtual bool InitializeShader(Shader& shader) = 0;
@@ -111,21 +112,24 @@ namespace C3D
 
         virtual bool BindShaderGlobals(Shader& shader)                  = 0;
         virtual bool BindShaderInstance(Shader& shader, u32 instanceId) = 0;
+        virtual bool BindShaderLocal(Shader& shader)                    = 0;
 
-        virtual bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate)  = 0;
-        virtual bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) = 0;
+        virtual bool ShaderApplyGlobals(const FrameData& frameData, const Shader& shader, bool needsUpdate)  = 0;
+        virtual bool ShaderApplyInstance(const FrameData& frameData, const Shader& shader, bool needsUpdate) = 0;
+        virtual bool ShaderApplyLocal(const FrameData& frameData, const Shader& shader)                      = 0;
 
-        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, const TextureMap** maps, u32* outInstanceId) = 0;
-        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId)                                                   = 0;
+        virtual bool AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config,
+                                                    u32& outInstanceId)            = 0;
+        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId) = 0;
 
         virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
         virtual void ReleaseTextureMapResources(TextureMap& map) = 0;
         virtual bool RefreshTextureMapResources(TextureMap& map) = 0;
 
-        virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) = 0;
+        virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, u32 arrayIndex, const void* value) = 0;
 
-        virtual void CreateRenderTarget(void* pass, RenderTarget& target, u32 width, u32 height) = 0;
-        virtual void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory)          = 0;
+        virtual void CreateRenderTarget(void* pass, RenderTarget& target, u16 layerIndex, u32 width, u32 height) = 0;
+        virtual void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory)                          = 0;
 
         virtual bool CreateRenderpassInternals(const RenderpassConfig& config, void** internalData) = 0;
         virtual void DestroyRenderpassInternals(void* internalData)                                 = 0;

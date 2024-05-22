@@ -4,6 +4,7 @@ version = 2
 type = pbr
 name = Material__25
 shader = Shader.PBR
+
 [map]
 name = albedo
 filterMin = linear
@@ -13,24 +14,17 @@ repeatV = repeat
 repeatW = repeat
 textureName = lion
 [/map]
+
 [map]
-name = specular
+name = combined
 filterMin = linear
 filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = lion_spec
+textureName = lion_combined
 [/map]
-[map]
-name = roughness
-filterMin = linear
-filterMag = linear
-repeatU = repeat
-repeatV = repeat
-repeatW = repeat
-textureName = lion_roughness
-[/map]
+
 [map]
 name = normal
 filterMin = linear
@@ -40,6 +34,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = lion_ddn
 [/map]
+
 [prop]
 name = diffuseColor
 type = vec4

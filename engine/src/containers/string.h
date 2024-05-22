@@ -736,13 +736,23 @@ namespace C3D
             TrimRight();
         }
 
-        /** @brief Checks if string starts with provided character sequence. */
+        /** @brief Checks if string starts with provided character sequence case-sensitive. */
         [[nodiscard]] bool StartsWith(const BasicString& sequence) const
         {
             // If our string is shorter than the sequence our string can not start with the sequence.
             if (m_size < sequence.Size()) return false;
 
             return std::equal(begin(), begin() + sequence.Size(), sequence.begin(), sequence.end());
+        }
+
+        /** @brief Checks if string starts with provided character sequence case-insensitive. */
+        [[nodiscard]] bool StartsWithI(const BasicString& sequence) const
+        {
+            // If our string is shorter than the sequence our string can not start with the sequence.
+            if (m_size < sequence.Size()) return false;
+
+            return std::equal(begin(), begin() + sequence.Size(), sequence.begin(), sequence.end(),
+                              [](const char a, const char b) { return std::tolower(a) == std::tolower(b); });
         }
 
         /** @brief Checks if string starts with provided character. */
@@ -772,12 +782,27 @@ namespace C3D
             return m_data[m_size - 1] == c;
         }
 
-        /** @brief Find the last occurence of the provided char.
+        /** @brief Find the first occurence of the provided char. If no occurence exists end() is returned.
          *
          * @param c Char that you want to look for
+         * @return const_iterator to where the first instance of the char can be found.
+         */
+        [[nodiscard]] const_iterator Find(const char c) const
+        {
+            for (i32 i = 0; i < m_size; i++)
+            {
+                if (m_data[i] == c)
+                {
+                    return const_iterator(m_data + i);
+                }
+            }
+            return end();
+        }
+
+        /** @brief Find the last occurence of the provided char. If no occurence exists end() is returned.
          *
+         * @param c Char that you want to look for
          * @return const_iterator to where the last instance of the char can be found.
-         * If no occurence exists end() is returned
          */
         [[nodiscard]] const_iterator FindLastOf(const char c) const
         {
@@ -792,11 +817,10 @@ namespace C3D
         }
 
         /** @brief Find the last occurence in the string where the predicate holds.
+         * If the predicate does not hold for any character in the string end() is returned
          *
          * @param p The predicate you want to check
-         *
          * @return const_iterator to where the last instance in the string is where the predicate holds.
-         * If the predicate does not hold for any character in the string end() is returned
          */
         template <typename Predicate>
         [[nodiscard]] const_iterator FindLastWhere(Predicate p) const

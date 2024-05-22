@@ -15,23 +15,13 @@ textureName = falc_wreck_low_DefaultMaterial_AlbedoTransparency
 [/map]
 
 [map]
-name = metallic
+name = combined
 filterMin = linear
 filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = falc_wreck_low_DefaultMaterial_Metallic
-[/map]
-
-[map]
-name = roughness
-filterMin = linear
-filterMag = linear
-repeatU = repeat
-repeatV = repeat
-repeatW = repeat
-textureName = falc_wreck_low_DefaultMaterial_Roughness
+textureName = falc_wreck_low_DefaultMaterial_combined
 [/map]
 
 [map]

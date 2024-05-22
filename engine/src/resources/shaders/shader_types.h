@@ -38,7 +38,13 @@ namespace C3D
         Uniform_Int32,
         Uniform_UInt32,
         Uniform_Matrix4,
-        Uniform_Sampler,
+        Uniform_Sampler1D,
+        Uniform_Sampler2D,
+        Uniform_Sampler3D,
+        Uniform_SamplerCube,
+        Uniform_Sampler1DArray,
+        Uniform_Sampler2DArray,
+        Uniform_SamplerCubeArray,
         Uniform_Custom = 255
     };
 
@@ -68,8 +74,20 @@ namespace C3D
                 return "u32";
             case ShaderUniformType::Uniform_Matrix4:
                 return "mat4";
-            case ShaderUniformType::Uniform_Sampler:
-                return "sampler";
+            case ShaderUniformType::Uniform_Sampler1D:
+                return "Sampler1D";
+            case ShaderUniformType::Uniform_Sampler2D:
+                return "Sampler2D";
+            case ShaderUniformType::Uniform_Sampler3D:
+                return "Sampler3D";
+            case ShaderUniformType::Uniform_SamplerCube:
+                return "SamplerCube";
+            case ShaderUniformType::Uniform_Sampler1DArray:
+                return "Sampler1DArray";
+            case ShaderUniformType::Uniform_Sampler2DArray:
+                return "Sampler2DArray";
+            case ShaderUniformType::Uniform_SamplerCubeArray:
+                return "SamplerCubeArray";
             case ShaderUniformType::Uniform_Custom:
                 return "custom";
             default:
@@ -81,10 +99,10 @@ namespace C3D
     /* @brief the different possible scopes in a shader. */
     enum class ShaderScope
     {
-        None,
-        Global,
-        Instance,
-        Local,
+        None     = -1,
+        Global   = 0,
+        Instance = 1,
+        Local    = 2,
     };
 
     enum class ShaderTopology
@@ -97,21 +115,28 @@ namespace C3D
     /** @brief Configuration for an attribute. */
     struct ShaderAttributeConfig
     {
+        /** @brief The name of the attribute. */
         String name;
-
+        /** @brief The size of the attribute. */
         u8 size;
+        /** @brief The type of the attribute. */
         ShaderAttributeType type;
     };
 
     /** @brief Configuration for a uniform. */
     struct ShaderUniformConfig
     {
+        /** @brief The name of the uniform. */
         String name;
-
-        u16 size;
-        u32 location;
-
+        /** @brief The size of the uniform. If the uniform is an array this is the per-element size. */
+        u16 size = 0;
+        /** @brief The location of the uniform. */
+        u32 location = INVALID_ID;
+        /** @brief The type of this uniform (vec2, sampler2D etc.). */
         ShaderUniformType type;
+        /** @brief The array length for this uniform (non-array types will always be 1). */
+        u8 arrayLength = 1;
+        /** @brief The scope of this uniform (global, instance or local). */
         ShaderScope scope = ShaderScope::None;
     };
 
@@ -132,18 +157,16 @@ namespace C3D
 
         /** @brief The face cull mode to be used. Default is BACK if not supplied. */
         FaceCullMode cullMode;
-
+        /** @brief The types of toplogy for the shader pipeline. */
+        u32 topologyTypes;
+        /** @brief A list of attributes used by this shader. */
         DynamicArray<ShaderAttributeConfig> attributes;
+        /** @brief A list of uniforms used by this shader. */
         DynamicArray<ShaderUniformConfig> uniforms;
-
-        DynamicArray<ShaderStage> stages;
-
-        DynamicArray<String> stageNames;
-        DynamicArray<String> stageFileNames;
-
-        /** @brief The types of toplogy that this shader should support. */
-        u32 topologyTypes = 0;
-
+        /** @brief The per-stage config for this shader. */
+        DynamicArray<ShaderStageConfig> stageConfigs;
+        /** @brief The maximum number of instances allowed for this shader. */
+        u32 maxInstances = 1;
         /** @brief The flags that need to be set*/
         ShaderFlagBits flags = ShaderFlagNone;
     };
@@ -162,6 +185,7 @@ namespace C3D
         u16 index;
         u16 size;
         u8 setIndex;
+        u8 arrayLength;
         ShaderScope scope;
         ShaderUniformType type;
     };
@@ -171,5 +195,21 @@ namespace C3D
         String name;
         ShaderAttributeType type;
         u32 size;
+    };
+
+    struct ShaderInstanceUniformTextureConfig
+    {
+        /** @brief The location of the uniform to map to. */
+        u16 uniformLocation = INVALID_ID_U16;
+        /** @brief The number of texture map pointers mapped to the uniform. */
+        u8 textureMapCount = 0;
+        /** @brief An array of texture map pointers to be mapped to the uniform. */
+        TextureMap** textureMaps;
+    };
+
+    struct ShaderInstanceResourceConfig
+    {
+        u32 uniformConfigCount                             = 0;
+        ShaderInstanceUniformTextureConfig* uniformConfigs = nullptr;
     };
 }  // namespace C3D

@@ -356,4 +356,10 @@ namespace C3D
         return x < 0.0f ? -1.0f : 1.0f;
     }
 
+    C3D_API C3D_INLINE f32 DistancePointToLine(const vec3& point, const vec3& lineStart, const vec3& lineDirection)
+    {
+        f32 magnitude = glm::length(glm::cross(point - lineStart, lineDirection));
+        return magnitude / glm::length(lineDirection);
+    }
+
 }  // namespace C3D

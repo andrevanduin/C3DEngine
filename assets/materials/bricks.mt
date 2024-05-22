@@ -4,6 +4,7 @@ version = 2
 type = pbr
 name = bricks
 shader = Shader.PBR
+
 [map]
 name = albedo
 filterMin = linear
@@ -13,15 +14,17 @@ repeatV = repeat
 repeatW = repeat
 textureName = spnza_bricks_a_diff
 [/map]
+
 [map]
-name = roughness
+name = combined
 filterMin = linear
 filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = spnza_bricks_a_roughness
+textureName = sponza_bricks_a_combined
 [/map]
+
 [map]
 name = normal
 filterMin = linear
@@ -31,6 +34,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = spnza_bricks_a_ddn
 [/map]
+
 [prop]
 name = diffuseColor
 type = vec4

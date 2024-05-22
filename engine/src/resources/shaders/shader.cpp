@@ -3,21 +3,24 @@
 
 namespace C3D
 {
-    u16 Shader::GetUniformIndex(const char* uniformName)
+    constexpr const char* INSTANCE_NAME = "SHADER";
+
+    u16 Shader::GetUniformIndex(const char* uniformName) const
     {
         if (id == INVALID_ID)
         {
-            Logger::Error("[{}] - GetUniformIndex() - Called with invalid shader.", name);
+            INFO_LOG("Shader: '{}' is invalid.", name);
             return INVALID_ID_U16;
         }
 
         if (!uniforms.Has(uniformName))
         {
-            Logger::Error("[{}] - GetUniformIndex() - No uniform named: '{}' is registered in this shader.", name,
-                          uniformName);
+            INFO_LOG("No uniform named: '{}' is registered in this shader ('{}').", uniformName, name);
             return INVALID_ID_U16;
         }
 
         return static_cast<u16>(uniforms.GetIndex(uniformName));
     }
+
+    u16 Shader::GetUniformIndex(const String& uniformName) const { return GetUniformIndex(uniformName.Data()); }
 }  // namespace C3D

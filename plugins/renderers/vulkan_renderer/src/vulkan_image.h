@@ -16,25 +16,26 @@ namespace C3D
     public:
         ~VulkanImage();
 
-        bool Create(const VulkanContext* context, const String& name, TextureType type, u32 _width, u32 _height, VkFormat format,
+        bool Create(const VulkanContext* context, const String& name, TextureType type, u32 w, u32 h, u16 layerCount, VkFormat format,
                     VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryFlags, bool createView, u8 mipLevels,
                     VkImageAspectFlags viewAspectFlags);
 
         bool CreateMipMaps(const VulkanCommandBuffer* commandBuffer);
 
-        void CreateView(TextureType type, VkImageAspectFlags aspectFlags);
+        VkImageView CreateView(TextureType type, u16 layerCount, i32 layerIndex, VkImageAspectFlags aspectFlags);
 
-        void TransitionLayout(const VulkanCommandBuffer* commandBuffer, TextureType type, VkFormat format, VkImageLayout oldLayout,
+        void TransitionLayout(const VulkanCommandBuffer* commandBuffer, VkFormat format, VkImageLayout oldLayout,
                               VkImageLayout newLayout) const;
 
-        void CopyFromBuffer(TextureType type, VkBuffer buffer, u64 offset, const VulkanCommandBuffer* commandBuffer) const;
-        void CopyToBuffer(TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
-        void CopyPixelToBuffer(TextureType type, VkBuffer buffer, u32 x, u32 y, const VulkanCommandBuffer* commandBuffer) const;
+        void CopyFromBuffer(VkBuffer buffer, u64 offset, const VulkanCommandBuffer* commandBuffer) const;
+        void CopyToBuffer(VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const;
+        void CopyPixelToBuffer(VkBuffer buffer, u32 x, u32 y, const VulkanCommandBuffer* commandBuffer) const;
 
         void Destroy();
 
         VkImage handle   = nullptr;
         VkImageView view = nullptr;
+        DynamicArray<VkImageView> layerViews;
 
         u32 width = 0, height = 0;
 
@@ -45,7 +46,8 @@ namespace C3D
         VkMemoryPropertyFlags m_memoryFlags = 0;
         VkFormat m_format;
 
-        u8 m_mipLevels;
+        u16 m_layerCount = 0;
+        u8 m_mipLevels   = 0;
 
         const VulkanContext* m_context = nullptr;
     };

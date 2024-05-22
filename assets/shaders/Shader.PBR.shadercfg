@@ -1,53 +1,50 @@
 
 # PBR Shader config file
-version = 1.0
+version = 2
+
+[general]
 name = Shader.PBR
-stages = vertex, fragment
-stageFiles = shaders/PBRShader.vert, shaders/PBRShader.frag
-depthTest  = true
+depthTest = true
 depthWrite = true
+maxInstances = 256
+[/general]
 
-# Attributes: (type, name)
-attribute = vec3, inPosition
-attribute = vec3, inNormal
-attribute = vec2, inTexCoord
-attribute = vec4, inColor
-attribute = vec3, inTangent
+[stages]
+vertex = PBRShader.vert
+fragment = PBRShader.frag
+[/stages]
 
-# Uniforms type, scope, name
-# Global
-uniform = mat4, global, projection
-uniform = mat4, global, view
-uniform = mat4, global, lightSpace_0
-uniform = mat4, global, lightSpace_1
-uniform = mat4, global, lightSpace_2
-uniform = mat4, global, lightSpace_3
-uniform = vec4, global, cascadeSplits
-uniform = vec3, global, viewPosition
-uniform = u32, global, mode
-uniform = u32, global, usePCF
-uniform = f32, global, bias
-uniform = vec2, global, padding
+[attributes]
+inPosition = vec3
+inNormal = vec3
+inTexCoord = vec2
+inColor = vec4
+inTangent = vec3
+[/attributes]
 
-# Instance
-
-# Samplers
-uniform = samp, instance, albedoTexture
-uniform = samp, instance, normalTexture
-uniform = samp, instance, metallicTexture
-uniform = samp, instance, roughnessTexture
-uniform = samp, instance, aoTexture
-uniform = samp, instance, shadowTexture_0
-uniform = samp, instance, shadowTexture_1
-uniform = samp, instance, shadowTexture_2
-uniform = samp, instance, shadowTexture_3
-uniform = samp, instance, iblCubeTexture
-
-# Structs
-uniform = struct32, instance, dirLight
-uniform = struct480, instance, pLights
-uniform = struct32, instance, properties
-uniform = u32, instance, numPLights
-
-# Local
-uniform = mat4, local, model
+[uniforms]
+[global]
+projection = mat4
+view = mat4
+lightSpaces = mat4[4]
+cascadeSplits = vec4
+viewPosition = vec3
+mode = u32
+usePCF = u32
+bias = f32
+padding = vec2
+[/global]
+[instance]
+# Material texture samplers are: albedo, normal, combined (metallic, roughness and ao)
+materialTextures = sampler2D[3]
+shadowTextures = sampler2DArray
+iblCubeTexture = samplerCube
+dirLight = struct32
+pLights = struct480
+properties = struct32
+numPLights = u32
+[/instance]
+[local]
+model = mat4
+[/local]
+[/uniforms]

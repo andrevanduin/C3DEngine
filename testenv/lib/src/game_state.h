@@ -5,6 +5,7 @@
 #include <core/ecs/entity.h>
 #include <core/frame_data.h>
 #include <core/uuid.h>
+#include <renderer/passes/shadow_map_pass.h>
 #include <renderer/rendergraph/rendergraph.h>
 #include <renderer/viewport.h>
 #include <resources/debug/debug_line_3d.h>
@@ -14,7 +15,6 @@
 #include "editor/editor_gizmo.h"
 #include "passes/editor_pass.h"
 #include "passes/scene_pass.h"
-#include "passes/shadow_map_pass.h"
 #include "passes/skybox_pass.h"
 #include "resources/scenes/simple_scene.h"
 
@@ -46,6 +46,8 @@ struct GameState final : C3D::ApplicationState
 
     ReloadState reloadState = ReloadState::Done;
 
+    f64 moveSpeed = 25.0, moveSpeedFast = 100.0;
+
     // TEMP
     SimpleScene simpleScene;
     EditorGizmo gizmo;
@@ -62,7 +64,7 @@ struct GameState final : C3D::ApplicationState
 
     C3D::Rendergraph frameGraph;
     SkyboxPass skyboxPass;
-    ShadowMapPass shadowPass[4];
+    ShadowMapPass shadowPass;
     ScenePass scenePass;
     EditorPass editorPass;
 

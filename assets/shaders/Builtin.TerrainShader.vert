@@ -69,7 +69,7 @@ void main()
     outDto.texCoord = inTexCoord;
     outDto.color = inColor;
     outDto.materialWeights = inMaterialWeights;
-    
+
     // Fragment position in world space
     outDto.fragPosition = vec3(uPushConstants.model * vec4(inPosition, 1.0));
 

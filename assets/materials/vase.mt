@@ -4,6 +4,7 @@ version = 2
 type = pbr
 name = vase
 shader = Shader.PBR
+
 [map]
 name = albedo
 filterMin = linear
@@ -13,15 +14,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = vase_dif
 [/map]
-[map]
-name = specular
-filterMin = linear
-filterMag = linear
-repeatU = repeat
-repeatV = repeat
-repeatW = repeat
-textureName = vase_spec
-[/map]
+
 [map]
 name = normal
 filterMin = linear
@@ -31,15 +24,17 @@ repeatV = repeat
 repeatW = repeat
 textureName = vase_ddn
 [/map]
+
 [map]
-name = normal
+name = combined
 filterMin = linear
 filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = vase_ddn
+textureName = vase_combined
 [/map]
+
 [prop]
 name = diffuseColor
 type = vec4

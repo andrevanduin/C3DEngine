@@ -81,12 +81,6 @@ namespace C3D
         m_sinks.Destroy();
     }
 
-    Texture* Renderpass::GetAttachmentTexture(RenderTargetAttachmentType type, u8 frameNumber)
-    {
-        C3D_FAIL("RendergraphPass base implementation of GetAttachmentTexture called.");
-        return nullptr;
-    }
-
     bool Renderpass::RegenerateRenderTargets(const u32 width, const u32 height)
     {
         for (u32 i = 0; i < m_targets.Size(); i++)
@@ -121,10 +115,9 @@ namespace C3D
                         ERROR_LOG("Failed to regenerate attachment textures for Renderpass: '{}'.", m_name);
                     }
 
-                    attachment.texture = GetAttachmentTexture(attachment.type, i);
-                    if (!attachment.texture)
+                    if (!PopulateAttachment(attachment))
                     {
-                        ERROR_LOG("Invalid attachment Texture.");
+                        ERROR_LOG("Failed to populate attachment.");
                         return false;
                     }
                 }
@@ -139,7 +132,7 @@ namespace C3D
             }
 
             // Create the underlying target
-            Renderer.CreateRenderTarget(m_pInternalData, target, w, h);
+            Renderer.CreateRenderTarget(m_pInternalData, target, 0, w, h);
         }
 
         return true;

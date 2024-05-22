@@ -75,6 +75,6 @@ namespace C3D
     struct RenderTarget
     {
         DynamicArray<RenderTargetAttachment> attachments;
-        void* internalFrameBuffer;
+        void* internalFrameBuffer = nullptr;
     };
 }  // namespace C3D

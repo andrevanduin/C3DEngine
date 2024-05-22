@@ -27,6 +27,8 @@ namespace C3D
         FaceCullMode cullMode;
         ShaderFlagBits shaderFlags = ShaderFlags::ShaderFlagNone;
 
+        u32 topologyTypes = 0;
+
         /** @brief The name of the shader that is associated with this pipeline. */
         String shaderName;
     };

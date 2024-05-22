@@ -61,7 +61,7 @@ namespace C3D
     using CVarOnChangedCallback = std::function<void(const CVar&)>;
     using CVarValue             = std::variant<u8, i8, u16, i16, u32, i32, u64, i64, f32, f64, bool>;
 
-    class CVar
+    class C3D_API CVar
     {
     public:
         template <typename T>

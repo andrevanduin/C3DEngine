@@ -1,73 +1,51 @@
 # Terrain Shader config file
-version = 1.0
+version = 2
+
+[general]
 name = Shader.Builtin.Terrain
-stages = vertex, fragment
-stageFiles = shaders/Builtin.TerrainShader.vert, shaders/Builtin.TerrainShader.frag
 depthTest  = true
 depthWrite = true
+maxInstances = 5
+[/general]
 
-# Attributes: (type, name)
-attribute = vec3, inPosition
-attribute = vec3, inNormal
-attribute = vec2, inTexCoord
-attribute = vec4, inColor
-attribute = vec4, inTangent
-attribute = vec4, inMaterialWeights
+[stages]
+vertex = Builtin.TerrainShader.vert
+fragment = Builtin.TerrainShader.frag
+[/stages]
 
-# Uniforms type, scope, name
-# Global
-uniform = mat4, global, projection
-uniform = mat4, global, view
-uniform = mat4, global, lightSpace_0
-uniform = mat4, global, lightSpace_1
-uniform = mat4, global, lightSpace_2
-uniform = mat4, global, lightSpace_3
-uniform = vec4, global, cascadeSplits
-uniform = struct32, global, dirLight
-uniform = vec3, global, viewPosition
-uniform = u32, global, mode
-uniform = u32, global, usePCF
-uniform = f32, global, bias
-uniform = vec2, global, globalPadding
+[attributes]
+inPosition = vec3
+inNormal = vec3
+inTexCoord = vec2
+inColor = vec4
+inTangent = vec4
+inMaterialWeights = vec4
+[/attributes]
 
-# Samplers
-# Instance
-uniform = samp, instance, albedoTexture_0
-uniform = samp, instance, normalTexture_0
-uniform = samp, instance, metallicTexture_0
-uniform = samp, instance, roughnessTexture_0
-uniform = samp, instance, aoTexture_0
-
-uniform = samp, instance, albedoTexture_1
-uniform = samp, instance, normalTexture_1
-uniform = samp, instance, metallicTexture_1
-uniform = samp, instance, roughnessTexture_1
-uniform = samp, instance, aoTexture_1
-
-uniform = samp, instance, albedoTexture_2
-uniform = samp, instance, normalTexture_2
-uniform = samp, instance, metallicTexture_2
-uniform = samp, instance, roughnessTexture_2
-uniform = samp, instance, aoTexture_2
-
-uniform = samp, instance, albedoTexture_3
-uniform = samp, instance, normalTexture_3
-uniform = samp, instance, metallicTexture_3
-uniform = samp, instance, roughnessTexture_3
-uniform = samp, instance, aoTexture_3
-
-# Shadow Map
-uniform = samp, instance, shadowTexture_0
-uniform = samp, instance, shadowTexture_1
-uniform = samp, instance, shadowTexture_2
-uniform = samp, instance, shadowTexture_3
-# Irradiance
-uniform = samp, instance, iblCubeTexture
-
-uniform = struct160, instance, properties
-uniform = struct480, instance, pLights
-uniform = vec3, instance, padding
-uniform = i32, instance, numPLights
-
-# Local 
-uniform = mat4, local, model
+[uniforms]
+[global]
+projection = mat4
+view = mat4
+lightSpaces = mat4[4]
+cascadeSplits = vec4
+dirLight = struct32
+viewPosition = vec3
+mode = u32
+usePCF = u32
+bias = f32
+globalPadding = vec2
+[/global]
+[instance]
+# Contains 2DArray sampler with textures ordered per material: albedo, normal, combined (metallic, roughness and ao)
+materialTextures = sampler2DArray
+shadowTextures = sampler2DArray
+iblCubeTexture = samplerCube
+properties = struct160
+pLights = struct480
+padding = vec3
+numPLights = i32
+[/instance]
+[local]
+model = mat4
+[/local]
+[/uniforms]

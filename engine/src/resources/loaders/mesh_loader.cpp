@@ -424,6 +424,7 @@ namespace C3D
 
         MaterialConfig currentConfig;
         currentConfig.version = 2;
+        currentConfig.type    = MaterialType::PBR;
 
         bool hitName = false;
 
@@ -567,10 +568,24 @@ namespace C3D
             // Normal texture map
             map.name = "normal";
         }
+        else if (parts[0].IEquals("map_Pr"))
+        {
+            // TODO: This + metallioc and ao should be combined automatically
+            map.name = "roughness";
+        }
+        else if (parts[0].IEquals("map_Pm"))
+        {
+            // TODO: This + roughness and ao should be combined automatically
+            map.name = "metallic";
+        }
         else if (parts[0].IEquals("map_Ka"))
         {
             // Ambient texture map, we skip this for now
             return;
+        }
+        else if (parts[0].IEquals("map_Ke"))
+        {
+            map.name = "emissive";
         }
         else if (parts[0].IEquals("map_d"))
         {

@@ -15,26 +15,6 @@ textureName=river_rock_albedo
 [/map]
 
 [map]
-name=metallic
-filterMin=linear
-filterMag=linear
-repeatU=repeat
-repeatV=repeat
-repeatW=repeat
-textureName=river_rock_metallic
-[/map]
-
-[map]
-name=roughness
-filterMin=linear
-filterMag=linear
-repeatU=repeat
-repeatV=repeat
-repeatW=repeat
-textureName=river_rock_roughness
-[/map]
-
-[map]
 name=normal
 filterMin=linear
 filterMag=linear
@@ -45,13 +25,13 @@ textureName=river_rock_normal
 [/map]
 
 [map]
-name=ao
+name=combined
 filterMin=linear
 filterMag=linear
 repeatV=repeat
 repeatU=repeat
 repeatW=repeat
-textureName=river_rock_ao
+textureName=river_rock_combined
 [/map]
 
 [prop]

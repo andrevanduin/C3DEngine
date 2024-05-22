@@ -4,6 +4,7 @@ version = 2
 type = pbr
 name = Material__57
 shader = Shader.PBR
+
 [map]
 name = albedo
 filterMin = linear
@@ -13,24 +14,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = vase_plant
 [/map]
-[map]
-name = specular
-filterMin = linear
-filterMag = linear
-repeatU = repeat
-repeatV = repeat
-repeatW = repeat
-textureName = vase_plant_spec
-[/map]
-[map]
-name = roughness
-filterMin = linear
-filterMag = linear
-repeatU = repeat
-repeatV = repeat
-repeatW = repeat
-textureName = vase_plant_roughness
-[/map]
+
 [map]
 name = normal
 filterMin = linear
@@ -40,6 +24,17 @@ repeatV = repeat
 repeatW = repeat
 textureName = vase_plant_ddn
 [/map]
+
+[map]
+name = combined
+filterMin = linear
+filterMag = linear
+repeatU = repeat
+repeatV = repeat
+repeatW = repeat
+textureName = vase_plant_combined
+[/map]
+
 [prop]
 name = diffuseColor
 type = vec4

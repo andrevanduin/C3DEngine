@@ -194,7 +194,7 @@ namespace C3D
                     output += cVar.AsString();
                     return true;
                 case CVarType::F64:
-                    cVar.SetValue(valueStr.ToF32());
+                    cVar.SetValue(valueStr.ToF64());
                     output += cVar.AsString();
                     return true;
                 case CVarType::Bool:

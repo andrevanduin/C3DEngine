@@ -3,7 +3,6 @@
 version = 2
 type = pbr
 name = 16___Default
-shader = Shader.PBR
 [map]
 name = albedo
 filterMin = linear

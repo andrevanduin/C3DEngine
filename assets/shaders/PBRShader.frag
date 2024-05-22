@@ -55,23 +55,20 @@ layout(set = 1, binding = 0) uniform instanceUniformObject
 	uint numPLights;
 } instanceUbo;
 
+// Material texture indices
 const int SAMP_ALBEDO = 0;
 const int SAMP_NORMAL = 1;
-const int SAMP_METALLIC = 2;
-const int SAMP_ROUGHNESS = 3;
-const int SAMP_AO = 4;
-const int SAMP_SHADOW_MAP_0 = 5;
-const int SAMP_SHADOW_MAP_1 = 6;
-const int SAMP_SHADOW_MAP_2 = 7;
-const int SAMP_SHADOW_MAP_3 = 8;
-const int SAMP_IBL_CUBE = 9;
+// Combined sampler for metallic, roughness and ao
+const int SAMP_COMBINED = 2;
 
 const float PI = 3.14159265359;
 
-// Samplers: albedo, normal, metallic, roughness, ao
-layout(set = 1, binding = 1) uniform sampler2D samplers[10];
-// IBL
-layout(set = 1, binding = 1) uniform samplerCube cubeSamplers[10]; // Alias to get cube sampler
+// Material textures
+layout(set = 1, binding = 1) uniform sampler2D materialTextures[3];
+// Shadow maps
+layout(set = 1, binding = 2) uniform sampler2DArray shadowTexture;
+// Irradiance map
+layout(set = 1, binding = 3) uniform samplerCube irradianceTexture;
 
 layout(location = 0) flat in int inMode;
 layout(location = 1) flat in int usePCF;
@@ -112,15 +109,32 @@ void main()
 	TBN = mat3(tangent, biTangent, normal);
 
     // Update the normal to use a sample from the normal map.
-	vec3 localNormal = 2.0 * texture(samplers[SAMP_NORMAL], inDto.texCoord).rgb - 1.0;
+	vec3 localNormal = 2.0 * texture(materialTextures[SAMP_NORMAL], inDto.texCoord).rgb - 1.0;
 	normal = normalize(TBN * localNormal);
 
-    vec4 albedoSamp = texture(samplers[SAMP_ALBEDO], inDto.texCoord);
+    vec4 albedoSamp = texture(materialTextures[SAMP_ALBEDO], inDto.texCoord);
     vec3 albedo = pow(albedoSamp.rgb, vec3(2.2));
 
-    float metallic = texture(samplers[SAMP_METALLIC], inDto.texCoord).r;
-    float roughness = texture(samplers[SAMP_ROUGHNESS], inDto.texCoord).r;
-    float ao = texture(samplers[SAMP_AO], inDto.texCoord).r;
+    vec4 combined = texture(materialTextures[SAMP_COMBINED], inDto.texCoord);
+    float metallic = combined.r;
+    float roughness = combined.g;
+    float ao = combined.b;
+
+    // Generate shadow value based on current fragment position against the shadow map
+    // TODO: Also take point lights into account when generating shadows
+    vec4 fragPositionViewSpace = globalUbo.view * vec4(inDto.fragPosition, 1.0f);
+    float depth = abs(fragPositionViewSpace).z;
+    // Get the cascade index from the current fragment's position
+    int cascadeIndex = MAX_SHADOW_CASCADES;
+    for (int i = 0; i < MAX_SHADOW_CASCADES; ++i)
+    {
+        if (depth < inDto.cascadeSplits[i])
+        {
+            cascadeIndex = i;
+            break;
+        }
+    }
+    float shadow = CalculateShadow(inDto.lightSpaceFragPosition[cascadeIndex], cascadeIndex);
 
     // Calculate reflectance at normal incidence; if dia-electric (plastic-like) use baseReflectivity
     // of 0.04 and if it's a metal, use the albedo color as baseReflectivity.
@@ -144,7 +158,7 @@ void main()
             vec3 lightDirection = normalize(-light.direction.xyz);
             vec3 radiance = CalculateDirectionalLightRadiance(light, viewDirection);
 
-            totalReflectance += CalculateReflectance(albedo, normal, viewDirection, lightDirection, metallic, roughness, baseReflectivity, radiance);
+            totalReflectance += (shadow * CalculateReflectance(albedo, normal, viewDirection, lightDirection, metallic, roughness, baseReflectivity, radiance));
         }
 
         // Point light radiance
@@ -158,28 +172,12 @@ void main()
         }
 
         // Irradiance holds all the scene's indirect diffuse light. We use the surface normal to sample from it.
-        vec3 irradiance = texture(cubeSamplers[SAMP_IBL_CUBE], normal).rgb;
-
-        // Generate shadow value based on current fragment position against the shadow map
-        // TODO: Also take point lights into account when generating shadows
-        vec4 fragPositionViewSpace = globalUbo.view * vec4(inDto.fragPosition, 1.0f);
-        float depth = abs(fragPositionViewSpace).z;
-        // Get the cascade index from the current fragment's position
-        int cascadeIndex = MAX_SHADOW_CASCADES;
-        for (int i = 0; i < MAX_SHADOW_CASCADES; ++i)
-        {
-            if (depth < inDto.cascadeSplits[i])
-            {
-                cascadeIndex = i;
-                break;
-            }
-        }
-        float shadow = CalculateShadow(inDto.lightSpaceFragPosition[cascadeIndex], cascadeIndex);
+        vec3 irradiance = texture(irradianceTexture, normal).rgb;
 
         // Add in the albedo and ambient occlusion.
         vec3 ambient = irradiance * albedo * ao;
         
-        vec3 color = ambient + totalReflectance * shadow;
+        vec3 color = ambient + totalReflectance;
 
         // HDR tonemapping
         color = color / (color + vec3(1.0));
@@ -218,13 +216,13 @@ void main()
 float CalculatePCF(vec3 projected, int cascadeIndex)
 {
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], 0);
+    vec2 texelSize = 1.0 / textureSize(shadowTexture, 0).xy;
 
     for (int x = -1; x <= 1; ++x) 
     {
-        for(int y = -1; y <= 1; ++y) 
+        for (int y = -1; y <= 1; ++y) 
         {
-            float pcfDepth = texture(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], projected.xy + vec2(x, y) * texelSize).r;
+            float pcfDepth = texture(shadowTexture, vec3(projected.xy + vec2(x, y) * texelSize, cascadeIndex)).r;
             shadow += projected.z - inDto.bias > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -235,7 +233,7 @@ float CalculatePCF(vec3 projected, int cascadeIndex)
 float CalculateUnfiltered(vec3 projected, int cascadeIndex) 
 {
     // Sample the shadow map.
-    float mapDepth = texture(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], projected.xy).r;
+    float mapDepth = texture(shadowTexture, vec3(projected.xy, cascadeIndex)).r;
 
     // TODO: cast/get rid of branch.
     float shadow = projected.z - inDto.bias > mapDepth ? 0.0 : 1.0;
@@ -259,8 +257,9 @@ float CalculateShadow(vec4 lightSpaceFragPosition, int cascadeIndex)
 
 float GeometrySchlickGGX(float normalDotDirection, float roughness)
 {
-    roughness += 1.0;
-    float k = (roughness * roughness) / 8.0;
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+
     return normalDotDirection / (normalDotDirection * (1.0 - k) + k);
 }
 

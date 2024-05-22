@@ -1,21 +1,21 @@
 
 #include "ui_pass.h"
 
-#include <renderer/camera.h>
-#include <renderer/geometry.h>
-#include <renderer/renderer_frontend.h>
-#include <renderer/rendergraph/renderpass.h>
-#include <renderer/viewport.h>
-#include <resources/font.h>
-#include <resources/mesh.h>
-#include <resources/textures/texture_map.h>
-#include <systems/fonts/font_system.h>
-#include <systems/materials/material_system.h>
-#include <systems/resources/resource_system.h>
-#include <systems/shaders/shader_system.h>
-#include <systems/system_manager.h>
-
 #include "UI/2D/component.h"
+#include "renderer/camera.h"
+#include "renderer/geometry.h"
+#include "renderer/renderer_frontend.h"
+#include "renderer/rendergraph/renderpass.h"
+#include "renderer/viewport.h"
+#include "resources/font.h"
+#include "resources/loaders/shader_loader.h"
+#include "resources/mesh.h"
+#include "resources/textures/texture_map.h"
+#include "systems/fonts/font_system.h"
+#include "systems/materials/material_system.h"
+#include "systems/resources/resource_system.h"
+#include "systems/shaders/shader_system.h"
+#include "systems/system_manager.h"
 
 constexpr const char* INSTANCE_NAME = "UI_PASS";
 constexpr const char* SHADER_NAME   = "Shader.Builtin.UI2D";
@@ -121,7 +121,7 @@ namespace C3D
         // Apply globals
         Shaders.SetUniformByIndex(m_locations.projection, projection);
         Shaders.SetUniformByIndex(m_locations.view, &viewMatrix);
-        Shaders.ApplyGlobal(true);
+        Shaders.ApplyGlobal(frameData, true);
 
         // Sync our frame number
         m_shader->frameNumber = frameData.frameNumber;

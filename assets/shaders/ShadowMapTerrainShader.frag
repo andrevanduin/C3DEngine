@@ -1,6 +1,6 @@
 #version 450
 
-layout(set = 1, binding = 1) uniform sampler2D colorMap;
+layout(set = 1, binding = 0) uniform sampler2D colorMap;
 
 layout(location = 1) in struct Dto
 {
@@ -11,5 +11,10 @@ layout(location = 0) out vec4 outColor;
 
 void main()
 {
-    outColor = vec4(1.0);
+    float alpha = texture(colorMap, inDto.texCoord).a;
+    outColor = vec4(1.0, 1.0, 1.0, alpha);
+    if (alpha < 0.5) 
+    {
+        discard;
+    }
 }

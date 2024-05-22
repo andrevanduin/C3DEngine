@@ -74,10 +74,19 @@ namespace C3D
     /** @brief The stage that a Shader is used for. */
     enum class ShaderStage
     {
+        None,
         Vertex,
         Geometry,
         Fragment,
         Compute
+    };
+    
+    struct ShaderStageConfig
+    {
+        ShaderStage stage = ShaderStage::None;
+        String name;
+        String fileName;
+        String source;
     };
 
     enum PrimitiveTopologyType : u16

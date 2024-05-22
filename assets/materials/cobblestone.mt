@@ -4,11 +4,9 @@ version = 2
 # types can be phong, pbr or custom
 type = custom
 name = cobblestone
-# If custom, shader is required
-shader = Shader.Builtin.Material
 
 [map]
-name = diffuse
+name = albedo
 filterMin = linear
 filterMag = linear
 repeatU = repeat

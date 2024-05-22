@@ -63,26 +63,20 @@ layout(set = 1, binding = 0) uniform instanceUniformObject
 	int numPLights;
 } instanceUbo;
 
-// Samplers, albedo, normal, metallic, roughness and ao
+// Material texture indices
 const int SAMP_ALBEDO_OFFSET = 0;
 const int SAMP_NORMAL_OFFSET = 1;
-const int SAMP_METALLIC_OFFSET = 2;
-const int SAMP_ROUGHNESS_OFFSET = 3;
-const int SAMP_AO_OFFSET = 4;
-// ShadowMaps come after all material textures
-const int SAMP_SHADOW_MAP_0 = 5 * MAX_MATERIALS;
-const int SAMP_SHADOW_MAP_1 = SAMP_SHADOW_MAP_0 + 1;
-const int SAMP_SHADOW_MAP_2 = SAMP_SHADOW_MAP_1 + 1;
-const int SAMP_SHADOW_MAP_3 = SAMP_SHADOW_MAP_2 + 1;
-// Irradiance cube comes after the ShadowMap
-const int SAMP_IRRADIANCE_CUBE = SAMP_SHADOW_MAP_3 + 1;
+// Combination of metallic, roughness and ao
+const int SAMP_COMBINED_OFFSET = 2;
 
 const float PI = 3.14159265359;
 
-// albedo, normal, metallic, roughness, ao, etc...
-layout(set = 1, binding = 1) uniform sampler2D samplers[5 + (5 * MAX_MATERIALS)];
-// IBL - alias to get cube samplers from the same samplers array
-layout(set = 1, binding = 1) uniform samplerCube cubeSamplers [5 + (5 * MAX_MATERIALS)];
+// Material textures
+layout(set = 1, binding = 1) uniform sampler2DArray materialTextures;
+// Shadow maps
+layout(set = 1, binding = 2) uniform sampler2DArray shadowTexture;
+// Irradiance map
+layout(set = 1, binding = 3) uniform samplerCube irradianceTexture;
 
 layout(location = 0) flat in int inMode;
 layout(location = 1) flat in int usePCF;
@@ -129,26 +123,28 @@ void main()
 
     vec3 normals[MAX_MATERIALS];
     vec4 albedos[MAX_MATERIALS];
-    vec4 metallics[MAX_MATERIALS];
-    vec4 roughnesses[MAX_MATERIALS];
-    vec4 aos[MAX_MATERIALS];
+    float metallics[MAX_MATERIALS];
+    float roughnesses[MAX_MATERIALS];
+    float aos[MAX_MATERIALS];
 
     // Sample each material
     for (int m = 0; m < instanceUbo.properties.numMaterials; ++m)
     {
-        int mElement = (m * 5);
+        int mElement = (m * 3);
 
-        albedos[m] = texture(samplers[mElement + SAMP_ALBEDO_OFFSET], inDto.texCoord);
+        albedos[m] = texture(materialTextures, vec3(inDto.texCoord, mElement + SAMP_ALBEDO_OFFSET));
         albedos[m] = vec4(pow(albedos[m].rgb, vec3(2.2)), albedos[m].a);
 
-        vec3 localNormal = 2.0 * texture(samplers[mElement + SAMP_NORMAL_OFFSET], inDto.texCoord).rgb - 1.0;
+        vec3 localNormal = 2.0 * texture(materialTextures, vec3(inDto.texCoord, mElement + SAMP_NORMAL_OFFSET)).rgb - 1.0;
         normals[m] = normalize(TBN * localNormal);
-
-        metallics[m] = texture(samplers[mElement + SAMP_METALLIC_OFFSET], inDto.texCoord); 
-        roughnesses[m] = texture(samplers[mElement + SAMP_ROUGHNESS_OFFSET], inDto.texCoord);
-        aos[m] = texture(samplers[mElement + SAMP_AO_OFFSET], inDto.texCoord);
+        
+        vec4 combined = texture(materialTextures, vec3(inDto.texCoord, mElement + SAMP_COMBINED_OFFSET));
+        metallics[m] = combined.r;
+        roughnesses[m] = combined.g;
+        aos[m] = combined.b;
     }
 
+    // Mix the materials proportionally by their weight
     vec4 albedo =
         albedos[0] * inDto.materialWeights[0] +
         albedos[1] * inDto.materialWeights[1] +
@@ -164,24 +160,39 @@ void main()
         normals[2] * inDto.materialWeights[2] +
         normals[3] * inDto.materialWeights[3];
 
-    float metallic = 
-        metallics[0].r * inDto.materialWeights[0] +
-        metallics[1].r * inDto.materialWeights[1] +
-        metallics[2].r * inDto.materialWeights[2] +
-        metallics[3].r * inDto.materialWeights[3];
+    float metallic =
+        metallics[0] * inDto.materialWeights[0] +
+        metallics[1] * inDto.materialWeights[1] +
+        metallics[2] * inDto.materialWeights[2] +
+        metallics[3] * inDto.materialWeights[3];
 
-    float roughness = 
-        roughnesses[0].r * inDto.materialWeights[0] +
-        roughnesses[1].r * inDto.materialWeights[1] +
-        roughnesses[2].r * inDto.materialWeights[2] +
-        roughnesses[3].r * inDto.materialWeights[3];
+    float roughness =
+        roughnesses[0] * inDto.materialWeights[0] +
+        roughnesses[1] * inDto.materialWeights[1] +
+        roughnesses[2] * inDto.materialWeights[2] +
+        roughnesses[3] * inDto.materialWeights[3];
     
-    float ao = 
-        aos[0].r * inDto.materialWeights[0] +
-        aos[1].r * inDto.materialWeights[1] +
-        aos[2].r * inDto.materialWeights[2] +
-        aos[3].r * inDto.materialWeights[3];
+    float ao =
+        aos[0] * inDto.materialWeights[0] +
+        aos[1] * inDto.materialWeights[1] +
+        aos[2] * inDto.materialWeights[2] +
+        aos[3] * inDto.materialWeights[3];
 	
+    // Generate shadow value based on current fragment position against the shadow map
+    vec4 fragPositionViewSpace = globalUbo.view * vec4(inDto.fragPosition, 1.0f);
+    float depth = abs(fragPositionViewSpace).z;
+    // Get the cascade index from the current fragment's position
+    int cascadeIndex = MAX_SHADOW_CASCADES;
+    for (int i = 0; i < MAX_SHADOW_CASCADES; ++i)
+    {
+        if (depth < inDto.cascadeSplits[i])
+        {
+            cascadeIndex = i;
+            break;
+        }
+    }
+    float shadow = CalculateShadow(inDto.lightSpaceFragPosition[cascadeIndex], cascadeIndex);
+
 	// Calculate reflectance at normal incidence; if dia-electric (plastic-like) use baseReflectivity
     // of 0.04 and if it's a metal, use the albedo color as baseReflectivity.
     vec3 baseReflectivity = vec3(0.04);
@@ -204,7 +215,7 @@ void main()
 			vec3 lightDirection = normalize(-light.direction.xyz);
 			vec3 radiance = CalculateDirectionalLightRadiance(light, viewDirection);
 
-			totalReflectance += CalculateReflectance(albedo.xyz, normal, viewDirection, lightDirection, metallic, roughness, baseReflectivity, radiance);
+			totalReflectance += (shadow * CalculateReflectance(albedo.xyz, normal, viewDirection, lightDirection, metallic, roughness, baseReflectivity, radiance));
 		}
 
 		// Point light radiance
@@ -218,28 +229,12 @@ void main()
 		}
 
         // Irradiance holds all the scene's indirect diffuse light. Use the surface normal to sample from it.
-        vec3 irradiance = texture(cubeSamplers[SAMP_IRRADIANCE_CUBE], normal).rgb;
-
-        // Generate shadow value based on current fragment position against the shadow map
-        // TODO: Also take point lights into account when generating shadows
-        vec4 fragPositionViewSpace = globalUbo.view * vec4(inDto.fragPosition, 1.0f);
-        float depth = abs(fragPositionViewSpace).z;
-        // Get the cascade index from the current fragment's position
-        int cascadeIndex = MAX_SHADOW_CASCADES;
-        for (int i = 0; i < MAX_SHADOW_CASCADES; ++i)
-        {
-            if (depth < inDto.cascadeSplits[i])
-            {
-                cascadeIndex = i;
-                break;
-            }
-        }
-        float shadow = CalculateShadow(inDto.lightSpaceFragPosition[cascadeIndex], cascadeIndex);
+        vec3 irradiance = texture(irradianceTexture, normal).rgb;
 
 		// Combine irradiance with albedo and ambient occlusion. Also add the total reflectance that we have accumulated.
 		vec3 ambient = irradiance * albedo.xyz * ao;
 
-		vec3 color = ambient + totalReflectance * shadow;
+		vec3 color = ambient + totalReflectance;
 
 		// HDR tonemapping
 		color = color / (color + vec3(1.0));
@@ -278,13 +273,13 @@ void main()
 float CalculatePCF(vec3 projected, int cascadeIndex)
 {
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], 0);
+    vec2 texelSize = 1.0 / textureSize(shadowTexture, 0).xy;
 
     for (int x = -1; x <= 1; ++x) 
     {
         for(int y = -1; y <= 1; ++y) 
         {
-            float pcfDepth = texture(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], projected.xy + vec2(x, y) * texelSize).r;
+            float pcfDepth = texture(shadowTexture, vec3(projected.xy + vec2(x, y) * texelSize, cascadeIndex)).r;
             shadow += projected.z - inDto.bias > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -295,7 +290,7 @@ float CalculatePCF(vec3 projected, int cascadeIndex)
 float CalculateUnfiltered(vec3 projected, int cascadeIndex) 
 {
     // Sample the shadow map.
-    float mapDepth = texture(samplers[SAMP_SHADOW_MAP_0 + cascadeIndex], projected.xy).r;
+    float mapDepth = texture(shadowTexture, vec3(projected.xy, cascadeIndex)).r;
 
     // TODO: cast/get rid of branch.
     float shadow = projected.z - inDto.bias > mapDepth ? 0.0 : 1.0;
@@ -319,8 +314,9 @@ float CalculateShadow(vec4 lightSpaceFragPosition, int cascadeIndex)
 
 float GeometrySchlickGGX(float normalDotDirection, float roughness)
 {
-    roughness += 1.0;
-    float k = (roughness * roughness) / 8.0;
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+
     return normalDotDirection / (normalDotDirection * (1.0 - k) + k);
 }
 
@@ -330,8 +326,7 @@ vec3 CalculateReflectance(vec3 albedo, vec3 normal, vec3 viewDirection, vec3 lig
 
     // Normal distribution - approximate the amount of the surface's micro-facets that are aligned to the halfway vector.
     // This is directly influenced by the roughness of the surface. More aligned micro-facets == more shiny, less == more dull / less reflection.
-    float roughnessPow2 = roughness * roughness;
-	float roughnessPow4 = roughnessPow2 * roughnessPow2;
+    float roughnessPow4 = roughness * roughness * roughness * roughness;
     float normalDotHalfway = max(dot(normal, halfway), 0.0);
     float normalDotHalfwaySq = normalDotHalfway * normalDotHalfway;
     float denom = (normalDotHalfwaySq * (roughnessPow4 - 1.0) + 1.0);

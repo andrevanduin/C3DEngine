@@ -19,7 +19,7 @@ namespace C3D
         UIConsole* pConsole = nullptr;
     };
 
-    class CVarSystem final : public SystemWithConfig<CVarSystemConfig>
+    class C3D_API CVarSystem final : public SystemWithConfig<CVarSystemConfig>
     {
     public:
         explicit CVarSystem(const SystemManager* pSystemsManager);

@@ -111,7 +111,7 @@ bool SkyboxPass::Execute(const C3D::FrameData& frameData)
             ERROR_LOG("Failed to apply Skybox view uniform.");
             return false;
         }
-        Shaders.ApplyGlobal(true);
+        Shaders.ApplyGlobal(frameData, true);
 
         // Instance
         Shaders.BindInstance(m_skybox->instanceId);
@@ -122,7 +122,7 @@ bool SkyboxPass::Execute(const C3D::FrameData& frameData)
         }
 
         bool needsUpdate = m_skybox->frameNumber != frameData.frameNumber || m_skybox->drawIndex != frameData.drawIndex;
-        Shaders.ApplyInstance(needsUpdate);
+        Shaders.ApplyInstance(frameData, needsUpdate);
 
         // Sync the frame number and draw index
         m_skybox->frameNumber = frameData.frameNumber;

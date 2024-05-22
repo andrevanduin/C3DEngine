@@ -350,8 +350,7 @@ void SimpleScene::QueryMeshes(FrameData& frameData, const Frustum& frustum, cons
 
                     // Check if transparent. If so, put into a separate, temp array to be
                     // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
-                    if (geometry->material->type == C3D::MaterialType::Phong &&
-                        geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
+                    if (geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
                     {
                         // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
                         // Get the center, extract the global position from the model matrix and add it to the center,
@@ -365,8 +364,6 @@ void SimpleScene::QueryMeshes(FrameData& frameData, const Frustum& frustum, cons
                     {
                         meshData.PushBack(data);
                     }
-
-                    frameData.drawnMeshCount++;
                 }
             }
         }
@@ -374,6 +371,73 @@ void SimpleScene::QueryMeshes(FrameData& frameData, const Frustum& frustum, cons
 
     // Sort opaque geometries by material.
     std::sort(meshData.begin(), meshData.end(), [](const C3D::GeometryRenderData& a, const C3D::GeometryRenderData& b) {
+        return a.material->internalId < b.material->internalId;
+    });
+
+    // Sort transparent geometries
+    std::sort(transparentGeometries.begin(), transparentGeometries.end(),
+              [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance > b.distance; });
+
+    // Then add them to the end of our meshData
+    for (auto& tg : transparentGeometries)
+    {
+        meshData.PushBack(tg.g);
+    }
+}
+
+void SimpleScene::QueryMeshes(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
+                              DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
+
+{
+    C3D::DynamicArray<GeometryDistance, C3D::LinearAllocator> transparentGeometries(32, frameData.allocator);
+
+    for (const auto& mesh : m_meshes)
+    {
+        if (mesh.generation != INVALID_ID_U8)
+        {
+            mat4 model           = mesh.transform.GetWorld();
+            bool windingInverted = mesh.transform.GetDeterminant() < 0;
+
+            for (const auto geometry : mesh.geometries)
+            {
+                // Translate/scale the extents
+                const vec3 extentsMin = model * vec4(geometry->extents.min, 1.0f);
+                const vec3 extentsMax = model * vec4(geometry->extents.max, 1.0f);
+                // Translate/scale the center
+                const vec3 transformedCenter = model * vec4(geometry->center, 1.0f);
+                // Find the one furthest from the center
+                f32 meshRadius = Max(glm::distance(extentsMin, transformedCenter), glm::distance(extentsMax, transformedCenter));
+                // Distance to the line
+                f32 distToLine = DistancePointToLine(transformedCenter, center, direction);
+
+                // If it's within the distance we include it
+                if ((distToLine - meshRadius) <= radius)
+                {
+                    C3D::GeometryRenderData data(mesh.GetId(), model, geometry, windingInverted);
+
+                    // Check if transparent. If so, put into a separate, temp array to be
+                    // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
+                    if (geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
+                    {
+                        // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
+                        // Get the center, extract the global position from the model matrix and add it to the center,
+                        // then calculate the distance between it and the camera, and finally save it to a list to be sorted.
+                        // NOTE: This isn't perfect for translucent meshes that intersect, but is enough for our purposes now.
+                        f32 distance = glm::distance(transformedCenter, center);
+                        transparentGeometries.EmplaceBack(data, distance);
+                    }
+                    else
+                    {
+                        meshData.PushBack(data);
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort opaque geometries by material.
+    std::sort(meshData.begin(), meshData.end(), [](const C3D::GeometryRenderData& a, const C3D::GeometryRenderData& b) {
+        if (!a.material || !b.material) return false;
         return a.material->internalId < b.material->internalId;
     });
 
@@ -398,8 +462,6 @@ void SimpleScene::QueryTerrains(FrameData& frameData, const Frustum& frustum, co
             // TODO: Check terrain generation
             // TODO: Frustum culling
             terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
-            // TODO: Seperate counter for terrain meshes/geometry
-            frameData.drawnTerrainCount++;
         }
     }
 }
@@ -418,7 +480,6 @@ void SimpleScene::QueryMeshes(FrameData& frameData, DynamicArray<GeometryRenderD
             for (const auto geometry : mesh.geometries)
             {
                 meshData.EmplaceBack(mesh.GetId(), model, geometry, windingInverted);
-                frameData.drawnMeshCount++;
             }
         }
     }
@@ -448,8 +509,6 @@ void SimpleScene::QueryTerrains(FrameData& frameData, DynamicArray<GeometryRende
             // TODO: Check terrain generation
             // TODO: Frustum culling
             terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
-            // TODO: Seperate counter for terrain meshes/geometry
-            frameData.drawnTerrainCount++;
         }
     }
 }

@@ -21,22 +21,22 @@ namespace C3D
         [[nodiscard]] bool IsWritable() const;
         [[nodiscard]] bool IsWrapped() const;
 
-        u32 id    = INVALID_ID;
+        u32 id = INVALID_ID;
+        String name;
+
+        /** @brief The dimensions of the texture. */
         u32 width = 0, height = 0;
+        /** @brief The number of channels in this texture. */
+        u8 channelCount = 0;
+        /** @brief How many layers this texture has. For non-array textures this is always 1. */
+        u16 arraySize = 1;
+        /** @brief The amount of mip levels for this texture. Should always be atleast 1 (for the base layer). */
+        u8 mipLevels = 1;
 
         TextureType type;
-
-        u8 channelCount       = 0;
         TextureFlagBits flags = TextureFlag::None;
-
-        String name;
 
         u32 generation     = INVALID_ID;
         void* internalData = nullptr;
-
-        /** @brief The amount of mip levels for this texture.
-         * This value should always be atleast 1 since we will always have atleast the base image.
-         */
-        u8 mipLevels = 1;
     };
 }  // namespace C3D

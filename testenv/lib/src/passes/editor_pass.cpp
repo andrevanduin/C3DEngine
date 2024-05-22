@@ -125,7 +125,7 @@ bool EditorPass::Execute(const C3D::FrameData& frameData)
         Shaders.SetUniformByIndex(m_locations.projection, &m_viewport->GetProjection());
         Shaders.SetUniformByIndex(m_locations.view, &viewMatrix);
     }
-    Shaders.ApplyGlobal(needsUpdate);
+    Shaders.ApplyGlobal(frameData, needsUpdate);
 
     // Sync the frame number and draw index
     m_shader->frameNumber = frameData.frameNumber;
@@ -135,7 +135,9 @@ bool EditorPass::Execute(const C3D::FrameData& frameData)
     {
         // NOTE: No instance-level uniforms need to be set
         // Set our model matrix
+        Shaders.BindLocal();
         Shaders.SetUniformByIndex(m_locations.model, &data.model);
+        Shaders.ApplyLocal(frameData);
 
         // Draw it
         Renderer.DrawGeometry(data);

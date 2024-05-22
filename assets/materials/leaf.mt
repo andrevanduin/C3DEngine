@@ -4,6 +4,7 @@ version = 2
 type = pbr
 name = leaf
 shader = Shader.PBR
+
 [map]
 name = albedo
 filterMin = linear
@@ -13,24 +14,17 @@ repeatV = repeat
 repeatW = repeat
 textureName = sponza_thorn_diff
 [/map]
+
 [map]
-name = specular
+name = combined
 filterMin = linear
 filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = sponza_thorn_spec
+textureName = sponza_thorn_combined
 [/map]
-[map]
-name = roughness
-filterMin = linear
-filterMag = linear
-repeatU = repeat
-repeatV = repeat
-repeatW = repeat
-textureName = sponza_thorn_roughness
-[/map]
+
 [map]
 name = normal
 filterMin = linear
@@ -40,6 +34,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = sponza_thorn_ddn
 [/map]
+
 [prop]
 name = diffuseColor
 type = vec4

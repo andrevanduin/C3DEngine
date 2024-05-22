@@ -4,6 +4,7 @@ version = 2
 type = pbr
 name = fabric_f
 shader = Shader.PBR
+
 [map]
 name = albedo
 filterMin = linear
@@ -13,6 +14,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = sponza_curtain_green_diff
 [/map]
+
 [map]
 name = metallic
 filterMin = linear
@@ -20,17 +22,9 @@ filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = sponza_curtain_metallic
+textureName = sponza_curtain_combined
 [/map]
-[map]
-name = roughness
-filterMin = linear
-filterMag = linear
-repeatU = repeat
-repeatV = repeat
-repeatW = repeat
-textureName = sponza_curtain_roughness
-[/map]
+
 [map]
 name = normal
 filterMin = linear
@@ -40,6 +34,7 @@ repeatV = repeat
 repeatW = repeat
 textureName = sponza_curtain_ddn
 [/map]
+
 [prop]
 name = diffuseColor
 type = vec4

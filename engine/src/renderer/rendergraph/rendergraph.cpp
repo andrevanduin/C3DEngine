@@ -30,15 +30,9 @@ namespace C3D
             {
                 if (source.origin == RendergraphSourceOrigin::Self)
                 {
-                    u32 textureType = (source.type == RendergraphSourceType::RenderTargetColor)
-                                          ? RenderTargetAttachmentTypeColor
-                                          : (RenderTargetAttachmentTypeDepth | RenderTargetAttachmentTypeStencil);
-
-                    u32 frameCount = Renderer.GetWindowAttachmentCount();
-                    source.textures.Resize(frameCount);
-                    for (u32 i = 0; i < frameCount; i++)
+                    if (!pass->PopulateSource(source))
                     {
-                        source.textures[i] = pass->GetAttachmentTexture(textureType, i);
+                        ERROR_LOG("Failed to populate source.");
                     }
                 }
             }
@@ -281,12 +275,10 @@ namespace C3D
                     }
                     else if (source.origin == RendergraphSourceOrigin::Self)
                     {
-                        // If the origin is self, we hook up the textures to the source
-                        u32 frameCount = Renderer.GetWindowAttachmentCount();
-                        source.textures.Resize(frameCount);
-                        for (u32 i = 0; i < frameCount; i++)
+                        // If the origin is self, we call the Populate method implemented in the Pass itself
+                        if (!pass->PopulateSource(source))
                         {
-                            source.textures[i] = pass->GetAttachmentTexture(RenderTargetAttachmentTypeDepth, i);
+                            ERROR_LOG("Failed to populate source.");
                         }
                     }
                 }

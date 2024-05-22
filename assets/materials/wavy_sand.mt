@@ -15,26 +15,6 @@ textureName=wavy_sand_albedo
 [/map]
 
 [map]
-name=metallic
-filterMin=linear
-filterMag=linear
-repeatU=repeat
-repeatV=repeat
-repeatW=repeat
-textureName=wavy_sand_metallic
-[/map]
-
-[map]
-name=roughness
-filterMin=linear
-filterMag=linear
-repeatU=repeat
-repeatV=repeat
-repeatW=repeat
-textureName=wavy_sand_roughness
-[/map]
-
-[map]
 name=normal
 filterMin=linear
 filterMag=linear
@@ -45,13 +25,13 @@ textureName=wavy_sand_normal
 [/map]
 
 [map]
-name=ao
+name=combined
 filterMin=linear
 filterMag=linear
-repeatV=repeat
 repeatU=repeat
+repeatV=repeat
 repeatW=repeat
-textureName=wavy_sand_ao
+textureName=wavy_sand_combined
 [/map]
 
 [prop]

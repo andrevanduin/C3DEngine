@@ -28,8 +28,12 @@ namespace C3D
 
         /** @brief Optional method to regenerate attachment textures. */
         virtual bool RegenerateAttachmentTextures(u16 width, u16 height) { return true; };
-        /** @brief Optional method to get the attachment texture of a certain type. */
-        virtual Texture* GetAttachmentTexture(RenderTargetAttachmentType type, u8 frameNumber);
+
+        /** @brief Optional method to populate a Rendergraph Source. */
+        virtual bool PopulateSource(RendergraphSource& source) { return true; }
+
+        /** @brief Optional method to populate a Rendertarget Attachment. */
+        virtual bool PopulateAttachment(RenderTargetAttachment& attachment) { return true; }
 
         bool RegenerateRenderTargets(u32 width, u32 height);
 

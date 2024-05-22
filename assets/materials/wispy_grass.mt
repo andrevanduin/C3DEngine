@@ -15,26 +15,6 @@ textureName=wispy_grass_meadow_albedo
 [/map]
 
 [map]
-name=metallic
-filterMin=linear
-filterMag=linear
-repeatU=repeat
-repeatV=repeat
-repeatW=repeat
-textureName=wispy_grass_meadow_metallic
-[/map]
-
-[map]
-name=roughness
-filterMin=linear
-filterMag=linear
-repeatU=repeat
-repeatV=repeat
-repeatW=repeat
-textureName=wispy_grass_meadow_roughness
-[/map]
-
-[map]
 name=normal
 filterMin=linear
 filterMag=linear
@@ -45,13 +25,13 @@ textureName=wispy_grass_meadow_normal
 [/map]
 
 [map]
-name=ao
+name=combined
 filterMin=linear
 filterMag=linear
-repeatV=repeat
 repeatU=repeat
+repeatV=repeat
 repeatW=repeat
-textureName=wispy_grass_meadow_ao
+textureName=wispy_grass_meadow_combined
 [/map]
 
 [prop]

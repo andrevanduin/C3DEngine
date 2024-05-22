@@ -14,13 +14,13 @@ repeatW = repeat
 textureName = background
 [/map]
 [map]
-name = roughness
+name = combined
 filterMin = linear
 filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
-textureName = background_roughness
+textureName = background_combined
 [/map]
 [map]
 name = normal
