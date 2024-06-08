@@ -4,6 +4,7 @@
 #include <containers/hash_map.h>
 #include <core/defines.h>
 #include <core/uuid.h>
+#include <math/frustum.h>
 #include <renderer/camera.h>
 #include <renderer/transform.h>
 #include <renderer/vertex.h>
@@ -45,6 +46,8 @@ enum class SceneState
     Unloaded,
 };
 
+using namespace C3D;
+
 class SimpleScene
 {
 public:
@@ -55,8 +58,8 @@ public:
      *
      * @return True if successful, false otherwise
      */
-    bool Create(const C3D::SystemManager* pSystemsManager);
-    bool Create(const C3D::SystemManager* pSystemsManager, const SimpleSceneConfig& config);
+    bool Create(const SystemManager* pSystemsManager);
+    bool Create(const SystemManager* pSystemsManager, const SimpleSceneConfig& config);
 
     /**
      * @brief Initializes the scene. Processes configuration and sets up the hierarchy
@@ -92,44 +95,45 @@ public:
      */
     bool Update(C3D::FrameData& frameData);
 
-    /**
-     * @brief Prepares the data required to render the next frame
-     *
-     * @param frameData The frame specific data
-     * @param packet The packet that needs to be filled with render data
-     * @return True if successful, false otherwise
-     */
-    bool PrepareRender(C3D::FrameData& frameData, C3D::Camera* camera, const C3D::Viewport& viewport);
+    void QueryMeshes(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
+                     DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const;
+    void QueryMeshes(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
+                     DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const;
 
-    bool AddDirectionalLight(const C3D::String& name, C3D::DirectionalLight& light);
-    bool RemoveDirectionalLight(const C3D::String& name);
+    void QueryTerrains(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
+                       DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const;
 
-    bool AddPointLight(const C3D::PointLight& light);
-    bool RemovePointLight(const C3D::String& name);
-    C3D::PointLight* GetPointLight(const C3D::String& name);
+    void QueryMeshes(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const;
+    void QueryTerrains(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const;
+    void QueryDebugGeometry(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& debugData) const;
 
-    bool AddMesh(const C3D::String& name, C3D::Mesh& mesh);
-    bool RemoveMesh(const C3D::String& name);
-    C3D::Mesh& GetMesh(const C3D::String& name);
+    bool AddDirectionalLight(const String& name, C3D::DirectionalLight& light);
+    bool RemoveDirectionalLight(const String& name);
 
-    bool AddTerrain(const C3D::String& name, C3D::Terrain& terrain);
-    bool RemoveTerrain(const C3D::String& name);
-    C3D::Terrain& GetTerrain(const C3D::String& name);
+    bool AddPointLight(const PointLight& light);
+    bool RemovePointLight(const String& name);
+    PointLight* GetPointLight(const String& name);
 
-    bool AddSkybox(const C3D::String& name, C3D::Skybox* skybox);
-    bool RemoveSkybox(const C3D::String& name);
+    bool AddMesh(const String& name, Mesh& mesh);
+    bool RemoveMesh(const String& name);
+    Mesh& GetMesh(const String& name);
 
-    bool RayCast(const C3D::Ray& ray, C3D::RayCastResult& result);
+    bool AddTerrain(const String& name, Terrain& terrain);
+    bool RemoveTerrain(const String& name);
+    Terrain& GetTerrain(const String& name);
 
-    C3D::Transform* GetTransformById(C3D::UUID uuid);
+    bool AddSkybox(const String& name, Skybox* skybox);
+    bool RemoveSkybox(const String& name);
+
+    bool RayCast(const Ray& ray, RayCastResult& result);
+
+    Transform* GetTransformById(UUID uuid);
 
     [[nodiscard]] u32 GetId() const { return m_id; }
     [[nodiscard]] SceneState GetState() const { return m_state; }
     [[nodiscard]] bool IsEnabled() const { return m_enabled; }
 
     [[nodiscard]] C3D::Skybox* GetSkybox() const { return m_skybox; }
-
-    C3D::DynamicArray<C3D::Mesh, C3D::LinearAllocator> GetMeshes(C3D::LinearAllocator* frameAllocator) const;
 
 private:
     /** @brief Unloads the scene. Deallocates the resources for the scene.
@@ -157,6 +161,7 @@ private:
     C3D::Transform m_transform;
 
     friend class ScenePass;
+    friend class ShadowMapPass;
 
     const C3D::SystemManager* m_pSystemsManager = nullptr;
 };

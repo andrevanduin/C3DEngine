@@ -1,6 +1,7 @@
 
 #include "terrain_loader.h"
 
+#include "core/colors.h"
 #include "core/exceptions.h"
 #include "platform/file_system.h"
 #include "resources/loaders/image_loader.h"
@@ -152,7 +153,8 @@ namespace C3D
                     u8 g = heightmap.pixels[i + 1];
                     u8 b = heightmap.pixels[i + 2];
 
-                    f32 height = (((r + g + b) / 3.0f) / 255.0f);
+                    // Convert RGB to a u32 and divide by the max value it can be to get a range between 0 an 1
+                    f32 height = static_cast<f32>(RgbToU32(r, g, b)) / 16777215;
                     resource.vertexConfigs.EmplaceBack(height);
                 }
 

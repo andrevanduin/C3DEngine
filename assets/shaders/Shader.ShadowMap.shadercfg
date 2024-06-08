@@ -1,0 +1,38 @@
+
+# ShadowMap Shader config file
+version = 2
+
+[general]
+name = Shader.ShadowMap
+depthTest  = true
+depthWrite = true
+cullMode = none
+maxInstances = 256
+[/general]
+
+[stages]
+vertex = ShadowMapShader.vert
+fragment = ShadowMapShader.frag
+[/stages]
+
+[attributes]
+inPosition = vec3
+inNormal = vec3
+inTexCoord = vec2
+inColor = vec4
+inTangent = vec3
+[/attributes]
+
+[uniforms]
+[global]
+projections = mat4[4]
+views = mat4[4]
+[/global]
+[instance]
+colorMap = sampler2D
+[/instance]
+[local]
+model = mat4
+cascadeIndex = u32
+[/local]
+[/uniforms]

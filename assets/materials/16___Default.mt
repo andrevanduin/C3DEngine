@@ -1,8 +1,29 @@
 #material file
 
-version = 1
+version = 2
+type = pbr
 name = 16___Default
-diffuseColor = 0.588000 0.588000 0.588000 1.000000
-shininess = 10.000000
-diffuseMapName = gi_flag
-shader = Shader.Builtin.Material
+[map]
+name = albedo
+filterMin = linear
+filterMag = linear
+repeatU = repeat
+repeatV = repeat
+repeatW = repeat
+textureName = gi_flag
+[/map]
+[prop]
+name = diffuseColor
+type = vec4
+value = 0.588 0.588 0.588 1
+[/prop]
+[prop]
+name = padding
+type = vec3
+value = 0 0 0
+[/prop]
+[prop]
+name = shininess
+type = f32
+value = 10
+[/prop]

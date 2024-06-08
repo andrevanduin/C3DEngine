@@ -7,8 +7,10 @@
 #include <renderer/renderer_types.h>
 #include <renderer/viewport.h>
 #include <resources/debug/debug_box_3d.h>
+#include <resources/materials/material.h>
 #include <resources/mesh.h>
 #include <resources/skybox.h>
+#include <resources/textures/texture.h>
 #include <systems/lights/light_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
@@ -318,11 +320,240 @@ bool SimpleScene::Update(C3D::FrameData& frameData)
     return true;
 }
 
-bool SimpleScene::PrepareRender(C3D::FrameData& frameData, C3D::Camera* camera, const C3D::Viewport& viewport)
+void SimpleScene::QueryMeshes(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
+                              DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
 {
-    if (m_state != SceneState::Loaded) return true;
+    C3D::DynamicArray<GeometryDistance, C3D::LinearAllocator> transparentGeometries(32, frameData.allocator);
 
-    return true;
+    for (const auto& mesh : m_meshes)
+    {
+        if (mesh.generation != INVALID_ID_U8)
+        {
+            mat4 model           = mesh.transform.GetWorld();
+            bool windingInverted = mesh.transform.GetDeterminant() < 0;
+
+            for (const auto geometry : mesh.geometries)
+            {
+                // AABB Calculation
+                const vec3 extentsMax = model * vec4(geometry->extents.max, 1.0f);
+                const vec3 center     = model * vec4(geometry->center, 1.0f);
+
+                const vec3 halfExtents = {
+                    C3D::Abs(extentsMax.x - center.x),
+                    C3D::Abs(extentsMax.y - center.y),
+                    C3D::Abs(extentsMax.z - center.z),
+                };
+
+                if (frustum.IntersectsWithAABB({ center, halfExtents }))
+                {
+                    C3D::GeometryRenderData data(mesh.GetId(), model, geometry, windingInverted);
+
+                    // Check if transparent. If so, put into a separate, temp array to be
+                    // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
+                    if (geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
+                    {
+                        // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
+                        // Get the center, extract the global position from the model matrix and add it to the center,
+                        // then calculate the distance between it and the camera, and finally save it to a list to be sorted.
+                        // NOTE: This isn't perfect for translucent meshes that intersect, but is enough for our purposes now.
+                        f32 distance = glm::distance(center, cameraPosition);
+
+                        transparentGeometries.EmplaceBack(data, distance);
+                    }
+                    else
+                    {
+                        meshData.PushBack(data);
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort opaque geometries by material.
+    std::sort(meshData.begin(), meshData.end(), [](const C3D::GeometryRenderData& a, const C3D::GeometryRenderData& b) {
+        return a.material->internalId < b.material->internalId;
+    });
+
+    // Sort transparent geometries
+    std::sort(transparentGeometries.begin(), transparentGeometries.end(),
+              [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance > b.distance; });
+
+    // Then add them to the end of our meshData
+    for (auto& tg : transparentGeometries)
+    {
+        meshData.PushBack(tg.g);
+    }
+}
+
+void SimpleScene::QueryMeshes(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
+                              DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
+
+{
+    C3D::DynamicArray<GeometryDistance, C3D::LinearAllocator> transparentGeometries(32, frameData.allocator);
+
+    for (const auto& mesh : m_meshes)
+    {
+        if (mesh.generation != INVALID_ID_U8)
+        {
+            mat4 model           = mesh.transform.GetWorld();
+            bool windingInverted = mesh.transform.GetDeterminant() < 0;
+
+            for (const auto geometry : mesh.geometries)
+            {
+                // Translate/scale the extents
+                const vec3 extentsMin = model * vec4(geometry->extents.min, 1.0f);
+                const vec3 extentsMax = model * vec4(geometry->extents.max, 1.0f);
+                // Translate/scale the center
+                const vec3 transformedCenter = model * vec4(geometry->center, 1.0f);
+                // Find the one furthest from the center
+                f32 meshRadius = Max(glm::distance(extentsMin, transformedCenter), glm::distance(extentsMax, transformedCenter));
+                // Distance to the line
+                f32 distToLine = DistancePointToLine(transformedCenter, center, direction);
+
+                // If it's within the distance we include it
+                if ((distToLine - meshRadius) <= radius)
+                {
+                    C3D::GeometryRenderData data(mesh.GetId(), model, geometry, windingInverted);
+
+                    // Check if transparent. If so, put into a separate, temp array to be
+                    // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
+                    if (geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
+                    {
+                        // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
+                        // Get the center, extract the global position from the model matrix and add it to the center,
+                        // then calculate the distance between it and the camera, and finally save it to a list to be sorted.
+                        // NOTE: This isn't perfect for translucent meshes that intersect, but is enough for our purposes now.
+                        f32 distance = glm::distance(transformedCenter, center);
+                        transparentGeometries.EmplaceBack(data, distance);
+                    }
+                    else
+                    {
+                        meshData.PushBack(data);
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort opaque geometries by material.
+    std::sort(meshData.begin(), meshData.end(), [](const C3D::GeometryRenderData& a, const C3D::GeometryRenderData& b) {
+        if (!a.material || !b.material) return false;
+        return a.material->internalId < b.material->internalId;
+    });
+
+    // Sort transparent geometries
+    std::sort(transparentGeometries.begin(), transparentGeometries.end(),
+              [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance > b.distance; });
+
+    // Then add them to the end of our meshData
+    for (auto& tg : transparentGeometries)
+    {
+        meshData.PushBack(tg.g);
+    }
+}
+
+void SimpleScene::QueryTerrains(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
+                                DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
+{
+    for (auto& terrain : m_terrains)
+    {
+        if (terrain.GetId())
+        {
+            // TODO: Check terrain generation
+            // TODO: Frustum culling
+            terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
+        }
+    }
+}
+
+void SimpleScene::QueryMeshes(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
+{
+    C3D::DynamicArray<GeometryDistance, C3D::LinearAllocator> transparentGeometries(32, frameData.allocator);
+
+    for (const auto& mesh : m_meshes)
+    {
+        if (mesh.generation != INVALID_ID_U8)
+        {
+            mat4 model           = mesh.transform.GetWorld();
+            bool windingInverted = mesh.transform.GetDeterminant() < 0;
+
+            for (const auto geometry : mesh.geometries)
+            {
+                meshData.EmplaceBack(mesh.GetId(), model, geometry, windingInverted);
+            }
+        }
+    }
+
+    // Sort opaque geometries by material.
+    std::sort(meshData.begin(), meshData.end(), [](const C3D::GeometryRenderData& a, const C3D::GeometryRenderData& b) {
+        return a.material->internalId < b.material->internalId;
+    });
+
+    // Sort transparent geometries
+    std::sort(transparentGeometries.begin(), transparentGeometries.end(),
+              [](const GeometryDistance& a, const GeometryDistance& b) { return a.distance > b.distance; });
+
+    // Then add them to the end of our meshData
+    for (auto& tg : transparentGeometries)
+    {
+        meshData.PushBack(tg.g);
+    }
+}
+
+void SimpleScene::QueryTerrains(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
+{
+    for (auto& terrain : m_terrains)
+    {
+        if (terrain.GetId())
+        {
+            // TODO: Check terrain generation
+            // TODO: Frustum culling
+            terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
+        }
+    }
+}
+
+void SimpleScene::QueryDebugGeometry(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& debugData) const
+{
+    // Grid
+    constexpr auto identity = mat4(1.0f);
+    auto gridGeometry       = m_grid.GetGeometry();
+    if (gridGeometry->generation != INVALID_ID_U16)
+    {
+        debugData.EmplaceBack(m_grid.GetId(), identity, gridGeometry);
+    }
+
+    // TODO: Directional lights
+
+    // Point Lights
+    for (auto& name : m_pointLights)
+    {
+        auto light = Lights.GetPointLight(name);
+        auto debug = static_cast<LightDebugData*>(light->debugData);
+
+        if (debug)
+        {
+            debugData.EmplaceBack(debug->box.GetId(), debug->box.GetModel(), debug->box.GetGeometry());
+        }
+    }
+
+    for (const auto& mesh : m_meshes)
+    {
+        if (mesh.generation != INVALID_ID_U8)
+        {
+            mat4 model           = mesh.transform.GetWorld();
+            bool windingInverted = mesh.transform.GetDeterminant() < 0;
+
+            if (mesh.HasDebugBox())
+            {
+                const auto box = mesh.GetDebugBox();
+                if (box->IsValid())
+                {
+                    debugData.EmplaceBack(box->GetId(), box->GetModel(), box->GetGeometry());
+                }
+            }
+        }
+    }
 }
 
 bool SimpleScene::AddDirectionalLight(const C3D::String& name, C3D::DirectionalLight& light)
@@ -680,16 +911,6 @@ C3D::Transform* SimpleScene::GetTransformById(C3D::UUID id)
     }
 
     return nullptr;
-}
-
-C3D::DynamicArray<C3D::Mesh, C3D::LinearAllocator> SimpleScene::GetMeshes(C3D::LinearAllocator* frameAllocator) const
-{
-    auto meshes = C3D::DynamicArray<C3D::Mesh, C3D::LinearAllocator>(m_meshes.Count(), frameAllocator);
-    for (auto& mesh : m_meshes)
-    {
-        meshes.PushBack(mesh);
-    }
-    return meshes;
 }
 
 void SimpleScene::UnloadInternal()

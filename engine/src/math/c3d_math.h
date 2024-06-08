@@ -76,9 +76,21 @@ namespace C3D
     }
 
     template <typename T>
+    C3D_INLINE constexpr C3D_API T ASin(T x)
+    {
+        return std::asin(x);
+    }
+
+    template <typename T>
     C3D_INLINE constexpr C3D_API T Cos(T x)
     {
         return std::cos(x);
+    }
+
+    template <typename T>
+    C3D_INLINE constexpr C3D_API T ACos(T x)
+    {
+        return std::acos(x);
     }
 
     template <typename T>
@@ -88,9 +100,9 @@ namespace C3D
     }
 
     template <typename T>
-    C3D_INLINE constexpr C3D_API T ACos(T x)
+    C3D_INLINE constexpr C3D_API T ATan(T x)
     {
-        return std::acos(x);
+        return std::atan(x);
     }
 
     template <typename T>
@@ -152,6 +164,20 @@ namespace C3D
     }
 
     /**
+     * @brief A method that returns the largest number that was provided as an argument.
+     *
+     * @param a The first number
+     * @param b The second number
+     * @param c The third number
+     * @return The number that is largest
+     */
+    template <typename T>
+    C3D_API C3D_INLINE T Max(T a, T b, T c)
+    {
+        return std::max(std::max(a, b), c);
+    }
+
+    /**
      * @brief A method that returns the provided value clamped in the range of [min, max]
      *
      * @param value The value you want to clamp
@@ -178,6 +204,18 @@ namespace C3D
     }
 
     /**
+     * @brief A method that returns the smallest integer value not less than x.
+     *
+     * @param x The number you want to ceil
+     * @return the smallest integer value not less than x
+     */
+    template <typename T>
+    C3D_API C3D_INLINE T Ceil(T x)
+    {
+        return std::ceil(x);
+    }
+
+    /**
      * @brief A method that returns the base-2 logarithm of input x.
      *
      * @param x The number you want to take the base-2 log of.
@@ -190,17 +228,16 @@ namespace C3D
     }
 
     /**
-     * @brief A method that returns the largest number that was provided as an argument.
+     * @brief A method that returns the input x taken to the power of input y.
      *
-     * @param a The first number
-     * @param b The second number
-     * @param c The third number
-     * @return The number that is largest
+     * @param x The number you want to use as a base
+     * @param y The number you want to use as an exponent
+     * @return Input x taken to the power of input y
      */
     template <typename T>
-    C3D_API C3D_INLINE T Max(T a, T b, T c)
+    C3D_API C3D_INLINE T Pow(T x, T y)
     {
-        return std::max(std::max(a, b), c);
+        return std::pow(x, y);
     }
 
     /** @brief Checks if the provided f32 value x is not a number. */
@@ -267,6 +304,27 @@ namespace C3D
         return t * t * (3.0 - 2.0 * t);
     }
 
+    /**
+     * @brief Returns the attenuation of x based off distance from the midpoint of min and max.
+     *
+     * @param min The minimum value.
+     * @param max The maximum value.
+     * @param x The value to attenuate.
+     * @return The attenuation of x based on distance of the midpoint of min and max.
+     */
+    C3D_API C3D_INLINE f32 AttenuationMinMax(f32 min, f32 max, f32 x)
+    {
+        // TODO: Maybe a good function here would be one with a min/max and falloff value...
+        // so if the range was 0.4 to 0.8 with a falloff of 1.0, weight for x between
+        // 0.5 and 0.7 would be 1.0, with it dwindling to 0 as it approaches 0.4 or 0.8.
+        f32 halfRange = Abs(max - min) * 0.5;
+        f32 mid       = min + halfRange;  // midpoint
+        f32 distance  = Abs(x - mid);     // dist from mid
+        // scale dist from midpoint to halfrange
+        f32 att = Clamp((halfRange - distance) / halfRange, 0.f, 1.f);
+        return att;
+    }
+
     /** @brief Compares x with edge. Returns 0.0f if x < edge otherwise returns 1.0f. */
     C3D_API C3D_INLINE f32 Step(const f32 edge, const f32 x) { return x < edge ? 0.0f : 1.0f; }
 
@@ -296,6 +354,12 @@ namespace C3D
     {
         if (x == 0.0f) return 0.0f;
         return x < 0.0f ? -1.0f : 1.0f;
+    }
+
+    C3D_API C3D_INLINE f32 DistancePointToLine(const vec3& point, const vec3& lineStart, const vec3& lineDirection)
+    {
+        f32 magnitude = glm::length(glm::cross(point - lineStart, lineDirection));
+        return magnitude / glm::length(lineDirection);
     }
 
 }  // namespace C3D

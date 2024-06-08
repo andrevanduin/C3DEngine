@@ -1,6 +1,7 @@
 
 #pragma once
 #include <functional>
+#include <variant>
 
 #include "containers/array.h"
 #include "containers/cstring.h"
@@ -8,94 +9,100 @@
 
 namespace C3D
 {
-	using CVarName = CString<128>;
-	template <typename T>
-	using CVarOnChangedCallback = StackFunction<void(const T&), 16>;
+    enum class CVarType : u8
+    {
+        U8,
+        I8,
+        U16,
+        I16,
+        U32,
+        I32,
+        U64,
+        I64,
+        F32,
+        F64,
+        Bool,
+    };
 
-	class ICVar
-	{
-	public:
-		explicit ICVar(const CVarName& name) : name(name) {}
+    static constexpr const char* ToString(CVarType type)
+    {
+        switch (type)
+        {
+            case CVarType::I8:
+                return "i8";
+            case CVarType::I16:
+                return "i16";
+            case CVarType::I32:
+                return "i32";
+            case CVarType::I64:
+                return "i64";
+            case CVarType::U8:
+                return "u8";
+            case CVarType::U16:
+                return "u16";
+            case CVarType::U32:
+                return "u32";
+            case CVarType::U64:
+                return "u64";
+            case CVarType::F32:
+                return "f32";
+            case CVarType::F64:
+                return "f64";
+            case CVarType::Bool:
+                return "bool";
+            default:
+                return "UNKOWN";
+        }
+    }
 
-		ICVar(const ICVar&) = delete;
-		ICVar(ICVar&&) = delete;
+    class CVar;
 
-		ICVar& operator=(const ICVar&) = delete;
-		ICVar& operator=(ICVar&&) = delete;
+    using CVarName              = CString<128>;
+    using CVarOnChangedCallback = std::function<void(const CVar&)>;
+    using CVarValue             = std::variant<u8, i8, u16, i16, u32, i32, u64, i64, f32, f64, bool>;
 
-		virtual ~ICVar() = default;
+    class C3D_API CVar
+    {
+    public:
+        template <typename T>
+        CVar(const CVarName& name, T value) : m_name(name), m_value(value)
+        {}
 
-		CVarName name;
+        bool AddOnChangeCallback(CVarOnChangedCallback&& callback);
 
-		[[nodiscard]] virtual CString<256> ToString() const = 0;
-	};
+        template <typename T>
+        void SetValue(T value)
+        {
+            if (!std::holds_alternative<T>(m_value))
+            {
+                INSTANCE_FATAL_LOG("CVAR", "Tried setting with value of invalid type.");
+            }
 
-	template<typename T>
-	class CVar final : public ICVar
-	{
-	public:
-		CVar(const CVarName& name, const T& value) : ICVar(name), m_value(value) {}
+            m_value = value;
+            for (auto& cb : m_onChangeCallbacks)
+            {
+                if (cb) cb(*this);
+            }
+        }
 
-		[[nodiscard]] CString<256> ToString() const override
-		{
-			CString<256> str;
-			str.FromFormat("{} {} = {}", TypeToString(m_value), name, m_value);
-			return str;
-		}
+        template <typename T>
+        T GetValue() const
+        {
+            if (!std::holds_alternative<T>(m_value))
+            {
+                INSTANCE_FATAL_LOG("CVAR", "Tried getting value of invalid type.");
+            }
+            return std::get<T>(m_value);
+        }
 
-		void SetValue(const T& value)
-		{
-			m_value = value;
-			for (auto& c : m_onChangeCallbacks)
-			{
-				// For all valid callbacks we inform that the value has been changed
-				if (c) c(m_value);
-			}
-		}
+        const CVarName& GetName() const { return m_name; }
+        const CVarType GetType() const { return static_cast<CVarType>(m_value.index()); }
 
-		void AddOnChangedCallback(const CVarOnChangedCallback<T>& callback)
-		{
-			for (auto& c : m_onChangeCallbacks)
-			{
-				if (!c) c = callback;
-			}
-		}
+        CString<256> AsString() const;
 
-	private:
-		T m_value;
-		Array<CVarOnChangedCallback<T>, 4> m_onChangeCallbacks;
-	};
-
-	template <>
-	CString<256> CVar<u8>::ToString() const;
-
-	template <>
-	CString<256> CVar<u16>::ToString() const;
-
-	template <>
-	CString<256> CVar<u32>::ToString() const;
-
-	template <>
-	CString<256> CVar<u64>::ToString() const;
-
-	template <>
-	CString<256> CVar<i8>::ToString() const;
-
-	template <>
-	CString<256> CVar<i16>::ToString() const;
-
-	template <>
-	CString<256> CVar<i32>::ToString() const;
-
-	template <>
-	CString<256> CVar<i64>::ToString() const;
-
-	template <>
-	CString<256> CVar<f32>::ToString() const;
-
-	template <>
-	CString<256> CVar<f64>::ToString() const;
-
-	template <>
-	CString<256> CVar<bool>::ToString() const;
-}
+    private:
+        CVarName m_name;
+        CVarValue m_value;
+        Array<CVarOnChangedCallback, 4> m_onChangeCallbacks;
+    };
+}  // namespace C3D

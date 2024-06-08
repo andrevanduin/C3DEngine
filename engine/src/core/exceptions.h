@@ -1,4 +1,5 @@
 
+#pragma once
 #include "containers/string.h"
 #include "core/defines.h"
 

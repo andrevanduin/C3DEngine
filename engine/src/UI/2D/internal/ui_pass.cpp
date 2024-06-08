@@ -1,21 +1,21 @@
 
 #include "ui_pass.h"
 
-#include <renderer/camera.h>
-#include <renderer/geometry.h>
-#include <renderer/renderer_frontend.h>
-#include <renderer/renderpass.h>
-#include <renderer/viewport.h>
-#include <resources/font.h>
-#include <resources/mesh.h>
-#include <resources/textures/texture_map.h>
-#include <systems/fonts/font_system.h>
-#include <systems/materials/material_system.h>
-#include <systems/resources/resource_system.h>
-#include <systems/shaders/shader_system.h>
-#include <systems/system_manager.h>
-
 #include "UI/2D/component.h"
+#include "renderer/camera.h"
+#include "renderer/geometry.h"
+#include "renderer/renderer_frontend.h"
+#include "renderer/rendergraph/renderpass.h"
+#include "renderer/viewport.h"
+#include "resources/font.h"
+#include "resources/loaders/shader_loader.h"
+#include "resources/mesh.h"
+#include "resources/textures/texture_map.h"
+#include "systems/fonts/font_system.h"
+#include "systems/materials/material_system.h"
+#include "systems/resources/resource_system.h"
+#include "systems/shaders/shader_system.h"
+#include "systems/system_manager.h"
 
 constexpr const char* INSTANCE_NAME = "UI_PASS";
 constexpr const char* SHADER_NAME   = "Shader.Builtin.UI2D";
@@ -23,13 +23,13 @@ constexpr const char* SHADER_NAME   = "Shader.Builtin.UI2D";
 namespace C3D
 {
 
-    UI2DPass::UI2DPass() : RendergraphPass() {}
+    UI2DPass::UI2DPass() : Renderpass() {}
 
-    UI2DPass::UI2DPass(const C3D::SystemManager* pSystemsManager) : RendergraphPass("UI", pSystemsManager) {}
+    UI2DPass::UI2DPass(const C3D::SystemManager* pSystemsManager) : Renderpass("UI", pSystemsManager) {}
 
     bool UI2DPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     {
-        C3D::RenderPassConfig pass;
+        C3D::RenderpassConfig pass;
         pass.name       = "RenderPass.UI";
         pass.clearColor = { 0, 0, 0.2f, 1.0f };
         pass.clearFlags = C3D::ClearDepthBuffer | C3D::ClearStencilBuffer;
@@ -55,10 +55,9 @@ namespace C3D
 
         pass.renderTargetCount = Renderer.GetWindowAttachmentCount();
 
-        m_pass = Renderer.CreateRenderPass(pass);
-        if (!m_pass)
+        if (!CreateInternals(pass))
         {
-            ERROR_LOG("Failed to create RenderPass.");
+            ERROR_LOG("Failed to create Renderpass internals.");
             return false;
         }
 
@@ -69,7 +68,7 @@ namespace C3D
             return false;
         }
 
-        if (!Shaders.Create(m_pass, config))
+        if (!Shaders.Create(m_pInternalData, config))
         {
             ERROR_LOG("Failed to load UI Shader.");
             return false;
@@ -110,11 +109,7 @@ namespace C3D
         auto viewMatrix = mat4(1.0f);  // m_camera->GetViewMatrix();
         auto projection = &m_viewport->GetProjection();
 
-        if (!Renderer.BeginRenderPass(m_pass, frameData))
-        {
-            ERROR_LOG("BeginRenderPass failed for pass: '{}'.", m_pass->GetName());
-            return false;
-        }
+        Begin(frameData);
 
         // UI System geometries
         if (!Shaders.UseById(shaderId))
@@ -126,7 +121,7 @@ namespace C3D
         // Apply globals
         Shaders.SetUniformByIndex(m_locations.projection, projection);
         Shaders.SetUniformByIndex(m_locations.view, &viewMatrix);
-        Shaders.ApplyGlobal(true);
+        Shaders.ApplyGlobal(frameData, true);
 
         // Sync our frame number
         m_shader->frameNumber = frameData.frameNumber;
@@ -140,12 +135,7 @@ namespace C3D
             }
         }
 
-        if (!Renderer.EndRenderPass(m_pass))
-        {
-            ERROR_LOG("EndRenderPass failed for pass: '{}'.", m_pass->GetName());
-            return false;
-        }
-
+        End();
         return true;
     }
 }  // namespace C3D

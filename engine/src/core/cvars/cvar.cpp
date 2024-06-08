@@ -3,91 +3,29 @@
 
 namespace C3D
 {
-	template <>
-	CString<256> CVar<u8>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("u8 {} = {}", name, m_value);
-		return str;
-	}
+    constexpr const char* INSTANCE_NAME = "CVAR";
 
-	template <>
-	CString<256> CVar<u16>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("u16 {} = {}", name, m_value);
-		return str;
-	}
+    bool CVar::AddOnChangeCallback(CVarOnChangedCallback&& callback)
+    {
+        for (auto& cb : m_onChangeCallbacks)
+        {
+            if (!cb)
+            {
+                cb = std::move(callback);
+                return true;
+            }
+        }
 
-	template <>
-	CString<256> CVar<u32>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("u32 {} = {}", name, m_value);
-		return str;
-	}
+        ERROR_LOG("Failed to add callback since there are already 4 callbacks present for this CVar.");
+        return false;
+    }
 
-	template <>
-	CString<256> CVar<u64>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("u64 {} = {}", name, m_value);
-		return str;
-	}
+    CString<256> CVar::AsString() const
+    {
+        CString<256> str;
+        auto valueStr = std::visit([](auto&& arg) { return std::to_string(arg); }, m_value);
+        str.FromFormat("{} {} = {}", ToString(GetType()), m_name, valueStr);
+        return str;
+    }
 
-	template <>
-	CString<256> CVar<i8>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("i8 {} = {}", name, m_value);
-		return str;
-	}
-
-	template <>
-	CString<256> CVar<i16>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("i16 {} = {}", name, m_value);
-		return str;
-	}
-
-	template <>
-	CString<256> CVar<i32>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("i32 {} = {}", name, m_value);
-		return str;
-	}
-
-	template <>
-	CString<256> CVar<i64>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("i64 {} = {}", name, m_value);
-		return str;
-	}
-
-	template <>
-	CString<256> CVar<f32>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("f32 {} = {}", name, m_value);
-		return str;
-	}
-
-	template <>
-	CString<256> CVar<f64>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("f64 {} = {}", name, m_value);
-		return str;
-	}
-
-	template <>
-	CString<256> CVar<bool>::ToString() const
-	{
-		CString<256> str;
-		str.FromFormat("bool {} = {}", name, m_value);
-		return str;
-	}
-}
+}  // namespace C3D

@@ -10,6 +10,8 @@ layout(location = 4) in vec4 inTangent;
 // NOTE: Supports 4 materials max
 layout(location = 5) in vec4 inMaterialWeights;
 
+const int MAX_SHADOW_CASCADES = 4;
+
 struct DirectionalLight 
 {
     vec4 color;
@@ -20,10 +22,14 @@ layout(set = 0, binding = 0) uniform globalUniformObject
 {
     mat4 projection;
     mat4 view;
-    vec4 ambientColor;
+    mat4 lightSpace[MAX_SHADOW_CASCADES];
+    vec4 cascadeSplits;
+    DirectionalLight dirLight;
     vec3 viewPosition;
     int mode;
-    DirectionalLight dirLight;
+    int usePCF;
+    float bias;
+    vec2 padding;
 } globalUbo;
 
 layout(push_constant) uniform PushConstants
@@ -32,11 +38,13 @@ layout(push_constant) uniform PushConstants
 } uPushConstants;
 
 layout(location = 0) out int outMode;
+layout(location = 1) out int usePCF;
 
 // Data transfer object
-layout(location = 1) out struct dto 
+layout(location = 2) out struct dto 
 {
-    vec4 ambientColor;
+    vec4 lightSpaceFragPosition[MAX_SHADOW_CASCADES];
+    vec4 cascadeSplits;
     vec2 texCoord;
     vec3 normal;
     vec3 viewPosition;
@@ -44,14 +52,24 @@ layout(location = 1) out struct dto
     vec4 color;
     vec3 tangent;
     vec4 materialWeights;
+    float bias;
+    vec3 padding;
 } outDto;
+
+// Vulkan's Y axis is flipped and Z range is halved.
+const mat4 bias = mat4( 
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.5, 0.5, 0.0, 1.0 
+);
 
 void main()
 {
     outDto.texCoord = inTexCoord;
     outDto.color = inColor;
     outDto.materialWeights = inMaterialWeights;
-    
+
     // Fragment position in world space
     outDto.fragPosition = vec3(uPushConstants.model * vec4(inPosition, 1.0));
 
@@ -60,11 +78,17 @@ void main()
     // Convert local normal to "world space"
     outDto.normal = normalize(m3Model * inNormal);
     outDto.tangent = normalize(m3Model * inTangent.xyz);
-
-    outDto.ambientColor = globalUbo.ambientColor;
+    outDto.cascadeSplits = globalUbo.cascadeSplits;
     outDto.viewPosition = globalUbo.viewPosition;
     
     gl_Position = globalUbo.projection * globalUbo.view * uPushConstants.model * vec4(inPosition, 1.0);
 
+    for (int i = 0; i < MAX_SHADOW_CASCADES; ++i)
+    {
+        outDto.lightSpaceFragPosition[i] = (bias * globalUbo.lightSpace[i]) * vec4(outDto.fragPosition, 1.0);
+    }
+
     outMode = globalUbo.mode;
+    usePCF = globalUbo.usePCF;
+    outDto.bias = globalUbo.bias;
 }

@@ -24,7 +24,7 @@ namespace C3D
         bool OnInit(const ShaderSystemConfig& config) override;
         void OnShutdown() override;
 
-        bool Create(RenderPass* pass, const ShaderConfig& config);
+        bool Create(void* pass, const ShaderConfig& config);
 
         u32 GetId(const String& name) const;
 
@@ -41,21 +41,27 @@ namespace C3D
         bool SetUniform(const char* name, const void* value);
         bool SetUniformByIndex(u16 index, const void* value);
 
+        bool SetArrayUniform(const char* name, u32 arrayIndex, const void* value);
+        bool SetArrayUniformByIndex(u16 index, u32 arrayIndex, const void* value);
+
         bool SetSampler(const char* name, const Texture* t);
         bool SetSamplerByIndex(u16 index, const Texture* t);
 
-        bool ApplyGlobal(bool needsUpdate);
-        bool ApplyInstance(bool needsUpdate);
+        bool SetArraySampler(const char* name, u32 arrayIndex, const Texture* t);
+        bool SetArraySamlerByIndex(u16 index, u32 arrayIndex, const Texture* t);
+
+        bool ApplyGlobal(const FrameData& frameData, bool needsUpdate);
+        bool ApplyInstance(const FrameData& frameData, bool needsUpdate);
+        bool ApplyLocal(const FrameData& frameData);
 
         bool BindInstance(u32 instanceId);
+        bool BindLocal();
 
     private:
         bool AddAttribute(Shader& shader, const ShaderAttributeConfig& config) const;
         bool AddSampler(Shader& shader, const ShaderUniformConfig& config);
 
-        bool AddUniform(Shader& shader, const ShaderUniformConfig& config);
-        bool AddUniform(Shader& shader, const String& name, u16 size, ShaderUniformType type, ShaderScope scope, u16 setLocation,
-                        bool isSampler);
+        bool AddUniform(Shader& shader, const ShaderUniformConfig& config, u32 location);
 
         void ShaderDestroy(Shader& shader) const;
 

@@ -1,0 +1,50 @@
+
+# PBR Shader config file
+version = 2
+
+[general]
+name = Shader.PBR
+depthTest = true
+depthWrite = true
+maxInstances = 256
+[/general]
+
+[stages]
+vertex = PBRShader.vert
+fragment = PBRShader.frag
+[/stages]
+
+[attributes]
+inPosition = vec3
+inNormal = vec3
+inTexCoord = vec2
+inColor = vec4
+inTangent = vec3
+[/attributes]
+
+[uniforms]
+[global]
+projection = mat4
+view = mat4
+lightSpaces = mat4[4]
+cascadeSplits = vec4
+viewPosition = vec3
+mode = u32
+usePCF = u32
+bias = f32
+padding = vec2
+[/global]
+[instance]
+# Material texture samplers are: albedo, normal, combined (metallic, roughness and ao)
+materialTextures = sampler2D[3]
+shadowTextures = sampler2DArray
+iblCubeTexture = samplerCube
+dirLight = struct32
+pLights = struct480
+properties = struct32
+numPLights = u32
+[/instance]
+[local]
+model = mat4
+[/local]
+[/uniforms]

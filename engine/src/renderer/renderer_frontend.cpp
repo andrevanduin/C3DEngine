@@ -7,8 +7,11 @@
 #include "core/logger.h"
 #include "geometry.h"
 #include "platform/platform.h"
+#include "renderer_utils.h"
+#include "resources/loaders/text_loader.h"
 #include "resources/shaders/shader.h"
 #include "systems/cvars/cvar_system.h"
+#include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
 #include "vertex.h"
 #include "viewport.h"
@@ -65,8 +68,8 @@ namespace C3D
         }
         m_geometryIndexBuffer->Bind(0);
 
-        auto& vSync = CVars.Get<bool>("vsync");
-        vSync.AddOnChangedCallback([this](const bool& b) { SetFlagEnabled(FlagVSyncEnabled, b); });
+        auto& vSync = CVars.Get("vsync");
+        vSync.AddOnChangeCallback([this](const CVar& cvar) { SetFlagEnabled(FlagVSyncEnabled, cvar.GetValue<bool>()); });
 
         INFO_LOG("Successfully initialized Rendering System.");
         return true;
@@ -353,15 +356,82 @@ namespace C3D
         }
     }
 
-    bool RenderSystem::BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) const
+    void RenderSystem::BeginRenderpass(void* pass, const RenderTarget& target) const
     {
-        return m_backendPlugin->BeginRenderPass(pass, frameData);
+        m_backendPlugin->BeginRenderpass(pass, GetActiveViewport(), target);
     }
 
-    bool RenderSystem::EndRenderPass(RenderPass* pass) const { return m_backendPlugin->EndRenderPass(pass); }
+    void RenderSystem::EndRenderpass(void* pass) const { m_backendPlugin->EndRenderpass(pass); }
 
-    bool RenderSystem::CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const
+    bool RenderSystem::CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const
     {
+        // Get the uniform count
+        shader.globalUniformCount        = 0;
+        shader.globalUniformSamplerCount = 0;
+        shader.globalSamplerIndices.Clear();
+
+        shader.instanceUniformCount        = 0;
+        shader.instanceUniformSamplerCount = 0;
+        shader.instanceSamplerIndices.Clear();
+
+        shader.localUniformCount = 0;
+
+        for (u32 i = 0; i < config.uniforms.Size(); ++i)
+        {
+            auto& uniform = config.uniforms[i];
+
+            switch (uniform.scope)
+            {
+                case ShaderScope::Global:
+                    if (UniformTypeIsASampler(uniform.type))
+                    {
+                        shader.globalUniformSamplerCount++;
+
+                        auto index = static_cast<u16>(shader.uniforms.GetIndex(uniform.name));
+                        shader.globalSamplerIndices.PushBack(index);
+                    }
+                    else
+                    {
+                        shader.globalUniformCount++;
+                    }
+                    break;
+                case ShaderScope::Instance:
+                    if (UniformTypeIsASampler(uniform.type))
+                    {
+                        shader.instanceUniformSamplerCount++;
+
+                        auto index = static_cast<u16>(shader.uniforms.GetIndex(uniform.name));
+                        shader.instanceSamplerIndices.PushBack(index);
+                    }
+                    else
+                    {
+                        shader.instanceUniformCount++;
+                    }
+                    break;
+                case ShaderScope::Local:
+                    shader.localUniformCount++;
+                    break;
+            }
+        }
+
+        // Load the shader stage files and feed them to the backend to be compiled
+        // TODO: We should handle #include directives in the shaders here so it independent from renderer backend
+
+        shader.stageConfigs = config.stageConfigs;
+
+        for (auto& stageConfig : shader.stageConfigs)
+        {
+            TextResource source;
+            if (!Resources.Load(stageConfig.fileName, source))
+            {
+                ERROR_LOG("Failed to read shader file: '{}'.", stageConfig.fileName);
+            }
+
+            stageConfig.source = source.text;
+
+            Resources.Unload(source);
+        }
+
         return m_backendPlugin->CreateShader(shader, config, pass);
     }
 
@@ -378,20 +448,27 @@ namespace C3D
         return m_backendPlugin->BindShaderInstance(shader, instanceId);
     }
 
-    bool RenderSystem::ShaderApplyGlobals(const Shader& shader, bool needsUpdate) const
+    bool RenderSystem::BindShaderLocal(Shader& shader) const { return m_backendPlugin->BindShaderLocal(shader); }
+
+    bool RenderSystem::ShaderApplyGlobals(const FrameData& frameData, const Shader& shader, bool needsUpdate) const
     {
-        return m_backendPlugin->ShaderApplyGlobals(shader, needsUpdate);
+        return m_backendPlugin->ShaderApplyGlobals(frameData, shader, needsUpdate);
     }
 
-    bool RenderSystem::ShaderApplyInstance(const Shader& shader, const bool needsUpdate) const
+    bool RenderSystem::ShaderApplyInstance(const FrameData& frameData, const Shader& shader, const bool needsUpdate) const
     {
-        return m_backendPlugin->ShaderApplyInstance(shader, needsUpdate);
+        return m_backendPlugin->ShaderApplyInstance(frameData, shader, needsUpdate);
     }
 
-    bool RenderSystem::AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps,
-                                                      u32* outInstanceId) const
+    bool RenderSystem::ShaderApplyLocal(const FrameData& frameData, const Shader& shader) const
     {
-        return m_backendPlugin->AcquireShaderInstanceResources(shader, textureMapCount, maps, outInstanceId);
+        return m_backendPlugin->ShaderApplyLocal(frameData, shader);
+    }
+
+    bool RenderSystem::AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config,
+                                                      u32& outInstanceId) const
+    {
+        return m_backendPlugin->AcquireShaderInstanceResources(shader, config, outInstanceId);
     }
 
     bool RenderSystem::ReleaseShaderInstanceResources(const Shader& shader, const u32 instanceId) const
@@ -403,14 +480,14 @@ namespace C3D
 
     void RenderSystem::ReleaseTextureMapResources(TextureMap& map) const { m_backendPlugin->ReleaseTextureMapResources(map); }
 
-    bool RenderSystem::SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) const
+    bool RenderSystem::SetUniform(Shader& shader, const ShaderUniform& uniform, u32 arrayIndex, const void* value) const
     {
-        return m_backendPlugin->SetUniform(shader, uniform, value);
+        return m_backendPlugin->SetUniform(shader, uniform, arrayIndex, value);
     }
 
-    void RenderSystem::CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) const
+    void RenderSystem::CreateRenderTarget(void* pass, RenderTarget& target, u16 layerIndex, u32 width, u32 height) const
     {
-        m_backendPlugin->CreateRenderTarget(pass, target, width, height);
+        m_backendPlugin->CreateRenderTarget(pass, target, layerIndex, width, height);
     }
 
     void RenderSystem::DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory) const
@@ -418,9 +495,12 @@ namespace C3D
         m_backendPlugin->DestroyRenderTarget(target, freeInternalMemory);
     }
 
-    RenderPass* RenderSystem::CreateRenderPass(const RenderPassConfig& config) const { return m_backendPlugin->CreateRenderPass(config); }
+    void RenderSystem::CreateRenderpassInternals(const RenderpassConfig& config, void** internalData) const
+    {
+        m_backendPlugin->CreateRenderpassInternals(config, internalData);
+    }
 
-    bool RenderSystem::DestroyRenderPass(RenderPass* pass) const { return m_backendPlugin->DestroyRenderPass(pass); }
+    void RenderSystem::DestroyRenderpassInternals(void* internalData) const { m_backendPlugin->DestroyRenderpassInternals(internalData); }
 
     Texture* RenderSystem::GetWindowAttachment(const u8 index) const { return m_backendPlugin->GetWindowAttachment(index); }
 

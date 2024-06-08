@@ -33,8 +33,19 @@ namespace C3D::UI_2D
         geometry = geometrySystem.AcquireFromConfig(config, true);
 
         // Acquire shader instance resources
-        const TextureMap* maps[1] = { &uiSystem.GetAtlas() };
-        if (!renderSystem.AcquireShaderInstanceResources(uiSystem.GetShader(), 1, maps, &renderable.instanceId))
+        auto& shader = uiSystem.GetShader();
+
+        TextureMap* maps[1] = { &uiSystem.GetAtlas() };
+
+        ShaderInstanceUniformTextureConfig textureConfig;
+        textureConfig.uniformLocation = shader.GetUniformIndex("diffuseTexture");
+        textureConfig.textureMaps     = maps;
+
+        ShaderInstanceResourceConfig instanceConfig;
+        instanceConfig.uniformConfigs     = &textureConfig;
+        instanceConfig.uniformConfigCount = 1;
+
+        if (!renderSystem.AcquireShaderInstanceResources(shader, instanceConfig, renderable.instanceId))
         {
             ERROR_LOG("Failed to Acquire Shader Instance resources.");
             return false;
@@ -58,7 +69,7 @@ namespace C3D::UI_2D
 
         shaderSystem.SetUniformByIndex(locations.properties, &color);
         shaderSystem.SetUniformByIndex(locations.diffuseTexture, &uiSystem.GetAtlas());
-        shaderSystem.ApplyInstance(needsUpdate);
+        shaderSystem.ApplyInstance(frameData, needsUpdate);
 
         // Sync frame number
         renderable.frameNumber = frameData.frameNumber;
@@ -69,7 +80,9 @@ namespace C3D::UI_2D
         model[3][0] += offsetX;
         model[3][1] += offsetY;
 
+        shaderSystem.BindLocal();
         shaderSystem.SetUniformByIndex(locations.model, &model);
+        shaderSystem.ApplyLocal(frameData);
 
         renderer.DrawGeometry(renderable.renderData);
     }

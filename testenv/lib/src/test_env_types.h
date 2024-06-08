@@ -2,6 +2,7 @@
 #pragma once
 #include <core/defines.h>
 #include <resources/debug/debug_box_3d.h>
+#include <renderer/renderer_types.h>
 
 enum TestEnvPacketViews
 {
@@ -29,4 +30,11 @@ struct SkyboxShaderLocations
 struct LightDebugData
 {
     C3D::DebugBox3D box;
+};
+
+struct GeometryDistance {
+    /** @brief The geometry render data. */
+    C3D::GeometryRenderData g;
+    /** @brief The distance from the camera. */
+    f32 distance;
 };

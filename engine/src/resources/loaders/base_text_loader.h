@@ -32,8 +32,7 @@ namespace C3D
             File file;
             if (!file.Open(resource.fullPath, FileModeRead))
             {
-                Logger::Error("[BASE_TEXT_LOADER] - LoadAndParseFile() - Unable to open file for reading: '{}'.",
-                              resource.fullPath);
+                Logger::Error("[BASE_TEXT_LOADER] - LoadAndParseFile() - Unable to open file for reading: '{}'.", resource.fullPath);
                 return false;
             }
 
@@ -41,8 +40,7 @@ namespace C3D
             // Prepare for strings of up to 512 characters so we don't needlessly resize
             line.Reserve(512);
 
-            u32 lineNumber           = 1;
-            bool currentTagIsOpening = true;
+            u32 lineNumber = 1;
 
             try
             {
@@ -70,7 +68,7 @@ namespace C3D
 
                     if (line.StartsWith('['))
                     {
-                        ParseTagInternal(line, currentTagIsOpening, resource);
+                        ParseTagInternal(line, resource);
                     }
                     else
                     {
@@ -91,8 +89,8 @@ namespace C3D
             }
             catch (const std::exception& exc)
             {
-                Logger::Error("[BASE_TEXT_LOADER] - LoadAndParseFile() - Failed to parse file: '{}'.\n {} on line: {}.",
-                              resource.fullPath, exc.what(), lineNumber);
+                Logger::Error("[BASE_TEXT_LOADER] - LoadAndParseFile() - Failed to parse file: '{}'.\n {} on line: {}.", resource.fullPath,
+                              exc.what(), lineNumber);
                 return false;
             }
 
@@ -124,36 +122,18 @@ namespace C3D
             return value.ToU8();
         }
 
-        void ParseTagInternal(const String& line, bool& currentTagIsOpening, T& resource) const
+        void ParseTagInternal(const String& line, T& resource) const
         {
             if (!line.EndsWith(']'))
             {
                 throw Exception("Invalid Tag specification. A tag should be specified as: [TAG_NAME].");
             }
 
-            if (currentTagIsOpening)
-            {
-                const auto& name = line.SubStr(1, line.Size() - 1);
-                if (name.StartsWith('/'))
-                {
-                    throw Exception("Invalid Tag specification. Expected an opening but found a closing tag.");
-                }
-                ParseTag(name, currentTagIsOpening, resource);
-            }
-            else
-            {
-                if (!line.StartsWith("[/"))
-                {
-                    throw Exception("Invalid Tag specification. Expected a closing but found an opening tag.");
-                }
-
-                const auto& name = line.SubStr(2, line.Size() - 1);
-                ParseTag(name, currentTagIsOpening, resource);
-            }
-
-            currentTagIsOpening ^= true;
+            auto isClosing = line.Contains('/');
+            String name    = line.SubStr(isClosing ? 2 : 1, line.Size() - 1);
+            ParseTag(name, !isClosing, resource);
         }
 
-        const SystemManager* m_pSystemsManager;
+        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

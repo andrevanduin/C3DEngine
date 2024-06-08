@@ -10,8 +10,7 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME         = "MATERIAL_LOADER";
-    constexpr auto BUILTIN_SHADER_NAME_MATERIAL = "Shader.Builtin.Material";
+    constexpr const char* INSTANCE_NAME = "MATERIAL_LOADER";
 
     ResourceLoader<MaterialConfig>::ResourceLoader(const SystemManager* pSystemsManager)
         : IResourceLoader(pSystemsManager, MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials"),
@@ -20,6 +19,7 @@ namespace C3D
 
     bool ResourceLoader<MaterialConfig>::Load(const char* name, MaterialConfig& resource) const
     {
+        m_currentTagType = ParserTagType::Global;
         return LoadAndParseFile(name, "materials", "mt", resource);
     }
 
@@ -79,6 +79,10 @@ namespace C3D
             {
                 resource.type = MaterialType::UI;
             }
+            else if (value.IEquals("terrain"))
+            {
+                resource.type = MaterialType::Terrain;
+            }
             else if (value.IEquals("custom"))
             {
                 resource.type = MaterialType::Custom;
@@ -132,7 +136,8 @@ namespace C3D
             }
             else if (value.IEquals("pbr"))
             {
-                resource.type = MaterialType::PBR;
+                resource.type       = MaterialType::PBR;
+                resource.shaderName = "Shader.PBR";
             }
             else if (value.IEquals("custom"))
             {
@@ -255,11 +260,11 @@ namespace C3D
         {
             map.name = value;
         }
-        else if (name.IEquals("minifyFilter"))
+        else if (name.IEquals("filterMin"))
         {
             ParseTextureFilter(value, map.minifyFilter);
         }
-        else if (name.IEquals("magnifyFilter"))
+        else if (name.IEquals("filterMag"))
         {
             ParseTextureFilter(value, map.magnifyFilter);
         }

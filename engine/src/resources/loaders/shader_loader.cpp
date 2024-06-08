@@ -12,400 +12,474 @@ namespace C3D
     constexpr const char* INSTANCE_NAME = "SHADER_LOADER";
 
     ResourceLoader<ShaderConfig>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, MemoryType::Shader, ResourceType::Shader, nullptr, "shaders")
+        : IResourceLoader(pSystemsManager, MemoryType::Shader, ResourceType::Shader, nullptr, "shaders"),
+          BaseTextLoader<ShaderConfig>(pSystemsManager)
     {}
 
     bool ResourceLoader<ShaderConfig>::Load(const char* name, ShaderConfig& resource) const
     {
-        if (std::strlen(name) == 0)
-        {
-            ERROR_LOG("Provided name was empty.");
-            return false;
-        }
-
-        auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, name, "shadercfg");
-
-        File file;
-        if (!file.Open(fullPath, FileModeRead))
-        {
-            ERROR_LOG("Failed to open shader config file for reading: '{}'.", fullPath);
-            return false;
-        }
-
-        resource.fullPath      = fullPath;
-        resource.cullMode      = FaceCullMode::Back;
-        resource.topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST;
-
-        resource.attributes.Reserve(4);
-        resource.uniforms.Reserve(8);
-
-        String line;
-        u32 lineNumber = 1;
-        while (file.ReadLine(line))
-        {
-            // Trim the line
-            line.Trim();
-
-            // Skip Blank lines and comments
-            if (line.Empty() || line.First() == '#')
-            {
-                lineNumber++;
-                continue;
-            }
-
-            // Check if we have a '=' symbol
-            if (!line.Contains('='))
-            {
-                WARN_LOG("Potential formatting issue found in file '{}': '=' token not found. Skipping line {}.", fullPath, lineNumber);
-                lineNumber++;
-                continue;
-            }
-
-            auto parts = line.Split('=');
-            if (parts.Size() != 2)
-            {
-                WARN_LOG("Potential formatting issue found in file '{}': Too many '=' tokens found. Skipping line {}.", fullPath,
-                         lineNumber);
-                lineNumber++;
-                continue;
-            }
-
-            // Get the variable name (which is all the characters up to the '=' and trim
-            auto varName = parts[0];
-            varName.Trim();
-
-            // Get the value (which is all the characters after the '=' and trim
-            auto value = parts[1];
-            value.Trim();
-
-            if (varName.IEquals("version"))
-            {
-                resource.version = value.ToU8();
-            }
-            else if (varName.IEquals("name"))
-            {
-                resource.name = value;
-            }
-            else if (varName.IEquals("renderPass"))
-            {
-                // NOTE: Deprecated so we ignore it from now on
-                // outResource->config.renderPassName = StringDuplicate(value.data());
-            }
-            else if (varName.IEquals("depthTest"))
-            {
-                if (value.ToBool()) resource.flags |= ShaderFlagDepthTest;
-            }
-            else if (varName.IEquals("stencilTest"))
-            {
-                if (value.ToBool()) resource.flags |= ShaderFlagStencilTest;
-            }
-            else if (varName.IEquals("depthWrite"))
-            {
-                if (value.ToBool()) resource.flags |= ShaderFlagDepthWrite;
-            }
-            else if (varName.IEquals("stencilWrite"))
-            {
-                if (value.ToBool()) resource.flags |= ShaderFlagStencilWrite;
-            }
-            else if (varName.IEquals("wireframe"))
-            {
-                if (value.ToBool()) resource.flags |= ShaderFlagWireframe;
-            }
-            else if (varName.IEquals("topology"))
-            {
-                // Reset our topology types
-                resource.topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_NONE;
-                // Parse them as a comma-seperated list
-                const auto topologyTypes = value.Split(',');
-                // Add them to our config one by one
-                for (auto topology : topologyTypes)
-                {
-                    ParseTopology(resource, topology);
-                }
-            }
-            else if (varName.IEquals("stages"))
-            {
-                ParseStages(resource, value);
-            }
-            else if (varName.IEquals("stageFiles"))
-            {
-                ParseStageFiles(resource, value);
-            }
-            else if (varName.IEquals("cullMode"))
-            {
-                ParseCullMode(resource, value);
-            }
-            else if (varName.IEquals("attribute"))
-            {
-                ParseAttribute(resource, value);
-            }
-            else if (varName.IEquals("uniform"))
-            {
-                ParseUniform(resource, value);
-            }
-            else if (varName.IEquals("topology"))
-            {
-                ParseTopology(resource, value);
-            }
-
-            lineNumber++;
-        }
-
-        file.Close();
-        return true;
+        m_currentTagType = ParserTagType::None;
+        return LoadAndParseFile(name, "shaders", "shadercfg", resource);
     }
 
-    void ResourceLoader<ShaderConfig>::Unload(ShaderConfig& resource) const
+    void ResourceLoader<ShaderConfig>::Unload(ShaderConfig& resource)
     {
-        resource.stageFileNames.Destroy();
-        resource.stageNames.Destroy();
-        resource.stages.Destroy();
+        // Cleanup stage configs
+        resource.stageConfigs.Destroy();
 
         // Cleanup attributes
         resource.attributes.Destroy();
 
         // Cleanup uniforms
         resource.uniforms.Destroy();
-        resource.name.Destroy();
 
+        // Cleanup strings
         resource.name.Destroy();
         resource.fullPath.Destroy();
+
+        // Set the version to 0 so the Config can be re-used (for loading the files it must start at version == 0)
+        resource.version = 0;
     }
 
-    void ResourceLoader<ShaderConfig>::ParseStages(ShaderConfig& data, const String& value) const
+    void ResourceLoader<ShaderConfig>::SetDefaults(ShaderConfig& resource) const
     {
-        data.stageNames = value.Split(',');
-        if (!data.stageFileNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
+        if (resource.version != 2)
         {
-            // We already found the stage file names and the lengths don't match
-            ERROR_LOG("Mismatch between the amount of StageNames ({}) and StageFileNames ({}).", data.stageNames.Size(),
-                      data.stageFileNames.Size());
+            FATAL_LOG("We currently only support loading shadercfgs where version == 2");
         }
 
-        for (auto& stageName : data.stageNames)
+        resource.cullMode      = FaceCullMode::Back;
+        resource.topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST;
+    }
+
+    void ResourceLoader<ShaderConfig>::ParseNameValuePair(const String& name, const String& value, ShaderConfig& resource) const
+    {
+        switch (m_currentTagType)
         {
-            if (stageName.IEquals("frag") || stageName.IEquals("fragment"))
+            case ParserTagType::General:
+                ParseGeneral(name, value, resource);
+                break;
+            case ParserTagType::Stages:
+                ParseStages(name, value, resource);
+                break;
+            case ParserTagType::Attributes:
+                ParseAttribute(name, value, resource);
+                break;
+            case ParserTagType::Uniforms:
+                ParseUniform(name, value, resource);
+                break;
+            default:
+                throw Exception("Invalid ParserTagType found: '{}'", ToUnderlying(m_currentTagType));
+        }
+    }
+
+    void ResourceLoader<ShaderConfig>::ParseTag(const String& name, bool isOpeningTag, ShaderConfig& resource) const
+    {
+        if (isOpeningTag)
+        {
+            // Opening Tag
+            if (name.IEquals("general"))
             {
-                data.stages.PushBack(ShaderStage::Fragment);
+                m_currentTagType = ParserTagType::General;
             }
-            else if (stageName.IEquals("vert") || stageName.IEquals("vertex"))
+            else if (name.IEquals("stages"))
             {
-                data.stages.PushBack(ShaderStage::Vertex);
+                m_currentTagType = ParserTagType::Stages;
             }
-            else if (stageName.IEquals("geom") || stageName.IEquals("geometry"))
+            else if (name.IEquals("attributes"))
             {
-                data.stages.PushBack(ShaderStage::Geometry);
+                m_currentTagType = ParserTagType::Attributes;
             }
-            else if (stageName.IEquals("comp") || stageName.IEquals("compute"))
+            else if (name.IEquals("uniforms"))
             {
-                data.stages.PushBack(ShaderStage::Compute);
+                m_currentTagType = ParserTagType::Uniforms;
+            }
+            else if (name.IEquals("global"))
+            {
+                if (m_currentTagType != ParserTagType::Uniforms)
+                {
+                    throw Exception("Tag name: {} may only appear inside of a uniforms tag.", name);
+                }
+                m_currentUniformScope = ParserUniformScope::Global;
+            }
+            else if (name.IEquals("instance"))
+            {
+                if (m_currentTagType != ParserTagType::Uniforms)
+                {
+                    throw Exception("Tag name: {} may only appear inside of a uniforms tag.", name);
+                }
+                m_currentUniformScope = ParserUniformScope::Instance;
+            }
+            else if (name.IEquals("local"))
+            {
+                if (m_currentTagType != ParserTagType::Uniforms)
+                {
+                    throw Exception("Tag name: {} may only appear inside of a uniforms tag.", name);
+                }
+                m_currentUniformScope = ParserUniformScope::Local;
             }
             else
             {
-                ERROR_LOG("Unrecognized stage '{}'.", stageName);
+                throw Exception("Invalid Tag name: '{}'", name);
+            }
+        }
+        else
+        {
+            // Closing Tag
+            if (name.IEquals("general"))
+            {
+                if (m_currentTagType != ParserTagType::General)
+                {
+                    throw Exception("Invalid closing Tag name: '{}' expected type general", name);
+                }
+                m_currentTagType = ParserTagType::None;
+            }
+            else if (name.IEquals("stages"))
+            {
+                if (m_currentTagType != ParserTagType::Stages)
+                {
+                    throw Exception("Invalid closing Tag name: '{}' expected type stages", name);
+                }
+                m_currentTagType = ParserTagType::None;
+            }
+            else if (name.IEquals("attributes"))
+            {
+                if (m_currentTagType != ParserTagType::Attributes)
+                {
+                    throw Exception("Invalid closing Tag name: '{}' expected type attributes", name);
+                }
+                m_currentTagType = ParserTagType::None;
+            }
+            else if (name.IEquals("uniforms"))
+            {
+                if (m_currentTagType != ParserTagType::Uniforms)
+                {
+                    throw Exception("Invalid closing Tag name: '{}' expected type uniforms", name);
+                }
+                m_currentTagType = ParserTagType::None;
+            }
+            else if (name.IEquals("global"))
+            {
+                if (m_currentUniformScope != ParserUniformScope::Global)
+                {
+                    throw Exception("Invalid closing Tag name: '{}' expected type global", name);
+                }
+                m_currentUniformScope = ParserUniformScope::None;
+            }
+            else if (name.IEquals("instance"))
+            {
+                if (m_currentUniformScope != ParserUniformScope::Instance)
+                {
+                    throw Exception("Invalid closing Tag name: '{}' expected type instance", name);
+                }
+                m_currentUniformScope = ParserUniformScope::None;
+            }
+            else if (name.IEquals("local"))
+            {
+                if (m_currentUniformScope != ParserUniformScope::Local)
+                {
+                    throw Exception("Invalid closing Tag name: '{}' expected type local", name);
+                }
+                m_currentUniformScope = ParserUniformScope::None;
+            }
+            else
+            {
+                throw Exception("Invalid Tag name: '{}'", name);
             }
         }
     }
 
-    void ResourceLoader<ShaderConfig>::ParseStageFiles(ShaderConfig& data, const String& value) const
+    void ResourceLoader<ShaderConfig>::ParseGeneral(const String& name, const String& value, ShaderConfig& resource) const
     {
-        data.stageFileNames = value.Split(',');
-        if (!data.stageNames.Empty() && data.stageNames.Size() != data.stageFileNames.Size())
+        if (name.IEquals("name"))
         {
-            // We already found the stage names and the lengths don't match
-            ERROR_LOG("Mismatch between the amount of StageNames ({}) and StageFileNames ({}).", data.stageNames.Size(),
-                      data.stageFileNames.Size());
+            resource.name = value;
+        }
+        else if (name.IEquals("renderpass"))
+        {
+            WARN_LOG("ShaderCfg contains deprecated keyword: 'renderPass' which is ignored.");
+        }
+        else if (name.IEquals("maxInstances"))
+        {
+            resource.maxInstances = value.ToU32();
+        }
+        else if (name.IEquals("depthTest"))
+        {
+            if (value.ToBool()) resource.flags |= ShaderFlagDepthTest;
+        }
+        else if (name.IEquals("stencilTest"))
+        {
+            if (value.ToBool()) resource.flags |= ShaderFlagStencilTest;
+        }
+        else if (name.IEquals("depthWrite"))
+        {
+            if (value.ToBool()) resource.flags |= ShaderFlagDepthWrite;
+        }
+        else if (name.IEquals("stencilWrite"))
+        {
+            if (value.ToBool()) resource.flags |= ShaderFlagStencilWrite;
+        }
+        else if (name.IEquals("wireframe"))
+        {
+            if (value.ToBool()) resource.flags |= ShaderFlagWireframe;
+        }
+        else if (name.IEquals("topology"))
+        {
+            // Reset our topology types
+            resource.topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_NONE;
+            // Parse them as a comma-seperated list
+            const auto topologyTypes = value.Split(',');
+            // Add them to our config one by one
+            for (auto topology : topologyTypes)
+            {
+                ParseTopology(resource, topology);
+            }
+        }
+        else if (name.IEquals("cullMode"))
+        {
+            ParseCullMode(resource, value);
+        }
+        else
+        {
+            throw Exception("Unknown specifier: '{}' found in [general] section", value);
         }
     }
 
-    void ResourceLoader<ShaderConfig>::ParseAttribute(ShaderConfig& data, const String& value) const
+    void ResourceLoader<ShaderConfig>::ParseStages(const String& name, const String& value, ShaderConfig& resource) const
     {
-        const auto fields = value.Split(',');
-        if (fields.Size() != 2)
+        ShaderStageConfig config;
+        config.fileName = "shaders/" + value;
+        config.name     = FileSystem::FileNameFromPath(config.fileName);
+
+        if (name.IEquals("vert") || name.IEquals("vertex"))
         {
-            ERROR_LOG("Invalid layout. Attribute field must be 'type,name'. Skipping this line.");
-            return;
+            config.stage = ShaderStage::Vertex;
+        }
+        else if (name.IEquals("frag") || name.IEquals("fragment"))
+        {
+            config.stage = ShaderStage::Fragment;
+        }
+        else
+        {
+            throw Exception("Unknown ShaderStage: '{}' specified", name);
         }
 
-        ShaderAttributeConfig attribute{};
-        if (fields[0].IEquals("f32"))
+        resource.stageConfigs.PushBack(config);
+    }
+
+    void ResourceLoader<ShaderConfig>::ParseAttribute(const String& name, const String& value, ShaderConfig& resource) const
+    {
+        ShaderAttributeConfig attribute;
+        attribute.name = name;
+
+        if (value.IEquals("f32"))
         {
             attribute.type = Attribute_Float32;
             attribute.size = 4;
         }
-        else if (fields[0].IEquals("vec2"))
+        else if (value.IEquals("vec2"))
         {
             attribute.type = Attribute_Float32_2;
             attribute.size = 8;
         }
-        else if (fields[0].IEquals("vec3"))
+        else if (value.IEquals("vec3"))
         {
             attribute.type = Attribute_Float32_3;
             attribute.size = 12;
         }
-        else if (fields[0].IEquals("vec4"))
+        else if (value.IEquals("vec4"))
         {
             attribute.type = Attribute_Float32_4;
             attribute.size = 16;
         }
-        else if (fields[0].IEquals("u8"))
+        else if (value.IEquals("u8"))
         {
             attribute.type = Attribute_UInt8;
             attribute.size = 1;
         }
-        else if (fields[0].IEquals("u16"))
+        else if (value.IEquals("u16"))
         {
             attribute.type = Attribute_UInt16;
             attribute.size = 2;
         }
-        else if (fields[0].IEquals("u32"))
+        else if (value.IEquals("u32"))
         {
             attribute.type = Attribute_UInt32;
             attribute.size = 4;
         }
-        else if (fields[0].IEquals("i8"))
+        else if (value.IEquals("i8"))
         {
             attribute.type = Attribute_Int8;
             attribute.size = 1;
         }
-        else if (fields[0].IEquals("i16"))
+        else if (value.IEquals("i16"))
         {
             attribute.type = Attribute_Int16;
             attribute.size = 2;
         }
-        else if (fields[0].IEquals("i32"))
+        else if (value.IEquals("i32"))
         {
             attribute.type = Attribute_Int32;
             attribute.size = 4;
         }
         else
         {
-            ERROR_LOG("Invalid file layout. Attribute type must be be f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, or u32.");
-            WARN_LOG("Defaulting to f32.");
-            attribute.type = Attribute_Float32;
-            attribute.size = 4;
+            throw Exception("Unknown attribute type: '{}'", value);
         }
-        attribute.name = fields[1];
 
-        data.attributes.PushBack(attribute);
+        resource.attributes.PushBack(attribute);
     }
 
-    bool ResourceLoader<ShaderConfig>::ParseUniform(ShaderConfig& data, const String& value) const
+    void ResourceLoader<ShaderConfig>::ParseUniform(const String& name, const String& value, ShaderConfig& resource) const
     {
-        const auto fields = value.Split(',');
-        if (fields.Size() != 3)
+        ShaderUniformConfig uniform;
+        uniform.name = name;
+        switch (m_currentUniformScope)
         {
-            ERROR_LOG("Invalid layout. Uniform field must be 'type,scope,name'.");
-            return false;
+            case ParserUniformScope::Global:
+                uniform.scope = ShaderScope::Global;
+                break;
+            case ParserUniformScope::Instance:
+                uniform.scope = ShaderScope::Instance;
+                break;
+            case ParserUniformScope::Local:
+                uniform.scope = ShaderScope::Local;
+                break;
+            default:
+                throw Exception("Invalid scope defined for current uniforms");
         }
 
-        ShaderUniformConfig uniform{};
-        if (fields[0].IEquals("f32"))
+        String type;
+
+        // Check if it's an array type
+        if (value.Contains('['))
+        {
+            // Array-type
+            auto openBracket    = value.Find('[');
+            auto closeBracket   = value.begin() + value.Size() - 1;
+            auto lengthStr      = value.SubStr(openBracket + 1, closeBracket);
+            uniform.arrayLength = lengthStr.ToU8();
+            type                = value.SubStr(value.begin(), openBracket);
+        }
+        else
+        {
+            // Not an array-type
+            uniform.arrayLength = 1;
+            type                = value;
+        }
+
+        if (type.IEquals("f32"))
         {
             uniform.type = Uniform_Float32;
             uniform.size = 4;
         }
-        else if (fields[0].IEquals("vec2"))
+        else if (type.IEquals("vec2"))
         {
             uniform.type = Uniform_Float32_2;
             uniform.size = 8;
         }
-        else if (fields[0].IEquals("vec3"))
+        else if (type.IEquals("vec3"))
         {
             uniform.type = Uniform_Float32_3;
             uniform.size = 12;
         }
-        else if (fields[0].IEquals("vec4"))
+        else if (type.IEquals("vec4"))
         {
             uniform.type = Uniform_Float32_4;
             uniform.size = 16;
         }
-        else if (fields[0].IEquals("u8"))
+        else if (type.IEquals("u8"))
         {
             uniform.type = Uniform_UInt8;
             uniform.size = 1;
         }
-        else if (fields[0].IEquals("u16"))
+        else if (type.IEquals("u16"))
         {
             uniform.type = Uniform_UInt16;
             uniform.size = 2;
         }
-        else if (fields[0].IEquals("u32"))
+        else if (type.IEquals("u32"))
         {
             uniform.type = Uniform_UInt32;
             uniform.size = 4;
         }
-        else if (fields[0].IEquals("i8"))
+        else if (type.IEquals("i8"))
         {
             uniform.type = Uniform_Int8;
             uniform.size = 1;
         }
-        else if (fields[0].IEquals("i16"))
+        else if (type.IEquals("i16"))
         {
             uniform.type = Uniform_Int16;
             uniform.size = 2;
         }
-        else if (fields[0].IEquals("i32"))
+        else if (type.IEquals("i32"))
         {
             uniform.type = Uniform_Int32;
             uniform.size = 4;
         }
-        else if (fields[0].IEquals("mat4"))
+        else if (type.IEquals("mat4"))
         {
             uniform.type = Uniform_Matrix4;
             uniform.size = 64;
         }
-        else if (fields[0].IEquals("samp") || fields[0].IEquals("sampler"))
+        else if (type.StartsWithI("samp"))
         {
-            uniform.type = Uniform_Sampler;
+            // Some kind of sampler
             uniform.size = 0;  // Samplers don't have a size.
+
+            if (type.IEquals("sampler1d"))
+            {
+                uniform.type = Uniform_Sampler1D;
+            }
+            else if (type.IEquals("sampler2d") || type.IEquals("samp") || type.IEquals("sampler"))
+            {
+                // NOTE: Also checking here for samp/sampler for backwards compatibility
+                uniform.type = Uniform_Sampler2D;
+            }
+            else if (type.IEquals("sampler3d"))
+            {
+                uniform.type = Uniform_Sampler3D;
+            }
+            else if (type.IEquals("samplercube"))
+            {
+                uniform.type = Uniform_SamplerCube;
+            }
+            else if (type.IEquals("sampler1darray"))
+            {
+                uniform.type = Uniform_Sampler1DArray;
+            }
+            else if (type.IEquals("sampler2darray"))
+            {
+                uniform.type = Uniform_Sampler2DArray;
+            }
+            else if (type.IEquals("samplercubearray"))
+            {
+                uniform.type = Uniform_SamplerCubeArray;
+            }
+            else
+            {
+                throw Exception("Unknown sampler type: '{}'.", type);
+            }
         }
-        else if (fields[0].NIEquals("struct", 6))
+        else if (type.StartsWithI("struct"))
         {
             // Type is struct
-            if (fields[0].Size() <= 6)
+            if (type.Size() <= 6)
             {
-                ERROR_LOG("Invalid struct type: '{}'.", fields[0]);
-                return false;
+                throw Exception("Invalid struct type: '{}'.", type);
             }
-            String structSize = fields[0].SubStr(6, 0);
+
+            String structSize = type.SubStr(6, 0);
             uniform.type      = Uniform_Custom;
             uniform.size      = structSize.ToU16();
         }
         else
         {
-            ERROR_LOG(
-                "Invalid file layout. Uniform type must be f32, vec2, vec3, vec4, i8, i16, i32, u8, u16, u32, mat4, samp/sampler or "
-                "struct.");
-            WARN_LOG("Defaulting to f32.");
-            uniform.type = Uniform_Float32;
-            uniform.size = 4;
+            throw Exception("Unknown uniform type: '{}'", type);
         }
 
-        if (fields[1].IEquals("global"))
-        {
-            uniform.scope = ShaderScope::Global;
-        }
-        else if (fields[1].IEquals("instance"))
-        {
-            uniform.scope = ShaderScope::Instance;
-        }
-        else if (fields[1].IEquals("local"))
-        {
-            uniform.scope = ShaderScope::Local;
-        }
-        else
-        {
-            ERROR_LOG("Invalid file layout. Uniform scope must be global, instance or local.");
-            WARN_LOG("Defaulting to global.");
-            uniform.scope = ShaderScope::Global;
-        }
-
-        uniform.name = fields[2];
-
-        data.uniforms.PushBack(uniform);
-
-        return true;
+        resource.uniforms.PushBack(uniform);
     }
 
     void ResourceLoader<ShaderConfig>::ParseTopology(ShaderConfig& data, const String& value)

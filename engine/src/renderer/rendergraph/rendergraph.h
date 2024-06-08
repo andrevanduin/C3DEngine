@@ -1,7 +1,8 @@
 
 #pragma once
-#include "rendergraph_pass.h"
+#include "renderer/render_target.h"
 #include "rendergraph_types.h"
+#include "renderpass.h"
 
 namespace C3D
 {
@@ -15,13 +16,15 @@ namespace C3D
 
         bool Create(const String& name, const Application* application);
 
+        bool LoadResources();
+
         bool OnResize(u32 width, u32 height);
 
         void Destroy();
 
         bool AddGlobalSource(const String& name, RendergraphSourceType type, RendergraphSourceOrigin origin);
 
-        bool AddPass(const String& name, RendergraphPass* pass);
+        bool AddPass(const String& name, Renderpass* pass);
         bool AddSource(const String& passName, const String& sourceName, RendergraphSourceType type, RendergraphSourceOrigin origin);
         bool AddSink(const String& passName, const String& sinkName);
 
@@ -36,7 +39,7 @@ namespace C3D
         bool ExecuteFrame(const FrameData& frameData);
 
     private:
-        RendergraphPass* GetPassByName(const String& name) const;
+        Renderpass* GetPassByName(const String& name) const;
 
         bool SourceHasLinkedSink(RendergraphSource* source) const;
 
@@ -46,7 +49,7 @@ namespace C3D
         /** @brief The globally accessible sources that can be used by everyone. */
         DynamicArray<RendergraphSource> m_globalSources;
         /** @brief The passes that the Rendergraph is working with. */
-        DynamicArray<RendergraphPass*> m_passes;
+        DynamicArray<Renderpass*> m_passes;
         /** @brief The global final sink which everything feeds into. */
         RendergraphSink m_globalSink;
 

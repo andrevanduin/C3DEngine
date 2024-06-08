@@ -16,16 +16,14 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "VULKAN_RENDERPASS";
 
-    VulkanRenderPass::VulkanRenderPass() : RenderPass() {}
-
-    VulkanRenderPass::VulkanRenderPass(const SystemManager* pSystemsManager, VulkanContext* context, const RenderPassConfig& config)
-        : RenderPass(pSystemsManager, config), m_context(context)
-    {}
-
-    bool VulkanRenderPass::Create(const RenderPassConfig& config)
+    bool VulkanRenderpass::Create(const RenderpassConfig& config, const VulkanContext* context)
     {
-        m_depth   = config.depth;
-        m_stencil = config.stencil;
+        m_name       = config.name;
+        m_depth      = config.depth;
+        m_stencil    = config.stencil;
+        m_clearFlags = config.clearFlags;
+        m_clearColor = config.clearColor;
+        m_context    = context;
 
         // Main SubPass
         VkSubpassDescription subPass = {};
@@ -46,7 +44,7 @@ namespace C3D
 
                 if (attachmentConfig.source == RenderTargetAttachmentSource::Default)
                 {
-                    attachmentDescription.format = m_context->swapChain.imageFormat.format;
+                    attachmentDescription.format = m_context->swapchain.imageFormat.format;
                 }
                 else
                 {
@@ -123,8 +121,8 @@ namespace C3D
             else if (attachmentConfig.type & RenderTargetAttachmentTypeDepth)
             {
                 // A depth attachment
-                auto doClearDepth   = m_clearFlags & RenderPassClearFlags::ClearDepthBuffer;
-                auto doClearStencil = m_clearFlags & RenderPassClearFlags::ClearDepthBuffer;
+                auto doClearDepth   = m_clearFlags & RenderpassClearFlag::ClearDepthBuffer;
+                auto doClearStencil = m_clearFlags & RenderpassClearFlag::ClearStencilBuffer;
 
                 auto depthFormat = m_context->device.GetDepthFormat();
 
@@ -142,7 +140,8 @@ namespace C3D
                 // Determine which load operation to use
                 if (attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::DontCare)
                 {
-                    attachmentDescription.loadOp = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    attachmentDescription.loadOp        = doClearDepth ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    attachmentDescription.stencilLoadOp = doClearStencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 }
                 else
                 {
@@ -186,28 +185,29 @@ namespace C3D
                 // Determine the store operation to use.
                 if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperation::DontCare)
                 {
-                    attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                    attachmentDescription.storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                    attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 }
                 else if (attachmentConfig.storeOperation == RenderTargetAttachmentStoreOperation::Store)
                 {
-                    attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+                    attachmentDescription.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+                    attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
                 }
                 else
                 {
                     FATAL_LOG("Invalid store operation ({}) set for depth attachment. Check your configuration.",
                               ToUnderlying(attachmentConfig.storeOperation));
+                    return false;
                 }
 
-                // TODO: Configurability for stencil attachments.
-                attachmentDescription.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-                attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 // If coming from a previous pass, should already be VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL.
                 // Otherwise undefined.
                 attachmentDescription.initialLayout = attachmentConfig.loadOperation == RenderTargetAttachmentLoadOperation::Load
                                                           ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                                                           : VK_IMAGE_LAYOUT_UNDEFINED;
-                // Final layout for depth stencil attachments is always this
-                attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+                attachmentDescription.finalLayout = attachmentConfig.presentAfter ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                                                                  : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
                 depthAttachmentDescriptions.PushBack(attachmentDescription);
             }
@@ -315,10 +315,9 @@ namespace C3D
         return true;
     }
 
-    void VulkanRenderPass::Destroy()
+    void VulkanRenderpass::Destroy()
     {
         INFO_LOG("Destroying RenderPass.");
-        RenderPass::Destroy();
         if (handle)
         {
             vkDestroyRenderPass(m_context->device.GetLogical(), handle, m_context->allocator);
@@ -326,16 +325,13 @@ namespace C3D
         }
     }
 
-    void VulkanRenderPass::Begin(VulkanCommandBuffer* commandBuffer, const C3D::FrameData& frameData) const
+    void VulkanRenderpass::Begin(VulkanCommandBuffer* commandBuffer, const Viewport* viewport, const RenderTarget& target) const
     {
-        const auto& target = m_targets[frameData.renderTargetIndex];
-
         VkRenderPassBeginInfo beginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
         beginInfo.renderPass            = handle;
         beginInfo.framebuffer           = static_cast<VkFramebuffer>(target.internalFrameBuffer);
 
-        const auto viewport = Renderer.GetActiveViewport();
-        const auto rect     = viewport->GetRect2D();
+        const auto rect = viewport->GetRect2D();
 
         beginInfo.renderArea.offset.x      = rect.x;
         beginInfo.renderArea.offset.y      = rect.y;
@@ -350,8 +346,17 @@ namespace C3D
         if (m_clearFlags & ClearColorBuffer)
         {
             std::memcpy(clearValues[beginInfo.clearValueCount].color.float32, &m_clearColor, sizeof(f32) * 4);
+            beginInfo.clearValueCount++;
         }
-        beginInfo.clearValueCount++;
+        else
+        {
+            // If the first attachment is color, add a clear value anyway, but don't bother copying data since it will be ignored.
+            // This must be done bbecause each attachment must have a clear value, even if we aren't using it.
+            if (target.attachments[0].type == RenderTargetAttachmentTypeColor)
+            {
+                beginInfo.clearValueCount++;
+            }
+        }
 
         const bool doClearDepth   = (m_clearFlags & ClearDepthBuffer);
         const bool doClearStencil = (m_clearFlags & ClearStencilBuffer);
@@ -390,7 +395,7 @@ namespace C3D
         VK_BEGIN_CMD_DEBUG_LABEL(m_context, commandBuffer->handle, m_name, color);
     }
 
-    void VulkanRenderPass::End(VulkanCommandBuffer* commandBuffer) const
+    void VulkanRenderpass::End(VulkanCommandBuffer* commandBuffer) const
     {
         vkCmdEndRenderPass(commandBuffer->handle);
         commandBuffer->state = VulkanCommandBufferState::Recording;

@@ -3,7 +3,6 @@
 
 #include <renderer/camera.h>
 #include <renderer/renderer_frontend.h>
-#include <renderer/renderpass.h>
 #include <renderer/viewport.h>
 #include <resources/loaders/shader_loader.h>
 #include <resources/shaders/shader_types.h>
@@ -15,14 +14,14 @@
 constexpr const char* INSTANCE_NAME      = "SKYBOX_PASS";
 constexpr const char* SKYBOX_SHADER_NAME = "Shader.Builtin.Skybox";
 
-SkyboxPass::SkyboxPass() : RendergraphPass() {}
+SkyboxPass::SkyboxPass() : Renderpass() {}
 
-SkyboxPass::SkyboxPass(const C3D::SystemManager* pSystemsManager) : RendergraphPass("SKYBOX", pSystemsManager) {}
+SkyboxPass::SkyboxPass(const C3D::SystemManager* pSystemsManager) : Renderpass("SKYBOX", pSystemsManager) {}
 
 bool SkyboxPass::Initialize(const C3D::LinearAllocator* frameAllocator)
 {
-    C3D::RenderPassConfig pass = {};
-    pass.name                  = "RenderPass.Skybox";
+    C3D::RenderpassConfig pass = {};
+    pass.name                  = "Renderpass.Skybox";
     pass.clearColor            = { 0, 0, 0.2f, 1.0f };
     pass.clearFlags            = C3D::ClearColorBuffer;
     pass.depth                 = 1.0f;
@@ -38,10 +37,9 @@ bool SkyboxPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     pass.target.attachments.PushBack(targetAttachment);
     pass.renderTargetCount = Renderer.GetWindowAttachmentCount();
 
-    m_pass = Renderer.CreateRenderPass(pass);
-    if (!m_pass)
+    if (!CreateInternals(pass))
     {
-        ERROR_LOG("Failed to create RenderPass.");
+        ERROR_LOG("Failed to Create Renderpass internals");
         return false;
     }
 
@@ -52,7 +50,7 @@ bool SkyboxPass::Initialize(const C3D::LinearAllocator* frameAllocator)
         return false;
     }
 
-    if (!Shaders.Create(m_pass, config))
+    if (!Shaders.Create(m_pInternalData, config))
     {
         ERROR_LOG("Failed to load builtin Skybox Shader.");
         return false;
@@ -87,11 +85,7 @@ bool SkyboxPass::Execute(const C3D::FrameData& frameData)
     // Bind our viewport
     Renderer.SetActiveViewport(m_viewport);
 
-    if (!Renderer.BeginRenderPass(m_pass, frameData))
-    {
-        ERROR_LOG("Failed to begin RenderPass.");
-        return false;
-    }
+    Begin(frameData);
 
     if (m_skybox)
     {
@@ -117,7 +111,7 @@ bool SkyboxPass::Execute(const C3D::FrameData& frameData)
             ERROR_LOG("Failed to apply Skybox view uniform.");
             return false;
         }
-        Shaders.ApplyGlobal(true);
+        Shaders.ApplyGlobal(frameData, true);
 
         // Instance
         Shaders.BindInstance(m_skybox->instanceId);
@@ -128,7 +122,7 @@ bool SkyboxPass::Execute(const C3D::FrameData& frameData)
         }
 
         bool needsUpdate = m_skybox->frameNumber != frameData.frameNumber || m_skybox->drawIndex != frameData.drawIndex;
-        Shaders.ApplyInstance(needsUpdate);
+        Shaders.ApplyInstance(frameData, needsUpdate);
 
         // Sync the frame number and draw index
         m_skybox->frameNumber = frameData.frameNumber;
@@ -139,11 +133,7 @@ bool SkyboxPass::Execute(const C3D::FrameData& frameData)
         Renderer.DrawGeometry(renderData);
     }
 
-    if (!Renderer.EndRenderPass(m_pass))
-    {
-        ERROR_LOG("Failed to end RenderPass.");
-        return false;
-    }
+    End();
 
     return true;
 }

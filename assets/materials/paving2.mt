@@ -7,4 +7,3 @@ shininess = 32.0
 diffuseMapName = paving2
 specularMapName = paving2_specular
 normalMapName = paving2_normal
-shader = Shader.Builtin.Material

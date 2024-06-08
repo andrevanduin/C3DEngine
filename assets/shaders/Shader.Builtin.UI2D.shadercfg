@@ -1,20 +1,35 @@
 
-version = 1
+version = 2
+
+[general]
 name = Shader.Builtin.UI2D
-stages = vertex, fragment
-stageFiles = shaders/Builtin.UI2DShader.vert, shaders/Builtin.UI2DShader.frag
 depthTest = false
 depthWrite = false
 stencilTest = true
 stencilWrite = true
+maxInstances = 512
+[/general]
 
-# Attributes
-attribute = vec2, inPosition
-attribute = vec2, inTexCoord
+[stages]
+vertex = Builtin.UI2DShader.vert
+fragment = Builtin.UI2DShader.frag
+[/stages]
 
-# Uniforms
-uniform = mat4, global, projection
-uniform = mat4, global, view
-uniform = struct16, instance, properties
-uniform = samp, instance, diffuseTexture
-uniform = mat4, local, model
+[attributes]
+inPosition = vec2
+inTexCoord = vec2
+[/attributes]
+
+[uniforms]
+[global]
+projection = mat4
+view = mat4
+[/global]
+[instance]
+properties = struct16
+diffuseTexture = sampler2D
+[/instance]
+[local]
+model = mat4
+[/local]
+[/uniforms]

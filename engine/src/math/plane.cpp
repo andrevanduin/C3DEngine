@@ -9,7 +9,7 @@ namespace C3D
 {
     Plane3D::Plane3D(const vec3& p1, const vec3& norm) : normal(normalize(norm)) { distance = glm::dot(normal, p1); }
 
-    Plane3D::Plane3D(const float a, const float b, const float c, const float d) : normal(normalize(vec3(a, b, c))), distance(d) {}
+    Plane3D::Plane3D(const vec4& normalizedSide) : normal(normalizedSide), distance(normalizedSide.w) {}
 
     f32 Plane3D::SignedDistance(const vec3& position) const { return glm::dot(normal, position) - distance; }
 

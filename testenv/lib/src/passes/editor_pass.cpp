@@ -2,7 +2,6 @@
 #include "editor_pass.h"
 
 #include <renderer/renderer_frontend.h>
-#include <renderer/renderpass.h>
 #include <renderer/viewport.h>
 #include <systems/shaders/shader_system.h>
 #include <systems/system_manager.h>
@@ -12,14 +11,14 @@
 constexpr const char* INSTANCE_NAME = "EDITOR_PASS";
 constexpr const char* SHADER_NAME   = "Shader.Builtin.Color3D";
 
-EditorPass::EditorPass() : RendergraphPass() {}
+EditorPass::EditorPass() : Renderpass() {}
 
-EditorPass::EditorPass(const C3D::SystemManager* pSystemsManager) : RendergraphPass("EDITOR", pSystemsManager) {}
+EditorPass::EditorPass(const C3D::SystemManager* pSystemsManager) : Renderpass("EDITOR", pSystemsManager) {}
 
 bool EditorPass::Initialize(const C3D::LinearAllocator* frameAllocator)
 {
-    C3D::RenderPassConfig pass = {};
-    pass.name                  = "RenderPass.Editor";
+    C3D::RenderpassConfig pass = {};
+    pass.name                  = "Renderpass.Editor";
     pass.clearColor            = { 0, 0, 0.2f, 1.0f };
     pass.clearFlags            = C3D::ClearDepthBuffer | C3D::ClearStencilBuffer;
     pass.depth                 = 1.0f;
@@ -43,10 +42,9 @@ bool EditorPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     pass.target.attachments.PushBack(targetAttachments[1]);
     pass.renderTargetCount = Renderer.GetWindowAttachmentCount();
 
-    m_pass = Renderer.CreateRenderPass(pass);
-    if (!m_pass)
+    if (!CreateInternals(pass))
     {
-        ERROR_LOG("Failed to create RenderPass.");
+        ERROR_LOG("Failed to create Renderpass internals.");
         return false;
     }
 
@@ -105,11 +103,7 @@ bool EditorPass::Execute(const C3D::FrameData& frameData)
     // Bind the viewport
     Renderer.SetActiveViewport(m_viewport);
 
-    if (!Renderer.BeginRenderPass(m_pass, frameData))
-    {
-        ERROR_LOG("Failed to Begin RenderPass: '{}'.", m_pass->GetName());
-        return false;
-    }
+    Begin(frameData);
 
     if (!Shaders.UseById(m_shader->id))
     {
@@ -131,7 +125,7 @@ bool EditorPass::Execute(const C3D::FrameData& frameData)
         Shaders.SetUniformByIndex(m_locations.projection, &m_viewport->GetProjection());
         Shaders.SetUniformByIndex(m_locations.view, &viewMatrix);
     }
-    Shaders.ApplyGlobal(needsUpdate);
+    Shaders.ApplyGlobal(frameData, needsUpdate);
 
     // Sync the frame number and draw index
     m_shader->frameNumber = frameData.frameNumber;
@@ -141,17 +135,15 @@ bool EditorPass::Execute(const C3D::FrameData& frameData)
     {
         // NOTE: No instance-level uniforms need to be set
         // Set our model matrix
+        Shaders.BindLocal();
         Shaders.SetUniformByIndex(m_locations.model, &data.model);
+        Shaders.ApplyLocal(frameData);
 
         // Draw it
         Renderer.DrawGeometry(data);
     }
 
-    if (!Renderer.EndRenderPass(m_pass))
-    {
-        ERROR_LOG("Failed to End RenderPass: '{}'.", m_pass->GetName());
-        return false;
-    }
+    End();
 
     return true;
 }

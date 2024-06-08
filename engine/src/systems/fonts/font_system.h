@@ -59,9 +59,9 @@ namespace C3D
         void Release(FontHandle handle);
 
         bool VerifyAtlas(FontHandle handle, const String& text) const;
-        vec2 MeasureString(FontHandle handle, const String& text, u64 size = 0) const;
+        vec2 MeasureString(FontHandle handle, const String& text, u64 size = 0);
 
-        const FontData& GetFontData(FontHandle handle) const;
+        FontData& GetFontData(FontHandle handle);
 
     private:
         bool SetupFontData(FontData& font) const;

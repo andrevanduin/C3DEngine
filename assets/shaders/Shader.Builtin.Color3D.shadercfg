@@ -1,18 +1,30 @@
 
-version = 1
+# Color3D shader config file
+version = 2
+
+[general]
 name = Shader.Builtin.Color3D
-renderPass = RenderPass.Builtin.World
-stages = vertex, fragment
-stageFiles = shaders/Builtin.Color3D.vert, shaders/Builtin.Color3D.frag
 depthTest = true
 depthWrite = true
 topology = lineList, triangleList
+[/general]
 
-# Attributes: type, name
-attribute = vec4, inPosition
-attribute = vec4, inColor
+[stages]
+vertex = Builtin.Color3D.vert
+fragment = Builtin.Color3D.frag
+[/stages]
 
-# Uniforms: type, scope, name
-uniform = mat4, global, projection
-uniform = mat4, global, view
-uniform = mat4, local, model
+[attributes]
+inPosition = vec4 
+inColor = vec4
+[/attributes]
+
+[uniforms]
+[global]
+projection = mat4
+view= mat4 
+[/global]
+[local]
+model = mat4 
+[/local]
+[/uniforms]

@@ -1,0 +1,2 @@
+ [19:40:10] [GLOBAL_MEMORY_SYSTEM] - Init() - Initialized successfully
+ [19:40:10] [TEXTURE_TOOLS] - CombineTextureMaps() - Unable to obtain width or height. Did you provide any valid textures?

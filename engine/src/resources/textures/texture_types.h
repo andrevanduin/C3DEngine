@@ -33,7 +33,7 @@ namespace C3D
         ClampToBorder  = 0x4,
     };
 
-    static inline const char* ToString(TextureRepeat repeat)
+    constexpr const char* ToString(TextureRepeat repeat)
     {
         switch (repeat)
         {
@@ -76,9 +76,32 @@ namespace C3D
         FrontAndBack = 0x3
     };
 
-    enum class TextureType
+    enum TextureType
     {
-        Type2D,
-        TypeCube,
+        /** @brief A standard 2D texture. */
+        TextureType2D,
+        /** @brief A 2D array texture. */
+        TextureType2DArray,
+        /** @brief A cube texture (used for cubemaps). */
+        TextureTypeCube,
+        /** @brief A cube array texture. */
+        TextureTypeCubeArray,
     };
+
+    constexpr const char* ToString(TextureType type)
+    {
+        switch (type)
+        {
+            case TextureType2D:
+                return "TEXTURE_TYPE_2D";
+            case TextureType2DArray:
+                return "TEXTURE_TYPE_2D_ARRAY";
+            case TextureTypeCube:
+                return "TEXTURE_TYPE_CUBE";
+            case TextureTypeCubeArray:
+                return "TEXTURE_TYPE_CUBE_ARRAY";
+            default:
+                return "UNKNOWN";
+        }
+    }
 }  // namespace C3D

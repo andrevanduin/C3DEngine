@@ -42,7 +42,7 @@ namespace C3D
         VkAllocationCallbacks* allocator = nullptr;
 
         VulkanDevice device;
-        VulkanSwapChain swapChain;
+        VulkanSwapchain swapchain;
 
         DynamicArray<VulkanCommandBuffer> graphicsCommandBuffers;
 
@@ -98,7 +98,7 @@ namespace C3D
         PFN_vkCmdSetStencilTestEnableEXT pfnCmdSetStencilTestEnableEXT;
         PFN_vkCmdSetDepthTestEnableEXT pfnCmdSetDepthTestEnableEXT;
         PFN_vkCmdSetStencilOpEXT pfnCmdSetStencilOpEXT;
-        
+
         /** @brief A pointer to the currently bound shader. */
         const Shader* boundShader;
 

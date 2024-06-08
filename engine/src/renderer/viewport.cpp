@@ -35,6 +35,8 @@ namespace C3D
 
     bool Viewport::PointIsInside(const vec2& point) const { return m_rect.PointIsInside(point); }
 
+    void Viewport::SetProjectionMatrix(const mat4& matrix) { m_projection = matrix; }
+
     void Viewport::RegenerateProjectionMatrix()
     {
         switch (m_projectionMatrixType)

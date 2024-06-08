@@ -3,6 +3,7 @@
 
 #include "core/random.h"
 #include "core/scoped_timer.h"
+#include "math/c3d_math.h"
 #include "math/geometry_utils.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/jobs/job_system.h"
@@ -145,25 +146,23 @@ namespace C3D
             m_totalTileCount = m_tileCountX * m_tileCountZ;
             m_vertexCount    = m_totalTileCount;
 
-            m_vertices.Reserve(m_config.vertexConfigs.Size());
+            m_vertices.Resize(m_config.vertexConfigs.Size());
             // Generate our vertices
             for (u32 z = 0, i = 0; z < m_tileCountZ; z++)
             {
                 for (u32 x = 0; x < m_tileCountX; x++, i++)
                 {
-                    TerrainVertex vert = {};
+                    auto& vert = m_vertices[i];
 
                     vert.position = { x * m_tileScaleX, m_config.vertexConfigs[i].height * m_tileScaleY, z * m_tileScaleZ };
                     vert.color    = vec4(1.0f);
                     vert.normal   = { 0, 1, 0 };
-                    vert.texture  = { x, z };
+                    vert.texture  = vec2((f32)x, (f32)z);
 
-                    vert.materialWeights[0] = SmoothStep(0.00f, 0.25f, m_config.vertexConfigs[i].height);
-                    vert.materialWeights[1] = SmoothStep(0.25f, 0.50f, m_config.vertexConfigs[i].height);
-                    vert.materialWeights[2] = SmoothStep(0.50f, 0.75f, m_config.vertexConfigs[i].height);
-                    vert.materialWeights[3] = SmoothStep(0.75f, 1.00f, m_config.vertexConfigs[i].height);
-
-                    m_vertices.PushBack(vert);
+                    vert.materialWeights[0] = AttenuationMinMax(-0.2f, 0.2f, m_config.vertexConfigs[i].height);
+                    vert.materialWeights[1] = AttenuationMinMax(0.0f, 0.3f, m_config.vertexConfigs[i].height);
+                    vert.materialWeights[2] = AttenuationMinMax(0.15f, 0.9f, m_config.vertexConfigs[i].height);
+                    vert.materialWeights[3] = AttenuationMinMax(0.5f, 1.2f, m_config.vertexConfigs[i].height);
                 }
             }
         }
@@ -172,22 +171,22 @@ namespace C3D
             auto timer = ScopedTimer("Generating Terrain Indices", m_pSystemsManager);
 
             // Roughly allocate enough space for all the indices (slightly too much space)
-            m_indices.Reserve(m_vertexCount * 6);
-            for (u32 z = 0; z < m_tileCountZ - 1; z++)
+            m_indices.Resize(m_vertexCount * 6);
+            for (u32 z = 0, i = 0; z < m_tileCountZ - 1; ++z)
             {
-                for (u32 x = 0; x < m_tileCountX - 1; x++)
+                for (u32 x = 0; x < m_tileCountX - 1; ++x, i += 6)
                 {
-                    u32 i0 = (z * m_tileCountX) + x;
-                    u32 i1 = (z * m_tileCountX) + x + 1;
-                    u32 i2 = ((z + 1) * m_tileCountX) + x;
-                    u32 i3 = ((z + 1) * m_tileCountX) + x + 1;
+                    u32 v0 = (z * m_tileCountX) + x;
+                    u32 v1 = (z * m_tileCountX) + x + 1;
+                    u32 v2 = ((z + 1) * m_tileCountX) + x;
+                    u32 v3 = ((z + 1) * m_tileCountX) + x + 1;
 
-                    m_indices.PushBack(i2);
-                    m_indices.PushBack(i1);
-                    m_indices.PushBack(i0);
-                    m_indices.PushBack(i3);
-                    m_indices.PushBack(i1);
-                    m_indices.PushBack(i2);
+                    m_indices[i + 0] = v2;
+                    m_indices[i + 1] = v1;
+                    m_indices[i + 2] = v0;
+                    m_indices[i + 3] = v3;
+                    m_indices[i + 4] = v1;
+                    m_indices[i + 5] = v2;
                 }
             }
         }
@@ -228,8 +227,6 @@ namespace C3D
         // TODO: This should be done in the renderer (CreateGeometry() method)
         m_geometry.generation++;
 
-        m_id.Generate();
-
         {
             auto timer = ScopedTimer("Acquiring Terrain Material", m_pSystemsManager);
 
@@ -247,6 +244,8 @@ namespace C3D
 
             Resources.Unload(m_config);
         }
+
+        m_id.Generate();
     }
 
     void Terrain::LoadJobFailure()

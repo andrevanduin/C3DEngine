@@ -10,7 +10,7 @@ namespace C3D
     public:
         Plane3D() = default;
         Plane3D(const vec3& p1, const vec3& norm);
-        Plane3D(float a, float b, float c, float d);
+        Plane3D(const vec4& normalizedSide);
 
         [[nodiscard]] f32 SignedDistance(const vec3& position) const;
 

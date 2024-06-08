@@ -11,7 +11,7 @@ namespace C3D
     struct VulkanContext;
     struct Texture;
 
-    class VulkanSwapChain
+    class VulkanSwapchain
     {
     public:
         void Create(const SystemManager* pSystemsManager, const VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);

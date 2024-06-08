@@ -71,7 +71,7 @@ namespace C3D
         String windowName = String::FromFormat("C3DEngine - {}", appState->name);
 
         constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
-        constexpr ShaderSystemConfig shaderSystemConfig{ 128, 128, 31, 31 };
+        constexpr ShaderSystemConfig shaderSystemConfig{ 127, 128, 31, 31 };
         const PlatformSystemConfig platformConfig{ windowName.Data(), appState->windowConfig };
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
         const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled };
@@ -146,7 +146,7 @@ namespace C3D
         Event.Register(EventCodeApplicationQuit,
                        [this](const u16 code, void* sender, const EventContext& context) { return OnQuitEvent(code, sender, context); });
 
-        constexpr MaterialSystemConfig materialSystemConfig{ 4096 };
+        constexpr MaterialSystemConfig materialSystemConfig{ 4077 };
         constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
         m_systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System

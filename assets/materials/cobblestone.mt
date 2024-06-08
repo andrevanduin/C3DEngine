@@ -4,13 +4,11 @@ version = 2
 # types can be phong, pbr or custom
 type = custom
 name = cobblestone
-# If custom, shader is required
-shader = Shader.Builtin.Material
 
 [map]
-name = diffuse
-minifyFilter = linear
-magnifyfilter = linear
+name = albedo
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
@@ -19,8 +17,8 @@ textureName = cobblestone
 
 [map]
 name = specular
-minifyFilter = linear
-magnifyfilter = linear
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat
@@ -29,8 +27,8 @@ textureName = cobblestone_specular
 
 [map]
 name = normal
-minifyFilter = linear
-magnifyfilter = linear
+filterMin = linear
+filterMag = linear
 repeatU = repeat
 repeatV = repeat
 repeatW = repeat

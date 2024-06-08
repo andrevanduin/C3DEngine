@@ -33,7 +33,7 @@ namespace C3D
     enum class RenderTargetAttachmentSource : i8
     {
         Default = 0x01,
-        View    = 0x02,
+        Self    = 0x02,
     };
 
     enum class RenderTargetAttachmentLoadOperation : i8
@@ -75,6 +75,6 @@ namespace C3D
     struct RenderTarget
     {
         DynamicArray<RenderTargetAttachment> attachments;
-        void* internalFrameBuffer;
+        void* internalFrameBuffer = nullptr;
     };
 }  // namespace C3D

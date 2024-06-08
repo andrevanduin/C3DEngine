@@ -1,7 +1,7 @@
 
 #pragma once
 #include <core/defines.h>
-#include <renderer/rendergraph/rendergraph_pass.h>
+#include <renderer/rendergraph/renderpass.h>
 #include <systems/events/event_system.h>
 
 #include "test_env_types.h"
@@ -14,7 +14,7 @@ namespace C3D
     class Camera;
 }  // namespace C3D
 
-class SkyboxPass : public C3D::RendergraphPass
+class SkyboxPass : public C3D::Renderpass
 {
 public:
     SkyboxPass();

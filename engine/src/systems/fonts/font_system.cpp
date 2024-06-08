@@ -174,7 +174,7 @@ namespace C3D
         return 0;
     }
 
-    vec2 FontSystem::MeasureString(FontHandle handle, const String& text, u64 size) const
+    vec2 FontSystem::MeasureString(FontHandle handle, const String& text, u64 size)
     {
         vec2 extents;
 
@@ -243,7 +243,7 @@ namespace C3D
         return extents;
     }
 
-    const FontData& FontSystem::GetFontData(FontHandle handle) const { return m_bitmapFonts[handle].resource.data; }
+    FontData& FontSystem::GetFontData(FontHandle handle) { return m_bitmapFonts[handle].resource.data; }
 
     bool FontSystem::SetupFontData(FontData& font) const
     {

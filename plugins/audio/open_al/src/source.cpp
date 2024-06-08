@@ -204,7 +204,7 @@ namespace C3D
 
                 if (m_triggerExit)
                 {
-                    stop = true;
+                    break;
                 }
                 if (m_triggerPlay)
                 {

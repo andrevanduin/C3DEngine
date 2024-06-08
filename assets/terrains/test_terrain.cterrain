@@ -4,10 +4,10 @@ version = 1
 heightmapFile = terrain_heightmap_256
 
 tileScaleX = 2.0
-tileScaleY = 32.0
+tileScaleY = 20.0
 tileScaleZ = 2.0
 
 material = river_rock
 material = wavy_sand
-material = grass
+material = wispy_grass
 material = crusted_snow

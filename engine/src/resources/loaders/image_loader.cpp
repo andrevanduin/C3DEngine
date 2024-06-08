@@ -118,7 +118,11 @@ namespace C3D
     void ResourceLoader<Image>::Unload(Image& resource)
     {
         // Free the pixel data loaded in by STBI
-        stbi_image_free(resource.pixels);
+        if (resource.pixels)
+        {
+            stbi_image_free(resource.pixels);
+            resource.pixels = nullptr;
+        }
 
         resource.fullPath.Destroy();
         resource.name.Destroy();

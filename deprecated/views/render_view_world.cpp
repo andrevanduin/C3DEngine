@@ -474,6 +474,10 @@ bool RenderViewWorld::OnEvent(const u16 code, void* sender, const C3D::EventCont
                 DEBUG_LOG("Renderer mode set to normals.");
                 m_renderMode = C3D::RendererViewMode::Normals;
                 break;
+            case C3D::RendererViewMode::Cascades:
+                DEBUG_LOG("Renderer mode set to cascades.");
+                m_renderMode = C3D::RendererViewMode::Cascades;
+                break;
             default:
                 FATAL_LOG("Unknown render mode.");
                 break;

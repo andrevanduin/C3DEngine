@@ -1,51 +1,51 @@
 # Terrain Shader config file
-version = 1.0
+version = 2
+
+[general]
 name = Shader.Builtin.Terrain
-renderPass = RenderPass.Builtin.World
-stages = vertex, fragment
-stageFiles = shaders/Builtin.TerrainShader.vert, shaders/Builtin.TerrainShader.frag
 depthTest  = true
 depthWrite = true
+maxInstances = 5
+[/general]
 
-# Attributes: (type, name)
-attribute = vec3, inPosition
-attribute = vec3, inNormal
-attribute = vec2, inTexCoord
-attribute = vec4, inColor
-attribute = vec4, inTangent
-attribute = vec4, inMaterialWeights
+[stages]
+vertex = Builtin.TerrainShader.vert
+fragment = Builtin.TerrainShader.frag
+[/stages]
 
-# Uniforms type, scope, name
-# Global
-uniform = mat4, global, projection
-uniform = mat4, global, view
-uniform = vec4, global, ambientColor
-uniform = vec3, global, viewPosition
-uniform = u32, global, mode
-uniform = struct32, global, dirLight
+[attributes]
+inPosition = vec3
+inNormal = vec3
+inTexCoord = vec2
+inColor = vec4
+inTangent = vec4
+inMaterialWeights = vec4
+[/attributes]
 
-# Samplers
-# Instance
-uniform = samp, instance, diffuseTexture_0
-uniform = samp, instance, specularTexture_0
-uniform = samp, instance, normalTexture_0
-
-uniform = samp, instance, diffuseTexture_1
-uniform = samp, instance, specularTexture_1
-uniform = samp, instance, normalTexture_1
-
-uniform = samp, instance, diffuseTexture_2
-uniform = samp, instance, specularTexture_2
-uniform = samp, instance, normalTexture_2
-
-uniform = samp, instance, diffuseTexture_3
-uniform = samp, instance, specularTexture_3
-uniform = samp, instance, normalTexture_3
-
-uniform = struct160, instance, properties
-uniform = struct480, instance, pLights
-uniform = vec3, instance, padding
-uniform = u32, instance, numPLights
-
-# Local 
-uniform = mat4, local, model
+[uniforms]
+[global]
+projection = mat4
+view = mat4
+lightSpaces = mat4[4]
+cascadeSplits = vec4
+dirLight = struct32
+viewPosition = vec3
+mode = u32
+usePCF = u32
+bias = f32
+globalPadding = vec2
+[/global]
+[instance]
+# Contains 2DArray sampler with textures ordered per material: albedo, normal, combined (metallic, roughness and ao)
+materialTextures = sampler2DArray
+shadowTextures = sampler2DArray
+iblCubeTexture = samplerCube
+properties = struct160
+pLights = struct480
+padding = vec3
+numPLights = i32
+[/instance]
+[local]
+model = mat4
+[/local]
+[/uniforms]

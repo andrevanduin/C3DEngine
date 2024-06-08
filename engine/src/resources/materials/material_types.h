@@ -42,8 +42,7 @@ namespace C3D
         }
     }
 
-    using MaterialConfigPropValue =
-        std::variant<u8, i8, u16, i16, u32, i32, f32, u64, i64, f64, vec2, vec3, vec4, mat4>;
+    using MaterialConfigPropValue = std::variant<u8, i8, u16, i16, u32, i32, f32, u64, i64, f64, vec2, vec3, vec4, mat4>;
 
     static inline String ToString(const MaterialConfigPropValue& value)
     {
@@ -112,13 +111,13 @@ namespace C3D
             case 12:
             {
                 auto& v = std::get<vec4>(value);
-                return String::FromFormat("{} {}", v.x, v.y, v.z, v.w);
+                return String::FromFormat("{} {} {} {}", v.x, v.y, v.z, v.w);
             }
             case 13:
             {
                 auto& v = std::get<mat4>(value);
-                return String::FromFormat("{} {}", v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10],
-                                          v[11], v[12], v[13], v[14], v[15]);
+                return String::FromFormat("{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}", v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7],
+                                          v[8], v[9], v[10], v[11], v[12], v[13], v[14], v[15]);
             }
             default:
                 C3D_ASSERT_MSG(false, "Invalid MaterialConfigPropValue");
@@ -139,8 +138,7 @@ namespace C3D
 
         MaterialConfigProp() = default;
 
-        MaterialConfigProp(const String& name, ShaderUniformType type, MaterialConfigPropValue value)
-            : name(name), type(type), value(value)
+        MaterialConfigProp(const String& name, ShaderUniformType type, MaterialConfigPropValue value) : name(name), type(type), value(value)
         {}
     };
 
@@ -168,6 +166,17 @@ namespace C3D
 
     struct MaterialConfig : Resource
     {
+        MaterialConfig()
+        {
+            // HACK: Currently since we assume all materials are PBR we setup our default config as follows:
+            type       = MaterialType::PBR;
+            shaderName = "Shader.PBR";
+            props.PushBack(MaterialConfigProp("diffuseColor", ShaderUniformType::Uniform_Float32_4,
+                                              MaterialConfigPropValue(vec4(0.588, 0.588, 0.588, 1.0))));
+            props.PushBack(MaterialConfigProp("padding", ShaderUniformType::Uniform_Float32_3, MaterialConfigPropValue(vec3(0.0))));
+            props.PushBack(MaterialConfigProp("shininess", ShaderUniformType::Uniform_Float32, MaterialConfigPropValue(10.f)));
+        }
+
         /** @brief The type of the Material. */
         MaterialType type;
         /** @brief The name of the shader that is to be used with this Material. */
@@ -200,7 +209,7 @@ namespace C3D
     {
         MaterialPhongProperties materials[TERRAIN_MAX_MATERIAL_COUNT];
         vec3 padding;
-        u32 numMaterials;
+        i32 numMaterials;
         vec4 padding2;
     };
 }  // namespace C3D

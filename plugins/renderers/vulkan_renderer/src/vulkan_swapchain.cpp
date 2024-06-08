@@ -15,7 +15,7 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "VULKAN_SWAPCHAIN";
 
-    VkSurfaceFormatKHR VulkanSwapChain::GetSurfaceFormat() const
+    VkSurfaceFormatKHR VulkanSwapchain::GetSurfaceFormat() const
     {
         const auto& formats = m_context->device.GetSurfaceFormats();
         for (auto& format : formats)
@@ -30,7 +30,7 @@ namespace C3D
         return formats[0];
     }
 
-    VkPresentModeKHR VulkanSwapChain::GetPresentMode() const
+    VkPresentModeKHR VulkanSwapchain::GetPresentMode() const
     {
         // VSync is enabled
         if (m_flags & FlagVSyncEnabled)
@@ -58,7 +58,7 @@ namespace C3D
         return VK_PRESENT_MODE_IMMEDIATE_KHR;
     }
 
-    void VulkanSwapChain::Create(const SystemManager* pSystemsManager, const VulkanContext* context, const u32 width, const u32 height,
+    void VulkanSwapchain::Create(const SystemManager* pSystemsManager, const VulkanContext* context, const u32 width, const u32 height,
                                  const RendererConfigFlags flags)
     {
         m_context         = context;
@@ -67,13 +67,13 @@ namespace C3D
         CreateInternal(width, height, flags);
     }
 
-    void VulkanSwapChain::Recreate(const u32 width, const u32 height, const RendererConfigFlags flags)
+    void VulkanSwapchain::Recreate(const u32 width, const u32 height, const RendererConfigFlags flags)
     {
         DestroyInternal();
         CreateInternal(width, height, flags);
     }
 
-    void VulkanSwapChain::Destroy()
+    void VulkanSwapchain::Destroy()
     {
         INFO_LOG("Destroying SwapChain.");
         DestroyInternal();
@@ -98,7 +98,7 @@ namespace C3D
         renderTextures = nullptr;
     }
 
-    bool VulkanSwapChain::AcquireNextImageIndex(const u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
+    bool VulkanSwapchain::AcquireNextImageIndex(const u64 timeoutNs, VkSemaphore imageAvailableSemaphore, VkFence fence, u32* outImageIndex)
     {
         const auto result =
             vkAcquireNextImageKHR(m_context->device.GetLogical(), handle, timeoutNs, imageAvailableSemaphore, fence, outImageIndex);
@@ -115,7 +115,7 @@ namespace C3D
         return true;
     }
 
-    void VulkanSwapChain::Present(VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, const u32 presentImageIndex)
+    void VulkanSwapchain::Present(VkQueue presentQueue, VkSemaphore renderCompleteSemaphore, const u32 presentImageIndex)
     {
         // Return the image to the SwapChain for presentation
         VkPresentInfoKHR presentInfo   = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
@@ -146,7 +146,7 @@ namespace C3D
         m_context->currentFrame = (m_context->currentFrame + 1) % maxFramesInFlight;
     }
 
-    void VulkanSwapChain::CreateInternal(const u32 width, const u32 height, const RendererConfigFlags flags)
+    void VulkanSwapchain::CreateInternal(const u32 width, const u32 height, const RendererConfigFlags flags)
     {
         VkExtent2D extent = { width, height };
         m_flags           = flags;
@@ -294,7 +294,7 @@ namespace C3D
             // Create a depth/stencil image and it's view
             const auto name  = String::FromFormat("__C3D_DEFAULT_DEPTH_STENCIL_TEXTURE_{}", i);
             const auto image = Memory.New<VulkanImage>(MemoryType::Texture);
-            image->Create(m_context, name, TextureType::Type2D, extent.width, extent.height, m_context->device.GetDepthFormat(),
+            image->Create(m_context, name, TextureType2D, extent.width, extent.height, 1, m_context->device.GetDepthFormat(),
                           VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true,
                           1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 
@@ -306,7 +306,7 @@ namespace C3D
         INFO_LOG("Successfully created.");
     }
 
-    void VulkanSwapChain::DestroyInternal() const
+    void VulkanSwapchain::DestroyInternal() const
     {
         m_context->device.WaitIdle();
 

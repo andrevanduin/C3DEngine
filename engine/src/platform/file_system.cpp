@@ -205,7 +205,11 @@ namespace C3D
         String result;
 
         auto lastSlash = path.FindLastWhere([](const char c) { return c == '/' || c == '\\'; });
-        result         = path.SubStr(lastSlash + 1);
+        if (lastSlash != path.end())
+        {
+            // Our string contains slashes so let's only take the file name part
+            result = path.SubStr(lastSlash + 1);
+        }
 
         if (!includeExtension)
         {

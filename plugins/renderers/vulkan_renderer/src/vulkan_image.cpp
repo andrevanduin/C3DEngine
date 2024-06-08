@@ -14,41 +14,50 @@ namespace C3D
 
     VulkanImage::~VulkanImage() { Destroy(); }
 
-    VkImageType GetVkImageType(const TextureType type)
+    constexpr VkImageType GetVkImageType(const TextureType type)
     {
-        /*
+        /* TODO: This currently is not used
         switch (type)
         {
-                case TextureType::Type2D:
-                        return VK_IMAGE_TYPE_2D;
-                case TextureType::TypeCube:
-                        return VK_IMAGE_TYPE_2D;
-        }*/ // TODO: This currently is not used
+            default:
+            case TextureType2D:
+            case TextureTypeCube:
+            case TextureType2DArray:
+                return VK_IMAGE_TYPE_2D;
+        }
+        */
         return VK_IMAGE_TYPE_2D;
     }
 
-    VkImageViewType GetVkImageViewType(const TextureType type)
+    constexpr VkImageViewType GetVkImageViewType(const TextureType type)
     {
         switch (type)
         {
-            case TextureType::Type2D:
+            case TextureType2D:
                 return VK_IMAGE_VIEW_TYPE_2D;
-            case TextureType::TypeCube:
+            case TextureType2DArray:
+                return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            case TextureTypeCube:
                 return VK_IMAGE_VIEW_TYPE_CUBE;
+            case TextureTypeCubeArray:
+                return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+            default:
+                FATAL_LOG("Invalid TextureType provided: {}.", ToString(type));
+                return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
         }
-        return VK_IMAGE_VIEW_TYPE_2D;
     }
 
-    bool VulkanImage::Create(const VulkanContext* context, const String& name, const TextureType type, const u32 _width, const u32 _height,
-                             const VkFormat format, const VkImageTiling tiling, const VkImageUsageFlags usage,
+    bool VulkanImage::Create(const VulkanContext* context, const String& name, const TextureType type, const u32 w, const u32 h,
+                             u16 layerCount, const VkFormat format, const VkImageTiling tiling, const VkImageUsageFlags usage,
                              const VkMemoryPropertyFlags memoryFlags, const bool createView, u8 mipLevels,
                              const VkImageAspectFlags viewAspectFlags)
     {
         m_context     = context;
         m_name        = name;
-        width         = _width;
-        height        = _height;
+        width         = w;
+        height        = h;
         m_format      = format;
+        m_layerCount  = Max(layerCount, (u16)1);
         m_memoryFlags = memoryFlags;
         m_mipLevels   = mipLevels;
 
@@ -65,7 +74,7 @@ namespace C3D
         // TODO: Support different depth.
         imageCreateInfo.extent.depth  = 1;
         imageCreateInfo.mipLevels     = m_mipLevels;
-        imageCreateInfo.arrayLayers   = type == TextureType::TypeCube ? 6 : 1;
+        imageCreateInfo.arrayLayers   = m_layerCount;
         imageCreateInfo.format        = format;
         imageCreateInfo.tiling        = tiling;
         imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -74,7 +83,7 @@ namespace C3D
         imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         // TODO: Configurable sharing mode.
         imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        if (type == TextureType::TypeCube)
+        if (type == TextureTypeCube)
         {
             imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
@@ -94,6 +103,7 @@ namespace C3D
             return false;
         }
 
+        // Allocate memory
         VkMemoryAllocateInfo memoryAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
         memoryAllocateInfo.allocationSize       = m_memoryRequirements.size;
         memoryAllocateInfo.memoryTypeIndex      = memoryType;
@@ -101,7 +111,8 @@ namespace C3D
 
         VK_SET_DEBUG_OBJECT_NAME(context, VK_OBJECT_TYPE_DEVICE_MEMORY, m_memory, m_name);
 
-        // TODO: Configurable memory offset.
+        // Bind the memory
+        // TODO: configurable memory offset
         VK_CHECK(vkBindImageMemory(logicalDevice, handle, m_memory, 0));
 
         // Determine if memory is device local (on the GPU)
@@ -112,15 +123,34 @@ namespace C3D
 
         if (createView)
         {
-            view = nullptr;
-            CreateView(type, viewAspectFlags);
+            view = CreateView(type, layerCount, -1, viewAspectFlags);
+
+            if (layerCount > 1)
+            {
+                // Multiple views, one per layer
+                layerViews.Resize(layerCount);
+
+                TextureType viewType = type;
+                if (type == TextureTypeCube || type == TextureTypeCubeArray)
+                {
+                    // NOTE: For sampling of individual array layers for cube or cube array texture our type should be 2D
+                    viewType = TextureType2D;
+                }
+
+                for (u32 i = 0; i < layerCount; ++i)
+                {
+                    layerViews[i] = CreateView(viewType, 1, i, viewAspectFlags);
+                }
+            }
         }
 
         return true;
     }
 
-    void VulkanImage::CreateView(TextureType type, const VkImageAspectFlags aspectFlags)
+    VkImageView VulkanImage::CreateView(TextureType type, u16 layerCount, i32 layerIndex, VkImageAspectFlags aspectFlags)
     {
+        VkImageView v = nullptr;
+
         VkImageViewCreateInfo viewCreateInfo       = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
         viewCreateInfo.image                       = handle;
         viewCreateInfo.viewType                    = GetVkImageViewType(type);
@@ -129,13 +159,14 @@ namespace C3D
 
         viewCreateInfo.subresourceRange.baseMipLevel   = 0;
         viewCreateInfo.subresourceRange.levelCount     = m_mipLevels;
-        viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-        viewCreateInfo.subresourceRange.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        viewCreateInfo.subresourceRange.layerCount     = layerIndex < 0 ? layerCount : 1;
+        viewCreateInfo.subresourceRange.baseArrayLayer = layerIndex < 0 ? 0 : layerIndex;
 
-        VK_CHECK(vkCreateImageView(m_context->device.GetLogical(), &viewCreateInfo, m_context->allocator, &view));
+        VK_CHECK(vkCreateImageView(m_context->device.GetLogical(), &viewCreateInfo, m_context->allocator, &v));
 
-        const auto viewName = m_name + "_view";
-        VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_IMAGE_VIEW, view, viewName);
+        VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_IMAGE_VIEW, v, String::FromFormat("{}_IMAGE_VIEW_{}", m_name, layerIndex));
+
+        return v;
     }
 
     bool VulkanImage::CreateMipMaps(const VulkanCommandBuffer* commandBuffer)
@@ -162,8 +193,12 @@ namespace C3D
         barrier.dstQueueFamilyIndex             = m_context->device.GetGraphicsQueueIndex();
         barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount     = 1;
-        barrier.subresourceRange.levelCount     = 1;
+
+        // One mip level at the time
+        barrier.subresourceRange.levelCount = 1;
+
+        // Generate for all layers
+        barrier.subresourceRange.layerCount = m_layerCount;
 
         i32 mipWidth  = width;
         i32 mipHeight = height;
@@ -192,7 +227,7 @@ namespace C3D
             // Source is the previous mip level
             blit.srcSubresource.mipLevel       = i - 1;
             blit.srcSubresource.baseArrayLayer = 0;
-            blit.srcSubresource.layerCount     = 1;
+            blit.srcSubresource.layerCount     = m_layerCount;
             // Destination offset is also always the upper-left corner
             blit.dstOffsets[0] = { 0, 0, 0 };
             // Next mips width and height is half the current mip width/height (unless current == 1)
@@ -203,7 +238,7 @@ namespace C3D
             // The destination is the current mip level
             blit.dstSubresource.mipLevel       = i;
             blit.dstSubresource.baseArrayLayer = 0;
-            blit.dstSubresource.layerCount     = 1;
+            blit.dstSubresource.layerCount     = m_layerCount;
 
             // Perform a blit for this layer
             vkCmdBlitImage(commandBuffer->handle, handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, handle,
@@ -236,25 +271,32 @@ namespace C3D
         return true;
     }
 
-    void VulkanImage::TransitionLayout(const VulkanCommandBuffer* commandBuffer, const TextureType type, VkFormat format,
-                                       const VkImageLayout oldLayout, const VkImageLayout newLayout) const
+    void VulkanImage::TransitionLayout(const VulkanCommandBuffer* commandBuffer, VkFormat format, const VkImageLayout oldLayout,
+                                       const VkImageLayout newLayout) const
     {
         auto graphicsQueueIndex = m_context->device.GetGraphicsQueueIndex();
 
-        VkImageMemoryBarrier barrier            = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-        barrier.oldLayout                       = oldLayout;
-        barrier.newLayout                       = newLayout;
-        barrier.srcQueueFamilyIndex             = graphicsQueueIndex;
-        barrier.dstQueueFamilyIndex             = graphicsQueueIndex;
-        barrier.image                           = handle;
-        barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseMipLevel   = 0;
-        barrier.subresourceRange.levelCount     = m_mipLevels;
+        VkPipelineStageFlags sourceStage;
+        VkPipelineStageFlags destStage;
+
+        VkImageMemoryBarrier barrier        = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+        barrier.oldLayout                   = oldLayout;
+        barrier.newLayout                   = newLayout;
+        barrier.srcQueueFamilyIndex         = graphicsQueueIndex;
+        barrier.dstQueueFamilyIndex         = graphicsQueueIndex;
+        barrier.image                       = handle;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        // Mips
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount   = m_mipLevels;
+
+        // Transition all layers at once
+        barrier.subresourceRange.layerCount = m_layerCount;
+
+        // Start at the first layer
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount     = type == TextureType::TypeCube ? 6 : 1;
 
-        VkPipelineStageFlags sourceStage, destStage;
-
+        // TODO: only set source/dest stage once...
         // Don't care about the old layout - transfer to optimal layout for the GPU's underlying implementation
         if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
         {
@@ -303,7 +345,7 @@ namespace C3D
         vkCmdPipelineBarrier(commandBuffer->handle, sourceStage, destStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     }
 
-    void VulkanImage::CopyFromBuffer(const TextureType type, VkBuffer buffer, u64 offset, const VulkanCommandBuffer* commandBuffer) const
+    void VulkanImage::CopyFromBuffer(VkBuffer buffer, u64 offset, const VulkanCommandBuffer* commandBuffer) const
     {
         VkBufferImageCopy region = {};
         region.bufferOffset      = offset;
@@ -313,7 +355,7 @@ namespace C3D
         region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel       = 0;
         region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        region.imageSubresource.layerCount     = m_layerCount;
 
         region.imageExtent.width  = width;
         region.imageExtent.height = height;
@@ -322,7 +364,7 @@ namespace C3D
         vkCmdCopyBufferToImage(commandBuffer->handle, buffer, handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
 
-    void VulkanImage::CopyToBuffer(const TextureType type, VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
+    void VulkanImage::CopyToBuffer(VkBuffer buffer, const VulkanCommandBuffer* commandBuffer) const
     {
         VkBufferImageCopy region = {};
         region.bufferOffset      = 0;
@@ -332,7 +374,7 @@ namespace C3D
         region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel       = 0;
         region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        region.imageSubresource.layerCount     = m_layerCount;
 
         region.imageExtent.width  = width;
         region.imageExtent.height = height;
@@ -341,8 +383,7 @@ namespace C3D
         vkCmdCopyImageToBuffer(commandBuffer->handle, handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
     }
 
-    void VulkanImage::CopyPixelToBuffer(const TextureType type, VkBuffer buffer, const u32 x, const u32 y,
-                                        const VulkanCommandBuffer* commandBuffer) const
+    void VulkanImage::CopyPixelToBuffer(VkBuffer buffer, const u32 x, const u32 y, const VulkanCommandBuffer* commandBuffer) const
     {
         VkBufferImageCopy region = {};
         region.bufferOffset      = 0;
@@ -352,7 +393,7 @@ namespace C3D
         region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.mipLevel       = 0;
         region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount     = type == TextureType::TypeCube ? 6 : 1;
+        region.imageSubresource.layerCount     = m_layerCount;
 
         region.imageOffset.x      = static_cast<i32>(x);
         region.imageOffset.y      = static_cast<i32>(y);
@@ -374,6 +415,16 @@ namespace C3D
                 vkDestroyImageView(logicalDevice, view, m_context->allocator);
                 view = nullptr;
             }
+
+            if (!layerViews.Empty())
+            {
+                for (auto& v : layerViews)
+                {
+                    vkDestroyImageView(logicalDevice, v, m_context->allocator);
+                }
+            }
+            layerViews.Destroy();
+
             if (m_memory)
             {
                 // Determine if memory is device-local (on the GPU)

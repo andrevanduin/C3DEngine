@@ -4,18 +4,20 @@
 #include "core/logger.h"
 #include "render_buffer.h"
 #include "renderer_types.h"
+#include "rendergraph/rendergraph_types.h"
 
 namespace C3D
 {
     class Engine;
     class Shader;
+    class Viewport;
 
-    class RenderPass;
     struct RenderTarget;
     struct RenderTargetAttachment;
     struct Texture;
     struct ShaderUniform;
     struct ShaderConfig;
+    struct ShaderInstanceResourceConfig;
     struct FrameData;
     struct TextureMap;
     struct RenderPassConfig;
@@ -89,8 +91,8 @@ namespace C3D
          */
         virtual void SetDepthTestingEnabled(bool enabled) = 0;
 
-        virtual bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) = 0;
-        virtual bool EndRenderPass(RenderPass* pass)                                    = 0;
+        virtual void BeginRenderpass(void* pass, const Viewport* viewport, const RenderTarget& target) = 0;
+        virtual void EndRenderpass(void* pass)                                                         = 0;
 
         virtual void CreateTexture(const u8* pixels, Texture* texture) = 0;
         virtual void CreateWritableTexture(Texture* texture)           = 0;
@@ -102,32 +104,35 @@ namespace C3D
         virtual void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) = 0;
         virtual void DestroyTexture(Texture* texture)                             = 0;
 
-        virtual bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const = 0;
-        virtual void DestroyShader(Shader& shader)                                                    = 0;
+        virtual bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const = 0;
+        virtual void DestroyShader(Shader& shader)                                              = 0;
 
         virtual bool InitializeShader(Shader& shader) = 0;
         virtual bool UseShader(const Shader& shader)  = 0;
 
         virtual bool BindShaderGlobals(Shader& shader)                  = 0;
         virtual bool BindShaderInstance(Shader& shader, u32 instanceId) = 0;
+        virtual bool BindShaderLocal(Shader& shader)                    = 0;
 
-        virtual bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate)  = 0;
-        virtual bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) = 0;
+        virtual bool ShaderApplyGlobals(const FrameData& frameData, const Shader& shader, bool needsUpdate)  = 0;
+        virtual bool ShaderApplyInstance(const FrameData& frameData, const Shader& shader, bool needsUpdate) = 0;
+        virtual bool ShaderApplyLocal(const FrameData& frameData, const Shader& shader)                      = 0;
 
-        virtual bool AcquireShaderInstanceResources(const Shader&, u32 textureMapCount, const TextureMap** maps, u32* outInstanceId) = 0;
-        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId)                                                   = 0;
+        virtual bool AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config,
+                                                    u32& outInstanceId)            = 0;
+        virtual bool ReleaseShaderInstanceResources(const Shader&, u32 instanceId) = 0;
 
         virtual bool AcquireTextureMapResources(TextureMap& map) = 0;
         virtual void ReleaseTextureMapResources(TextureMap& map) = 0;
         virtual bool RefreshTextureMapResources(TextureMap& map) = 0;
 
-        virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) = 0;
+        virtual bool SetUniform(Shader& shader, const ShaderUniform& uniform, u32 arrayIndex, const void* value) = 0;
 
-        virtual void CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) = 0;
-        virtual void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory)                = 0;
+        virtual void CreateRenderTarget(void* pass, RenderTarget& target, u16 layerIndex, u32 width, u32 height) = 0;
+        virtual void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory)                          = 0;
 
-        virtual RenderPass* CreateRenderPass(const RenderPassConfig& config) = 0;
-        virtual bool DestroyRenderPass(RenderPass* pass)                     = 0;
+        virtual bool CreateRenderpassInternals(const RenderpassConfig& config, void** internalData) = 0;
+        virtual void DestroyRenderpassInternals(void* internalData)                                 = 0;
 
         virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
                                                  RenderBufferTrackType trackType) = 0;

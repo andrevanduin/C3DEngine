@@ -3,15 +3,16 @@
 #include <core/defines.h>
 #include <core/frame_data.h>
 #include <math/math_types.h>
-#include <renderer/renderpass.h>
+#include <renderer/rendergraph/rendergraph_types.h>
 
 #include "vulkan_command_buffer.h"
 
 namespace C3D
 {
     struct VulkanContext;
+    class Viewport;
 
-    enum class VulkanRenderPassState : u8
+    enum class VulkanRenderpassState : u8
     {
         Ready,
         Recording,
@@ -21,27 +22,28 @@ namespace C3D
         NotAllocated
     };
 
-    class VulkanRenderPass final : public RenderPass
+    class VulkanRenderpass
     {
     public:
-        VulkanRenderPass();
-        VulkanRenderPass(const SystemManager* pSystemsManager, VulkanContext* context, const RenderPassConfig& config);
+        bool Create(const RenderpassConfig& config, const VulkanContext* context);
+        void Destroy();
 
-        bool Create(const RenderPassConfig& config) override;
-
-        void Destroy() override;
-
-        void Begin(VulkanCommandBuffer* commandBuffer, const FrameData& frameData) const;
-
+        void Begin(VulkanCommandBuffer* commandBuffer, const Viewport* viewport, const RenderTarget& target) const;
         void End(VulkanCommandBuffer* commandBuffer) const;
 
+        const String& GetName() const { return m_name; }
+
         VkRenderPass handle = nullptr;
-        VulkanRenderPassState state;
 
     private:
-        f32 m_depth   = 0.0f;
-        u32 m_stencil = 0;
+        String m_name;
+        VulkanRenderpassState m_state;
 
-        VulkanContext* m_context = nullptr;
+        f32 m_depth       = 0.f;
+        u32 m_stencil     = 0;
+        u8 m_clearFlags   = 0;
+        vec4 m_clearColor = vec4(1.0);
+
+        const VulkanContext* m_context = nullptr;
     };
 }  // namespace C3D

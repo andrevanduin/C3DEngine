@@ -84,6 +84,11 @@ namespace C3D
         allocateInfo.memoryTypeIndex      = static_cast<u32>(m_memoryIndex);
 
         const VkResult result = vkAllocateMemory(logicalDevice, &allocateInfo, m_context->allocator, &m_memory);
+        if (!VulkanUtils::IsSuccess(result))
+        {
+            ERROR_LOG("Failed to allocate memory with the following error: {}.", VulkanUtils::ResultString(result));
+            return false;
+        }
 
         // Determine if memory is on device heap.
         const bool isDeviceMemory = m_memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -92,12 +97,6 @@ namespace C3D
         MetricsAllocate(isDeviceMemory ? GPU_ALLOCATOR_ID : Memory.GetId(), MemoryType::Vulkan, memSize, memSize, m_memory);
 
         VK_SET_DEBUG_OBJECT_NAME(m_context, VK_OBJECT_TYPE_DEVICE_MEMORY, m_memory, m_name);
-
-        if (result != VK_SUCCESS)
-        {
-            ERROR_LOG("Unable to create because the required memory allocation failed. Error: {}.", result);
-            return false;
-        }
 
         return true;
     }

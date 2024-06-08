@@ -9,7 +9,7 @@ namespace C3D
 {
     struct VulkanPipelineConfig
     {
-        VulkanRenderPass* renderPass;
+        VulkanRenderpass* renderpass;
         u32 stride;
 
         /** @brief Array of Vertex Input Attribute descriptions that are part of this pipeline. */
@@ -26,6 +26,8 @@ namespace C3D
 
         FaceCullMode cullMode;
         ShaderFlagBits shaderFlags = ShaderFlags::ShaderFlagNone;
+
+        u32 topologyTypes = 0;
 
         /** @brief The name of the shader that is associated with this pipeline. */
         String shaderName;

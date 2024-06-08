@@ -148,10 +148,10 @@ namespace C3D
 
         void DrawGeometry(const GeometryRenderData& data) const;
 
-        bool BeginRenderPass(RenderPass* pass, const C3D::FrameData& frameData) const;
-        bool EndRenderPass(RenderPass* pass) const;
+        void BeginRenderpass(void* pass, const RenderTarget& target) const;
+        void EndRenderpass(void* pass) const;
 
-        bool CreateShader(Shader* shader, const ShaderConfig& config, RenderPass* pass) const;
+        bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const;
         void DestroyShader(Shader& shader) const;
 
         bool InitializeShader(Shader& shader) const;
@@ -159,23 +159,25 @@ namespace C3D
 
         bool BindShaderGlobals(Shader& shader) const;
         bool BindShaderInstance(Shader& shader, u32 instanceId) const;
+        bool BindShaderLocal(Shader& shader) const;
 
-        bool ShaderApplyGlobals(const Shader& shader, bool needsUpdate) const;
-        bool ShaderApplyInstance(const Shader& shader, bool needsUpdate) const;
+        bool ShaderApplyGlobals(const FrameData& frameData, const Shader& shader, bool needsUpdate) const;
+        bool ShaderApplyInstance(const FrameData& frameData, const Shader& shader, bool needsUpdate) const;
+        bool ShaderApplyLocal(const FrameData& frameData, const Shader& shader) const;
 
-        bool AcquireShaderInstanceResources(const Shader& shader, u32 textureMapCount, const TextureMap** maps, u32* outInstanceId) const;
+        bool AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config, u32& outInstanceId) const;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) const;
 
         bool AcquireTextureMapResources(TextureMap& map) const;
         void ReleaseTextureMapResources(TextureMap& map) const;
 
-        bool SetUniform(Shader& shader, const ShaderUniform& uniform, const void* value) const;
+        bool SetUniform(Shader& shader, const ShaderUniform& uniform, u32 arrayIndex, const void* value) const;
 
-        void CreateRenderTarget(RenderPass* pass, RenderTarget& target, u32 width, u32 height) const;
+        void CreateRenderTarget(void* pass, RenderTarget& target, u16 layerIndex, u32 width, u32 height) const;
         void DestroyRenderTarget(RenderTarget& target, bool freeInternalMemory) const;
 
-        [[nodiscard]] RenderPass* CreateRenderPass(const RenderPassConfig& config) const;
-        bool DestroyRenderPass(RenderPass* pass) const;
+        void CreateRenderpassInternals(const RenderpassConfig& config, void** internalData) const;
+        void DestroyRenderpassInternals(void* internalData) const;
 
         [[nodiscard]] Texture* GetWindowAttachment(u8 index) const;
         [[nodiscard]] Texture* GetDepthAttachment(u8 index) const;

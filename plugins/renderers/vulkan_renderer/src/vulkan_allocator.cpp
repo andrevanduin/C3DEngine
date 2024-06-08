@@ -69,7 +69,11 @@ namespace C3D
         }
 
         // The spec states that we should return nullptr if size == 0
-        if (size == 0) return nullptr;
+        if (size == 0)
+        {
+            Free(userData, original);
+            return nullptr;
+        }
 
         u64 allocSize;
         u16 allocAlignment;

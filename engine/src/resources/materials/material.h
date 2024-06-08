@@ -24,10 +24,12 @@ namespace C3D
         MaterialType type;
         /** @brief The texture maps associated with this Material. */
         DynamicArray<TextureMap> maps;
+        /** @brief An explicit irradiance texture to use for this material. If not set this material will use the scene's irradiance map. */
+        Texture* irradianceTexture = nullptr;
         /** @brief The size of the properties structure for this Material. */
-        u32 propertiesSize;
+        u32 propertiesSize = 0;
         /** @brief The properties associated with this Material. */
-        void* properties;
+        void* properties = nullptr;
         /** @brief Synced to the renderer current frame number when the material has been applied that frame. */
         u64 renderFrameNumber = INVALID_ID_U64;
         u64 renderDrawIndex   = INVALID_ID_U64;

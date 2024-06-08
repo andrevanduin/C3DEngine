@@ -7,6 +7,8 @@
 #include "core/cvars/cvar.h"
 #include "systems/system.h"
 
+#define DEFINE_CVAR_CREATE_FUNC(TypeName) bool Create(const CVarName& name, TypeName value)
+
 namespace C3D
 {
     class UIConsole;
@@ -17,46 +19,55 @@ namespace C3D
         UIConsole* pConsole = nullptr;
     };
 
-    using ICVarChangedCallback = std::function<void(const ICVar& cVar)>;
-
-    template <typename T>
-    using CVarChangedCallback = std::function<void(const CVar<T>& cVar)>;
-
-    class CVarSystem final : public SystemWithConfig<CVarSystemConfig>
+    class C3D_API CVarSystem final : public SystemWithConfig<CVarSystemConfig>
     {
     public:
         explicit CVarSystem(const SystemManager* pSystemsManager);
 
         bool OnInit(const CVarSystemConfig& config) override;
-        void OnShutdown() override;
 
+        /**
+         * @brief Creates a new CVar with the specified name and value.
+         *
+         * @param name The name of the CVar
+         * @param value The value that the CVar should have
+         * @return True if successful; false otherwise
+         */
         template <typename T>
-        bool Create(const CVarName& name, const T& value)
+        bool Create(const CVarName& name, T value)
         {
             if (Exists(name))
             {
-                INSTANCE_ERROR_LOG("Failed to create CVar. A CVar named: '{}' already exists!", name);
+                INSTANCE_ERROR_LOG("CVAR_SYSTEM", "A CVar named: '{}' already exists.", name);
                 return false;
             }
 
-            const auto pCVar = Memory.New<CVar<T>>(MemoryType::CVar, name, value);
-            m_cVars.Set(name, pCVar);
+            INSTANCE_INFO_LOG("CVAR_SYSTEM", "Successfully created CVar: '{}'.", name);
+            m_cVars.Set(name, CVar(name, value));
             return true;
         }
 
-        bool Remove(const CVarName& name);
-
-        [[nodiscard]] bool Exists(const CVarName& name) const;
-
+        /**
+         * @brief Creates a new CVar with the specified name, value and on changed callback.
+         *
+         * @param name The name of the CVar
+         * @param value The value that the CVar should have
+         * @param cb A callback function that should be called when the value of this CVar changes
+         * @return True if successful; false otherwise
+         */
         template <typename T>
-        CVar<T>& Get(const CVarName& name) const
+        bool Create(const CVarName& name, T value, CVarOnChangedCallback&& cb)
         {
-            if (!Exists(name))
-            {
-                INSTANCE_FATAL_LOG("Failed to find a CVar with the name: '{}'.", name);
-            }
-            return *reinterpret_cast<CVar<T>*>(m_cVars.Get(name));
+            if (!Create(name, value)) return false;
+
+            auto& cvar = Get(name);
+            return cvar.AddOnChangeCallback(std::forward<CVarOnChangedCallback>(cb));
         }
+
+        bool Remove(const CVarName& name);
+        bool Exists(const CVarName& name) const;
+
+        CVar& Get(const CVarName& name);
 
         bool Print(const CVarName& name, CString<256>& output);
 
@@ -64,21 +75,12 @@ namespace C3D
 
         void RegisterDefaultCommands();
 
+        void OnShutdown() override;
+
     private:
-        bool CreateDefaultCVars();
-
-        template <typename T>
-        void SetCVar(const CString<128>& name, const T& value, String& output)
-        {
-            const auto cVar = reinterpret_cast<CVar<T>*>(m_cVars.Get(name));
-            cVar->SetValue(value);
-            output += cVar->ToString();
-        }
-
         bool OnCVarCommand(const DynamicArray<ArgName>& args, String& output);
 
-        HashMap<CVarName, ICVar*> m_cVars;
-        DynamicArray<ICVarChangedCallback*> m_cVarChangedCallbacks;
+        HashMap<CVarName, CVar> m_cVars;
 
         UIConsole* m_pConsole;
     };

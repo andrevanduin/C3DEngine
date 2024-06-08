@@ -165,8 +165,11 @@ namespace C3D
         /** @brief Clears the string. Resulting in an empty null-terminated string. */
         void Clear() { m_data[0] = '\0'; }
 
-        /** @brief Converts string to a f32. */
-        [[nodiscard]] f32 ToF32() const { return std::strtof(m_data, nullptr); }
+        /** @brief Converts string to an u32 in the provided base. */
+        [[nodiscard]] u64 ToI64(const i32 base = 10) const { return std::strtoll(m_data, nullptr, base); }
+
+        /** @brief Converts string to an u32 in the provided base. */
+        [[nodiscard]] u64 ToU64(const i32 base = 10) const { return std::strtoull(m_data, nullptr, base); }
 
         /** @brief Converts string to an i32 in the provided base. */
         [[nodiscard]] i32 ToI32(const i32 base = 10) const { return std::strtol(m_data, nullptr, base); }
@@ -185,6 +188,12 @@ namespace C3D
 
         /** @brief Converts string to an u8 in the provided base. */
         [[nodiscard]] u8 ToU8(const i32 base = 10) const { return static_cast<u8>(std::strtoul(m_data, nullptr, base)); }
+
+        /** @brief Converts string to a f32. */
+        [[nodiscard]] f32 ToF32() const { return std::strtof(m_data, nullptr); }
+
+        /** @brief Converts string to a f64. */
+        [[nodiscard]] f64 ToF64() const { return std::strtod(m_data, nullptr); }
 
         /** @brief Converts string to a boolean value. */
         [[nodiscard]] bool ToBool() const
@@ -237,6 +246,85 @@ namespace C3D
         CString& operator+=(const char c)
         {
             Append(c);
+            return *this;
+        }
+
+        CString& operator+=(const u8 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const i8 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const u16 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const i16 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const u32 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const i32 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const u64 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const i64 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const f32 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const f64 v)
+        {
+            const auto buffer = std::to_string(v);
+            Append(buffer.data());
+            return *this;
+        }
+
+        CString& operator+=(const bool b)
+        {
+            if (b)
+                Append("true");
+            else
+                Append("false");
             return *this;
         }
 

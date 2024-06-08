@@ -26,6 +26,7 @@ namespace C3D
         Default  = 0,
         Lighting = 1,
         Normals  = 2,
+        Cascades = 3,
     };
 
     enum RendererConfigFlagBits : u8
@@ -73,10 +74,19 @@ namespace C3D
     /** @brief The stage that a Shader is used for. */
     enum class ShaderStage
     {
+        None,
         Vertex,
         Geometry,
         Fragment,
         Compute
+    };
+    
+    struct ShaderStageConfig
+    {
+        ShaderStage stage = ShaderStage::None;
+        String name;
+        String fileName;
+        String source;
     };
 
     enum PrimitiveTopologyType : u16

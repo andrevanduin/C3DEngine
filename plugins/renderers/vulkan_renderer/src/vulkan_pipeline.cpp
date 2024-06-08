@@ -279,7 +279,7 @@ namespace C3D
 
         pipelineCreateInfo.layout = layout;
 
-        pipelineCreateInfo.renderPass         = config.renderPass->handle;
+        pipelineCreateInfo.renderPass         = config.renderpass->handle;
         pipelineCreateInfo.subpass            = 0;
         pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
         pipelineCreateInfo.basePipelineIndex  = -1;
