@@ -7,9 +7,9 @@ namespace C3D::UI_2D
 {
     constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
 
-    Component Button::Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator)
+    Component Button::Create(const DynamicAllocator* pAllocator)
     {
-        Component component(systemsManager);
+        Component component;
 
         component.MakeInternal<InternalData>(pAllocator);
         component.onInitialize = &Initialize;

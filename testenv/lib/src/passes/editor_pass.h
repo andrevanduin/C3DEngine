@@ -21,7 +21,6 @@ class EditorPass : public C3D::Renderpass
 {
 public:
     EditorPass();
-    EditorPass(const C3D::SystemManager* pSystemsManager);
 
     bool Initialize(const C3D::LinearAllocator* frameAllocator) override;
     bool Prepare(C3D::Viewport* viewport, C3D::Camera* camera, EditorGizmo* gizmo);

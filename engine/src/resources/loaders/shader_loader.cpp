@@ -11,9 +11,8 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "SHADER_LOADER";
 
-    ResourceLoader<ShaderConfig>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, MemoryType::Shader, ResourceType::Shader, nullptr, "shaders"),
-          BaseTextLoader<ShaderConfig>(pSystemsManager)
+    ResourceLoader<ShaderConfig>::ResourceLoader()
+        : IResourceLoader(MemoryType::Shader, ResourceType::Shader, nullptr, "shaders"), BaseTextLoader<ShaderConfig>()
     {}
 
     bool ResourceLoader<ShaderConfig>::Load(const char* name, ShaderConfig& resource) const

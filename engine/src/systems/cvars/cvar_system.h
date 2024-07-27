@@ -22,8 +22,6 @@ namespace C3D
     class C3D_API CVarSystem final : public SystemWithConfig<CVarSystemConfig>
     {
     public:
-        explicit CVarSystem(const SystemManager* pSystemsManager);
-
         bool OnInit(const CVarSystemConfig& config) override;
 
         /**

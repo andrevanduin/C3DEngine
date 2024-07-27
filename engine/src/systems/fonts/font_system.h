@@ -45,8 +45,6 @@ namespace C3D
     class C3D_API FontSystem final : public SystemWithConfig<FontSystemConfig>
     {
     public:
-        explicit FontSystem(const SystemManager* pSystemsManager);
-
         bool OnInit(const FontSystemConfig& config) override;
         void OnShutdown() override;
 

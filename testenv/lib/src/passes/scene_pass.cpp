@@ -33,9 +33,7 @@ constexpr const char* SHADER_NAMES[3] = {
     COLOR_3D_SHADER_NAME,
 };
 
-ScenePass::ScenePass() : Renderpass() {}
-
-ScenePass::ScenePass(const C3D::SystemManager* pSystemsManager) : Renderpass("SCENE", pSystemsManager) {}
+ScenePass::ScenePass() : Renderpass("SCENE") {}
 
 bool ScenePass::Initialize(const C3D::LinearAllocator* frameAllocator)
 {

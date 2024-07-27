@@ -38,7 +38,7 @@ namespace C3D::UI_2D
             u16 characterIndexEnd     = 0;
         };
 
-        Component Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator);
+        Component Create(const DynamicAllocator* pAllocator);
 
         bool Initialize(Component& self, const Config& config);
         void OnUpdate(Component& self);

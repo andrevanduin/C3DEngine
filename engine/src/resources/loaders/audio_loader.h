@@ -17,7 +17,7 @@ namespace C3D
     class C3D_API ResourceLoader<AudioFile> final : public IResourceLoader
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager);
+        ResourceLoader();
 
         bool Init() override;
 

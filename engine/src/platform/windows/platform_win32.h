@@ -19,8 +19,8 @@
 #undef RGB
 
 // Redefine the C3D Engine macros again for further use
-#define Resources m_pSystemsManager->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
-#define Event m_pSystemsManager->GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
+#define Resources C3D::SystemManager::GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
+#define Event C3D::SystemManager::GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
 
 #include "containers/string.h"
 #include "core/defines.h"
@@ -48,9 +48,6 @@ namespace C3D
     class C3D_API Platform final : public SystemWithConfig<PlatformSystemConfig>
     {
     public:
-        Platform();
-        explicit Platform(const SystemManager* pSystemsManager);
-
         /**
          * @brief Initializes the platform system.
          *

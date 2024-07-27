@@ -10,7 +10,7 @@ namespace C3D
     class ISystem
     {
     public:
-        explicit ISystem(const SystemManager* pSystemsManager) : m_pSystemsManager(pSystemsManager) {}
+        ISystem() = default;
 
         ISystem(const ISystem&) = delete;
         ISystem(ISystem&&)      = delete;
@@ -25,15 +25,11 @@ namespace C3D
 
     protected:
         bool m_initialized = false;
-
-        const SystemManager* m_pSystemsManager;
     };
 
     class BaseSystem : public ISystem
     {
     public:
-        explicit BaseSystem(const SystemManager* pSystemsManager) : ISystem(pSystemsManager) {}
-
         virtual bool OnInit()
         {
             INSTANCE_INFO_LOG("SYSTEM", "Initializing.");
@@ -54,8 +50,6 @@ namespace C3D
     class SystemWithConfig : public ISystem
     {
     public:
-        explicit SystemWithConfig(const SystemManager* pSystemsManager) : ISystem(pSystemsManager) {}
-
         virtual bool OnInit(const T& config = {})
         {
             INSTANCE_INFO_LOG("SYSTEM", "Initializing.");

@@ -17,9 +17,10 @@
 
 namespace C3D::VulkanPlatform
 {
-    bool CreateSurface(const SystemManager* pSystemsManager, VulkanContext& context)
+    bool CreateSurface(VulkanContext& context)
     {
-        const LinuxHandleInfo& handle = pSystemsManager->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType).GetHandleInfo();
+        const LinuxHandleInfo& handle =
+            SystemManager::GetInstance().GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType).GetHandleInfo();
 
         VkXcbSurfaceCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
         createInfo.connection                = handle.connection;

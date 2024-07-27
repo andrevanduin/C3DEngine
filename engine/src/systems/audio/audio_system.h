@@ -43,8 +43,6 @@ namespace C3D
     class C3D_API AudioSystem final : public SystemWithConfig<AudioSystemConfig>
     {
     public:
-        explicit AudioSystem(const SystemManager* pSystemsManager);
-
         bool OnInit(const AudioSystemConfig& config) override;
         void OnShutdown() override;
 

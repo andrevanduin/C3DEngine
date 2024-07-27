@@ -1076,8 +1076,8 @@ error:
 #undef RGB
 
 // Redefine the C3D Engine macros again for further use
-#define Resources m_pSystemsManager->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
-#define Event m_pSystemsManager->GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
+#define Resources C3D::SystemManager::GetInstance().GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
+#define Event C3D::SystemManager::GetInstance().GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
 
 static void mp3dec_close_file(mp3dec_map_info_t *map_info)
 {

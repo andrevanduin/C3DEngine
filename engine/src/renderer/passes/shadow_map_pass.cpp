@@ -25,9 +25,7 @@ namespace C3D
 
     ShadowMapPass::ShadowMapPass() : Renderpass() {}
 
-    ShadowMapPass::ShadowMapPass(const C3D::SystemManager* pSystemsManager, const C3D::String& name, const ShadowMapPassConfig& config)
-        : Renderpass(name, pSystemsManager), m_config(config)
-    {}
+    ShadowMapPass::ShadowMapPass(const C3D::String& name, const ShadowMapPassConfig& config) : Renderpass(name), m_config(config) {}
 
     bool ShadowMapPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     {

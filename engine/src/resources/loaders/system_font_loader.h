@@ -31,7 +31,7 @@ namespace C3D
 	class ResourceLoader<SystemFontResource> final : public IResourceLoader
 	{
 	public:
-		explicit ResourceLoader(const SystemManager* pSystemsManager);
+		ResourceLoader();
 
 		bool Load(const char* name, SystemFontResource& outResource) const;
 		static void Unload(SystemFontResource& resource);

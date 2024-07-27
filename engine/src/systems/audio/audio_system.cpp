@@ -10,8 +10,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "AUDIO_SYSTEM";
 
-    AudioSystem::AudioSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
-
     bool AudioSystem::OnInit(const AudioSystemConfig& config)
     {
         m_config = config;

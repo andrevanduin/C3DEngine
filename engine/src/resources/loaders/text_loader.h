@@ -13,7 +13,7 @@ namespace C3D
     class C3D_API ResourceLoader<TextResource> final : public IResourceLoader
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager);
+        ResourceLoader();
 
         bool Load(const char* name, TextResource& resource) const;
         static void Unload(TextResource& resource);

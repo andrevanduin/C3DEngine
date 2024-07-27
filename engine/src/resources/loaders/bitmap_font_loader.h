@@ -34,7 +34,7 @@ namespace C3D
     class ResourceLoader<BitmapFontResource> final : public IResourceLoader
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager);
+        ResourceLoader();
 
         bool Load(const char* name, BitmapFontResource& resource) const;
         static void Unload(BitmapFontResource& resource);

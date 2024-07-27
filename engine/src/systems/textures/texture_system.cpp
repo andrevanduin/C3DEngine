@@ -15,8 +15,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "TEXTURE_SYSTEM";
 
-    TextureSystem::TextureSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
-
     bool TextureSystem::OnInit(const TextureSystemConfig& config)
     {
         INFO_LOG("Initializing.");

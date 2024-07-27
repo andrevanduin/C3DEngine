@@ -13,13 +13,11 @@ namespace C3D
     class ScopedTimer
     {
     public:
-        ScopedTimer(const String& scopeName, const SystemManager* pSystemsManager);
+        ScopedTimer(const String& scopeName);
         ~ScopedTimer();
 
     private:
         String m_name;
         f64 m_startTime;
-
-        const SystemManager* m_pSystemsManager;
     };
 }  // namespace C3D

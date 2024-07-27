@@ -42,7 +42,7 @@ namespace C3D::UI_2D
     class Component
     {
     public:
-        Component(const SystemManager* systemsManager);
+        Component();
 
         bool Initialize(ComponentType _type, const Config& config);
         void Destroy(const DynamicAllocator* pAllocator);
@@ -107,9 +107,6 @@ namespace C3D::UI_2D
             }
         }
 
-        template <typename T>
-        T& GetSystem() const;
-
         bool operator==(const Component& other) const;
         bool operator!=(const Component& other) const;
 
@@ -144,7 +141,6 @@ namespace C3D::UI_2D
         ComponentHandle m_parent;
         DynamicArray<ComponentHandle> m_children;
 
-        void* m_pImplData                      = nullptr;
-        const SystemManager* m_pSystemsManager = nullptr;
+        void* m_pImplData = nullptr;
     };
 }  // namespace C3D::UI_2D

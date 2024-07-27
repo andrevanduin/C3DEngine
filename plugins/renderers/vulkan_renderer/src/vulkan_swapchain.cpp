@@ -58,11 +58,9 @@ namespace C3D
         return VK_PRESENT_MODE_IMMEDIATE_KHR;
     }
 
-    void VulkanSwapchain::Create(const SystemManager* pSystemsManager, const VulkanContext* context, const u32 width, const u32 height,
-                                 const RendererConfigFlags flags)
+    void VulkanSwapchain::Create(const VulkanContext* context, const u32 width, const u32 height, const RendererConfigFlags flags)
     {
-        m_context         = context;
-        m_pSystemsManager = pSystemsManager;
+        m_context = context;
 
         CreateInternal(width, height, flags);
     }

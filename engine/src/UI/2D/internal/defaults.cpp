@@ -27,8 +27,7 @@ namespace C3D::UI_2D
 
     bool DefaultMethods::OnClick(Component& self, const MouseButtonEventContext& ctx)
     {
-        auto& uiSystem = self.GetSystem<UI2DSystem>();
-        uiSystem.SetActive(self.GetID(), true);
+        UI2D.SetActive(self.GetID(), true);
 
         if (self.pUserHandlers && self.pUserHandlers->onClickHandler)
         {

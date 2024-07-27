@@ -9,8 +9,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "EVENT_SYSTEM";
 
-    EventSystem::EventSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager) {}
-
     void EventSystem::OnShutdown()
     {
         INFO_LOG("Unregistering and clearing all events.");

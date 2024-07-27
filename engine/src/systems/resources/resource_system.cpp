@@ -16,7 +16,7 @@
 
 namespace C3D
 {
-    ResourceSystem::ResourceSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager)
+    ResourceSystem::ResourceSystem()
     {
         m_loaderTypes[ToUnderlying(ResourceType::None)]        = "None";
         m_loaderTypes[ToUnderlying(ResourceType::Text)]        = "Text";
@@ -46,15 +46,15 @@ namespace C3D
         m_config      = config;
         m_initialized = true;
 
-        const auto textLoader       = Memory.New<ResourceLoader<TextResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto binaryLoader     = Memory.New<ResourceLoader<BinaryResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto imageLoader      = Memory.New<ResourceLoader<Image>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto materialLoader   = Memory.New<ResourceLoader<MaterialConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto shaderLoader     = Memory.New<ResourceLoader<ShaderConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto meshLoader       = Memory.New<ResourceLoader<MeshResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto bitmapFontLoader = Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto terrainLoader    = Memory.New<ResourceLoader<TerrainConfig>>(MemoryType::ResourceLoader, m_pSystemsManager);
-        const auto audioLoader      = Memory.New<ResourceLoader<AudioFile>>(MemoryType::ResourceLoader, m_pSystemsManager);
+        const auto textLoader       = Memory.New<ResourceLoader<TextResource>>(MemoryType::ResourceLoader);
+        const auto binaryLoader     = Memory.New<ResourceLoader<BinaryResource>>(MemoryType::ResourceLoader);
+        const auto imageLoader      = Memory.New<ResourceLoader<Image>>(MemoryType::ResourceLoader);
+        const auto materialLoader   = Memory.New<ResourceLoader<MaterialConfig>>(MemoryType::ResourceLoader);
+        const auto shaderLoader     = Memory.New<ResourceLoader<ShaderConfig>>(MemoryType::ResourceLoader);
+        const auto meshLoader       = Memory.New<ResourceLoader<MeshResource>>(MemoryType::ResourceLoader);
+        const auto bitmapFontLoader = Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader);
+        const auto terrainLoader    = Memory.New<ResourceLoader<TerrainConfig>>(MemoryType::ResourceLoader);
+        const auto audioLoader      = Memory.New<ResourceLoader<AudioFile>>(MemoryType::ResourceLoader);
 
         for (IResourceLoader* loaders[9] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader, meshLoader,
                                              bitmapFontLoader, terrainLoader, audioLoader };

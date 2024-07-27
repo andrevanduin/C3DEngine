@@ -20,15 +20,15 @@ class C3D::ResourceLoader<SimpleSceneConfig> final : public C3D::IResourceLoader
     };
 
 public:
-    explicit ResourceLoader(const C3D::SystemManager* pSystemsManager);
+    ResourceLoader();
 
     bool Load(const char* name, SimpleSceneConfig& resource) const;
 
     void Unload(SimpleSceneConfig& resource) const;
 
 private:
-    bool ParseTagContent(const C3D::String& line, const C3D::String& fileName, u32 lineNumber, u32& version,
-                         ParserTagType type, SimpleSceneConfig& cfg) const;
+    bool ParseTagContent(const C3D::String& line, const C3D::String& fileName, u32 lineNumber, u32& version, ParserTagType type,
+                         SimpleSceneConfig& cfg) const;
 
     void ParseScene(const C3D::String& name, const C3D::String& value, SimpleSceneConfig& cfg) const;
     void ParseSkybox(const C3D::String& name, const C3D::String& value, SimpleSceneConfig& cfg) const;
@@ -39,6 +39,5 @@ private:
 
     Transform ParseTransform(const C3D::String& value) const;
 
-    ParserTagType ParseTag(const C3D::String& line, const C3D::String& fileName, u32 lineNumber,
-                           SimpleSceneConfig& cfg) const;
+    ParserTagType ParseTag(const C3D::String& line, const C3D::String& fileName, u32 lineNumber, SimpleSceneConfig& cfg) const;
 };

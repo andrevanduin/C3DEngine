@@ -22,8 +22,6 @@ namespace C3D
     class C3D_API CameraSystem final : public SystemWithConfig<CameraSystemConfig>
     {
     public:
-        explicit CameraSystem(const SystemManager* pSystemsManager);
-
         bool OnInit(const CameraSystemConfig& config) override;
         void OnShutdown() override;
 

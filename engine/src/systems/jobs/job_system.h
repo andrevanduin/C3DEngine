@@ -25,8 +25,6 @@ namespace C3D
     class JobSystem final : public SystemWithConfig<JobSystemConfig>
     {
     public:
-        explicit JobSystem(const SystemManager* pSystemsManager);
-
         bool OnInit(const JobSystemConfig& config) override;
         void OnShutdown() override;
 

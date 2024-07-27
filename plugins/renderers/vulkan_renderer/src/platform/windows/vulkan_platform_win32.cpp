@@ -17,8 +17,8 @@
 #undef min
 
 // Redefine the C3D Engine macros again for further use
-#define Resources m_pSystemsManager->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
-#define Event m_pSystemsManager->GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
+#define Resources C3D::SystemManager::GetInstance().GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
+#define Event C3D::SystemManager::GetInstance().GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
 
 #include <platform/platform.h>
 #include <systems/system_manager.h>
@@ -30,9 +30,9 @@
 
 namespace C3D::VulkanPlatform
 {
-    bool CreateSurface(const SystemManager* pSystemsManager, VulkanContext& context)
+    bool CreateSurface(VulkanContext& context)
     {
-        const Win32HandleInfo& handle = pSystemsManager->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType).GetHandleInfo();
+        const Win32HandleInfo& handle = OS.GetHandleInfo();
 
         VkWin32SurfaceCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
         createInfo.hinstance                   = handle.hInstance;

@@ -105,8 +105,6 @@ C3D::Application* C3D::CreateApplication()
 // Method that gets called when the engine is fully initialized
 void C3D::InitApplication(Engine* engine)
 {
-    const auto m_pSystemsManager = engine->GetSystemsManager();
-
     Event.Register(EventCodeWatchedFileChanged,
                    [engine](const u16 code, void*, const EventContext& context) { return OnWatchedFileChanged(code, engine, context); });
 

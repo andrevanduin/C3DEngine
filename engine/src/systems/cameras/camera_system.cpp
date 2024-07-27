@@ -8,8 +8,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "CAMERA_SYSTEM";
 
-    CameraSystem::CameraSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
-
     bool CameraSystem::OnInit(const CameraSystemConfig& config)
     {
         INFO_LOG("Initializing.");

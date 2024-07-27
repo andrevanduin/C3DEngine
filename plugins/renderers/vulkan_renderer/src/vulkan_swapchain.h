@@ -14,7 +14,7 @@ namespace C3D
     class VulkanSwapchain
     {
     public:
-        void Create(const SystemManager* pSystemsManager, const VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
+        void Create(const VulkanContext* context, u32 width, u32 height, RendererConfigFlags flags);
 
         void Recreate(u32 width, u32 height, RendererConfigFlags flags);
 
@@ -49,7 +49,6 @@ namespace C3D
         RendererConfigFlags m_flags = 0;
         VkPresentModeKHR m_presentMode;
 
-        const SystemManager* m_pSystemsManager = nullptr;
-        const VulkanContext* m_context         = nullptr;
+        const VulkanContext* m_context = nullptr;
     };
 }  // namespace C3D

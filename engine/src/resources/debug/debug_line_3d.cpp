@@ -6,10 +6,8 @@
 
 namespace C3D
 {
-    bool DebugLine3D::Create(const SystemManager* systemsManager, const vec3& point0, const vec3& point1, Transform* parent)
+    bool DebugLine3D::Create(const vec3& point0, const vec3& point1, Transform* parent)
     {
-        m_pSystemsManager = systemsManager;
-
         m_point0 = point0;
         m_point1 = point1;
         m_id.Generate();

@@ -13,7 +13,7 @@ namespace C3D
 
     namespace VulkanPlatform
     {
-        bool CreateSurface(const SystemManager* pSystemsManager, VulkanContext& context);
+        bool CreateSurface(VulkanContext& context);
 
         DynamicArray<const char*> GetRequiredExtensionNames();
     }  // namespace VulkanPlatform

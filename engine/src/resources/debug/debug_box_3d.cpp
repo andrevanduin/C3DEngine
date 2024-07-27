@@ -6,10 +6,8 @@
 
 namespace C3D
 {
-    bool DebugBox3D::Create(const SystemManager* systemsManager, const vec3& size, Transform* parent)
+    bool DebugBox3D::Create(const vec3& size, Transform* parent)
     {
-        m_pSystemsManager = systemsManager;
-
         // TODO: name?
         m_id.Generate();
         m_size  = size;

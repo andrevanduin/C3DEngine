@@ -35,7 +35,7 @@ namespace C3D
     public:
         Mesh() = default;
 
-        bool Create(const SystemManager* pSystemsManager, const MeshConfig& cfg);
+        bool Create(const MeshConfig& cfg);
 
         bool Initialize();
 
@@ -74,8 +74,6 @@ namespace C3D
         MeshResource m_resource;
         Extents3D m_extents;
         DebugBox3D* m_debugBox = nullptr;
-
-        const SystemManager* m_pSystemsManager = nullptr;
     };
 
     class C3D_API UIMesh
@@ -83,7 +81,7 @@ namespace C3D
     public:
         UIMesh() = default;
 
-        bool LoadFromConfig(const SystemManager* pSystemsManager, const UIGeometryConfig& config);
+        bool LoadFromConfig(const UIGeometryConfig& config);
 
         bool Unload();
 
@@ -93,9 +91,6 @@ namespace C3D
         DynamicArray<Geometry*> geometries;
 
         Transform transform;
-
-    private:
-        const SystemManager* m_pSystemsManager = nullptr;
     };
 
 }  // namespace C3D

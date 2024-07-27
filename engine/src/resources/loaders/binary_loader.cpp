@@ -11,9 +11,7 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "BINARY_LOADER";
 
-    ResourceLoader<BinaryResource>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, MemoryType::Array, ResourceType::Binary, nullptr, "shaders")
-    {}
+    ResourceLoader<BinaryResource>::ResourceLoader() : IResourceLoader(MemoryType::Array, ResourceType::Binary, nullptr, "shaders") {}
 
     bool ResourceLoader<BinaryResource>::Load(const char* name, BinaryResource& resource) const
     {

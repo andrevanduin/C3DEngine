@@ -30,7 +30,7 @@ namespace C3D
     public:
         UIConsole() = default;
 
-        void OnInit(const SystemManager* pSystemsManager);
+        void OnInit();
         void OnRun();
 
         void OnShutDown();
@@ -90,7 +90,5 @@ namespace C3D
 
         HashMap<CommandName, CommandCallback> m_commands;
         DynamicArray<RegisteredEventCallback> m_callbacks;
-
-        const SystemManager* m_pSystemsManager;
     };
 }  // namespace C3D

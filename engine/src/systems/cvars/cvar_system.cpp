@@ -19,8 +19,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "CVAR_SYSTEM";
 
-    CVarSystem::CVarSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
-
     bool CVarSystem::OnInit(const CVarSystemConfig& config)
     {
         INFO_LOG("Initializing.");

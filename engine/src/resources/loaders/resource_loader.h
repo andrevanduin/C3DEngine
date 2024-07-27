@@ -10,8 +10,7 @@ namespace C3D
     class C3D_API IResourceLoader
     {
     public:
-        IResourceLoader(const SystemManager* pSystemsManager, MemoryType memoryType, ResourceType type, const char* customType,
-                        const char* path);
+        IResourceLoader(MemoryType memoryType, ResourceType type, const char* customType, const char* path);
 
         virtual bool Init() { return true; }
         virtual void Shutdown() {}
@@ -24,21 +23,16 @@ namespace C3D
 
     protected:
         MemoryType m_memoryType;
-
-        const SystemManager* m_pSystemsManager = nullptr;
     };
 
     template <typename T>
     class ResourceLoader : public IResourceLoader
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager)
-            : IResourceLoader(pSystemsManager, MemoryType::Unknown, ResourceType::None, nullptr, nullptr)
-        {}
+        explicit ResourceLoader() : IResourceLoader(MemoryType::Unknown, ResourceType::None, nullptr, nullptr) {}
 
-        ResourceLoader(const SystemManager* pSystemsManager, MemoryType memoryType, ResourceType type, const char* customType,
-                       const char* path)
-            : IResourceLoader(pSystemsManager, memoryType, type, customType, path)
+        ResourceLoader(MemoryType memoryType, ResourceType type, const char* customType, const char* path)
+            : IResourceLoader(memoryType, type, customType, path)
         {}
 
         bool Load(const char* name, T& resource) const;

@@ -40,7 +40,7 @@ namespace C3D
     public:
         DebugGrid() = default;
 
-        bool Create(const SystemManager* pSystemsManager, const DebugGridConfig& config);
+        bool Create(const DebugGridConfig& config);
 
         void Destroy();
 
@@ -68,7 +68,5 @@ namespace C3D
         DynamicArray<ColorVertex3D> m_vertices;
 
         Geometry m_geometry;
-
-        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

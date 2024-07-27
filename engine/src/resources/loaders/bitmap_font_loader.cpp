@@ -17,8 +17,8 @@ namespace C3D
         { ".fnt", BitmapFontFileType::FNT, false },
     };
 
-    ResourceLoader<BitmapFontResource>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, MemoryType::BitmapFont, ResourceType::BitmapFont, nullptr, "fonts")
+    ResourceLoader<BitmapFontResource>::ResourceLoader()
+        : IResourceLoader(MemoryType::BitmapFont, ResourceType::BitmapFont, nullptr, "fonts")
     {}
 
     bool ResourceLoader<BitmapFontResource>::Load(const char* name, BitmapFontResource& resource) const

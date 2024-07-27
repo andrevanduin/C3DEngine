@@ -3,6 +3,7 @@
 
 #include <core/clock.h>
 #include <core/logger.h>
+#include <systems/system_manager.h>
 
 constexpr const char* INSTANCE_NAME = "TEST_MANAGER";
 
@@ -29,18 +30,21 @@ void TestManager::Register(TestFunc func, const std::string& name, const std::st
 
 void TestManager::RunTests()
 {
+    using namespace C3D;
+
     u32 passed  = 0;
     u32 failed  = 0;
     u32 skipped = 0;
 
-    C3D::PlatformSystemConfig config;
+    PlatformSystemConfig config;
     config.applicationName           = "Tests";
     config.windowConfig.shouldCreate = false;
 
-    C3D::Platform platform;
-    platform.OnInit(config);
+    auto& systemsManager = SystemManager::GetInstance();
+    systemsManager.OnInit();
+    systemsManager.RegisterSystem<Platform>(PlatformSystemType, config);
 
-    C3D::Clock testTime(&platform);
+    Clock testTime;
 
     auto i = 0;
     for (auto& test : m_tests)
@@ -81,5 +85,5 @@ void TestManager::RunTests()
     INFO_LOG("Results: {} passed, {} failed and {} skipped. Total runtime {:.4f} sec.", passed, failed, skipped,
              testTime.GetTotalElapsed());
 
-    platform.OnShutdown();
+    systemsManager.OnShutdown();
 }

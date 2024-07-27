@@ -68,7 +68,7 @@ namespace C3D
     {
     public:
         ShadowMapPass();
-        ShadowMapPass(const SystemManager* pSystemsManager, const String& name, const ShadowMapPassConfig& config);
+        ShadowMapPass(const String& name, const ShadowMapPassConfig& config);
 
         bool Initialize(const LinearAllocator* frameAllocator) override;
         bool LoadResources() override;

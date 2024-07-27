@@ -20,7 +20,7 @@ namespace C3D
     public:
         Skybox() = default;
 
-        bool Create(const SystemManager* pSystemsManager, const SkyboxConfig& config);
+        bool Create(const SkyboxConfig& config);
 
         bool Initialize();
 
@@ -43,7 +43,5 @@ namespace C3D
     private:
         SkyboxConfig m_config;
         GeometryConfig m_skyboxGeometryConfig;
-
-        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

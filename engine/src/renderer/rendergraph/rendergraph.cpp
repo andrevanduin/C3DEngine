@@ -15,7 +15,6 @@ namespace C3D
     {
         INFO_LOG("Creating Rendergraph: '{}'.", name);
 
-        m_pSystemsManager = application->GetSystemsManager();
         m_name            = name;
         m_application     = application;
 

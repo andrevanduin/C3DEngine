@@ -17,7 +17,7 @@ namespace C3D
     public:
         DebugBox3D() = default;
 
-        bool Create(const SystemManager* pSystemsManager, const vec3& size, Transform* parent);
+        bool Create(const vec3& size, Transform* parent);
 
         void Destroy();
 
@@ -58,7 +58,5 @@ namespace C3D
         DynamicArray<ColorVertex3D> m_vertices;
 
         Geometry m_geometry;
-
-        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

@@ -30,8 +30,6 @@ namespace C3D
     class C3D_API RenderSystem final : public SystemWithConfig<RenderSystemConfig>
     {
     public:
-        explicit RenderSystem(const SystemManager* pSystemsManager);
-
         bool OnInit(const RenderSystemConfig& config) override;
         void OnShutdown() override;
 

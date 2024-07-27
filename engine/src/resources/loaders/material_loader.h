@@ -9,7 +9,7 @@ namespace C3D
     class C3D_API ResourceLoader<MaterialConfig> final : public IResourceLoader, BaseTextLoader<MaterialConfig>
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager);
+        ResourceLoader();
 
         bool Load(const char* name, MaterialConfig& resource) const;
 

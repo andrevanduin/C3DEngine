@@ -119,7 +119,5 @@ namespace C3D
 #ifdef _DEBUG
         VkDebugUtilsMessengerEXT m_debugMessenger = nullptr;
 #endif
-
-        const SystemManager* m_pSystemsManager;
     };
 }  // namespace C3D

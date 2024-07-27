@@ -2,6 +2,7 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/clock.h"
+#include "core/scoped_timer.h"
 #include "platform/file_system.h"
 #include "renderer/vertex.h"
 #include "resource_loader.h"
@@ -59,7 +60,7 @@ namespace C3D
     class ResourceLoader<MeshResource> final : public IResourceLoader
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager);
+        ResourceLoader();
 
         bool Load(const char* name, MeshResource& resource) const;
         void Unload(MeshResource& resource) const;
@@ -90,8 +91,7 @@ namespace C3D
     template <typename VertexType, typename IndexType>
     bool ResourceLoader<MeshResource>::LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const
     {
-        Clock clock(m_pSystemsManager->GetSystemPtr<Platform>(PlatformSystemType));
-        clock.Begin();
+        auto timer = ScopedTimer("LoadCsmFile");
 
         // Version
         u16 version = 0;
@@ -152,9 +152,6 @@ namespace C3D
             outGeometries.PushBack(g);
         }
 
-        clock.End();
-        INSTANCE_INFO_LOG("MESH_LOADER", "{} Bytes read from file {} in {:.4f} ms.", file.bytesRead, file.currentPath,
-                          clock.GetElapsedMs());
         file.Close();
         return true;
     }

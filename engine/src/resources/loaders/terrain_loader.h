@@ -9,7 +9,7 @@ namespace C3D
     class C3D_API ResourceLoader<TerrainConfig> final : public IResourceLoader
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager);
+        ResourceLoader();
 
         bool Load(const char* name, TerrainConfig& resource) const;
         void Unload(TerrainConfig& resource) const;

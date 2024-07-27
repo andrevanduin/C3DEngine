@@ -58,8 +58,8 @@ public:
      *
      * @return True if successful, false otherwise
      */
-    bool Create(const SystemManager* pSystemsManager);
-    bool Create(const SystemManager* pSystemsManager, const SimpleSceneConfig& config);
+    bool Create();
+    bool Create(const SimpleSceneConfig& config);
 
     /**
      * @brief Initializes the scene. Processes configuration and sets up the hierarchy
@@ -162,6 +162,4 @@ private:
 
     friend class ScenePass;
     friend class ShadowMapPass;
-
-    const C3D::SystemManager* m_pSystemsManager = nullptr;
 };

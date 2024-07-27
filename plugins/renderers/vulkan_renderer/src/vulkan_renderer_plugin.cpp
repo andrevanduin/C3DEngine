@@ -58,7 +58,6 @@ namespace C3D
         m_context.frameBufferWidth  = 1280;
         m_context.frameBufferHeight = 720;
         m_config                    = config;
-        m_pSystemsManager           = config.pSystemsManager;
 
         if (!VulkanInstance::Create(m_context, config.applicationName, config.applicationVersion))
         {
@@ -75,7 +74,7 @@ namespace C3D
             return false;
         }
 
-        if (!VulkanPlatform::CreateSurface(m_pSystemsManager, m_context))
+        if (!VulkanPlatform::CreateSurface(m_context))
         {
             ERROR_LOG("Failed to create Vulkan Surface.");
             return false;
@@ -87,7 +86,7 @@ namespace C3D
             return false;
         }
 
-        m_context.swapchain.Create(m_pSystemsManager, &m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, config.flags);
+        m_context.swapchain.Create(&m_context, m_context.frameBufferWidth, m_context.frameBufferHeight, config.flags);
 
         // Save the number of images we have as a the number of render targets required
         *outWindowRenderTargetCount = static_cast<u8>(m_context.swapchain.imageCount);

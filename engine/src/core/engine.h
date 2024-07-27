@@ -63,8 +63,6 @@ namespace C3D
 
         void OnApplicationLibraryReload(Application* app);
 
-        const SystemManager* GetSystemsManager() const { return &m_systemsManager; }
-
         const LinearAllocator* GetFrameAllocator() const { return &m_frameAllocator; };
 
     protected:
@@ -80,13 +78,9 @@ namespace C3D
 
         /** @brief The Engine's internal state. */
         EngineState m_state;
-        /** @brief Systems manager that can be used to access all the engine's systems. */
-        SystemManager m_systemsManager;
         /** @brief Allocator used for allocating frame data. Gets cleared on every frame. */
         LinearAllocator m_frameAllocator;
         /** @brief The data that is relevant for every frame. */
         FrameData m_frameData;
-        /** @brief A pointer to the systems manager (just used to ensure we can make macro calls in the engine.cpp). */
-        const SystemManager* m_pSystemsManager;
     };
 }  // namespace C3D

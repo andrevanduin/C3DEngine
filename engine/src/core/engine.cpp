@@ -27,11 +27,9 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "ENGINE";
 
-    Engine::Engine(Application* pApplication, UIConsole* pConsole)
-        : m_application(pApplication), m_pConsole(pConsole), m_pSystemsManager(&m_systemsManager)
+    Engine::Engine(Application* pApplication, UIConsole* pConsole) : m_application(pApplication), m_pConsole(pConsole)
     {
-        m_application->m_pSystemsManager = &m_systemsManager;
-        m_application->m_pConsole        = pConsole;
+        m_application->m_pConsole = pConsole;
     }
 
     bool Engine::Init()
@@ -66,7 +64,8 @@ namespace C3D
             INFO_LOG("System reported: {} threads (including main thread).", threadCount);
         }
 
-        m_systemsManager.OnInit();
+        auto& systemsManager = SystemManager::GetInstance();
+        systemsManager.OnInit();
 
         String windowName = String::FromFormat("C3DEngine - {}", appState->name);
 
@@ -79,15 +78,15 @@ namespace C3D
         constexpr AudioSystemConfig audioSystemConfig{ "C3DOpenAL", 0, ChannelType::Stereo, 4096 * 16, 8 };
 
         // Init before boot systems
-        m_systemsManager.RegisterSystem<EventSystem>(EventSystemType);                              // Event System
-        m_systemsManager.RegisterSystem<Platform>(PlatformSystemType, platformConfig);              // Platform (OS) System
-        m_systemsManager.RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);              // CVar System
-        m_systemsManager.RegisterSystem<InputSystem>(InputSystemType);                              // Input System
-        m_systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);  // Resource System
-        m_systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);        // Shader System
-        m_systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);        // Render System
-        m_systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);              // UI2D System
-        m_systemsManager.RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);           //  Audio System
+        systemsManager.RegisterSystem<EventSystem>(EventSystemType);                              // Event System
+        systemsManager.RegisterSystem<Platform>(PlatformSystemType, platformConfig);              // Platform (OS) System
+        systemsManager.RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);              // CVar System
+        systemsManager.RegisterSystem<InputSystem>(InputSystemType);                              // Input System
+        systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);  // Resource System
+        systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);        // Shader System
+        systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);        // Render System
+        systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);              // UI2D System
+        systemsManager.RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);           //  Audio System
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
@@ -130,10 +129,10 @@ namespace C3D
         constexpr TextureSystemConfig textureSystemConfig{ 65536 };
         constexpr CameraSystemConfig cameraSystemConfig{ 61 };
 
-        m_systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);              // Job System
-        m_systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
-        m_systemsManager.RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);       // Font System
-        m_systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);     // Camera System
+        systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);              // Job System
+        systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
+        systemsManager.RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);       // Font System
+        systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);     // Camera System
 
         Event.Register(EventCodeResized,
                        [this](const u16 code, void* sender, const EventContext& context) { return OnResizeEvent(code, sender, context); });
@@ -149,9 +148,9 @@ namespace C3D
         constexpr MaterialSystemConfig materialSystemConfig{ 4077 };
         constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
-        m_systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System
-        m_systemsManager.RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig);  // Geometry System
-        m_systemsManager.RegisterSystem<LightSystem>(LightSystemType);                              // Light System
+        systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System
+        systemsManager.RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig);  // Geometry System
+        systemsManager.RegisterSystem<LightSystem>(LightSystemType);                              // Light System
 
         m_state.initialized = true;
         m_state.lastTime    = 0;
@@ -161,7 +160,7 @@ namespace C3D
         m_state.windowWidth  = size.x;
         m_state.windowHeight = size.y;
 
-        m_pConsole->OnInit(&m_systemsManager);
+        m_pConsole->OnInit();
         return true;
     }
 
@@ -169,14 +168,6 @@ namespace C3D
     {
         m_state.running  = true;
         m_state.lastTime = OS.GetAbsoluteTime();
-
-        auto os = m_systemsManager.GetSystemPtr<Platform>(PlatformSystemType);
-        m_state.clocks.onRender.SetPlatform(os);
-        m_state.clocks.onUpdate.SetPlatform(os);
-        m_state.clocks.prepareFrame.SetPlatform(os);
-        m_state.clocks.prepareRender.SetPlatform(os);
-        m_state.clocks.present.SetPlatform(os);
-        m_state.clocks.total.SetPlatform(os);
 
         UI2D.OnRun();
 
@@ -318,9 +309,8 @@ namespace C3D
 
     void Engine::OnApplicationLibraryReload(Application* app)
     {
-        m_application                    = app;
-        m_application->m_pSystemsManager = &m_systemsManager;
-        m_application->m_pConsole        = m_pConsole;
+        m_application             = app;
+        m_application->m_pConsole = m_pConsole;
         m_application->OnLibraryLoad();
     }
 
@@ -343,8 +333,9 @@ namespace C3D
         // Shutdown our console
         m_pConsole->OnShutDown();
 
-        // Finally our systems manager can be shutdoen
-        m_systemsManager.OnShutdown();
+        // Finally our systems manager can be shut down
+        auto& systemsManager = SystemManager::GetInstance();
+        systemsManager.OnShutdown();
 
         m_state.initialized = false;
     }

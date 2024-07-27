@@ -52,8 +52,6 @@ namespace C3D
     class InputSystem final : public BaseSystem
     {
     public:
-        explicit InputSystem(const SystemManager* pSystemsManager);
-
         bool OnInit() override;
 
         bool OnUpdate(const FrameData& frameData) override;

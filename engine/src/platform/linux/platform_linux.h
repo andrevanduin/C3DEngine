@@ -36,7 +36,7 @@ namespace C3D
     {
     public:
         Platform();
-        explicit Platform(const SystemManager* pSystemsManager);
+        explicit Platform();
 
         bool OnInit(const PlatformSystemConfig& config) override;
 

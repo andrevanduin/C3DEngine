@@ -8,6 +8,9 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "SYSTEM_MANAGER";
 
+    SystemManager SystemManager::m_instance;
+    SystemManager& SystemManager::GetInstance() { return m_instance; }
+
     void SystemManager::OnInit()
     {
         INFO_LOG("Initializing Systems Manager.");

@@ -65,7 +65,7 @@ class EditorGizmo
 public:
     EditorGizmo() = default;
 
-    bool Create(const C3D::SystemManager* pSystemsManager);
+    bool Create();
     void Destroy();
 
     bool Initialize();
@@ -112,6 +112,4 @@ private:
 
     EditorGizmoInteractionType m_interaction;
     EditorGizmoOrientation m_orientation;
-
-    const C3D::SystemManager* m_pSystemsManager = nullptr;
 };

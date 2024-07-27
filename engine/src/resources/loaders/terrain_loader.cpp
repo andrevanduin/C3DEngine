@@ -13,9 +13,7 @@ namespace C3D
     constexpr const char* INSTANCE_NAME = "TERRAIN_LOADER";
     constexpr auto FILE_EXTENSION       = "cterrain";
 
-    ResourceLoader<TerrainConfig>::ResourceLoader(const SystemManager* pSystemsManager)
-        : IResourceLoader(pSystemsManager, MemoryType::Terrain, ResourceType::Terrain, nullptr, "terrains")
-    {}
+    ResourceLoader<TerrainConfig>::ResourceLoader() : IResourceLoader(MemoryType::Terrain, ResourceType::Terrain, nullptr, "terrains") {}
 
     bool ResourceLoader<TerrainConfig>::Load(const char* name, TerrainConfig& resource) const
     {
@@ -40,6 +38,8 @@ namespace C3D
         resource.resourceName = fullPath;
         // Copy the name of the resource
         resource.name = name;
+        // Default chunk size to 16 if it's not provided
+        resource.chunkSize = 16;
 
         String heightmapFile;
         String line;
@@ -82,6 +82,10 @@ namespace C3D
                 else if (name.IEquals("heightmapFile"))
                 {
                     heightmapFile = value;
+                }
+                else if (name.IEquals("chunkSize"))
+                {
+                    resource.chunkSize = value.ToU32();
                 }
                 else if (name.IEquals("tileScaleX"))
                 {
@@ -130,11 +134,12 @@ namespace C3D
             ImageLoadParams params = { false };
             if (!Resources.Load(heightmapFile, heightmap, params))
             {
-                ERROR_LOG("Failed to load HeightmapFile: '{}' for Terrain: '{}'. Setting defaults.", heightmapFile, name);
+                WARN_LOG("Failed to load HeightmapFile: '{}' for Terrain: '{}'. Setting defaults.", heightmapFile, name);
 
-                resource.tileCountX = 100;
-                resource.tileCountZ = 100;
-                resource.vertexConfigs.Resize(100 * 100);
+                resource.tileCountX = 128;
+                resource.tileCountZ = 128;
+                resource.chunkSize  = 16;
+                resource.vertexConfigs.Resize(resource.tileCountX * resource.tileCountZ);
             }
             else
             {
@@ -146,6 +151,15 @@ namespace C3D
                 resource.tileCountZ = heightmap.height;
 
                 assert(heightmap.channelCount == 4);
+
+                if (resource.tileCountX % resource.chunkSize != 0 || resource.tileCountZ % resource.chunkSize)
+                {
+                    ERROR_LOG(
+                        "The heightmap dimensions must be a multiple of the chunksize. The heightmap dimensions are: {}x{} and the "
+                        "chunksize is: {}.",
+                        resource.tileCountX, resource.tileCountZ, resource.chunkSize);
+                    return false;
+                }
 
                 for (u32 i = 0; i < totalPixelCount * heightmap.channelCount; i += heightmap.channelCount)
                 {

@@ -9,9 +9,9 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "RENDERPASS";
 
-    Renderpass::Renderpass() : m_name("EMPTY"), m_pSystemsManager(nullptr) {}
+    Renderpass::Renderpass() : m_name("EMPTY") {}
 
-    Renderpass::Renderpass(const String& name, const SystemManager* pSystemsManager) : m_name(name), m_pSystemsManager(pSystemsManager)
+    Renderpass::Renderpass(const String& name) : m_name(name)
     {
         m_sources.Reserve(16);
         m_sinks.Reserve(16);

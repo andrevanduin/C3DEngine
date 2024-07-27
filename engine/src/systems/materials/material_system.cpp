@@ -21,8 +21,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "MATERIAL_SYSTEM";
 
-    MaterialSystem::MaterialSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
-
     bool MaterialSystem::OnInit(const MaterialSystemConfig& config)
     {
         INFO_LOG("Initializing.");

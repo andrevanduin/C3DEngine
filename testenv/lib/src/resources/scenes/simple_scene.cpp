@@ -23,12 +23,10 @@ constexpr const char* INSTANCE_NAME = "SIMPLE_SCENE";
 
 SimpleScene::SimpleScene() : m_name("NO_NAME"), m_description("NO_DESCRIPTION") {}
 
-bool SimpleScene::Create(const C3D::SystemManager* pSystemsManager) { return Create(pSystemsManager, {}); }
+bool SimpleScene::Create() { return Create({}); }
 
-bool SimpleScene::Create(const C3D::SystemManager* pSystemsManager, const SimpleSceneConfig& config)
+bool SimpleScene::Create(const SimpleSceneConfig& config)
 {
-    m_pSystemsManager = pSystemsManager;
-
     m_enabled = false;
     m_state   = SceneState::Uninitialized;
     m_id      = global_scene_id++;
@@ -48,7 +46,7 @@ bool SimpleScene::Create(const C3D::SystemManager* pSystemsManager, const Simple
     gridConfig.name          = "DEBUG_GRID";
     gridConfig.useThirdAxis  = true;
 
-    if (!m_grid.Create(m_pSystemsManager, gridConfig))
+    if (!m_grid.Create(gridConfig))
     {
         ERROR_LOG("Failed to create debug grid.");
         return false;
@@ -73,7 +71,7 @@ bool SimpleScene::Initialize()
     {
         C3D::SkyboxConfig config = { m_config.skyboxConfig.cubemapName };
         m_skybox                 = Memory.New<C3D::Skybox>(C3D::MemoryType::Scene);
-        if (!m_skybox->Create(m_pSystemsManager, config))
+        if (!m_skybox->Create(config))
         {
             ERROR_LOG("Failed to create skybox from config.");
             Memory.Delete(m_skybox);
@@ -134,7 +132,7 @@ bool SimpleScene::Initialize()
         config.enableDebugBox = true;  // Enable debug boxes around our meshes
 
         C3D::Mesh mesh;
-        if (!mesh.Create(m_pSystemsManager, config))
+        if (!mesh.Create(config))
         {
             ERROR_LOG("Failed to create Mesh: '{}'. Skipping.", meshConfig.name);
             continue;
@@ -156,7 +154,7 @@ bool SimpleScene::Initialize()
         config.resourceName = terrainConfig.resourceName;
 
         C3D::Terrain terrain;
-        if (!terrain.Create(m_pSystemsManager, config))
+        if (!terrain.Create(config))
         {
             ERROR_LOG("Failed to create Terrain: '{}'. Skipping.", terrainConfig.name);
             continue;
@@ -461,7 +459,10 @@ void SimpleScene::QueryTerrains(FrameData& frameData, const Frustum& frustum, co
         {
             // TODO: Check terrain generation
             // TODO: Frustum culling
-            terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
+            for (auto& chunk : terrain.GetChunks())
+            {
+                // terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), chunk.GetGeometry());
+            }
         }
     }
 }
@@ -508,7 +509,10 @@ void SimpleScene::QueryTerrains(FrameData& frameData, DynamicArray<GeometryRende
         {
             // TODO: Check terrain generation
             // TODO: Frustum culling
-            terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), terrain.GetGeometry());
+            for (auto& chunk : terrain.GetChunks())
+            {
+                // terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), chunk.GetGeometry());
+            }
         }
     }
 }
@@ -617,7 +621,7 @@ bool SimpleScene::AddPointLight(const C3D::PointLight& light)
     pLight->debugData = Memory.New<LightDebugData>(C3D::MemoryType::Resource);
     auto debug        = static_cast<LightDebugData*>(pLight->debugData);
 
-    if (!debug->box.Create(m_pSystemsManager, vec3(0.2f, 0.2f, 0.2f), nullptr))
+    if (!debug->box.Create(vec3(0.2f, 0.2f, 0.2f), nullptr))
     {
         ERROR_LOG("Failed to add debug box to point light: '{}'.", light.name);
         return false;

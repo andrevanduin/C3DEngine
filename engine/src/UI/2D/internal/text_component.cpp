@@ -6,6 +6,7 @@
 #include "systems/UI/2D/ui2d_system.h"
 #include "systems/fonts/font_system.h"
 #include "systems/shaders/shader_system.h"
+#include "systems/system_manager.h"
 
 namespace C3D::UI_2D
 {
@@ -55,18 +56,14 @@ namespace C3D::UI_2D
             return false;
         }
 
-        auto& fontSystem   = self.GetSystem<FontSystem>();
-        auto& renderSystem = self.GetSystem<RenderSystem>();
-        auto& uiSystem     = self.GetSystem<UI2DSystem>();
-
         auto textSize = text.SizeUtf8();
         // Ensure that text size is larger than 0 since we can't create an empty buffer
         if (textSize < 1) textSize = 1;
 
         // Acquire shader instance resources
-        auto& shader = uiSystem.GetShader();
+        auto& shader = UI2D.GetShader();
 
-        TextureMap* maps[1] = { &fontSystem.GetFontData(font).atlas };
+        TextureMap* maps[1] = { &Fonts.GetFontData(font).atlas };
 
         ShaderInstanceUniformTextureConfig textureConfig;
         textureConfig.uniformLocation = shader.GetUniformIndex("diffuseTexture");
@@ -76,14 +73,14 @@ namespace C3D::UI_2D
         instanceConfig.uniformConfigs     = &textureConfig;
         instanceConfig.uniformConfigCount = 1;
 
-        if (!renderSystem.AcquireShaderInstanceResources(shader, instanceConfig, renderable.instanceId))
+        if (!Renderer.AcquireShaderInstanceResources(shader, instanceConfig, renderable.instanceId))
         {
             ERROR_LOG("Failed to Acquire Shader Instance resources.");
             return false;
         }
 
         // Verify that our atlas has all the required glyphs
-        if (!fontSystem.VerifyAtlas(font, text))
+        if (!Fonts.VerifyAtlas(font, text))
         {
             ERROR_LOG("Font atlas verification failed.");
             return false;
@@ -98,20 +95,15 @@ namespace C3D::UI_2D
 
     void TextComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
     {
-        auto& fontSystem   = self.GetSystem<FontSystem>();
-        auto& shaderSystem = self.GetSystem<ShaderSystem>();
-        auto& uiSystem     = self.GetSystem<UI2DSystem>();
-        auto& renderer     = self.GetSystem<RenderSystem>();
-
-        auto& fontData = fontSystem.GetFontData(font);
+        auto& fontData = Fonts.GetFontData(font);
 
         // Apply instance
         bool needsUpdate = renderable.frameNumber != frameData.frameNumber || renderable.drawIndex != frameData.drawIndex;
 
-        shaderSystem.BindInstance(renderable.instanceId);
-        shaderSystem.SetUniformByIndex(locations.properties, &color);
-        shaderSystem.SetUniformByIndex(locations.diffuseTexture, &fontData.atlas);
-        shaderSystem.ApplyInstance(frameData, needsUpdate);
+        Shaders.BindInstance(renderable.instanceId);
+        Shaders.SetUniformByIndex(locations.properties, &color);
+        Shaders.SetUniformByIndex(locations.diffuseTexture, &fontData.atlas);
+        Shaders.ApplyInstance(frameData, needsUpdate);
 
         // Sync frame number
         renderable.frameNumber = frameData.frameNumber;
@@ -122,11 +114,11 @@ namespace C3D::UI_2D
         model[3][0] += offsetX;
         model[3][1] += offsetY;
 
-        shaderSystem.BindLocal();
-        shaderSystem.SetUniformByIndex(locations.model, &model);
-        shaderSystem.ApplyLocal(frameData);
+        Shaders.BindLocal();
+        Shaders.SetUniformByIndex(locations.model, &model);
+        Shaders.ApplyLocal(frameData);
 
-        renderer.DrawGeometry(renderable.renderData);
+        Renderer.DrawGeometry(renderable.renderData);
     }
 
     void TextComponent::Regenerate(Component& self)
@@ -141,8 +133,6 @@ namespace C3D::UI_2D
         if (utf8Size > capacity)
         {
             // New text is larger then the current capacity we allocated for
-            auto& renderSystem = self.GetSystem<RenderSystem>();
-
             if (capacity > 0)
             {
                 // If we previously had some data we need to free it
@@ -150,14 +140,13 @@ namespace C3D::UI_2D
                 const u64 oldIndexBufferSize  = sizeof(u32) * capacity * INDICES_PER_QUAD;
 
                 // So first we free the current allocation for vertices
-                if (!renderSystem.FreeInRenderBuffer(RenderBufferType::Vertex, oldVertexBufferSize,
-                                                     renderable.renderData.vertexBufferOffset))
+                if (!Renderer.FreeInRenderBuffer(RenderBufferType::Vertex, oldVertexBufferSize, renderable.renderData.vertexBufferOffset))
                 {
                     ERROR_LOG("Failed to free in Render's Vertex Buffer with size: {} and offset: {}.", oldVertexBufferSize,
                               renderable.renderData.vertexBufferOffset);
                 }
                 // And our indices
-                if (!renderSystem.FreeInRenderBuffer(RenderBufferType::Index, oldIndexBufferSize, renderable.renderData.indexBufferOffset))
+                if (!Renderer.FreeInRenderBuffer(RenderBufferType::Index, oldIndexBufferSize, renderable.renderData.indexBufferOffset))
                 {
                     ERROR_LOG("Failed to free in Render's Index Buffer with size: {} and offset: {}.", oldIndexBufferSize,
                               renderable.renderData.indexBufferOffset);
@@ -165,12 +154,12 @@ namespace C3D::UI_2D
             }
 
             // Then we allocate new bigger capacity for our vertices
-            if (!renderSystem.AllocateInRenderBuffer(RenderBufferType::Vertex, vertexBufferSize, renderable.renderData.vertexBufferOffset))
+            if (!Renderer.AllocateInRenderBuffer(RenderBufferType::Vertex, vertexBufferSize, renderable.renderData.vertexBufferOffset))
             {
                 ERROR_LOG("Failed to allocate in Render's Vertex Buffer width size: {}", vertexBufferSize);
             }
             // And our indices
-            if (!renderSystem.AllocateInRenderBuffer(RenderBufferType::Index, indexBufferSize, renderable.renderData.indexBufferOffset))
+            if (!Renderer.AllocateInRenderBuffer(RenderBufferType::Index, indexBufferSize, renderable.renderData.indexBufferOffset))
             {
                 ERROR_LOG("Failed to allocate in Render's Index Buffer width size: {}", indexBufferSize);
             }
@@ -192,8 +181,7 @@ namespace C3D::UI_2D
         vertices.Reserve(vertexCount);
         indices.Reserve(indexCount);
 
-        auto& fontSystem = self.GetSystem<FontSystem>();
-        auto& data       = fontSystem.GetFontData(font);
+        auto& data = Fonts.GetFontData(font);
 
         for (u32 c = 0, uc = 0; c < text.Size(); ++c)
         {
@@ -277,16 +265,14 @@ namespace C3D::UI_2D
 
         if (utf8Size > 0)
         {
-            auto& renderSystem = self.GetSystem<RenderSystem>();
-
             // Load up our vertex and index buffer data
-            if (!renderSystem.LoadRangeInRenderBuffer(RenderBufferType::Vertex, renderable.renderData.vertexBufferOffset, vertexBufferSize,
-                                                      vertices.GetData()))
+            if (!Renderer.LoadRangeInRenderBuffer(RenderBufferType::Vertex, renderable.renderData.vertexBufferOffset, vertexBufferSize,
+                                                  vertices.GetData()))
             {
                 ERROR_LOG("Failed to LoadRange() for vertex buffer.");
             }
-            if (!renderSystem.LoadRangeInRenderBuffer(RenderBufferType::Index, renderable.renderData.indexBufferOffset, indexBufferSize,
-                                                      indices.GetData()))
+            if (!Renderer.LoadRangeInRenderBuffer(RenderBufferType::Index, renderable.renderData.indexBufferOffset, indexBufferSize,
+                                                  indices.GetData()))
             {
                 ERROR_LOG("Failed to LoadRange() for index buffer.");
             }
@@ -325,28 +311,23 @@ namespace C3D::UI_2D
 
     void TextComponent::Destroy(Component& self)
     {
-        auto& renderSystem = self.GetSystem<RenderSystem>();
-
         text.Destroy();
         vertices.Destroy();
         indices.Destroy();
 
         if (renderable.instanceId != INVALID_ID)
         {
-            auto& renderSystem = self.GetSystem<RenderSystem>();
-            auto& uiSystem     = self.GetSystem<UI2DSystem>();
-
-            renderSystem.ReleaseShaderInstanceResources(uiSystem.GetShader(), renderable.instanceId);
+            Renderer.ReleaseShaderInstanceResources(UI2D.GetShader(), renderable.instanceId);
         }
 
         const auto vertexSize = capacity * VERTICES_PER_QUAD * sizeof(Vertex2D);
-        if (!renderSystem.FreeInRenderBuffer(RenderBufferType::Vertex, vertexSize, renderable.renderData.vertexBufferOffset))
+        if (!Renderer.FreeInRenderBuffer(RenderBufferType::Vertex, vertexSize, renderable.renderData.vertexBufferOffset))
         {
             ERROR_LOG("Failed to Free in Renderer's Vertex buffer.");
         }
 
         const auto indexSize = capacity * INDICES_PER_QUAD * sizeof(u32);
-        if (!renderSystem.FreeInRenderBuffer(RenderBufferType::Index, indexSize, renderable.renderData.indexBufferOffset))
+        if (!Renderer.FreeInRenderBuffer(RenderBufferType::Index, indexSize, renderable.renderData.indexBufferOffset))
         {
             ERROR_LOG("Failed to Free in Renderer's Index buffer.");
         }

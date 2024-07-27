@@ -11,16 +11,15 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "MESH";
 
-    bool Mesh::Create(const SystemManager* pSystemsManager, const MeshConfig& cfg)
+    bool Mesh::Create(const MeshConfig& cfg)
     {
-        m_pSystemsManager = pSystemsManager;
-        config            = cfg;
-        generation        = INVALID_ID_U8;
+        config     = cfg;
+        generation = INVALID_ID_U8;
 
         if (cfg.enableDebugBox)
         {
             m_debugBox = Memory.New<DebugBox3D>(MemoryType::Resource);
-            m_debugBox->Create(pSystemsManager, vec3(1.0f), nullptr);
+            m_debugBox->Create(vec3(1.0f), nullptr);
         }
 
         return true;
@@ -141,7 +140,7 @@ namespace C3D
     void Mesh::LoadJobSuccess()
     {
         {
-            auto timer = ScopedTimer("Acquiring Geometry from Config", m_pSystemsManager);
+            auto timer = ScopedTimer("Acquiring Geometry from Config");
 
             // NOTE: This also handles the GPU upload. Can't be jobified until the renderer is multiThreaded.
             // We can reserve enough space for our geometries instead of reallocating everytime the dynamic array grows
@@ -240,7 +239,7 @@ namespace C3D
         }
 
         {
-            auto timer = ScopedTimer("Unloading Resource", m_pSystemsManager);
+            auto timer = ScopedTimer("Unloading Resource");
             Resources.Unload(m_resource);
         }
     }
@@ -252,10 +251,8 @@ namespace C3D
         Resources.Unload(m_resource);
     }
 
-    bool UIMesh::LoadFromConfig(const SystemManager* pSystemsManager, const UIGeometryConfig& config)
+    bool UIMesh::LoadFromConfig(const UIGeometryConfig& config)
     {
-        m_pSystemsManager = pSystemsManager;
-
         uuid.Generate();
         geometries.PushBack(Geometric.AcquireFromConfig(config, true));
         generation = 0;

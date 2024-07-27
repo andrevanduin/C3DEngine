@@ -6,8 +6,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "LIGHT_SYSTEM";
 
-    LightSystem::LightSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager) {}
-
     bool LightSystem::OnInit()
     {
         INFO_LOG("Initializing.");

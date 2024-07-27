@@ -25,7 +25,6 @@ class ScenePass : public C3D::Renderpass
 {
 public:
     ScenePass();
-    ScenePass(const C3D::SystemManager* pSystemsManager);
 
     bool Initialize(const C3D::LinearAllocator* frameAllocator) override;
     bool LoadResources() override;

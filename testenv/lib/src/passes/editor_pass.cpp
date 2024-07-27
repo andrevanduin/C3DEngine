@@ -11,9 +11,7 @@
 constexpr const char* INSTANCE_NAME = "EDITOR_PASS";
 constexpr const char* SHADER_NAME   = "Shader.Builtin.Color3D";
 
-EditorPass::EditorPass() : Renderpass() {}
-
-EditorPass::EditorPass(const C3D::SystemManager* pSystemsManager) : Renderpass("EDITOR", pSystemsManager) {}
+EditorPass::EditorPass() : Renderpass("EDITOR") {}
 
 bool EditorPass::Initialize(const C3D::LinearAllocator* frameAllocator)
 {

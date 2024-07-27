@@ -31,8 +31,6 @@ namespace C3D
     constexpr const char* SHADER_NAME   = "Shader.Builtin.UI2D";
     constexpr u16vec2 atlasSize         = u16vec2(512, 512);  // Size of the entire UI atlas
 
-    UI2DSystem::UI2DSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
-
     bool UI2DSystem::OnInit(const UI2DSystemConfig& config)
     {
         INFO_LOG("Initializing.");
@@ -73,7 +71,7 @@ namespace C3D
         // Create our hashmap
         m_componentMap.Create(1024);
 
-        m_pass = UI2DPass(m_pSystemsManager);
+        m_pass = UI2DPass();
 
         m_callbacks.PushBack(Event.Register(
             EventCodeButtonClicked, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnClick(context); }));
@@ -175,7 +173,7 @@ namespace C3D
 
     ComponentHandle UI2DSystem::AddPanel(const Config& config)
     {
-        auto panel = Panel::Create(m_pSystemsManager, &m_allocator);
+        auto panel = Panel::Create(&m_allocator);
         if (!panel.Initialize(ComponentTypePanel, config))
         {
             ERROR_LOG("Failed to Initialize Panel.");
@@ -186,7 +184,7 @@ namespace C3D
 
     ComponentHandle UI2DSystem::AddButton(const Config& config)
     {
-        auto button = Button::Create(m_pSystemsManager, &m_allocator);
+        auto button = Button::Create(&m_allocator);
         if (!button.Initialize(ComponentTypeButton, config))
         {
             ERROR_LOG("Failed to Initialize Button.");
@@ -197,7 +195,7 @@ namespace C3D
 
     Handle UI2DSystem::AddLabel(const Config& config)
     {
-        auto label = Label::Create(m_pSystemsManager, &m_allocator);
+        auto label = Label::Create(&m_allocator);
         if (!label.Initialize(ComponentTypeLabel, config))
         {
             ERROR_LOG("Failed to Initialize Label.");
@@ -208,7 +206,7 @@ namespace C3D
 
     Handle UI2DSystem::AddTextbox(const Config& config)
     {
-        auto textbox = Textbox::Create(m_pSystemsManager, &m_allocator);
+        auto textbox = Textbox::Create(&m_allocator);
         if (!textbox.Initialize(ComponentTypeTextbox, config))
         {
             ERROR_LOG("Failed to Initialize Textbox.");

@@ -8,11 +8,6 @@ namespace C3D
     class C3D_API Clock
     {
     public:
-        Clock();
-        explicit Clock(const Platform* os);
-
-        void SetPlatform(const Platform* os);
-
         /** @brief Begin the measured time frame. */
         void Begin();
 
@@ -44,7 +39,5 @@ namespace C3D
         f64 m_totalElapsedTime = 0;
 
         f64 m_startTime = 0;
-
-        const Platform* m_operatingSystem = nullptr;
     };
 }  // namespace C3D

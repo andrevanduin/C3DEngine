@@ -13,9 +13,9 @@ namespace C3D::UI_2D
         NineSliceComponent nineSlice;
     };
 
-    Component Panel::Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator)
+    Component Panel::Create(const DynamicAllocator* pAllocator)
     {
-        Component component(systemsManager);
+        Component component;
 
         component.MakeInternal<PanelData>(pAllocator);
         component.onInitialize = &Initialize;

@@ -1,6 +1,7 @@
 
 #include "terrain.h"
 
+#include "core/colors.h"
 #include "core/random.h"
 #include "core/scoped_timer.h"
 #include "math/c3d_math.h"
@@ -15,14 +16,126 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "TERRAIN";
 
-    bool Terrain::Create(const SystemManager* pSystemsManager, const TerrainConfig& config)
+    void TerrainChunk::Initialize(const Terrain& terrain)
     {
-        m_pSystemsManager = pSystemsManager;
-        m_config          = config;
-        m_name            = config.name;
+        const auto sizeSq = terrain.m_chunkSize * terrain.m_chunkSize;
 
-        m_geometry.id         = INVALID_ID;
-        m_geometry.generation = INVALID_ID_U16;
+        m_vertices.Resize(sizeSq * 4);
+        m_indices.Resize(sizeSq * 6);
+    }
+
+    void TerrainChunk::Load(const Terrain& terrain, u32 chunkIndex, u32 globalBaseIndex, u32 chunkRowCount, u32 chunkColumnCount)
+    {
+        u32 xOffset = chunkIndex % chunkColumnCount;
+        u32 zOffset = chunkIndex / chunkColumnCount;
+
+        f32 xPos = xOffset * terrain.m_tileScaleX;
+        f32 zPos = zOffset * terrain.m_tileScaleZ;
+
+        {
+            auto timer = ScopedTimer("Generating TerrainChunk vertices");
+
+            // Generate our vertices
+            for (u32 z = 0, i = 0; z < terrain.m_chunkSize; z++)
+            {
+                for (u32 x = 0; x < terrain.m_chunkSize; x++, i++)
+                {
+                    auto& vert        = m_vertices[i];
+                    const auto height = terrain.m_config.vertexConfigs[i].height;
+
+                    vert.position = { xPos + (x * terrain.m_tileScaleX), height * terrain.m_tileScaleY, zPos + (z * terrain.m_tileScaleZ) };
+                    vert.color    = WHITE;
+                    vert.normal   = { 0, 1, 0 };
+                    vert.texture  = vec2(static_cast<f32>(xOffset + x), static_cast<f32>(zOffset + z));
+
+                    vert.materialWeights[0] = AttenuationMinMax(-0.2f, 0.2f, height);
+                    vert.materialWeights[1] = AttenuationMinMax(0.0f, 0.3f, height);
+                    vert.materialWeights[2] = AttenuationMinMax(0.15f, 0.9f, height);
+                    vert.materialWeights[3] = AttenuationMinMax(0.5f, 1.2f, height);
+                }
+            }
+        }
+
+        {
+            auto timer = ScopedTimer("Generating TerrainChunk indices");
+
+            // Generate our indices
+            for (u32 z = 0, i = 0; z < terrain.m_chunkSize - 1; ++z)
+            {
+                for (u32 x = 0; x < terrain.m_chunkSize - 1; ++x, i += 6)
+                {
+                    u32 v0 = (z * terrain.m_chunkSize) + x;
+                    u32 v1 = (z * terrain.m_chunkSize) + x + 1;
+                    u32 v2 = ((z + 1) * terrain.m_chunkSize) + x;
+                    u32 v3 = ((z + 1) * terrain.m_chunkSize) + x + 1;
+
+                    m_indices[i + 0] = v2;
+                    m_indices[i + 1] = v1;
+                    m_indices[i + 2] = v0;
+                    m_indices[i + 3] = v3;
+                    m_indices[i + 4] = v1;
+                    m_indices[i + 5] = v2;
+                }
+            }
+        }
+
+        {
+            auto timer = ScopedTimer("Generating TerrainChunk normals");
+            GeometryUtils::GenerateNormals(m_vertices, m_indices);
+        }
+
+        {
+            auto timer = ScopedTimer("Generating TerrainChunk tangents");
+            GeometryUtils::GenerateTerrainTangents(m_vertices, m_indices);
+        }
+
+        {
+            auto timer = ScopedTimer("Creating TerrainChunk Geometry");
+
+            if (!Renderer.CreateGeometry(m_geometry, sizeof(TerrainVertex), m_vertices.Size(), m_vertices.GetData(), sizeof(u32),
+                                         m_indices.Size(), m_indices.GetData()))
+            {
+                ERROR_LOG("Failed to create geometry.");
+                return;
+            }
+        }
+
+        {
+            auto timer = ScopedTimer("Uploading TerrainChunk Geometry");
+
+            if (!Renderer.UploadGeometry(m_geometry))
+            {
+                ERROR_LOG("Failed to upload geometry.");
+                return;
+            }
+        }
+
+        // m_geometry.center  = m_origin;
+        m_geometry.extents = m_extents;
+        // TODO: This should be done in the renderer (CreateGeometry() method)
+        m_geometry.generation++;
+    }
+
+    void TerrainChunk::SetMaterial(Material* material) { m_geometry.material = material; }
+
+    void TerrainChunk::Unload()
+    {
+        Materials.Release(m_geometry.material->name);
+        Renderer.DestroyGeometry(m_geometry);
+    }
+
+    void TerrainChunk::Destroy()
+    {
+        m_vertices.Destroy();
+        m_indices.Destroy();
+
+        Renderer.DestroyGeometry(m_geometry);
+    }
+
+    bool Terrain::Create(const TerrainConfig& config)
+    {
+        m_config = config;
+        m_name   = config.name;
 
         return true;
     }
@@ -32,11 +145,6 @@ namespace C3D
         m_extents.min = { 0, 0, 0 };
         m_extents.max = { 0, 0, 0 };
         m_origin      = { 0, 0, 0 };
-
-        m_vertices.Reserve(m_vertexCount);
-        m_indices.Reserve(m_totalTileCount * 6);
-
-        m_geometry.generation = INVALID_ID_U16;
 
         return true;
     }
@@ -63,8 +171,10 @@ namespace C3D
 
     bool Terrain::Unload()
     {
-        Materials.Release(m_geometry.material->name);
-        Renderer.DestroyGeometry(m_geometry);
+        for (auto& chunk : m_chunks)
+        {
+            chunk.Unload();
+        }
         return true;
     }
 
@@ -74,12 +184,11 @@ namespace C3D
     {
         m_id.Invalidate();
 
-        m_geometry.id         = INVALID_ID;
-        m_geometry.generation = INVALID_ID_U16;
-        m_geometry.name.Clear();
+        for (auto& chunk : m_chunks)
+        {
+            chunk.Destroy();
+        }
 
-        m_vertices.Destroy();
-        m_indices.Destroy();
         m_config.Destroy();
 
         m_tileScaleX = 0;
@@ -97,7 +206,7 @@ namespace C3D
     {
         JobInfo info;
         info.entryPoint = [this]() {
-            auto timer = ScopedTimer("Loading Terrain Resource", m_pSystemsManager);
+            auto timer = ScopedTimer("Loading Terrain Resource");
             return Resources.Load(m_config.resourceName, m_config);
         };
         info.onSuccess = [this]() { LoadJobSuccess(); };
@@ -109,138 +218,90 @@ namespace C3D
 
     void Terrain::LoadJobSuccess()
     {
+        if (m_config.tileCountX == 0)
         {
-            auto timer = ScopedTimer("Generating Terrain Vertices", m_pSystemsManager);
+            ERROR_LOG("TileCountX must > 0.");
+            return;
+        }
 
-            if (m_config.tileCountX == 0)
+        if (m_config.tileCountZ == 0)
+        {
+            ERROR_LOG("TileCountZ must be > 0.");
+            return;
+        }
+
+        if (m_config.tileScaleX <= 0.0f)
+        {
+            ERROR_LOG("TileScaleX must be > 0.");
+            return;
+        }
+
+        if (m_config.tileScaleZ <= 0.0f)
+        {
+            ERROR_LOG("TileScaleZ must be > 0.");
+            return;
+        }
+
+        m_tileCountX = m_config.tileCountX;
+        m_tileCountZ = m_config.tileCountZ;
+
+        m_tileScaleX = m_config.tileScaleX;
+        m_tileScaleY = m_config.tileScaleY;
+        m_tileScaleZ = m_config.tileScaleZ;
+
+        m_chunkSize = m_config.chunkSize;
+
+        m_totalTileCount = m_tileCountX * m_tileCountZ;
+        m_vertexCount    = m_totalTileCount;
+
+        u32 chunkRowCount    = m_tileCountX / m_chunkSize;
+        u32 chunkColumnCount = m_tileCountZ / m_chunkSize;
+
+        {
+            auto timer = ScopedTimer("Initializing Chunks");
+
+            // Resize our chunks array
+            m_chunks.Resize(chunkRowCount * chunkColumnCount);
+            // Initialize all chunks
+            for (auto& chunk : m_chunks)
             {
-                ERROR_LOG("TileCountX must > 0.");
-                return;
+                chunk.Initialize(*this);
             }
+        }
 
-            if (m_config.tileCountZ == 0)
+        {
+            auto timer = ScopedTimer("Loading Chunks");
+
+            // Load all our chunks
+            for (u32 z = 0, i = 0; z < chunkRowCount; ++z)
             {
-                ERROR_LOG("TileCountZ must be > 0.");
-                return;
-            }
-
-            if (m_config.tileScaleX <= 0.0f)
-            {
-                ERROR_LOG("TileScaleX must be > 0.");
-                return;
-            }
-
-            if (m_config.tileScaleZ <= 0.0f)
-            {
-                ERROR_LOG("TileScaleZ must be > 0.");
-                return;
-            }
-
-            m_tileCountX = m_config.tileCountX;
-            m_tileCountZ = m_config.tileCountZ;
-
-            m_tileScaleX = m_config.tileScaleX;
-            m_tileScaleY = m_config.tileScaleY;
-            m_tileScaleZ = m_config.tileScaleZ;
-
-            m_totalTileCount = m_tileCountX * m_tileCountZ;
-            m_vertexCount    = m_totalTileCount;
-
-            m_vertices.Resize(m_config.vertexConfigs.Size());
-            // Generate our vertices
-            for (u32 z = 0, i = 0; z < m_tileCountZ; z++)
-            {
-                for (u32 x = 0; x < m_tileCountX; x++, i++)
+                for (u32 x = 0; x < chunkColumnCount; ++x, ++i)
                 {
-                    auto& vert = m_vertices[i];
-
-                    vert.position = { x * m_tileScaleX, m_config.vertexConfigs[i].height * m_tileScaleY, z * m_tileScaleZ };
-                    vert.color    = vec4(1.0f);
-                    vert.normal   = { 0, 1, 0 };
-                    vert.texture  = vec2((f32)x, (f32)z);
-
-                    vert.materialWeights[0] = AttenuationMinMax(-0.2f, 0.2f, m_config.vertexConfigs[i].height);
-                    vert.materialWeights[1] = AttenuationMinMax(0.0f, 0.3f, m_config.vertexConfigs[i].height);
-                    vert.materialWeights[2] = AttenuationMinMax(0.15f, 0.9f, m_config.vertexConfigs[i].height);
-                    vert.materialWeights[3] = AttenuationMinMax(0.5f, 1.2f, m_config.vertexConfigs[i].height);
+                    u32 globalBaseIndex = x * m_chunkSize + z * m_chunkSize;
+                    m_chunks[i].Load(*this, i, globalBaseIndex, chunkRowCount, chunkColumnCount);
                 }
             }
         }
 
         {
-            auto timer = ScopedTimer("Generating Terrain Indices", m_pSystemsManager);
-
-            // Roughly allocate enough space for all the indices (slightly too much space)
-            m_indices.Resize(m_vertexCount * 6);
-            for (u32 z = 0, i = 0; z < m_tileCountZ - 1; ++z)
-            {
-                for (u32 x = 0; x < m_tileCountX - 1; ++x, i += 6)
-                {
-                    u32 v0 = (z * m_tileCountX) + x;
-                    u32 v1 = (z * m_tileCountX) + x + 1;
-                    u32 v2 = ((z + 1) * m_tileCountX) + x;
-                    u32 v3 = ((z + 1) * m_tileCountX) + x + 1;
-
-                    m_indices[i + 0] = v2;
-                    m_indices[i + 1] = v1;
-                    m_indices[i + 2] = v0;
-                    m_indices[i + 3] = v3;
-                    m_indices[i + 4] = v1;
-                    m_indices[i + 5] = v2;
-                }
-            }
-        }
-
-        {
-            auto timer = ScopedTimer("Generating Terrain Normals", m_pSystemsManager);
-            GeometryUtils::GenerateNormals(m_vertices, m_indices);
-        }
-
-        {
-            auto timer = ScopedTimer("Generating Terrain Tangents", m_pSystemsManager);
-            GeometryUtils::GenerateTerrainTangents(m_vertices, m_indices);
-        }
-
-        {
-            auto timer = ScopedTimer("Creating Terrain Geometry", m_pSystemsManager);
-
-            if (!Renderer.CreateGeometry(m_geometry, sizeof(TerrainVertex), m_vertices.Size(), m_vertices.GetData(), sizeof(u32),
-                                         m_indices.Size(), m_indices.GetData()))
-            {
-                ERROR_LOG("Failed to create geometry.");
-                return;
-            }
-        }
-
-        {
-            auto timer = ScopedTimer("Uploading Terrain Geometry", m_pSystemsManager);
-
-            if (!Renderer.UploadGeometry(m_geometry))
-            {
-                ERROR_LOG("Failed to upload geometry.");
-                return;
-            }
-        }
-
-        m_geometry.center  = m_origin;
-        m_geometry.extents = m_extents;
-        // TODO: This should be done in the renderer (CreateGeometry() method)
-        m_geometry.generation++;
-
-        {
-            auto timer = ScopedTimer("Acquiring Terrain Material", m_pSystemsManager);
+            auto timer = ScopedTimer("Acquiring Terrain Material");
 
             String terrainMaterialName = String::FromFormat("terrain_mat_{}", m_name);
-            m_geometry.material        = Materials.AcquireTerrain(terrainMaterialName, m_config.materials, true);
-            if (!m_geometry.material)
+            Material* material         = Materials.AcquireTerrain(terrainMaterialName, m_config.materials, true);
+            if (!material)
             {
                 WARN_LOG("Failed to acquire terrain material. Using default instead.");
-                m_geometry.material = Materials.GetDefaultTerrain();
+                material = Materials.GetDefaultTerrain();
+            }
+
+            for (auto& chunk : m_chunks)
+            {
+                chunk.SetMaterial(material);
             }
         }
 
         {
-            auto timer = ScopedTimer("Unloading Terrain Config", m_pSystemsManager);
+            auto timer = ScopedTimer("Unloading Terrain Config");
 
             Resources.Unload(m_config);
         }

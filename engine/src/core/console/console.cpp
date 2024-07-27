@@ -16,10 +16,8 @@ namespace C3D
     constexpr auto BLINK_TIME           = 0.9f;
     constexpr auto SCROLL_DELAY         = 0.1f;
 
-    void UIConsole::OnInit(const SystemManager* pSystemsManager)
+    void UIConsole::OnInit()
     {
-        m_pSystemsManager = pSystemsManager;
-
         m_commands.Create(377);
         m_initialized = true;
 

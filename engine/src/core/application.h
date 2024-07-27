@@ -63,15 +63,12 @@ namespace C3D
         virtual void OnLibraryLoad()   = 0;
         virtual void OnLibraryUnload() = 0;
 
-        const SystemManager* GetSystemsManager() const { return m_pSystemsManager; }
-
         friend Engine;
 
     protected:
         ApplicationState* m_appState = nullptr;
 
         UIConsole* m_pConsole                  = nullptr;
-        const SystemManager* m_pSystemsManager = nullptr;
         const Engine* m_pEngine                = nullptr;
     };
 

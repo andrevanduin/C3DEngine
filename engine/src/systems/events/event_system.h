@@ -39,8 +39,6 @@ namespace C3D
         };
 
     public:
-        explicit EventSystem(const SystemManager* pSystemsManager);
-
         void OnShutdown() override;
 
         RegisteredEventCallback Register(u16 code, const EventCallbackFunc& callback);

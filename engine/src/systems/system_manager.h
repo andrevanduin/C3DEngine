@@ -6,22 +6,22 @@
 #include "memory/allocators/linear_allocator.h"
 #include "system.h"
 
-#define Input m_pSystemsManager->GetSystem<C3D::InputSystem>(C3D::SystemType::InputSystemType)
-#define Event m_pSystemsManager->GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
-#define Renderer m_pSystemsManager->GetSystem<C3D::RenderSystem>(C3D::SystemType::RenderSystemType)
-#define Textures m_pSystemsManager->GetSystem<C3D::TextureSystem>(C3D::SystemType::TextureSystemType)
-#define Materials m_pSystemsManager->GetSystem<C3D::MaterialSystem>(C3D::SystemType::MaterialSystemType)
-#define Geometric m_pSystemsManager->GetSystem<C3D::GeometrySystem>(C3D::SystemType::GeometrySystemType)
-#define Resources m_pSystemsManager->GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
-#define Shaders m_pSystemsManager->GetSystem<C3D::ShaderSystem>(C3D::SystemType::ShaderSystemType)
-#define Lights m_pSystemsManager->GetSystem<C3D::LightSystem>(C3D::SystemType::LightSystemType)
-#define Cam m_pSystemsManager->GetSystem<C3D::CameraSystem>(C3D::SystemType::CameraSystemType)
-#define Jobs m_pSystemsManager->GetSystem<C3D::JobSystem>(C3D::SystemType::JobSystemType)
-#define Fonts m_pSystemsManager->GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
-#define CVars m_pSystemsManager->GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
-#define OS m_pSystemsManager->GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType)
-#define UI2D m_pSystemsManager->GetSystem<C3D::UI2DSystem>(C3D::SystemType::UI2DSystemType)
-#define Audio m_pSystemsManager->GetSystem<C3D::AudioSystem>(C3D::SystemType::AudioSystemType)
+#define Input C3D::SystemManager::GetSystem<C3D::InputSystem>(C3D::SystemType::InputSystemType)
+#define Event C3D::SystemManager::GetSystem<C3D::EventSystem>(C3D::SystemType::EventSystemType)
+#define Renderer C3D::SystemManager::GetSystem<C3D::RenderSystem>(C3D::SystemType::RenderSystemType)
+#define Textures C3D::SystemManager::GetSystem<C3D::TextureSystem>(C3D::SystemType::TextureSystemType)
+#define Materials C3D::SystemManager::GetSystem<C3D::MaterialSystem>(C3D::SystemType::MaterialSystemType)
+#define Geometric C3D::SystemManager::GetSystem<C3D::GeometrySystem>(C3D::SystemType::GeometrySystemType)
+#define Resources C3D::SystemManager::GetSystem<C3D::ResourceSystem>(C3D::SystemType::ResourceSystemType)
+#define Shaders C3D::SystemManager::GetSystem<C3D::ShaderSystem>(C3D::SystemType::ShaderSystemType)
+#define Lights C3D::SystemManager::GetSystem<C3D::LightSystem>(C3D::SystemType::LightSystemType)
+#define Cam C3D::SystemManager::GetSystem<C3D::CameraSystem>(C3D::SystemType::CameraSystemType)
+#define Jobs C3D::SystemManager::GetSystem<C3D::JobSystem>(C3D::SystemType::JobSystemType)
+#define Fonts C3D::SystemManager::GetSystem<C3D::FontSystem>(C3D::SystemType::FontSystemType)
+#define CVars C3D::SystemManager::GetSystem<C3D::CVarSystem>(C3D::SystemType::CVarSystemType)
+#define OS C3D::SystemManager::GetSystem<C3D::Platform>(C3D::SystemType::PlatformSystemType)
+#define UI2D C3D::SystemManager::GetSystem<C3D::UI2DSystem>(C3D::SystemType::UI2DSystemType)
+#define Audio C3D::SystemManager::GetSystem<C3D::AudioSystem>(C3D::SystemType::AudioSystemType)
 
 namespace C3D
 {
@@ -65,7 +65,7 @@ namespace C3D
                 return false;
             }
 
-            auto s = m_allocator.New<System>(MemoryType::CoreSystem, this);
+            auto s = m_allocator.New<System>(MemoryType::CoreSystem);
             if (!s->OnInit())
             {
                 INSTANCE_FATAL_LOG("SYSTEM_MANAGER", "Failed to initialize system.");
@@ -89,7 +89,7 @@ namespace C3D
                 return false;
             }
 
-            auto s = m_allocator.New<System>(MemoryType::CoreSystem, this);
+            auto s = m_allocator.New<System>(MemoryType::CoreSystem);
             if (!s->OnInit(config))
             {
                 INSTANCE_FATAL_LOG("SYSTEM_MANAGER", "Failed to initialize system.");
@@ -101,22 +101,25 @@ namespace C3D
         }
 
         template <class SystemType>
-        [[nodiscard]] SystemType& GetSystem(const u16 type) const
+        static SystemType& GetSystem(const u16 type)
         {
-            return *reinterpret_cast<SystemType*>(m_systems[type]);
+            return *reinterpret_cast<SystemType*>(GetInstance().m_systems[type]);
         }
 
         template <class SystemType>
-        [[nodiscard]] SystemType* GetSystemPtr(const u16 type) const
+        static SystemType* GetSystemPtr(const u16 type)
         {
-            return reinterpret_cast<SystemType*>(m_systems[type]);
+            return reinterpret_cast<SystemType*>(GetInstance().m_systems[type]);
         }
 
         void OnShutdown();
 
+        static SystemManager& GetInstance();
+
     private:
         Array<ISystem*, MaxKnownSystemType> m_systems = {};
-
         LinearAllocator m_allocator;
+
+        static SystemManager m_instance;
     };
 }  // namespace C3D

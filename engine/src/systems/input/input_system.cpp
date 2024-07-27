@@ -16,8 +16,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "INPUT";
 
-    InputSystem::InputSystem(const SystemManager* pSystemsManager) : BaseSystem(pSystemsManager) {}
-
     bool InputSystem::OnInit()
     {
         INFO_LOG("Initializing.");

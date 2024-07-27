@@ -20,7 +20,7 @@ namespace C3D
         const char* INSTANCE_NAME = "RESOURCE_SYSTEM";
 
     public:
-        explicit ResourceSystem(const SystemManager* pSystemsManager);
+        ResourceSystem();
 
         bool OnInit(const ResourceSystemConfig& config) override;
 

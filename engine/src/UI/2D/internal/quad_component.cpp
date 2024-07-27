@@ -14,15 +14,11 @@ namespace C3D::UI_2D
 
     bool QuadComponent::Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& _size, const vec4& _color)
     {
-        auto& uiSystem       = self.GetSystem<UI2DSystem>();
-        auto& geometrySystem = self.GetSystem<GeometrySystem>();
-        auto& renderSystem   = self.GetSystem<RenderSystem>();
-
         atlasID = _atlasID;
         color   = _color;
         size    = _size;
 
-        auto& descriptions = uiSystem.GetAtlasDescriptions(atlasID);
+        auto& descriptions = UI2D.GetAtlasDescriptions(atlasID);
         atlasMin           = descriptions.defaultMin;
         atlasMax           = descriptions.defaultMax;
 
@@ -30,12 +26,12 @@ namespace C3D::UI_2D
         auto config = GeometryUtils::GenerateUIQuadConfig(name, size, descriptions.size, atlasMin, atlasMax);
 
         // Create Geometry from the config
-        geometry = geometrySystem.AcquireFromConfig(config, true);
+        geometry = Geometric.AcquireFromConfig(config, true);
 
         // Acquire shader instance resources
-        auto& shader = uiSystem.GetShader();
+        auto& shader = UI2D.GetShader();
 
-        TextureMap* maps[1] = { &uiSystem.GetAtlas() };
+        TextureMap* maps[1] = { &UI2D.GetAtlas() };
 
         ShaderInstanceUniformTextureConfig textureConfig;
         textureConfig.uniformLocation = shader.GetUniformIndex("diffuseTexture");
@@ -45,7 +41,7 @@ namespace C3D::UI_2D
         instanceConfig.uniformConfigs     = &textureConfig;
         instanceConfig.uniformConfigCount = 1;
 
-        if (!renderSystem.AcquireShaderInstanceResources(shader, instanceConfig, renderable.instanceId))
+        if (!Renderer.AcquireShaderInstanceResources(shader, instanceConfig, renderable.instanceId))
         {
             ERROR_LOG("Failed to Acquire Shader Instance resources.");
             return false;
@@ -58,18 +54,14 @@ namespace C3D::UI_2D
 
     void QuadComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
     {
-        auto& shaderSystem = self.GetSystem<ShaderSystem>();
-        auto& uiSystem     = self.GetSystem<UI2DSystem>();
-        auto& renderer     = self.GetSystem<RenderSystem>();
-
         // Apply instance
         bool needsUpdate = renderable.frameNumber != frameData.frameNumber || renderable.drawIndex != frameData.drawIndex;
 
-        shaderSystem.BindInstance(renderable.instanceId);
+        Shaders.BindInstance(renderable.instanceId);
 
-        shaderSystem.SetUniformByIndex(locations.properties, &color);
-        shaderSystem.SetUniformByIndex(locations.diffuseTexture, &uiSystem.GetAtlas());
-        shaderSystem.ApplyInstance(frameData, needsUpdate);
+        Shaders.SetUniformByIndex(locations.properties, &color);
+        Shaders.SetUniformByIndex(locations.diffuseTexture, &UI2D.GetAtlas());
+        Shaders.ApplyInstance(frameData, needsUpdate);
 
         // Sync frame number
         renderable.frameNumber = frameData.frameNumber;
@@ -80,41 +72,34 @@ namespace C3D::UI_2D
         model[3][0] += offsetX;
         model[3][1] += offsetY;
 
-        shaderSystem.BindLocal();
-        shaderSystem.SetUniformByIndex(locations.model, &model);
-        shaderSystem.ApplyLocal(frameData);
+        Shaders.BindLocal();
+        Shaders.SetUniformByIndex(locations.model, &model);
+        Shaders.ApplyLocal(frameData);
 
-        renderer.DrawGeometry(renderable.renderData);
+        Renderer.DrawGeometry(renderable.renderData);
     }
 
     void QuadComponent::OnResize(Component& self, const u16vec2& _size)
     {
-        auto& uiSystem     = self.GetSystem<UI2DSystem>();
-        auto& renderSystem = self.GetSystem<RenderSystem>();
-
         size = _size;
 
-        auto& descriptions = uiSystem.GetAtlasDescriptions(atlasID);
+        auto& descriptions = UI2D.GetAtlasDescriptions(atlasID);
 
         GeometryUtils::RegenerateUIQuadGeometry(static_cast<Vertex2D*>(geometry->vertices), size, descriptions.size, atlasMin, atlasMax);
 
-        renderSystem.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices);
+        Renderer.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices);
     }
 
     void QuadComponent::Destroy(Component& self)
     {
         if (geometry)
         {
-            auto& geometrySystem = self.GetSystem<GeometrySystem>();
-            geometrySystem.Release(geometry);
+            Geometric.Release(geometry);
         }
 
         if (renderable.instanceId != INVALID_ID)
         {
-            auto& renderSystem = self.GetSystem<RenderSystem>();
-            auto& uiSystem     = self.GetSystem<UI2DSystem>();
-
-            renderSystem.ReleaseShaderInstanceResources(uiSystem.GetShader(), renderable.instanceId);
+            Renderer.ReleaseShaderInstanceResources(UI2D.GetShader(), renderable.instanceId);
         }
     }
 }  // namespace C3D::UI_2D

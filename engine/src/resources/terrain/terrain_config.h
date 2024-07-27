@@ -34,6 +34,7 @@ namespace C3D
 
         u32 tileCountX = 0;
         u32 tileCountZ = 0;
+        u32 chunkSize = 0;
 
         f32 tileScaleX = 1.0f;
         f32 tileScaleY = 1.0f;

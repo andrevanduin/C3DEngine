@@ -22,10 +22,7 @@ constexpr const char* SHADER_NAME   = "Shader.Builtin.UI2D";
 
 namespace C3D
 {
-
-    UI2DPass::UI2DPass() : Renderpass() {}
-
-    UI2DPass::UI2DPass(const C3D::SystemManager* pSystemsManager) : Renderpass("UI", pSystemsManager) {}
+    UI2DPass::UI2DPass() : Renderpass("UI") {}
 
     bool UI2DPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     {

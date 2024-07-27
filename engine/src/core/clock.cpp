@@ -6,17 +6,11 @@
 
 namespace C3D
 {
-    Clock::Clock() {}
-
-    Clock::Clock(const Platform* os) : m_operatingSystem(os) {}
-
-    void Clock::SetPlatform(const Platform* os) { m_operatingSystem = os; }
-
-    void Clock::Begin() { m_startTime = m_operatingSystem->GetAbsoluteTime(); }
+    void Clock::Begin() { m_startTime = OS.GetAbsoluteTime(); }
 
     void Clock::End()
     {
-        m_elapsedTime = m_operatingSystem->GetAbsoluteTime() - m_startTime;
+        m_elapsedTime = OS.GetAbsoluteTime() - m_startTime;
         m_totalElapsedTime += m_elapsedTime;
     }
 

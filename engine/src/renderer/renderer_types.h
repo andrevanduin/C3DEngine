@@ -45,8 +45,6 @@ namespace C3D
         u32 applicationVersion;
 
         RendererConfigFlags flags;
-
-        const SystemManager* pSystemsManager;
     };
 
     /** @brief The winding order of the vertices, used to determine what the front-face of a triangle is. */

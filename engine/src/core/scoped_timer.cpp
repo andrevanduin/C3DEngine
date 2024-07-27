@@ -6,11 +6,7 @@
 
 namespace C3D
 {
-    ScopedTimer::ScopedTimer(const String& scopeName, const SystemManager* pSystemsManager)
-        : m_name(scopeName), m_pSystemsManager(pSystemsManager)
-    {
-        m_startTime = OS.GetAbsoluteTime();
-    }
+    ScopedTimer::ScopedTimer(const String& scopeName) : m_name(scopeName) { m_startTime = OS.GetAbsoluteTime(); }
 
     ScopedTimer::~ScopedTimer()
     {

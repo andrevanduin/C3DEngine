@@ -13,8 +13,6 @@ namespace C3D
     class C3D_API BaseTextLoader
     {
     public:
-        BaseTextLoader(const SystemManager* pSystemsManager) : m_pSystemsManager(pSystemsManager) {}
-
         bool LoadAndParseFile(const char* name, const char* typePath, const char* extension, T& resource) const
         {
             if (std::strlen(name) == 0)
@@ -133,7 +131,5 @@ namespace C3D
             String name    = line.SubStr(isClosing ? 2 : 1, line.Size() - 1);
             ParseTag(name, !isClosing, resource);
         }
-
-        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

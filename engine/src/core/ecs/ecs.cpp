@@ -5,10 +5,8 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "ECS";
 
-    bool ECS::Create(const SystemManager* pSystemsManager, u64 memorySize, u64 componentTypeCount, u64 maxComponents)
+    bool ECS::Create(u64 memorySize, u64 componentTypeCount, u64 maxComponents)
     {
-        m_pSystemsManager = pSystemsManager;
-
         if (memorySize < MebiBytes(8))
         {
             ERROR_LOG("An ECS requires at least 8MebiBytes of memory.");

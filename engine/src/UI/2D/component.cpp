@@ -12,7 +12,7 @@ namespace C3D::UI_2D
 {
     constexpr const char* INSTANCE_NAME = "UI2D_COMPONENT";
 
-    Component::Component(const SystemManager* systemsManager) : m_pSystemsManager(systemsManager) { m_id.Generate(); }
+    Component::Component() { m_id.Generate(); }
 
     bool Component::Initialize(ComponentType _type, const Config& config)
     {
@@ -145,48 +145,6 @@ namespace C3D::UI_2D
     void Component::SetRotation(const quat& rotation) { m_transform.SetRotation(rotation); }
 
     bool Component::Contains(const vec2& point) const { return m_bounds.Contains(point); }
-
-    template <>
-    GeometrySystem& Component::GetSystem() const
-    {
-        return Geometric;
-    }
-
-    template <>
-    UI2DSystem& Component::GetSystem() const
-    {
-        return UI2D;
-    }
-
-    template <>
-    RenderSystem& Component::GetSystem() const
-    {
-        return Renderer;
-    }
-
-    template <>
-    ShaderSystem& Component::GetSystem() const
-    {
-        return Shaders;
-    }
-
-    template <>
-    FontSystem& Component::GetSystem() const
-    {
-        return Fonts;
-    }
-
-    template <>
-    InputSystem& Component::GetSystem() const
-    {
-        return Input;
-    }
-
-    template <>
-    Platform& Component::GetSystem() const
-    {
-        return OS;
-    }
 
     bool Component::operator==(const Component& other) const { return m_id == other.m_id; }
     bool Component::operator!=(const Component& other) const { return m_id != other.m_id; }

@@ -13,8 +13,6 @@ namespace C3D::UI_2D
     {
         static u8 CURRENT_STENCIL_ID = 1;
 
-        auto& geometrySystem = self.GetSystem<GeometrySystem>();
-
         // Id used to do stencil testing
         id   = CURRENT_STENCIL_ID++;
         size = _size;
@@ -23,7 +21,7 @@ namespace C3D::UI_2D
         auto config = GeometryUtils::GenerateUIQuadConfig(name, size, u16vec2(1, 1), u16vec2(0, 0), u16vec2(0, 0));
 
         // Create Geometry from the config
-        geometry = geometrySystem.AcquireFromConfig(config, true);
+        geometry = Geometric.AcquireFromConfig(config, true);
         if (!geometry)
         {
             ERROR_LOG("Failed to Acquire geometry.");
@@ -37,41 +35,35 @@ namespace C3D::UI_2D
 
     void ClippingComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
     {
-        auto& renderSystem = self.GetSystem<RenderSystem>();
-        auto& shaderSystem = self.GetSystem<ShaderSystem>();
-
         // Enable writing, disable test.
-        renderSystem.SetStencilTestingEnabled(true);
-        renderSystem.SetDepthTestingEnabled(false);
-        renderSystem.SetStencilReference(static_cast<u32>(id));
-        renderSystem.SetStencilWriteMask(0xFF);
-        renderSystem.SetStencilOperation(StencilOperation::Replace, StencilOperation::Replace, StencilOperation::Replace,
-                                         CompareOperation::Always);
+        Renderer.SetStencilTestingEnabled(true);
+        Renderer.SetDepthTestingEnabled(false);
+        Renderer.SetStencilReference(static_cast<u32>(id));
+        Renderer.SetStencilWriteMask(0xFF);
+        Renderer.SetStencilOperation(StencilOperation::Replace, StencilOperation::Replace, StencilOperation::Replace,
+                                     CompareOperation::Always);
 
         auto model = self.GetWorld();
         model[3][0] += offsetX;
         model[3][1] += offsetY;
 
-        shaderSystem.SetUniformByIndex(locations.model, &model);
+        Shaders.SetUniformByIndex(locations.model, &model);
 
         // Draw the clip mask geometry.
-        renderSystem.DrawGeometry(renderData);
+        Renderer.DrawGeometry(renderData);
 
         // Disable writing, enable test.
-        renderSystem.SetStencilWriteMask(0x00);
-        renderSystem.SetStencilTestingEnabled(true);
-        renderSystem.SetStencilCompareMask(0xFF);
-        renderSystem.SetStencilOperation(StencilOperation::Keep, StencilOperation::Replace, StencilOperation::Keep,
-                                         CompareOperation::Equal);
+        Renderer.SetStencilWriteMask(0x00);
+        Renderer.SetStencilTestingEnabled(true);
+        Renderer.SetStencilCompareMask(0xFF);
+        Renderer.SetStencilOperation(StencilOperation::Keep, StencilOperation::Replace, StencilOperation::Keep, CompareOperation::Equal);
     }
 
     void ClippingComponent::ResetClipping(Component& self)
     {
-        auto& renderSystem = self.GetSystem<RenderSystem>();
-
-        renderSystem.SetStencilWriteMask(0x0);
-        renderSystem.SetStencilTestingEnabled(false);
-        renderSystem.SetStencilOperation(StencilOperation::Keep, StencilOperation::Keep, StencilOperation::Keep, CompareOperation::Always);
+        Renderer.SetStencilWriteMask(0x0);
+        Renderer.SetStencilTestingEnabled(false);
+        Renderer.SetStencilOperation(StencilOperation::Keep, StencilOperation::Keep, StencilOperation::Keep, CompareOperation::Always);
     }
 
     void ClippingComponent::OnResize(Component& self, const u16vec2& _size)
@@ -81,16 +73,14 @@ namespace C3D::UI_2D
         GeometryUtils::RegenerateUIQuadGeometry(static_cast<Vertex2D*>(geometry->vertices), size, u16vec2(1, 1), u16vec2(0, 0),
                                                 u16vec2(0, 0));
 
-        auto& renderSystem = self.GetSystem<RenderSystem>();
-        renderSystem.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices);
+        Renderer.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices);
     }
 
     void ClippingComponent::Destroy(Component& self)
     {
         if (geometry)
         {
-            auto& geometrySystem = self.GetSystem<GeometrySystem>();
-            geometrySystem.Release(geometry);
+            Geometric.Release(geometry);
         }
     }
 }  // namespace C3D::UI_2D

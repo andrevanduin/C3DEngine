@@ -18,7 +18,6 @@ class SkyboxPass : public C3D::Renderpass
 {
 public:
     SkyboxPass();
-    SkyboxPass(const C3D::SystemManager* pSystemsManager);
 
     bool Initialize(const C3D::LinearAllocator* frameAllocator) override;
     bool Prepare(C3D::Viewport* viewport, C3D::Camera* camera, C3D::Skybox* skybox);

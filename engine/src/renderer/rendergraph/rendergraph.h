@@ -52,7 +52,5 @@ namespace C3D
         DynamicArray<Renderpass*> m_passes;
         /** @brief The global final sink which everything feeds into. */
         RendergraphSink m_globalSink;
-
-        const SystemManager* m_pSystemsManager = nullptr;
     };
 }  // namespace C3D

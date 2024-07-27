@@ -13,7 +13,7 @@ namespace C3D
     class C3D_API ECS
     {
     public:
-        bool Create(const SystemManager* pSystemsManager, u64 memorySize, u64 componentTypeCount, u64 maxComponents);
+        bool Create(u64 memorySize, u64 componentTypeCount, u64 maxComponents);
         void Destroy();
 
         template <typename ComponentType>
@@ -113,8 +113,6 @@ namespace C3D
 
         DynamicAllocator m_allocator;
         void* m_memoryBlock = nullptr;
-
-        const SystemManager* m_pSystemsManager;
 
         template <typename... ComponentTypes>
         friend class EntityView;

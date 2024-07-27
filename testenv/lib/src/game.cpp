@@ -98,7 +98,7 @@ bool TestEnv::OnBoot()
 bool TestEnv::OnRun(C3D::FrameData& frameData)
 {
     // Register our simple scene loader so we can use it to load our simple scene
-    const auto simpleSceneLoader = Memory.New<C3D::ResourceLoader<SimpleSceneConfig>>(C3D::MemoryType::ResourceLoader, m_pSystemsManager);
+    const auto simpleSceneLoader = Memory.New<C3D::ResourceLoader<SimpleSceneConfig>>(C3D::MemoryType::ResourceLoader);
     Resources.RegisterLoader(simpleSceneLoader);
 
     if (!m_state->frameGraph.LoadResources())
@@ -120,7 +120,7 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     gameFrameData->worldGeometries.SetAllocator(frameData.allocator);
 
     // Create, initialize and load our editor gizmo
-    if (!m_state->gizmo.Create(m_pSystemsManager))
+    if (!m_state->gizmo.Create())
     {
         ERROR_LOG("Failed to create Editor Gizmo.");
         return false;
@@ -676,7 +676,7 @@ bool TestEnv::ConfigureRendergraph() const
     }
 
     // Skybox pass
-    m_state->skyboxPass = SkyboxPass(m_pSystemsManager);
+    m_state->skyboxPass = SkyboxPass();
     if (!m_state->frameGraph.AddPass("SKYBOX", &m_state->skyboxPass))
     {
         ERROR_LOG("Failed to add SKYBOX pass.");
@@ -703,7 +703,7 @@ bool TestEnv::ConfigureRendergraph() const
     ShadowMapPassConfig config;
     config.resolution = 4096;
 
-    m_state->shadowPass = ShadowMapPass(m_pSystemsManager, "SHADOW", config);
+    m_state->shadowPass = ShadowMapPass("SHADOW", config);
     if (!m_state->frameGraph.AddPass("SHADOW", &m_state->shadowPass))
     {
         ERROR_LOG("Failed to add: SHADOW pass.");
@@ -717,7 +717,7 @@ bool TestEnv::ConfigureRendergraph() const
     }
 
     // Scene pass
-    m_state->scenePass = ScenePass(m_pSystemsManager);
+    m_state->scenePass = ScenePass();
     if (!m_state->frameGraph.AddPass("SCENE", &m_state->scenePass))
     {
         ERROR_LOG("Failed to add SCENE pass.");
@@ -767,7 +767,7 @@ bool TestEnv::ConfigureRendergraph() const
     }
 
     // Editor pass
-    m_state->editorPass = EditorPass(m_pSystemsManager);
+    m_state->editorPass = EditorPass();
     if (!m_state->frameGraph.AddPass("EDITOR", &m_state->editorPass))
     {
         ERROR_LOG("Failed to add EDITOR pass.");
@@ -909,7 +909,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                 {
                     // Create a debug line
                     C3D::DebugLine3D line;
-                    if (!line.Create(m_pSystemsManager, ray.origin, hit.position, nullptr))
+                    if (!line.Create(ray.origin, hit.position, nullptr))
                     {
                         ERROR_LOG("Failed to create debug line.");
                         return false;
@@ -930,7 +930,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                     m_state->testLines.PushBack(line);
 
                     C3D::DebugBox3D box;
-                    if (!box.Create(m_pSystemsManager, vec3(0.1f), nullptr))
+                    if (!box.Create(vec3(0.1f), nullptr))
                     {
                         ERROR_LOG("Failed to create debug box.");
                         return false;
@@ -976,7 +976,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
 
                 // Create a debug line
                 C3D::DebugLine3D line;
-                if (!line.Create(m_pSystemsManager, origin, origin + (ray.direction * 100.0f), nullptr))
+                if (!line.Create(origin, origin + (ray.direction * 100.0f), nullptr))
                 {
                     ERROR_LOG("Failed to create debug line.");
                     return false;
@@ -1090,7 +1090,7 @@ bool TestEnv::LoadTestScene()
     SimpleSceneConfig sceneConfig;
     Resources.Load("test_scene", sceneConfig);
 
-    if (!m_state->simpleScene.Create(m_pSystemsManager, sceneConfig))
+    if (!m_state->simpleScene.Create(sceneConfig))
     {
         ERROR_LOG("Creating SimpleScene failed.");
         return false;

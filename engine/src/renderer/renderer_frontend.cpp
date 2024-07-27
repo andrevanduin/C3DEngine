@@ -20,8 +20,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "RENDERER";
 
-    RenderSystem::RenderSystem(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
-
     bool RenderSystem::OnInit(const RenderSystemConfig& config)
     {
         m_config = config;
@@ -38,7 +36,6 @@ namespace C3D
 
         RendererPluginConfig rendererPluginConfig{};
         rendererPluginConfig.applicationName = m_config.applicationName;
-        rendererPluginConfig.pSystemsManager = m_pSystemsManager;
         rendererPluginConfig.flags           = m_config.flags;
 
         if (!m_backendPlugin->Init(rendererPluginConfig, &m_windowRenderTargetCount))

@@ -14,7 +14,7 @@ namespace C3D
     class C3D_API ResourceLoader<BinaryResource> final : public IResourceLoader
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager);
+        ResourceLoader();
 
         bool Load(const char* name, BinaryResource& resource) const;
         static void Unload(BinaryResource& resource);

@@ -10,7 +10,7 @@ namespace C3D
     class C3D_API ResourceLoader<ShaderConfig> final : public IResourceLoader, BaseTextLoader<ShaderConfig>
     {
     public:
-        explicit ResourceLoader(const SystemManager* pSystemsManager);
+        ResourceLoader();
 
         bool Load(const char* name, ShaderConfig& resource) const;
 

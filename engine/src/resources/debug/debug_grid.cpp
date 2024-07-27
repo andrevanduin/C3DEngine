@@ -6,10 +6,8 @@
 
 namespace C3D
 {
-    bool DebugGrid::Create(const SystemManager* pSystemsManager, const DebugGridConfig& config)
+    bool DebugGrid::Create(const DebugGridConfig& config)
     {
-        m_pSystemsManager = pSystemsManager;
-
         m_tileCountDim0 = config.tileCountDim0;
         m_tileCountDim1 = config.tileCountDim1;
         m_tileScale     = config.tileScale;

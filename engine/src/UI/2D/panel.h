@@ -7,7 +7,7 @@ namespace C3D::UI_2D
 {
     namespace Panel
     {
-        Component Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator);
+        Component Create(const DynamicAllocator* pAllocator);
 
         bool Initialize(Component& self, const Config& config);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);

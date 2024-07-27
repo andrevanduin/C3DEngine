@@ -59,8 +59,6 @@ namespace C3D
     class C3D_API LightSystem final : public BaseSystem
     {
     public:
-        explicit LightSystem(const SystemManager* pSystemsManager);
-
         bool OnInit() override;
         void OnShutdown() override;
 

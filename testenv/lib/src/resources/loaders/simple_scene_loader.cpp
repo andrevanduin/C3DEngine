@@ -9,8 +9,8 @@
 constexpr const char* FILE_EXTENSION = "csimplescenecfg";
 constexpr const char* INSTANCE_NAME  = "SIMPLE_SCENE_LOADER";
 
-C3D::ResourceLoader<SimpleSceneConfig>::ResourceLoader(const C3D::SystemManager* pSystemsManager)
-    : C3D::IResourceLoader(pSystemsManager, C3D::MemoryType::Scene, C3D::ResourceType::SimpleScene, nullptr, "scenes")
+C3D::ResourceLoader<SimpleSceneConfig>::ResourceLoader()
+    : C3D::IResourceLoader(C3D::MemoryType::Scene, C3D::ResourceType::SimpleScene, nullptr, "scenes")
 {}
 
 bool C3D::ResourceLoader<SimpleSceneConfig>::Load(const char* name, SimpleSceneConfig& resource) const

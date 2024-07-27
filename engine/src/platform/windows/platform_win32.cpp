@@ -13,10 +13,6 @@ namespace C3D
 {
     constexpr const char* INSTANCE_NAME = "PLATFORM";
 
-    Platform::Platform() : SystemWithConfig(nullptr) {}
-
-    Platform::Platform(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager) {}
-
     bool Platform::OnInit(const PlatformSystemConfig& config)
     {
         INFO_LOG("Started.");

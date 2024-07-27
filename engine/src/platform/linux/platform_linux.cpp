@@ -34,7 +34,7 @@ namespace C3D
 {
     Platform::Platform() : SystemWithConfig(nullptr, "PLATFORM") {}
 
-    Platform::Platform(const SystemManager* pSystemsManager) : SystemWithConfig(pSystemsManager, "PLATFORM") {}
+    Platform::Platform() : SystemWithConfig("PLATFORM") {}
 
     bool Platform::Init(const PlatformSystemConfig& config)
     {

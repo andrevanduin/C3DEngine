@@ -21,9 +21,9 @@ namespace C3D::UI_2D
 
     constexpr char SHIFT_NUMBER_KEY_MAP[10] = { ')', '!', '@', '#', '$', '%', '^', '&', '*', '(' };
 
-    Component Textbox::Create(const SystemManager* systemsManager, const DynamicAllocator* pAllocator)
+    Component Textbox::Create(const DynamicAllocator* pAllocator)
     {
-        Component component(systemsManager);
+        Component component;
 
         component.MakeInternal<InternalData>(pAllocator);
         component.onInitialize = &Initialize;
@@ -67,9 +67,8 @@ namespace C3D::UI_2D
         if (self.IsFlagSet(FlagActive))
         {
             auto& data = self.GetInternal<InternalData>();
-            auto& os   = self.GetSystem<Platform>();
 
-            auto currentTime = os.GetAbsoluteTime();
+            auto currentTime = OS.GetAbsoluteTime();
             if (currentTime >= data.nextBlink)
             {
                 data.nextBlink = currentTime + BLINK_DELAY;
@@ -135,10 +134,9 @@ namespace C3D::UI_2D
 
     void Textbox::CalculateCursorOffset(Component& self)
     {
-        auto& fontSystem = self.GetSystem<FontSystem>();
-        auto& data       = self.GetInternal<InternalData>();
+        auto& data = self.GetInternal<InternalData>();
 
-        auto textSize = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexCurrent);
+        auto textSize = Fonts.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexCurrent);
 
         data.cursor.offsetY = TEXT_PADDING;
         data.cursor.offsetX = C3D::Clamp(textSize.x + CURSOR_PADDING, 0.f, (f32)data.clip.size.x);
@@ -154,10 +152,8 @@ namespace C3D::UI_2D
         {
             data.flags |= FlagHighlight;
 
-            auto& fontSystem = self.GetSystem<FontSystem>();
-
-            auto start = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexStart);
-            auto end   = fontSystem.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexEnd);
+            auto start = Fonts.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexStart);
+            auto end   = Fonts.MeasureString(data.textComponent.font, data.textComponent.text, data.characterIndexEnd);
 
             auto width = end.x - start.x;
             data.highlight.OnResize(self, u16vec2(width, data.highlight.size.y));
@@ -185,17 +181,15 @@ namespace C3D::UI_2D
 
     bool Textbox::OnKeyDown(Component& self, const KeyEventContext& ctx)
     {
-        auto& data        = self.GetInternal<InternalData>();
-        auto& uiSystem    = self.GetSystem<UI2DSystem>();
-        auto& inputSystem = self.GetSystem<InputSystem>();
-        auto& text        = data.textComponent.text;
+        auto& data = self.GetInternal<InternalData>();
+        auto& text = data.textComponent.text;
 
         const u16 keyCode = ctx.keyCode;
 
         if (keyCode == KeyEnter)
         {
             // Deactivate this component
-            uiSystem.SetActive(self.GetID(), false);
+            UI2D.SetActive(self.GetID(), false);
             if (self.pUserHandlers && self.pUserHandlers->onTextInputEndHandler)
             {
                 // Notify the user of this event
@@ -256,7 +250,7 @@ namespace C3D::UI_2D
             return true;
         }
 
-        const auto shiftHeld = inputSystem.IsShiftDown();
+        const auto shiftHeld = Input.IsShiftDown();
 
         if (keyCode == KeyArrowLeft)
         {
@@ -390,7 +384,7 @@ namespace C3D::UI_2D
             return true;
         }
 
-        const auto capsLockActive = inputSystem.IsCapslockActive();
+        const auto capsLockActive = Input.IsCapslockActive();
 
         char typedChar;
 
@@ -466,8 +460,7 @@ namespace C3D::UI_2D
     bool Textbox::OnClick(Component& self, const MouseButtonEventContext& ctx)
     {
         // Set the textbox to active
-        auto& uiSystem = self.GetSystem<UI2DSystem>();
-        uiSystem.SetActive(self.GetID(), true);
+        UI2D.SetActive(self.GetID(), true);
 
         // Determine cursor location
         CalculateCursorOffset(self);

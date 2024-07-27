@@ -30,8 +30,6 @@ namespace C3D
     class C3D_API UI2DSystem final : public SystemWithConfig<UI2DSystemConfig>
     {
     public:
-        explicit UI2DSystem(const SystemManager* pSystemsManager);
-
         bool OnInit(const UI2DSystemConfig& config) override;
 
         bool OnRun();

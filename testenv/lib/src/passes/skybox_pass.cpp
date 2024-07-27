@@ -14,9 +14,7 @@
 constexpr const char* INSTANCE_NAME      = "SKYBOX_PASS";
 constexpr const char* SKYBOX_SHADER_NAME = "Shader.Builtin.Skybox";
 
-SkyboxPass::SkyboxPass() : Renderpass() {}
-
-SkyboxPass::SkyboxPass(const C3D::SystemManager* pSystemsManager) : Renderpass("SKYBOX", pSystemsManager) {}
+SkyboxPass::SkyboxPass() : Renderpass("SKYBOX") {}
 
 bool SkyboxPass::Initialize(const C3D::LinearAllocator* frameAllocator)
 {

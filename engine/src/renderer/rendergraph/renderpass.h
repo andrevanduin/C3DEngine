@@ -14,7 +14,7 @@ namespace C3D
     {
     public:
         Renderpass();
-        Renderpass(const String& name, const SystemManager* pSystemsManager);
+        Renderpass(const String& name);
 
         bool CreateInternals(const RenderpassConfig& config);
 
@@ -64,8 +64,7 @@ namespace C3D
         DynamicArray<RendergraphSink> m_sinks;
         DynamicArray<RenderTarget> m_targets;
 
-        void* m_pInternalData                  = nullptr;
-        const SystemManager* m_pSystemsManager = nullptr;
+        void* m_pInternalData = nullptr;
 
         friend class Rendergraph;
     };

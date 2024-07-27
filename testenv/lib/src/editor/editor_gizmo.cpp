@@ -25,10 +25,8 @@ namespace
     constexpr const char* INSTANCE_NAME = "EDITOR_GIZMO";
 }  // namespace
 
-bool EditorGizmo::Create(const C3D::SystemManager* pSystemsManager)
+bool EditorGizmo::Create()
 {
-    m_pSystemsManager = pSystemsManager;
-
     m_mode = EditorGizmoMode::None;
     return true;
 }
