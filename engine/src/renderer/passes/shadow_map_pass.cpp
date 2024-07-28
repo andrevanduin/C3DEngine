@@ -141,11 +141,8 @@ namespace C3D
         m_terrainLocations.cascadeIndex = m_terrainShader->GetUniformIndex("cascadeIndex");
         m_terrainLocations.colorMap     = m_terrainShader->GetUniformIndex("colorMap");
 
-        for (auto& cascade : m_cascadeData)
-        {
-            cascade.geometries.SetAllocator(frameAllocator);
-            cascade.terrains.SetAllocator(frameAllocator);
-        }
+        m_cullingData.geometries.SetAllocator(frameAllocator);
+        m_cullingData.terrains.SetAllocator(frameAllocator);
 
         return true;
     }
@@ -266,11 +263,8 @@ namespace C3D
 
     bool ShadowMapPass::Prepare(FrameData& frameData, const Viewport& viewport, Camera* camera)
     {
-        for (auto& cascade : m_cascadeData)
-        {
-            cascade.geometries.Reset();
-            cascade.terrains.Reset();
-        }
+        m_cullingData.geometries.Reset();
+        m_cullingData.terrains.Reset();
 
         f32 nearClip  = viewport.GetNearClip();
         f32 farClip   = viewport.GetFarClip();
@@ -441,7 +435,7 @@ namespace C3D
 
             // Ensure we have enough instances for every geometry by finding the highest internalId and adding 1 for the default
             u32 highestId = 0;
-            for (auto& geometry : cascade.geometries)
+            for (auto& geometry : m_cullingData.geometries)
             {
                 C3D::Material* m = geometry.material;
                 if (m && m->internalId > highestId)
@@ -483,7 +477,7 @@ namespace C3D
             }
 
             // Static geometries
-            for (auto& geometry : cascade.geometries)
+            for (auto& geometry : m_cullingData.geometries)
             {
                 u32 bindId               = INVALID_ID;
                 C3D::TextureMap* bindMap = nullptr;
@@ -561,7 +555,7 @@ namespace C3D
             }
             Shaders.ApplyGlobal(frameData, globalsNeedUpdate);
 
-            for (auto& terrain : cascade.terrains)
+            for (auto& terrain : m_cullingData.terrains)
             {
                 bool needsUpdate = m_defaultTerrainInstanceFrameNumber != frameData.frameNumber ||
                                    m_defaultTerrainInstanceDrawIndex != frameData.drawIndex;

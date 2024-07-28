@@ -328,6 +328,88 @@ namespace C3D
         return vec2(rect.right - rect.left, rect.bottom - rect.top);
     }
 
+    bool Platform::CopyToClipboard(const String& text)
+    {
+        // Open the clipboard
+        if (!OpenClipboard(nullptr))
+        {
+            ERROR_LOG("Failed to open Clipboard.");
+            return false;
+        }
+
+        // Remove current content
+        if (!EmptyClipboard())
+        {
+            ERROR_LOG("Failed to empty Clipboard.");
+            return false;
+        }
+
+        // Create enough space for our text (plus null-terminator)
+        size_t size = text.Size() + 1;
+        // Globally allocate memory
+        HGLOBAL hGlob = GlobalAlloc(GMEM_FIXED, size);
+        // Copy the provided text into our global memory
+        if (strcpy_s(static_cast<char*>(hGlob), size, text.Data()) != 0)
+        {
+            ERROR_LOG("Failed to copy to hGlob.");
+            GlobalFree(hGlob);
+            CloseClipboard();
+            return false;
+        }
+
+        // Copy new content to clipboard
+        if (SetClipboardData(CF_TEXT, hGlob) == NULL)
+        {
+            ERROR_LOG("Failed to save text to Clipboard.");
+            GlobalFree(hGlob);
+            CloseClipboard();
+            return false;
+        }
+
+        // Finally close the clipboard
+        CloseClipboard();
+        return true;
+    }
+
+    bool Platform::GetClipboardContent(String& text)
+    {
+        // Open the clipboard
+        if (!OpenClipboard(nullptr))
+        {
+            ERROR_LOG("Failed to open Clipboard.");
+            return false;
+        }
+
+        // Get the content from the clipboard
+        HANDLE hData = GetClipboardData(CF_TEXT);
+        if (hData == NULL)
+        {
+            ERROR_LOG("Failed to get text from Clipboard.");
+            CloseClipboard();
+            return false;
+        }
+
+        // Lock that data so we can actually use it
+        char* pText = static_cast<char*>(GlobalLock(hData));
+        if (pText == nullptr)
+        {
+            ERROR_LOG("Failed to lock data from Clipboard.");
+            CloseClipboard();
+            return false;
+        }
+
+        // Copy the text to the provided string
+        text = pText;
+
+        // Release our lock so other programs can use it
+        GlobalUnlock(hData);
+
+        // Finally close our Clipboard
+        CloseClipboard();
+
+        return true;
+    }
+
     bool Platform::LoadDynamicLibrary(const char* name, void** libraryData, u64& size)
     {
         if (!name)

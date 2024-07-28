@@ -40,9 +40,6 @@ namespace C3D
 
         f32 splitDepth   = 0.f;
         i32 cascadeIndex = 0;
-
-        DynamicArray<GeometryRenderData, LinearAllocator> geometries;
-        DynamicArray<GeometryRenderData, LinearAllocator> terrains;
     };
 
     struct CascadeResources
@@ -62,6 +59,10 @@ namespace C3D
         vec3 lightDirection;
         vec3 center;
         f32 radius;
+
+        // The meshes and terrains visible in our shadow passes
+        DynamicArray<GeometryRenderData, LinearAllocator> geometries;
+        DynamicArray<GeometryRenderData, LinearAllocator> terrains;
     };
 
     class C3D_API ShadowMapPass : public Renderpass
@@ -76,10 +77,9 @@ namespace C3D
         bool Execute(const FrameData& frameData) override;
         void Destroy() override;
 
-        ShadowMapCascadeData& GetCascadeData(u32 index) { return m_cascadeData[index]; }
         ShadowMapCascadeData* GetCascadeData() { return m_cascadeData; }
 
-        const CullingData& GetCullingData() const { return m_cullingData; }
+        CullingData& GetCullingData() { return m_cullingData; }
 
         bool PopulateSource(RendergraphSource& source);
         bool PopulateAttachment(RenderTargetAttachment& attachment);

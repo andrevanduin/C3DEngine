@@ -297,6 +297,12 @@ namespace C3D::UI_2D
         Regenerate(self);
     }
 
+    void TextComponent::Insert(Component& self, u32 index, const String& t)
+    {
+        text.Insert(index, t);
+        Regenerate(self);
+    }
+
     void TextComponent::RemoveAt(Component& self, u32 index)
     {
         text.RemoveAt(index);

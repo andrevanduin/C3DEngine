@@ -251,6 +251,7 @@ namespace C3D::UI_2D
         }
 
         const auto shiftHeld = Input.IsShiftDown();
+        const auto ctrlHeld  = Input.IsCtrlDown();
 
         if (keyCode == KeyArrowLeft)
         {
@@ -392,6 +393,89 @@ namespace C3D::UI_2D
         {
             // Ignore '`' key so we don't type that into the console immediatly after opening it
             if (keyCode == KeyGrave) return false;
+
+            if (ctrlHeld)
+            {
+                // When holding control we do special operations depending on the key pressed
+                switch (keyCode)
+                {
+                    case KeyA:
+                    {
+                        // Select all
+                        data.characterIndexStart   = 0;
+                        data.characterIndexEnd     = text.Size();
+                        data.characterIndexCurrent = 0;
+
+                        CalculateCursorOffset(self);
+                        CalculateHighlight(self, true);
+                    }
+                    break;
+                    case KeyX:
+                    {
+                        // Cut
+
+                        // Take the currently selected text and add it to the OS Clipboard
+                        String t = text.SubStr(data.characterIndexStart, data.characterIndexEnd);
+                        OS.CopyToClipboard(t);
+
+                        // Remove the selected text
+                        data.textComponent.RemoveRange(self, data.characterIndexStart, data.characterIndexEnd);
+
+                        // Fix the cursor positioning
+                        data.characterIndexEnd     = data.characterIndexStart;
+                        data.characterIndexCurrent = data.characterIndexStart;
+
+                        CalculateCursorOffset(self);
+                        CalculateHighlight(self, false);
+                    }
+                    break;
+                    case KeyC:
+                    {
+                        // Copy
+
+                        // Take the currently selected text and add it to the OS Clipboard
+                        String t = text.SubStr(data.characterIndexStart, data.characterIndexEnd);
+                        OS.CopyToClipboard(t);
+
+                        CalculateCursorOffset(self);
+                        CalculateHighlight(self, true);
+                    }
+                    break;
+                    case KeyV:
+                    {
+                        // Paste
+
+                        // Get the text from the OS Clipboard
+                        String pasteText;
+                        if (!OS.GetClipboardContent(pasteText))
+                        {
+                            ERROR_LOG("Failed to paste content to Textbox.");
+                            return true;
+                        }
+
+                        if (data.characterIndexStart != data.characterIndexEnd)
+                        {
+                            // We first remove the highlighted area from the string
+                            data.textComponent.RemoveRange(self, data.characterIndexStart, data.characterIndexEnd, false);
+                            // Set our current index to the start of the highlighted area since we just removed it
+                            data.characterIndexCurrent = data.characterIndexStart;
+                            CalculateHighlight(self, false);
+                        }
+
+                        // Then at that position insert our pasted text
+                        data.textComponent.Insert(self, data.characterIndexCurrent, pasteText);
+                        // And reset our cursor indices
+                        data.characterIndexStart += pasteText.Size();
+                        data.characterIndexEnd     = data.characterIndexStart;
+                        data.characterIndexCurrent = data.characterIndexStart;
+
+                        OnTextChanged(self);
+                    }
+                    break;
+                }
+
+                return true;
+            }
 
             // Characters
             typedChar = static_cast<char>(keyCode);

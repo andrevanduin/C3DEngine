@@ -433,26 +433,20 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
         // Prepare the shadow pass
         m_state->shadowPass.Prepare(frameData, m_state->worldViewport, m_state->camera);
 
-        const auto& cullingData = m_state->shadowPass.GetCullingData();
+        // Query meshes and terrains seen by the furthest out cascade since all passes will "see" the same
+        // Get all the relevant meshes from the scene
+        auto& cullingData = m_state->shadowPass.GetCullingData();
 
-        // Populate the geometries and terrains
-        for (u32 i = 0; i < MAX_SHADOW_CASCADE_COUNT; i++)
-        {
-            auto& data = m_state->shadowPass.GetCascadeData(i);
-            data.geometries.Reserve(512);
-            data.terrains.Reserve(16);
+        m_state->simpleScene.QueryMeshes(frameData, cullingData.lightDirection, cullingData.center, cullingData.radius,
+                                         cullingData.geometries);
+        // Keep track of how many meshes are being used in our shadow pass
+        frameData.drawnShadowMeshCount = cullingData.geometries.Size();
 
-            // Get all the relevant meshes from the scene
-            m_state->simpleScene.QueryMeshes(frameData, cullingData.lightDirection, cullingData.center, cullingData.radius,
-                                             data.geometries);
-            // Keep track of how many meshes are being used in our shadow pass
-            frameData.drawnShadowMeshCount = data.geometries.Size();
-
-            // Get all the relevant terrains from the scene
-            m_state->simpleScene.QueryTerrains(frameData, data.terrains);
-            // Also keep track of how many terrains are being used in our shadow pass
-            frameData.drawnShadowMeshCount += data.terrains.Size();
-        }
+        // Get all the relevant terrains from the scene
+        m_state->simpleScene.QueryTerrains(frameData, cullingData.lightDirection, cullingData.center, cullingData.radius,
+                                           cullingData.terrains);
+        // Also keep track of how many terrains are being used in our shadow pass
+        frameData.drawnShadowMeshCount += cullingData.terrains.Size();
 
         // Prepare the scene pass
         m_state->scenePass.Prepare(&m_state->worldViewport, m_state->camera, frameData, m_state->simpleScene, m_state->renderMode,

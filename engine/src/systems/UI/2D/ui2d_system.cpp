@@ -86,10 +86,10 @@ namespace C3D
         auto& panelAtlasses = m_atlasBank[AtlasIDPanel];
         // Default
         panelAtlasses.defaultMin = u16vec2(0, 0);
-        panelAtlasses.defaultMax = u16vec2(32, 32);
+        panelAtlasses.defaultMax = u16vec2(8, 8);
         // Size
         panelAtlasses.size       = u16vec2(512, 512);
-        panelAtlasses.cornerSize = u16vec2(16, 16);
+        panelAtlasses.cornerSize = u16vec2(1, 1);
 
         // Button configuration
         auto& buttonAtlasses = m_atlasBank[AtlasIDButton];

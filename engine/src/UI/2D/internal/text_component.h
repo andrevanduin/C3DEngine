@@ -31,6 +31,7 @@ namespace C3D::UI_2D
         void SetText(Component& self, const char* _text);
 
         void Insert(Component& self, u32 index, char c);
+        void Insert(Component& self, u32 index, const String& text);
         void RemoveAt(Component& self, u32 index);
         void RemoveRange(Component& self, u32 characterIndexStart, u32 characterIndexEnd, bool regenerate = true);
 

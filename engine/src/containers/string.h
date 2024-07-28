@@ -609,6 +609,23 @@ namespace C3D
             m_size = requiredSize;
         }
 
+        /** @brief Insert the provided string at the provided index. */
+        void Insert(u32 index, const BasicString& str)
+        {
+            // Calculate the totalSize that we will require for our inserted string
+            const u64 requiredSize = m_size + str.Size();
+            // Resize our internal buffer if it is needed (including '\0' byte)
+            Resize(requiredSize + 1);
+            // Move all chars from the index str.Size() spaces to the right
+            std::move_backward(begin() + index, end(), end() + str.Size());
+            // Copy the chars from str into our data
+            std::memcpy(m_data + index, str.Data(), str.Size());
+            // Ensure we null-terminate our string
+            m_data[requiredSize] = '\0';
+            // Store our new size
+            m_size = requiredSize;
+        }
+
         /** @brief Added to support using default std::back_inserter(). */
         void push_back(const char c) { Append(c); }
 
@@ -644,8 +661,6 @@ namespace C3D
         /** @brief Removes the chars in the range [rangeStart, rangeEnd). */
         void RemoveRange(u32 rangeStart, u32 rangeEnd)
         {
-            // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-            // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
             if (m_size > 0 && rangeEnd <= m_size && rangeStart < rangeEnd)
             {
                 if (rangeEnd < m_size)

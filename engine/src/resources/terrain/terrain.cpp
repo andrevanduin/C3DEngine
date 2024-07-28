@@ -18,35 +18,45 @@ namespace C3D
 
     void TerrainChunk::Initialize(const Terrain& terrain)
     {
-        const auto sizeSq = terrain.m_chunkSize * terrain.m_chunkSize;
+        const auto sizeSq = (terrain.m_chunkSize + 1) * (terrain.m_chunkSize + 1);
 
-        m_vertices.Resize(sizeSq * 4);
+        m_vertices.Resize(sizeSq);
         m_indices.Resize(sizeSq * 6);
     }
 
-    void TerrainChunk::Load(const Terrain& terrain, u32 chunkIndex, u32 globalBaseIndex, u32 chunkRowCount, u32 chunkColumnCount)
+    void TerrainChunk::Load(const Terrain& terrain, u32 xOffset, u32 zOffset)
     {
-        u32 xOffset = chunkIndex % chunkColumnCount;
-        u32 zOffset = chunkIndex / chunkColumnCount;
+        f32 xPos = xOffset * terrain.m_tileScaleX * terrain.m_chunkSize;
+        f32 zPos = zOffset * terrain.m_tileScaleZ * terrain.m_chunkSize;
 
-        f32 xPos = xOffset * terrain.m_tileScaleX;
-        f32 zPos = zOffset * terrain.m_tileScaleZ;
+        // Account for extra row and column on each chunk (to fix overlap)
+        u32 chunkStride = terrain.m_chunkSize + 1;
 
         {
             auto timer = ScopedTimer("Generating TerrainChunk vertices");
 
             // Generate our vertices
-            for (u32 z = 0, i = 0; z < terrain.m_chunkSize; z++)
+            u32 globalTerrainIndexStart = (zOffset * terrain.m_tileCountX * terrain.m_chunkSize) + (xOffset * terrain.m_chunkSize);
+
+            f32 yMin = FLT_MAX;
+            f32 yMax = FLT_MIN;
+
+            for (u32 z = 0, i = 0; z < chunkStride; z++)
             {
-                for (u32 x = 0; x < terrain.m_chunkSize; x++, i++)
+                for (u32 x = 0; x < chunkStride; x++, i++)
                 {
-                    auto& vert        = m_vertices[i];
-                    const auto height = terrain.m_config.vertexConfigs[i].height;
+                    auto& vert = m_vertices[i];
+
+                    u32 globalTerrainIndex = globalTerrainIndexStart + x + z * terrain.m_tileCountX;
+                    const auto height      = terrain.m_config.vertexConfigs[globalTerrainIndex].height;
 
                     vert.position = { xPos + (x * terrain.m_tileScaleX), height * terrain.m_tileScaleY, zPos + (z * terrain.m_tileScaleZ) };
                     vert.color    = WHITE;
                     vert.normal   = { 0, 1, 0 };
                     vert.texture  = vec2(static_cast<f32>(xOffset + x), static_cast<f32>(zOffset + z));
+
+                    yMin = C3D::Min(yMin, vert.position.y);
+                    yMax = C3D::Max(yMax, vert.position.y);
 
                     vert.materialWeights[0] = AttenuationMinMax(-0.2f, 0.2f, height);
                     vert.materialWeights[1] = AttenuationMinMax(0.0f, 0.3f, height);
@@ -54,20 +64,30 @@ namespace C3D
                     vert.materialWeights[3] = AttenuationMinMax(0.5f, 1.2f, height);
                 }
             }
+
+            vec3 min = m_vertices.First().position;
+            min.y    = yMin;
+
+            vec3 max = m_vertices.Last().position;
+            max.y    = yMax;
+
+            m_center      = min + ((max - min) * 0.5f);
+            m_extents.min = min;
+            m_extents.max = max;
         }
 
         {
             auto timer = ScopedTimer("Generating TerrainChunk indices");
 
             // Generate our indices
-            for (u32 z = 0, i = 0; z < terrain.m_chunkSize - 1; ++z)
+            for (u32 z = 0, i = 0; z < terrain.m_chunkSize; ++z)
             {
-                for (u32 x = 0; x < terrain.m_chunkSize - 1; ++x, i += 6)
+                for (u32 x = 0; x < terrain.m_chunkSize; ++x, i += 6)
                 {
-                    u32 v0 = (z * terrain.m_chunkSize) + x;
-                    u32 v1 = (z * terrain.m_chunkSize) + x + 1;
-                    u32 v2 = ((z + 1) * terrain.m_chunkSize) + x;
-                    u32 v3 = ((z + 1) * terrain.m_chunkSize) + x + 1;
+                    u32 v0 = (z * chunkStride) + x;
+                    u32 v1 = (z * chunkStride) + x + 1;
+                    u32 v2 = ((z + 1) * chunkStride) + x;
+                    u32 v3 = ((z + 1) * chunkStride) + x + 1;
 
                     m_indices[i + 0] = v2;
                     m_indices[i + 1] = v1;
@@ -114,6 +134,7 @@ namespace C3D
         m_geometry.extents = m_extents;
         // TODO: This should be done in the renderer (CreateGeometry() method)
         m_geometry.generation++;
+        generation++;
     }
 
     void TerrainChunk::SetMaterial(Material* material) { m_geometry.material = material; }
@@ -277,8 +298,7 @@ namespace C3D
             {
                 for (u32 x = 0; x < chunkColumnCount; ++x, ++i)
                 {
-                    u32 globalBaseIndex = x * m_chunkSize + z * m_chunkSize;
-                    m_chunks[i].Load(*this, i, globalBaseIndex, chunkRowCount, chunkColumnCount);
+                    m_chunks[i].Load(*this, x, z);
                 }
             }
         }

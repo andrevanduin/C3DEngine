@@ -174,6 +174,24 @@ namespace C3D
         vec2 GetWindowSize();
 
         /**
+         * @brief Copies the provided text to the OS clipboard
+         *
+         * @param text The text you want to copy to the clipboard
+         *
+         * @return A boolean indicating success
+         */
+        bool CopyToClipboard(const String& text);
+
+        /**
+         * @brief Get the OS Clipboard content
+         *
+         * @param text The text that was retrieved from the OS
+         *
+         * @return A boolean indicating success
+         */
+        bool GetClipboardContent(String& text);
+
+        /**
          * @brief Loads a dynamic library by name into memory.
          *
          * @param Name The name of the dynamic library you want to load

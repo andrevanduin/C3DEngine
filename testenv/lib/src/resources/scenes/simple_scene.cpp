@@ -457,11 +457,72 @@ void SimpleScene::QueryTerrains(FrameData& frameData, const Frustum& frustum, co
     {
         if (terrain.GetId())
         {
-            // TODO: Check terrain generation
-            // TODO: Frustum culling
-            for (auto& chunk : terrain.GetChunks())
+            mat4 model           = terrain.GetModel();
+            bool windingInverted = terrain.GetTransform()->GetDeterminant() < 0;
+
+            for (const auto& chunk : terrain.GetChunks())
             {
-                // terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), chunk.GetGeometry());
+                if (chunk.generation != INVALID_ID_U8)
+                {
+                    // AABB Calculation
+                    const auto& extents = chunk.GetExtents();
+
+                    const vec3 extentsMax = model * vec4(extents.max, 1.0f);
+                    const vec3 center     = model * vec4(chunk.GetCenter(), 1.0f);
+
+                    const vec3 halfExtents = {
+                        C3D::Abs(extentsMax.x - center.x),
+                        C3D::Abs(extentsMax.y - center.y),
+                        C3D::Abs(extentsMax.z - center.z),
+                    };
+
+                    if (frustum.IntersectsWithAABB({ center, halfExtents }))
+                    {
+                        C3D::GeometryRenderData data(terrain.GetId(), model, chunk.GetGeometry(), windingInverted);
+                        terrainData.PushBack(data);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void SimpleScene::QueryTerrains(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
+                                DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
+{
+    for (auto& terrain : m_terrains)
+    {
+        if (terrain.GetId())
+        {
+            mat4 model           = terrain.GetModel();
+            bool windingInverted = terrain.GetTransform()->GetDeterminant() < 0;
+
+            for (const auto& chunk : terrain.GetChunks())
+            {
+                if (chunk.generation != INVALID_ID_U8)
+                {
+                    // Translate/scale the extents
+                    const auto& extents = chunk.GetExtents();
+
+                    const vec3 extentsMin = model * vec4(extents.min, 1.0f);
+                    const vec3 extentsMax = model * vec4(extents.max, 1.0f);
+
+                    // Translate/scale the center
+                    const vec3 transformedCenter = model * vec4(chunk.GetCenter(), 1.0f);
+
+                    // Find the one furthest from the center
+                    f32 chunkRadius = Max(glm::distance(extentsMin, transformedCenter), glm::distance(extentsMax, transformedCenter));
+
+                    // Distance to the line
+                    f32 distToLine = DistancePointToLine(transformedCenter, center, direction);
+
+                    // If it's within the distance we include it
+                    if ((distToLine - chunkRadius) <= radius)
+                    {
+                        C3D::GeometryRenderData data(terrain.GetId(), model, chunk.GetGeometry(), windingInverted);
+                        terrainData.PushBack(data);
+                    }
+                }
             }
         }
     }
@@ -511,7 +572,7 @@ void SimpleScene::QueryTerrains(FrameData& frameData, DynamicArray<GeometryRende
             // TODO: Frustum culling
             for (auto& chunk : terrain.GetChunks())
             {
-                // terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), chunk.GetGeometry());
+                terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), chunk.GetGeometry());
             }
         }
     }

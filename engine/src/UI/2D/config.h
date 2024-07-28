@@ -35,7 +35,7 @@ namespace C3D::UI_2D
             Config config;
             config.position        = vec2(0, 0);
             config.size            = u16vec2(100, 100);
-            config.cornerSize      = u16vec2(16, 16);
+            config.cornerSize      = u16vec2(1, 1);
             config.backgroundColor = vec4(0.05, 0.05, 0.05, 1.0);
             return config;
         }

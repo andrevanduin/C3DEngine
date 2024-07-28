@@ -24,7 +24,7 @@ namespace C3D
 
         void Initialize(const Terrain& terrain);
 
-        void Load(const Terrain& terrain, u32 chunkIndex, u32 globalBaseIndex, u32 chunkRowCount, u32 chunkColumnCount);
+        void Load(const Terrain& terrain, u32 offsetX, u32 offsetZ);
 
         void SetMaterial(Material* material);
 
@@ -32,12 +32,19 @@ namespace C3D
 
         void Destroy();
 
-        Geometry* GetGeometry() { return &m_geometry; }
+        const Geometry* GetGeometry() const { return &m_geometry; }
+
+        const Extents3D& GetExtents() const { return m_extents; }
+        const vec3& GetCenter() const { return m_center; }
+
+    public:
+        u8 generation = INVALID_ID_U8;
 
     private:
         DynamicArray<TerrainVertex> m_vertices;
         DynamicArray<u32> m_indices;
 
+        vec3 m_center;
         Extents3D m_extents;
         Geometry m_geometry;
     };

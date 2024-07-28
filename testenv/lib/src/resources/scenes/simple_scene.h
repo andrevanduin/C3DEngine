@@ -102,6 +102,8 @@ public:
 
     void QueryTerrains(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
                        DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const;
+    void QueryTerrains(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
+                       DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const;
 
     void QueryMeshes(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const;
     void QueryTerrains(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const;

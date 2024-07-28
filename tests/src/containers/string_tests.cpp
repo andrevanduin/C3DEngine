@@ -252,6 +252,35 @@ u8 StringInsert()
     return true;
 }
 
+u8 StringInsertOtherString()
+{
+    C3D::String test("25");
+
+    // Test if we can insert at a random spot
+    test.Insert(1, "34");
+    ExpectToBeTrue(test == C3D::String("2345"));
+
+    // Test if we can insert at the start
+    test.Insert(0, "01");
+    ExpectToBeTrue(test == C3D::String("012345"));
+
+    // Test if we can insert at the end
+    test.Insert(6, "6789");
+    ExpectToBeTrue(test == C3D::String("0123456789"));
+
+    // This should also work for heap allocated strings
+    C3D::String heapTest("aaaaaaaaaaaaaaaa");
+    heapTest.Insert(16, "babab");
+    ExpectToBeTrue(heapTest == C3D::String("aaaaaaaaaaaaaaaababab"));
+    ExpectShouldBe(21, heapTest.Size());
+
+    heapTest.Insert(5, "cccccccccccccccccccc");
+    ExpectToBeTrue(heapTest == C3D::String("aaaaaccccccccccccccccccccaaaaaaaaaaababab"));
+    ExpectShouldBe(41, heapTest.Size());
+
+    return true;
+}
+
 u8 StringRemoveAt()
 {
     C3D::String test("012234");
@@ -284,13 +313,13 @@ u8 StringRemoveRange()
         // Remove range at the start of the string
         C3D::String test("0123456789");
         test.RemoveRange(0, 4);
-        ExpectToBeTrue(test == C3D::String("56789"));
+        ExpectToBeTrue(test == C3D::String("456789"));
     }
 
     {
         // Remove range at the end of the string
         C3D::String test("0123456789");
-        test.RemoveRange(7, 9);
+        test.RemoveRange(7, 10);
         ExpectToBeTrue(test == C3D::String("0123456"));
     }
 
@@ -298,14 +327,14 @@ u8 StringRemoveRange()
         // Remove range in the middle of the string
         C3D::String test("0123456789");
         test.RemoveRange(3, 5);
-        ExpectToBeTrue(test == C3D::String("0126789"));
+        ExpectToBeTrue(test == C3D::String("01256789"));
     }
 
     {
-        // Remove range of length 1
+        // Ignore ranges with start == end
         C3D::String test("0123456789");
         test.RemoveRange(2, 2);
-        ExpectToBeTrue(test == C3D::String("013456789"));
+        ExpectToBeTrue(test == C3D::String("0123456789"));
     }
 
     {
@@ -347,6 +376,7 @@ void String::RegisterTests(TestManager& manager)
     REGISTER_TEST(StringShouldTrim, "String should properly trim.");
     REGISTER_TEST(StringShouldSplit, "String should properly split into parts.");
     REGISTER_TEST(StringInsert, "String should allow chars to be inserted at arbitrary points.");
+    REGISTER_TEST(StringInsertOtherString, "String should allow other strings to be inserted at arbitrary points.");
     REGISTER_TEST(StringRemoveAt, "String should allow chars to be removed at arbitrary locations.");
     REGISTER_TEST(StringRemoveRange, "String should allow arbitrary ranges of chars to be removed.");
 }

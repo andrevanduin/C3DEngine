@@ -394,6 +394,34 @@ namespace C3D
         bool Contains(const T& element) { return std::find(begin(), end(), element) != end(); }
 
         /**
+         * @brief Returns the first element of the array. Will throw if the array is empty.
+         *
+         * @return A reference to the first element in the array
+         */
+        T& First() { return m_elements[0]; }
+
+        /**
+         * @brief Returns the first element of the array. Will throw if the array is empty.
+         *
+         * @return A const reference to the first element in the array
+         */
+        const T& First() const { return m_elements[0]; }
+
+        /**
+         * @brief Returns the last element of the array. Will throw if the array is empty.
+         *
+         * @return A reference to the last element in the array
+         */
+        T& Last() { return m_elements[m_size - 1]; }
+
+        /**
+         * @brief Returns the last element of the array. Will throw if the array is empty.
+         *
+         * @return A const reference to the last element in the array
+         */
+        const T& Last() const { return m_elements[m_size - 1]; }
+
+        /**
          * @brief Clears all elements in the array (calling the destructor for every element)
          * Does not delete the memory and the capacity will remain the same.
          */

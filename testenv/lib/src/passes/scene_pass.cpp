@@ -320,6 +320,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
         }
 
         // Globals
+        Renderer.BindShaderGlobals(*m_colorShader);
         Shaders.SetUniformByIndex(m_debugLocations.projection, &projectionMatrix);
         Shaders.SetUniformByIndex(m_debugLocations.view, &viewMatrix);
 
