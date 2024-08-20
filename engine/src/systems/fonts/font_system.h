@@ -51,7 +51,6 @@ namespace C3D
         bool LoadSystemFont(const FontSystemConfig& config) const;
         bool LoadBitmapFont(const BitmapFontConfig& config);
 
-        FontHandle Acquire(const char* name, FontType type, u16 fontSize);
         FontHandle Acquire(const String& name, FontType type, u16 fontSize);
 
         void Release(FontHandle handle);
@@ -69,6 +68,6 @@ namespace C3D
         f32 GetFontKerningAmount(const FontData& data, const String& text, const i32 codepoint, const u32 offset, const u64 utf8Size) const;
 
         HashMap<FontHandle, BitmapFontLookup> m_bitmapFonts;
-        HashMap<const char*, FontHandle> m_bitmapNameLookup;
+        HashMap<String, FontHandle> m_bitmapNameLookup;
     };
 }  // namespace C3D

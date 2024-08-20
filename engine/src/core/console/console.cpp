@@ -18,7 +18,7 @@ namespace C3D
 
     void UIConsole::OnInit()
     {
-        m_commands.Create(377);
+        m_commands.Create();
         m_initialized = true;
 
         RegisterDefaultCommands();

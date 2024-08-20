@@ -44,6 +44,8 @@ namespace C3D
 
         void Bind(const VulkanCommandBuffer* commandBuffer, VkPipelineBindPoint bindPoint) const;
 
+        PrimitiveTopologyTypeBits GetSupportedTopologyTypes() const { return m_supportedTopologyTypes; }
+
         VkPipelineLayout layout = nullptr;
 
     private:

@@ -60,8 +60,8 @@ namespace C3D
         virtual bool Clear(bool zeroMemory);
 
         virtual bool Read(u64 offset, u64 size, void** outMemory);
-        virtual bool LoadRange(u64 offset, u64 size, const void* data);
-        virtual bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size);
+        virtual bool LoadRange(u64 offset, u64 size, const void* data, bool includeInFrameWorkload);
+        virtual bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size, bool includeInFrameWorkload);
 
         virtual bool Draw(u64 offset, u32 elementCount, bool bindOnly);
 

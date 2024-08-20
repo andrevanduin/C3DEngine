@@ -20,7 +20,10 @@ namespace C3D::UI_2D
         f32 offsetX = 0.0f;
         f32 offsetY = 0.0f;
 
+        bool isDirty = true;
+
         bool Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& _size, const vec4& _color = WHITE);
+        void OnPrepareRender(Component& self);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
         void OnResize(Component& self, const u16vec2& _size);
 

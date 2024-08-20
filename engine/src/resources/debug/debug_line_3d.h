@@ -24,6 +24,7 @@ namespace C3D
         bool Load();
         bool Unload();
 
+        void OnPrepareRender(FrameData& frameData);
         bool Update();
 
         UUID GetId() const { return m_id; }
@@ -47,6 +48,8 @@ namespace C3D
         Transform m_transform;
 
         DynamicArray<ColorVertex3D> m_vertices;
+
+        bool m_isDirty = true;
 
         Geometry m_geometry;
     };

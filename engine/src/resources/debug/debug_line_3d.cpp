@@ -64,16 +64,11 @@ namespace C3D
         return true;
     }
 
-    bool DebugLine3D::Update() { return true; }
-
-    void DebugLine3D::SetColor(const vec4& color)
+    void DebugLine3D::OnPrepareRender(FrameData& frameData)
     {
-        m_color = color;
-        if (m_geometry.generation != INVALID_ID_U16 && !m_vertices.Empty())
+        if (m_isDirty)
         {
-            UpdateVertexColor();
-
-            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
+            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData(), false);
 
             m_geometry.generation++;
 
@@ -82,6 +77,19 @@ namespace C3D
             {
                 m_geometry.generation = 0;
             }
+
+            m_isDirty = false;
+        }
+    }
+
+    bool DebugLine3D::Update() { return true; }
+
+    void DebugLine3D::SetColor(const vec4& color)
+    {
+        m_color = color;
+        if (m_geometry.generation != INVALID_ID_U16 && !m_vertices.Empty())
+        {
+            UpdateVertexColor();
         }
     }
 
@@ -93,16 +101,6 @@ namespace C3D
             m_point1 = point1;
 
             RecalculatePoints();
-
-            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
-
-            m_geometry.generation++;
-
-            // Roll over back to zero when our generation increments back to INVALID_ID_U16
-            if (m_geometry.generation == INVALID_ID_U16)
-            {
-                m_geometry.generation = 0;
-            }
         }
     }
 
@@ -112,6 +110,7 @@ namespace C3D
         {
             m_vertices[0].color = m_color;
             m_vertices[1].color = m_color;
+            m_isDirty           = true;
         }
     }
     void DebugLine3D::RecalculatePoints()
@@ -120,6 +119,7 @@ namespace C3D
         {
             m_vertices[0].position = vec4(m_point0, 1.0f);
             m_vertices[1].position = vec4(m_point1, 1.0f);
+            m_isDirty              = true;
         }
     }
 }  // namespace C3D

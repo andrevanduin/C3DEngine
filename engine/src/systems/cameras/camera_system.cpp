@@ -19,7 +19,7 @@ namespace C3D
         }
 
         m_config = config;
-        m_cameraMap.Create(config.maxCameraCount);
+        m_cameraMap.Create();
 
         return true;
     }

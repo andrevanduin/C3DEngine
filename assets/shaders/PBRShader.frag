@@ -7,6 +7,10 @@ struct DirectionalLight
 {
     vec4 color;
     vec4 direction;
+    float shadowDistance;
+    float shadowFadeDistance;
+    float shadowSplitMultiplier;
+    float padding;
 };
 
 struct PointLight 
@@ -136,6 +140,18 @@ void main()
     }
     float shadow = CalculateShadow(inDto.lightSpaceFragPosition[cascadeIndex], cascadeIndex);
 
+    // Fade out the shadow map past a certain distance
+    float fadeStart = instanceUbo.dirLight.shadowDistance;
+    float fadeDistance = instanceUbo.dirLight.shadowFadeDistance; 
+
+    // The end of the fade-out range
+    float fadeEnd = fadeStart + fadeDistance;
+
+    float zClamp = clamp(length(inDto.viewPosition - inDto.fragPosition), fadeStart, fadeEnd);
+    float fadeFactor = (fadeEnd - zClamp) / (fadeEnd - fadeStart + 0.00001); // Avoid a division by 0
+
+    shadow = clamp(shadow + (1.0 - fadeFactor), 0.0, 1.0);
+
     // Calculate reflectance at normal incidence; if dia-electric (plastic-like) use baseReflectivity
     // of 0.04 and if it's a metal, use the albedo color as baseReflectivity.
     vec3 baseReflectivity = vec3(0.04);
@@ -206,9 +222,13 @@ void main()
         // Ensure the alpha is based on the albedo's original alpha value.
         outColor = vec4(color, albedoSamp.a);
     }
-    else // inMode == 2 (normals-only mode)
+    else if (inMode == 2) // (normals-only mode)
     {
         outColor = vec4(abs(normal), 1.0);
+    }
+    else if (inMode == 4) // Wireframe
+    {
+        outColor = vec4(0.0, 1.0, 1.0, 1.0); // Solid cyan
     }
 }
 

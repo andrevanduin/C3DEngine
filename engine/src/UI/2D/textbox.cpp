@@ -26,13 +26,14 @@ namespace C3D::UI_2D
         Component component;
 
         component.MakeInternal<InternalData>(pAllocator);
-        component.onInitialize = &Initialize;
-        component.onDestroy    = &Destroy;
-        component.onUpdate     = &OnUpdate;
-        component.onRender     = &OnRender;
-        component.onResize     = &OnResize;
-        component.onKeyDown    = &OnKeyDown;
-        component.onClick      = &OnClick;
+        component.onInitialize    = &Initialize;
+        component.onDestroy       = &Destroy;
+        component.onUpdate        = &OnUpdate;
+        component.onPrepareRender = &OnPrepareRender;
+        component.onRender        = &OnRender;
+        component.onResize        = &OnResize;
+        component.onKeyDown       = &OnKeyDown;
+        component.onClick         = &OnClick;
 
         return component;
     }
@@ -82,6 +83,16 @@ namespace C3D::UI_2D
                 }
             }
         }
+    }
+
+    void Textbox::OnPrepareRender(Component& self)
+    {
+        auto& data = self.GetInternal<InternalData>();
+        data.nineSlice.OnPrepareRender(self);
+        data.clip.OnPrepareRender(self);
+        data.textComponent.OnPrepareRender(self);
+        data.highlight.OnPrepareRender(self);
+        data.cursor.OnPrepareRender(self);
     }
 
     void Textbox::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
@@ -406,6 +417,7 @@ namespace C3D::UI_2D
                         data.characterIndexEnd     = text.Size();
                         data.characterIndexCurrent = 0;
 
+                        // Recalculate cursor and highlight
                         CalculateCursorOffset(self);
                         CalculateHighlight(self, true);
                     }
@@ -425,6 +437,7 @@ namespace C3D::UI_2D
                         data.characterIndexEnd     = data.characterIndexStart;
                         data.characterIndexCurrent = data.characterIndexStart;
 
+                        // Recalculate cursor and remove highlight
                         CalculateCursorOffset(self);
                         CalculateHighlight(self, false);
                     }
@@ -437,6 +450,7 @@ namespace C3D::UI_2D
                         String t = text.SubStr(data.characterIndexStart, data.characterIndexEnd);
                         OS.CopyToClipboard(t);
 
+                        // Recalculate cursor and keep highlight
                         CalculateCursorOffset(self);
                         CalculateHighlight(self, true);
                     }
@@ -486,10 +500,13 @@ namespace C3D::UI_2D
         {
             typedChar = static_cast<char>(keyCode);
         }
-        else if (keyCode >= KeyEquals && keyCode <= KeySlash)
+        else if (keyCode >= KeySemicolon && keyCode <= KeyApostrophe)
         {
             switch (keyCode)
             {
+                case KeySemicolon:
+                    typedChar = shiftHeld ? ':' : ';';
+                    break;
                 case KeyEquals:
                     typedChar = shiftHeld ? '+' : '=';
                     break;
@@ -505,8 +522,20 @@ namespace C3D::UI_2D
                 case KeySlash:
                     typedChar = shiftHeld ? '?' : '/';
                     break;
-                default:
-                    FATAL_LOG("Unknown char found while trying to parse key for console '{}'.", keyCode);
+                case KeyGrave:
+                    typedChar = shiftHeld ? '~' : '`';
+                    break;
+                case KeyOpenSquareBracket:
+                    typedChar = shiftHeld ? '{' : '[';
+                    break;
+                case KeyBackwordsSlash:
+                    typedChar = shiftHeld ? '|' : '\\';
+                    break;
+                case KeyCloseSquareBracket:
+                    typedChar = shiftHeld ? '}' : ']';
+                    break;
+                case KeyApostrophe:
+                    typedChar = shiftHeld ? '"' : '\'';
                     break;
             }
         }

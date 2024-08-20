@@ -21,8 +21,8 @@ namespace C3D
 
         m_config = config;
 
-        m_bitmapFonts.Create(config.maxBitmapFontCount);
-        m_bitmapNameLookup.Create(config.maxBitmapFontCount);
+        m_bitmapFonts.Create();
+        m_bitmapNameLookup.Create();
 
         // Load all our bitmap fonts
         for (auto& font : m_config.bitmapFontConfigs)
@@ -87,7 +87,7 @@ namespace C3D
         return result;
     }
 
-    FontHandle FontSystem::Acquire(const char* fontName, FontType type, u16 fontSize)
+    FontHandle FontSystem::Acquire(const String& fontName, FontType type, u16 fontSize)
     {
         if (type == FontType::Bitmap)
         {
@@ -115,8 +115,6 @@ namespace C3D
         ERROR_LOG("Unknown font type.");
         return FontHandle::Invalid();
     }
-
-    FontHandle FontSystem::Acquire(const String& name, FontType type, u16 fontSize) { return Acquire(name.Data(), type, fontSize); }
 
     void FontSystem::Release(FontHandle handle)
     {

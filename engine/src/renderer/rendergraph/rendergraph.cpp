@@ -15,8 +15,8 @@ namespace C3D
     {
         INFO_LOG("Creating Rendergraph: '{}'.", name);
 
-        m_name            = name;
-        m_application     = application;
+        m_name        = name;
+        m_application = application;
 
         return true;
     }
@@ -60,6 +60,9 @@ namespace C3D
     void Rendergraph::Destroy()
     {
         INFO_LOG("Destroying Rendergraph: '{}'.", m_name);
+
+        // Wait for the renderer to be idle before destryoihg
+        Renderer.WaitForIdle();
 
         m_globalSources.Destroy();
 

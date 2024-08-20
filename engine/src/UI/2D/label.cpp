@@ -10,9 +10,10 @@ namespace C3D::UI_2D
         Component component;
 
         component.MakeInternal<InternalData>(pAllocator);
-        component.onInitialize = &Initialize;
-        component.onDestroy    = &Destroy;
-        component.onRender     = &OnRender;
+        component.onInitialize    = &Initialize;
+        component.onDestroy       = &Destroy;
+        component.onPrepareRender = &OnPrepareRender;
+        component.onRender        = &OnRender;
 
         return component;
     }
@@ -22,6 +23,12 @@ namespace C3D::UI_2D
         auto& data = self.GetInternal<InternalData>();
         data.textComponent.Initialize(self, config);
         return true;
+    }
+
+    void Label::OnPrepareRender(Component& self)
+    {
+        auto& data = self.GetInternal<InternalData>();
+        data.textComponent.OnPrepareRender(self);
     }
 
     void Label::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)

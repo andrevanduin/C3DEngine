@@ -70,10 +70,11 @@ namespace C3D
         String windowName = String::FromFormat("C3DEngine - {}", appState->name);
 
         constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
-        constexpr ShaderSystemConfig shaderSystemConfig{ 127, 128, 31, 31 };
+        constexpr ShaderSystemConfig shaderSystemConfig;
         const PlatformSystemConfig platformConfig{ windowName.Data(), appState->windowConfig };
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
-        const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin, FlagVSyncEnabled | FlagPowerSavingEnabled };
+        const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin,
+                                                     FlagVSyncEnabled | FlagPowerSavingEnabled | FlagUseValidationLayers };
         constexpr UI2DSystemConfig ui2dSystemConfig{ 1024, MebiBytes(16) };
         constexpr AudioSystemConfig audioSystemConfig{ "C3DOpenAL", 0, ChannelType::Stereo, 4096 * 16, 8 };
 
@@ -242,10 +243,25 @@ namespace C3D
                 // Reset our drawn mesh count for the next frame
                 m_frameData.drawnMeshCount = 0;
 
+                if (!Renderer.Begin(m_frameData))
+                {
+                    FATAL_LOG("Renderer.Begin() failed. Shutting down.");
+                    m_state.running = false;
+                    break;
+                }
+
                 m_state.clocks.prepareRender.Begin();
 
+                Renderer.BeginDebugLabel("PrepareRender", vec3(1.0f, 1.0f, 0.0f));
+
+                SystemManager::GetInstance().OnPrepareRender(m_frameData);
+
                 // Let the application prepare all the data for the next frame
-                if (!m_application->OnPrepareRender(m_frameData))
+                bool prepareFrameResult = m_application->OnPrepareRender(m_frameData);
+
+                Renderer.EndDebugLabel();
+
+                if (!prepareFrameResult)
                 {
                     // We skip this frame since we failed to prepare our render
                     continue;
@@ -265,8 +281,12 @@ namespace C3D
 
                 m_state.clocks.onRender.End();
 
+                // End the frame
+                Renderer.End(m_frameData);
+
                 m_state.clocks.present.Begin();
 
+                // Present our frame
                 if (!Renderer.Present(m_frameData))
                 {
                     ERROR_LOG("Failed to present the Renderer.");

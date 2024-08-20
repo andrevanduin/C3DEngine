@@ -16,6 +16,10 @@ struct DirectionalLight
 {
     vec4 color;
     vec4 direction;
+    float shadowDistance;
+    float shadowFadeDistance;
+    float shadowSplitMultiplier;
+    float padding;
 };
 
 layout(set = 0, binding = 0) uniform globalUniformObject 

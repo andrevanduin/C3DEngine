@@ -28,7 +28,8 @@ namespace C3D
         m_config = config;
 
         // Ensure that we have enough space for all our textures
-        m_registeredTextures.Create(config.maxTextureCount);
+        m_textures.Reserve(config.maxTextureCount);
+        m_nameToTextureIndexMap.Create();
 
         CreateDefaultTextures();
 
@@ -39,7 +40,7 @@ namespace C3D
     void TextureSystem::OnShutdown()
     {
         INFO_LOG("Destroying all loaded textures.");
-        for (auto& ref : m_registeredTextures)
+        for (auto& ref : m_textures)
         {
             if (ref.texture.generation != INVALID_ID)
             {
@@ -48,7 +49,9 @@ namespace C3D
         }
 
         // Free the memory that was storing all the textures
-        m_registeredTextures.Destroy();
+        m_textures.Destroy();
+        // Destroy the map that mapped names to Texture indices
+        m_nameToTextureIndexMap.Destroy();
 
         INFO_LOG("Destroying default textures.");
         DestroyDefaultTextures();
@@ -89,7 +92,7 @@ namespace C3D
             return nullptr;
         }
 
-        auto& ref     = m_registeredTextures.GetByIndex(id);
+        auto& ref     = m_textures[id];
         auto& texture = ref.texture;
 
         if (needsCreation)
@@ -122,7 +125,7 @@ namespace C3D
             return nullptr;
         }
 
-        auto& ref     = m_registeredTextures.GetByIndex(id);
+        auto& ref     = m_textures[id];
         auto& texture = ref.texture;
 
         // Create the texture if needed
@@ -156,7 +159,7 @@ namespace C3D
             return nullptr;
         }
 
-        auto& ref     = m_registeredTextures.GetByIndex(id);
+        auto& ref     = m_textures[id];
         auto& texture = ref.texture;
 
         if (needsCreation)
@@ -190,7 +193,7 @@ namespace C3D
             return nullptr;
         }
 
-        auto& ref     = m_registeredTextures.GetByIndex(id);
+        auto& ref     = m_textures[id];
         auto& texture = ref.texture;
 
         // Create the texture if it's needed
@@ -241,7 +244,7 @@ namespace C3D
                 ERROR_LOG("Failed to obtain a new texture id.");
                 return;
             }
-            t = &m_registeredTextures.GetByIndex(id).texture;
+            t = &m_textures[id].texture;
         }
         else
         {
@@ -839,7 +842,7 @@ namespace C3D
         outTextureId     = INVALID_ID;
         outNeedsCreation = false;
 
-        if (!m_registeredTextures.Has(name))
+        if (!m_nameToTextureIndexMap.Has(name))
         {
             // We have no reference to this texture yet
             if (referenceDiff < 0)
@@ -848,11 +851,33 @@ namespace C3D
                 return false;
             }
 
-            m_registeredTextures.Set(name, TextureReference(autoRelease));
+            u32 index = INVALID_ID_U32;
+            for (u32 i = 0; i < m_textures.Size(); ++i)
+            {
+                auto& current = m_textures[i];
+
+                if (!current.texture.id == INVALID_ID)
+                {
+                    // We have found an empty slot
+                    current = TextureReference(autoRelease);
+                    index   = i;
+                    break;
+                }
+            }
+
+            if (index == INVALID_ID)
+            {
+                // We did not find a spot so let's append the TextureReference
+                index = m_textures.Size();
+                m_textures.EmplaceBack(autoRelease);
+            }
+
+            m_nameToTextureIndexMap.Set(name, index);
         }
 
         // Get our reference to the texture
-        auto& ref = m_registeredTextures.Get(name);
+        auto index = m_nameToTextureIndexMap.Get(name);
+        auto& ref  = m_textures[index];
 
         // Increment/Decrement our reference count
         ref.referenceCount += referenceDiff;
@@ -868,7 +893,9 @@ namespace C3D
                 // Destroy the texture
                 DestroyTexture(&ref.texture);
                 // Delete the reference
-                m_registeredTextures.Delete(nameCopy);
+                m_nameToTextureIndexMap.Delete(nameCopy);
+                // And mark this slot as unoccupied
+                m_textures[index].texture.id = INVALID_ID;
                 TRACE("Released texture '{}'. Texture unloaded because refCount = 0 and autoRelease = true.", nameCopy);
             }
             else
@@ -886,7 +913,7 @@ namespace C3D
             if (ref.texture.id == INVALID_ID)
             {
                 // Texture is still invalid so we should load it
-                ref.texture.id           = m_registeredTextures.GetIndex(name);
+                ref.texture.id           = index;
                 ref.texture.generation   = INVALID_ID;
                 ref.texture.internalData = nullptr;
                 ref.texture.name         = name;

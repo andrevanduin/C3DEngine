@@ -4,6 +4,7 @@
 #include "core/engine.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/renderer_utils.h"
+#include "systems/events/event_system.h"
 #include "systems/system_manager.h"
 #include "systems/textures/texture_system.h"
 
@@ -15,7 +16,7 @@ namespace C3D
     {
         INFO_LOG("Initializing.");
 
-        if (config.maxShaderCount == 0)
+        if (config.maxShaders == 0)
         {
             ERROR_LOG("config.maxShaderCount must be greater than 0.");
             return false;
@@ -24,7 +25,17 @@ namespace C3D
         m_config          = config;
         m_currentShaderId = INVALID_ID;
 
-        m_shaders.Create(config.maxShaderCount);
+        // Initially we reserve room for 32 shaders
+        m_shaders.Reserve(config.maxShaders);
+        // We also create our name to index map so we can find shaders by name
+        m_shaderNameToIndexMap.Create();
+
+#ifdef _DEBUG
+        m_fileWatchCallback = Event.Register(
+            EventCodeWatchedFileChanged,
+            [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnFileWatchEvent(code, sender, context); });
+#endif
+
         return true;
     }
 
@@ -36,11 +47,15 @@ namespace C3D
             ShaderDestroy(shader);
         }
         m_shaders.Destroy();
+
+#ifdef _DEBUG
+        Event.Unregister(m_fileWatchCallback);
+#endif
     }
 
     bool ShaderSystem::Create(void* pass, const ShaderConfig& config)
     {
-        if (m_shaders.Has(config.name))
+        if (m_shaderNameToIndexMap.Has(config.name))
         {
             INFO_LOG("A shader with the name: '{}' already exists.", config.name);
             return true;
@@ -50,13 +65,13 @@ namespace C3D
         shader.state = ShaderState::NotCreated;
         shader.name  = config.name;
 
-        // Setup our dynamic arrays
-        shader.globalTextureMaps.Reserve(m_config.maxGlobalTextures + 1);
-        shader.attributes.Reserve(4);
+        // Setup our dynamic arrays. Reserve enough space as specified in the config
+        shader.globalTextureMaps.Reserve(m_config.maxGlobalTextures);
+        shader.uniforms.Reserve(m_config.maxUniforms);
+        shader.attributes.Reserve(m_config.maxAttributes);
 
-        // Setup HashMap for uniform lookups
-        // NOTE: Way more than we will ever need but it prevents collisions in our hashtable
-        shader.uniforms.Create(967);
+        // Setup HashMap for mapping Uniform names to the index into our Uniform array
+        shader.uniformNameToIndexMap.Create();
 
         // Ensure that our push-constants are always 128 bytes (this is the minimum guaranteed size by Vulkan)
         shader.localUboStride = 128;
@@ -112,35 +127,62 @@ namespace C3D
             return false;
         }
 
-        // The id of the shader will be equal to the index in our HashMap
-        shader.id = static_cast<u32>(m_shaders.GetIndex(config.name));
-        // Store the shader in our hashtable
-        m_shaders.Set(config.name, shader);
+        // Store our shader in our internal shaders array by finding the first empty slot
+        u32 shaderId = INVALID_ID;
+        for (u32 i = 0; i < m_shaders.Size(); ++i)
+        {
+            if (m_shaders[i].id == INVALID_ID)
+            {
+                // We have found an empty slot
+                shader.id    = i;
+                shaderId     = i;
+                m_shaders[i] = shader;
+                break;
+            }
+        }
+
+        if (shaderId == INVALID_ID)
+        {
+            // There was no more room in our Shaders array so we must append our Shader to the end
+            shaderId  = m_shaders.Size();
+            shader.id = shaderId;
+            m_shaders.PushBack(shader);
+        }
+
+        // Store the name and it's index (id) in our Name to Index map
+        m_shaderNameToIndexMap.Set(config.name, shaderId);
 
         INFO_LOG("Successfully created shader: '{}'.", config.name);
         return true;
     }
 
+    bool ShaderSystem::Reload(Shader& shader) { return Renderer.ReloadShader(shader); }
+
     u32 ShaderSystem::GetId(const String& name) const
     {
-        if (!m_shaders.Has(name))
+        if (!m_shaderNameToIndexMap.Has(name))
         {
             ERROR_LOG("There is no shader registered with name: '{}'.", name);
             return INVALID_ID;
         }
-        return static_cast<u32>(m_shaders.GetIndex(name));
+        return static_cast<u32>(m_shaderNameToIndexMap.Get(name));
     }
 
     Shader* ShaderSystem::Get(const String& name)
     {
-        if (const u32 shaderId = GetId(name); shaderId != INVALID_ID)
+        u32 id = GetId(name);
+        if (id != INVALID_ID)
         {
-            return GetById(shaderId);
+            return GetById(id);
         }
         return nullptr;
     }
 
-    Shader* ShaderSystem::GetById(const u32 shaderId) { return &m_shaders.GetByIndex(shaderId); }
+    Shader* ShaderSystem::GetById(const u32 shaderId)
+    {
+        if (shaderId >= m_shaders.Size()) return nullptr;
+        return &m_shaders[shaderId];
+    }
 
     bool ShaderSystem::Use(const char* name)
     {
@@ -156,12 +198,23 @@ namespace C3D
         return UseById(shaderId);
     }
 
+    bool ShaderSystem::SetWireframe(Shader& shader, bool enabled) const
+    {
+        if (!enabled)
+        {
+            // Disabling is always supported since we don't actually need to do anything in the backend
+            shader.wireframeEnabled = false;
+            return true;
+        }
+        return Renderer.ShaderSetWireframe(shader, enabled);
+    }
+
     bool ShaderSystem::UseById(const u32 shaderId)
     {
         // Only perform the use command if the shader id is different from the current
         // if (m_currentShaderId != shaderId)
         //{
-        Shader& shader    = m_shaders.GetByIndex(shaderId);
+        Shader& shader    = m_shaders[shaderId];
         m_currentShaderId = shaderId;
         if (!Renderer.UseShader(shader))
         {
@@ -185,13 +238,13 @@ namespace C3D
             return INVALID_ID_U16;
         }
 
-        if (!shader->uniforms.Has(name))
+        if (!shader->uniformNameToIndexMap.Has(name))
         {
             ERROR_LOG("Shader: '{}' does not a have a registered uniform named '{}'.", shader->name, name);
             return INVALID_ID_U16;
         }
 
-        return static_cast<u16>(shader->uniforms.GetIndex(name));
+        return static_cast<u16>(shader->uniformNameToIndexMap.Get(name));
     }
 
     bool ShaderSystem::SetUniform(const char* name, const void* value) { return SetArrayUniform(name, 0, value); }
@@ -206,15 +259,15 @@ namespace C3D
             return false;
         }
 
-        auto& shader = m_shaders.GetByIndex(m_currentShaderId);
+        auto& shader = m_shaders[m_currentShaderId];
         u16 index    = shader.GetUniformIndex(name);
         return SetArrayUniformByIndex(index, arrayIndex, value);
     }
 
     bool ShaderSystem::SetArrayUniformByIndex(u16 index, u32 arrayIndex, const void* value)
     {
-        auto& shader  = m_shaders.GetByIndex(m_currentShaderId);
-        auto& uniform = shader.uniforms.GetByIndex(index);
+        auto& shader  = m_shaders[m_currentShaderId];
+        auto& uniform = shader.uniforms[index];
         if (shader.boundScope != uniform.scope)
         {
             if (uniform.scope == ShaderScope::Global)
@@ -247,32 +300,52 @@ namespace C3D
 
     bool ShaderSystem::ApplyGlobal(const FrameData& frameData, const bool needsUpdate)
     {
-        const auto& shader = m_shaders.GetByIndex(m_currentShaderId);
+#ifdef _DEBUG
+        if (m_currentShaderId == INVALID_ID) return false;
+#endif
+
+        const auto& shader = m_shaders[m_currentShaderId];
         return Renderer.ShaderApplyGlobals(frameData, shader, needsUpdate);
     }
 
     bool ShaderSystem::ApplyInstance(const FrameData& frameData, const bool needsUpdate)
     {
-        const auto& shader = m_shaders.GetByIndex(m_currentShaderId);
+#ifdef _DEBUG
+        if (m_currentShaderId == INVALID_ID) return false;
+#endif
+
+        const auto& shader = m_shaders[m_currentShaderId];
         return Renderer.ShaderApplyInstance(frameData, shader, needsUpdate);
     }
 
     bool ShaderSystem::ApplyLocal(const FrameData& frameData)
     {
-        const auto& shader = m_shaders.GetByIndex(m_currentShaderId);
+#ifdef _DEBUG
+        if (m_currentShaderId == INVALID_ID) return false;
+#endif
+
+        const auto& shader = m_shaders[m_currentShaderId];
         return Renderer.ShaderApplyLocal(frameData, shader);
     }
 
     bool ShaderSystem::BindInstance(const u32 instanceId)
     {
-        Shader& shader         = m_shaders.GetByIndex(m_currentShaderId);
+#ifdef _DEBUG
+        if (m_currentShaderId == INVALID_ID) return false;
+#endif
+
+        Shader& shader         = m_shaders[m_currentShaderId];
         shader.boundInstanceId = instanceId;
         return Renderer.BindShaderInstance(shader, instanceId);
     }
 
     bool ShaderSystem::BindLocal()
     {
-        Shader& shader = m_shaders.GetByIndex(m_currentShaderId);
+#ifdef _DEBUG
+        if (m_currentShaderId == INVALID_ID) return false;
+#endif
+
+        Shader& shader = m_shaders[m_currentShaderId];
         return Renderer.BindShaderLocal(shader);
     }
 
@@ -396,11 +469,11 @@ namespace C3D
             return false;
         }
 
-        const u16 uniformCount = static_cast<u16>(shader.uniforms.Count());
-        if (uniformCount + 1 > m_config.maxUniformCount)
+        const u16 uniformCount = static_cast<u16>(shader.uniforms.Size());
+        if (uniformCount >= m_config.maxUniforms)
         {
             ERROR_LOG("A shader can only accept a combined maximum of: {} uniforms and samplers at global, instance and local scopes.",
-                      m_config.maxUniformCount);
+                      m_config.maxUniforms);
             return false;
         }
 
@@ -433,8 +506,29 @@ namespace C3D
             entry.size     = isSampler ? 0 : config.size;
         }
 
-        // Save the uniform in the HashMap with the name as it's key
-        shader.uniforms.Set(config.name, entry);
+        // Find a empty slot in the uniforms array
+        u16 index = INVALID_ID_U16;
+        for (u16 i = 0; i < shader.uniforms.Size(); i++)
+        {
+            if (shader.uniforms[i].index == INVALID_ID_U16)
+            {
+                // We have found an empty slot keep track of the index
+                index = i;
+                // And copy our entry into our uniforms array
+                shader.uniforms[i] = entry;
+                break;
+            }
+        }
+
+        if (index == INVALID_ID_U16)
+        {
+            // We have reached the end of our array without finding a spot so let's append
+            index = shader.uniforms.Size();
+            shader.uniforms.PushBack(entry);
+        }
+
+        // Save the mapping from name to index in our HashMap
+        shader.uniformNameToIndexMap.Set(config.name, index);
 
         if (!isSampler)
         {
@@ -492,16 +586,40 @@ namespace C3D
 
     bool ShaderSystem::UniformNameIsValid(const Shader& shader, const String& name) const
     {
-        if (!name)
+        if (name.Empty())
         {
-            ERROR_LOG("Uniform name does not exist or is empty.");
+            ERROR_LOG("Uniform name does is empty.");
             return false;
         }
-        if (shader.uniforms.Has(name))
+        if (shader.uniformNameToIndexMap.Has(name))
         {
             ERROR_LOG("Shader: '{}' already contains a uniform named '{}'.", shader.name, name);
             return false;
         }
         return true;
+    }
+
+    bool ShaderSystem::OnFileWatchEvent(const u16 code, void* sender, const C3D::EventContext& context)
+    {
+        FileWatchId watchId = context.data.u32[0];
+        for (auto& shader : m_shaders)
+        {
+            for (auto shaderWatchId : shader.moduleWatchIds)
+            {
+                if (watchId == shaderWatchId)
+                {
+                    if (!Reload(shader))
+                    {
+                        ERROR_LOG("Failed to reload shader: '{}'", shader.name);
+                    }
+
+                    // We have handled the event but other systems might want to also handle so we return false
+                    return false;
+                }
+            }
+        }
+
+        // No shader was updated, so return false in order to let other systems also pickup this event
+        return false;
     }
 }  // namespace C3D

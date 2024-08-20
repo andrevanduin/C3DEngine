@@ -20,8 +20,9 @@ namespace C3D
 
         virtual ~ISystem() = default;
 
-        virtual void OnShutdown()                         = 0;
-        virtual bool OnUpdate(const FrameData& frameData) = 0;
+        virtual void OnShutdown()                          = 0;
+        virtual bool OnUpdate(const FrameData& frameData)  = 0;
+        virtual bool OnPrepareRender(FrameData& frameData) = 0;
 
     protected:
         bool m_initialized = false;
@@ -44,6 +45,7 @@ namespace C3D
         }
 
         bool OnUpdate(const FrameData& frameData) override { return true; }
+        bool OnPrepareRender(FrameData& frameData) { return true; }
     };
 
     template <typename T>
@@ -65,6 +67,7 @@ namespace C3D
         }
 
         bool OnUpdate(const FrameData& frameData) override { return true; }
+        bool OnPrepareRender(FrameData& frameData) override { return true; }
 
     protected:
         T m_config;

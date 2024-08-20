@@ -2,18 +2,26 @@
 #pragma once
 #include "containers/hash_map.h"
 #include "resources/shaders/shader.h"
+#include "systems/events/event_system.h"
 #include "systems/system.h"
 
 namespace C3D
 {
     class RenderPass;
 
+    constexpr auto SHADER_SYSTEM_DEFAULT_MAX_SHADERS           = 128;
+    constexpr auto SHADER_SYSTEM_DEFAULT_MAX_UNIFORMS          = 64;
+    constexpr auto SHADER_SYSTEM_DEFAULT_MAX_ATTRIBUTES        = 64;
+    constexpr auto SHADER_SYSTEM_DEFAULT_MAX_GLOBAL_TEXTURES   = 32;
+    constexpr auto SHADER_SYSTEM_DEFAULT_MAX_INSTANCE_TEXTURES = 32;
+
     struct ShaderSystemConfig
     {
-        u16 maxShaderCount;
-        u8 maxUniformCount;
-        u8 maxGlobalTextures;
-        u8 maxInstanceTextures;
+        u16 maxShaders         = SHADER_SYSTEM_DEFAULT_MAX_SHADERS;
+        u8 maxUniforms         = SHADER_SYSTEM_DEFAULT_MAX_UNIFORMS;
+        u8 maxAttributes       = SHADER_SYSTEM_DEFAULT_MAX_ATTRIBUTES;
+        u8 maxGlobalTextures   = SHADER_SYSTEM_DEFAULT_MAX_GLOBAL_TEXTURES;
+        u8 maxInstanceTextures = SHADER_SYSTEM_DEFAULT_MAX_INSTANCE_TEXTURES;
     };
 
     class C3D_API ShaderSystem final : public SystemWithConfig<ShaderSystemConfig>
@@ -23,6 +31,7 @@ namespace C3D
         void OnShutdown() override;
 
         bool Create(void* pass, const ShaderConfig& config);
+        bool Reload(Shader& shader);
 
         u32 GetId(const String& name) const;
 
@@ -31,6 +40,15 @@ namespace C3D
 
         bool Use(const char* name);
         bool Use(const String& name);
+
+        /**
+         * @brief Enables or disables wireframe mode for the provided shader.
+         *
+         * @param shader The shader you want to enable/disable wireframe mode for
+         * @param enabled A boolean indicating if you want to enable or disable wireframe
+         * @return True if successful; False if not supported or failed
+         */
+        bool SetWireframe(Shader& shader, bool enabled) const;
 
         bool UseById(u32 shaderId);
 
@@ -66,7 +84,15 @@ namespace C3D
         bool UniformAddStateIsValid(const Shader& shader) const;
         bool UniformNameIsValid(const Shader& shader, const String& name) const;
 
+        bool OnFileWatchEvent(const u16 code, void* sender, const C3D::EventContext& context);
+
         u32 m_currentShaderId = 0;
-        HashMap<String, Shader> m_shaders;
+
+        /** @brief An array of shaders managed by our Shader System. */
+        DynamicArray<Shader> m_shaders;
+        /** @brief A HashMap that maps names of Shaders to their index into our internal Shader array. */
+        HashMap<String, u32> m_shaderNameToIndexMap;
+
+        RegisteredEventCallback m_fileWatchCallback;
     };
 }  // namespace C3D

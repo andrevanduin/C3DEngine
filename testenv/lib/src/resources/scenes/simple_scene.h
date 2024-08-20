@@ -95,6 +95,10 @@ public:
      */
     bool Update(C3D::FrameData& frameData);
 
+    void OnPrepareRender(C3D::FrameData& frameData);
+
+    void UpdateLodFromViewPosition(FrameData& frameData, const vec3& viewPosition, f32 nearClip, f32 farClip);
+
     void QueryMeshes(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
                      DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const;
     void QueryMeshes(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,

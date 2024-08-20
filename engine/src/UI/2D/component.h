@@ -21,9 +21,10 @@ namespace C3D::UI_2D
     using OnInitializeFunc = bool (*)(Component& self, const Config& config);
     using OnDestroyFunc    = void (*)(Component& self, const DynamicAllocator* pAllocator);
 
-    using OnUpdateFunc = void (*)(Component& self);
-    using OnRenderFunc = void (*)(Component& self, const FrameData& frameData, const ShaderLocations& locations);
-    using OnResizeFunc = void (*)(Component& self);
+    using OnUpdateFunc        = void (*)(Component& self);
+    using OnPrepareRenderFunc = void (*)(Component& self);
+    using OnRenderFunc        = void (*)(Component& self, const FrameData& frameData, const ShaderLocations& locations);
+    using OnResizeFunc        = void (*)(Component& self);
 
     /** @brief Function pointers for handling hover. */
     using OnHoverStartFunc = bool (*)(Component& self, const OnHoverEventContext& ctx);
@@ -113,9 +114,10 @@ namespace C3D::UI_2D
         ComponentType type = ComponentTypeNone;
 
         // Component implementation specific methods
-        OnUpdateFunc onUpdate = nullptr;
-        OnRenderFunc onRender = nullptr;
-        OnResizeFunc onResize = nullptr;
+        OnUpdateFunc onUpdate               = nullptr;
+        OnPrepareRenderFunc onPrepareRender = nullptr;
+        OnRenderFunc onRender               = nullptr;
+        OnResizeFunc onResize               = nullptr;
 
         OnHoverStartFunc onHoverStart = nullptr;
         OnHoverEndFunc onHoverEnd     = nullptr;

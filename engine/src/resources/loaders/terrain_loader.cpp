@@ -144,9 +144,11 @@ namespace C3D
             else
             {
                 // Read the pixels from the heightmap
-                auto totalPixelCount = heightmap.width * heightmap.height;
 
-                resource.vertexConfigs.Reserve(totalPixelCount);
+                // Total number of pixels is with * height but we add 1 to width and height to compensate for the terrain chunks having 1
+                // row/col overlap which results in the last row needing to be duplicated
+                auto totalPixelCount = (heightmap.width + 1) * (heightmap.height + 1);
+                resource.vertexConfigs.Resize(totalPixelCount);
                 resource.tileCountX = heightmap.width;
                 resource.tileCountZ = heightmap.height;
 
@@ -161,16 +163,38 @@ namespace C3D
                     return false;
                 }
 
-                for (u32 i = 0; i < totalPixelCount * heightmap.channelCount; i += heightmap.channelCount)
+                u32 j = 0;
+                for (u32 y = 0, i = 0; y < heightmap.height; ++y)
                 {
-                    u8 r = heightmap.pixels[i + 0];
-                    u8 g = heightmap.pixels[i + 1];
-                    u8 b = heightmap.pixels[i + 2];
+                    for (u32 x = 0; x < heightmap.width; ++x, ++i)
+                    {
+                        u8 r = heightmap.pixels[(i * 4) + 0];
+                        u8 g = heightmap.pixels[(i * 4) + 1];
+                        u8 b = heightmap.pixels[(i * 4) + 2];
+
+                        // Convert RGB to a u32 and divide by the max value it can be to get a range between 0 an 1
+                        resource.vertexConfigs[j].height = static_cast<f32>(RgbToU32(r, g, b)) / 16777215;
+                        j++;
+                    }
+
+                    // Use the previous pixel's height again for the last row
+                    resource.vertexConfigs[j].height = resource.vertexConfigs[j - 1].height;
+                    j++;
+                }
+
+                // Iterate the last row of the iamge and sample the height from there again for the last row of the terrain
+                for (u32 i = heightmap.width * (heightmap.height - 1); i < (heightmap.width * heightmap.height); ++i)
+                {
+                    u8 r = heightmap.pixels[(i * 4) + 0];
+                    u8 g = heightmap.pixels[(i * 4) + 1];
+                    u8 b = heightmap.pixels[(i * 4) + 2];
 
                     // Convert RGB to a u32 and divide by the max value it can be to get a range between 0 an 1
-                    f32 height = static_cast<f32>(RgbToU32(r, g, b)) / 16777215;
-                    resource.vertexConfigs.EmplaceBack(height);
+                    resource.vertexConfigs[j].height = static_cast<f32>(RgbToU32(r, g, b)) / 16777215;
+                    j++;
                 }
+                // The final vertex also needs a copy of the previous height
+                resource.vertexConfigs[j].height = resource.vertexConfigs[j - 1].height;
 
                 Resources.Unload(heightmap);
             }

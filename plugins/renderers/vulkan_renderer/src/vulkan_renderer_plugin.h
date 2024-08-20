@@ -50,7 +50,7 @@ namespace C3D
         void CreateTexture(const u8* pixels, Texture* texture) override;
         void CreateWritableTexture(Texture* texture) override;
 
-        void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels) override;
+        void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels, bool includeInFrameWorkload) override;
         void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) override;
 
         void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory) override;
@@ -59,6 +59,7 @@ namespace C3D
         void DestroyTexture(Texture* texture) override;
 
         bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const override;
+        bool ReloadShader(Shader& shader) override;
         void DestroyShader(Shader& shader) override;
 
         bool InitializeShader(Shader& shader) override;
@@ -71,6 +72,7 @@ namespace C3D
         bool ShaderApplyGlobals(const FrameData& frameData, const Shader& shader, bool needsUpdate) override;
         bool ShaderApplyInstance(const FrameData& frameData, const Shader& shader, bool needsUpdate) override;
         bool ShaderApplyLocal(const FrameData& frameData, const Shader& shader) override;
+        bool ShaderSupportsWireframe(const Shader& shader) override;
 
         bool AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config, u32& outInstanceId) override;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) override;
@@ -91,6 +93,11 @@ namespace C3D
                                          RenderBufferTrackType trackType) override;
         bool DestroyRenderBuffer(RenderBuffer* buffer) override;
 
+        void WaitForIdle() override;
+
+        void BeginDebugLabel(const String& text, const vec3& color) override;
+        void EndDebugLabel() override;
+
         Texture* GetWindowAttachment(u8 index) override;
         Texture* GetDepthAttachment(u8 index) override;
 
@@ -107,6 +114,7 @@ namespace C3D
 
         bool RecreateSwapChain();
 
+        bool CreateShaderModulesAndPipelines(Shader& shader);
         bool CreateShaderModule(const ShaderStageConfig& config, VulkanShaderStage& outStage) const;
 
         VkSampler CreateSampler(TextureMap& map);

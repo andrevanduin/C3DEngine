@@ -33,6 +33,19 @@ namespace C3D::UI_2D
         return true;
     }
 
+    void ClippingComponent::OnPrepareRender(Component& self)
+    {
+        if (isDirty)
+        {
+            GeometryUtils::RegenerateUIQuadGeometry(static_cast<Vertex2D*>(geometry->vertices), size, u16vec2(1, 1), u16vec2(0, 0),
+                                                    u16vec2(0, 0));
+
+            Renderer.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices, false);
+
+            isDirty = false;
+        }
+    }
+
     void ClippingComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
     {
         // Enable writing, disable test.
@@ -68,12 +81,8 @@ namespace C3D::UI_2D
 
     void ClippingComponent::OnResize(Component& self, const u16vec2& _size)
     {
-        size = _size;
-
-        GeometryUtils::RegenerateUIQuadGeometry(static_cast<Vertex2D*>(geometry->vertices), size, u16vec2(1, 1), u16vec2(0, 0),
-                                                u16vec2(0, 0));
-
-        Renderer.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices);
+        size    = _size;
+        isDirty = true;
     }
 
     void ClippingComponent::Destroy(Component& self)

@@ -231,6 +231,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
             ERROR_LOG("Failed to use Terrain Shader.");
             return false;
         }
+        Shaders.SetWireframe(*m_terrainShader, m_renderMode == RendererViewMode::Wireframe);
 
         // Apply globals
         if (!Materials.ApplyGlobal(m_terrainShader->id, frameData, &projectionMatrix, &viewMatrix, &m_cascadeSplits, &viewPosition,
@@ -271,6 +272,7 @@ bool ScenePass::Execute(const C3D::FrameData& frameData)
             ERROR_LOG("Failed to use PBR Shader.");
             return false;
         }
+        Shaders.SetWireframe(*m_pbrShader, m_renderMode == RendererViewMode::Wireframe);
 
         // Apply globals
         if (!Materials.ApplyGlobal(m_pbrShader->id, frameData, &projectionMatrix, &viewMatrix, &m_cascadeSplits, &viewPosition,

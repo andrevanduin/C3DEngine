@@ -266,8 +266,10 @@ namespace C3D
         m_cullingData.geometries.Reset();
         m_cullingData.terrains.Reset();
 
+        auto dirLight = Lights.GetDirectionalLight();
+
         f32 nearClip  = viewport.GetNearClip();
-        f32 farClip   = viewport.GetFarClip();
+        f32 farClip   = dirLight ? (dirLight->data.shadowDistance + dirLight->data.shadowFadeDistance) : 0.0f;
         f32 clipRange = farClip - nearClip;
 
         f32 minZ  = nearClip;
@@ -275,7 +277,7 @@ namespace C3D
         f32 range = maxZ - minZ;
         f32 ratio = maxZ / minZ;
 
-        constexpr const f32 cascadeSplitMultiplier = 0.95f;
+        f32 cascadeSplitMultiplier = dirLight ? dirLight->data.shadowSplitMultiplier : 0.0f;
 
         vec4 splits;
         for (u32 c = 0; c < MAX_SHADOW_CASCADE_COUNT; ++c)
@@ -292,7 +294,6 @@ namespace C3D
         mat4 shadowCameraProjections[4] = { mat4(1.0f), mat4(1.0f), mat4(1.0f) };
         vec3 shadowCameraPositions[4]   = { vec3(0), vec3(0), vec3(0) };
 
-        auto dirLight = Lights.GetDirectionalLight();
         if (dirLight)
         {
             // Keep track of the last split distance
@@ -300,13 +301,14 @@ namespace C3D
             // Obtain our current direction light's direction
             m_cullingData.lightDirection = glm::normalize(vec3(dirLight->data.direction));
 
+            // Get the view-projection matrix
+            mat4 shadowDistProjection = glm::perspective(viewport.GetFov(), viewport.GetAspectRatio(), nearClip, farClip);
+            mat4 camViewProjection    = glm::transpose(shadowDistProjection * camera->GetViewMatrix());
+
             for (u32 c = 0; c < MAX_SHADOW_CASCADE_COUNT; c++)
             {
                 auto& cascade        = m_cascadeData[c];
                 cascade.cascadeIndex = c;
-
-                // Get the view-projection matrix
-                mat4 camViewProjection = glm::transpose(viewport.GetProjection() * camera->GetViewMatrix());
 
                 // Get the corners of the view frustum in world-space.
                 vec4 corners[8];

@@ -52,6 +52,20 @@ namespace C3D::UI_2D
         return true;
     }
 
+    void QuadComponent::OnPrepareRender(Component& self)
+    {
+        if (isDirty)
+        {
+            auto& descriptions = UI2D.GetAtlasDescriptions(atlasID);
+
+            GeometryUtils::RegenerateUIQuadGeometry(static_cast<Vertex2D*>(geometry->vertices), size, descriptions.size, atlasMin,
+                                                    atlasMax);
+
+            Renderer.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices, false);
+            isDirty = false;
+        }
+    }
+
     void QuadComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
     {
         // Apply instance
@@ -81,13 +95,8 @@ namespace C3D::UI_2D
 
     void QuadComponent::OnResize(Component& self, const u16vec2& _size)
     {
-        size = _size;
-
-        auto& descriptions = UI2D.GetAtlasDescriptions(atlasID);
-
-        GeometryUtils::RegenerateUIQuadGeometry(static_cast<Vertex2D*>(geometry->vertices), size, descriptions.size, atlasMin, atlasMax);
-
-        Renderer.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices);
+        size    = _size;
+        isDirty = true;
     }
 
     void QuadComponent::Destroy(Component& self)

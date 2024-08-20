@@ -54,6 +54,19 @@ namespace C3D::UI_2D
         return true;
     }
 
+    void NineSliceComponent::OnPrepareRender(Component& self)
+    {
+        if (isDirty)
+        {
+            auto& descriptions = UI2D.GetAtlasDescriptions(atlasID);
+            GeometryUtils::RegenerateUINineSliceGeometry(static_cast<Vertex2D*>(geometry->vertices), newSize, cornerSize, descriptions.size,
+                                                         descriptions.cornerSize, atlasMin, atlasMax);
+
+            Renderer.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices, false);
+            isDirty = false;
+        }
+    }
+
     void NineSliceComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
     {
         // Apply instance
@@ -80,11 +93,8 @@ namespace C3D::UI_2D
 
     void NineSliceComponent::OnResize(Component& self, const u16vec2& size)
     {
-        auto& descriptions = UI2D.GetAtlasDescriptions(atlasID);
-        GeometryUtils::RegenerateUINineSliceGeometry(static_cast<Vertex2D*>(geometry->vertices), size, cornerSize, descriptions.size,
-                                                     descriptions.cornerSize, atlasMin, atlasMax);
-
-        Renderer.UpdateGeometryVertices(*geometry, 0, geometry->vertexCount, geometry->vertices);
+        newSize = size;
+        isDirty = true;
     }
 
     void NineSliceComponent::Destroy(Component& self)

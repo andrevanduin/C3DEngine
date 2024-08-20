@@ -10,11 +10,14 @@ namespace C3D::UI_2D
         GeometryRenderData renderData;
         u8 id = 0;
 
+        bool isDirty = true;
+
         u16vec2 size;
         f32 offsetX = 0.0f;
         f32 offsetY = 0.0f;
 
         bool Initialize(Component& self, const char* name, const u16vec2& _size);
+        void OnPrepareRender(Component& self);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
         void ResetClipping(Component& self);
 

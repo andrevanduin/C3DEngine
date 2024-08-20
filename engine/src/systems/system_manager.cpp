@@ -20,14 +20,30 @@ namespace C3D
         m_allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
     }
 
+    bool SystemManager::OnPrepareRender(FrameData& frameData)
+    {
+        for (const auto system : m_systems)
+        {
+            if (!system->OnPrepareRender(frameData))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     void SystemManager::OnShutdown()
     {
         INFO_LOG("Shutting down all Systems.");
 
         for (const auto system : m_systems)
         {
-            system->OnShutdown();
-            m_allocator.Delete(system);
+            if (system)
+            {
+                system->OnShutdown();
+                m_allocator.Delete(system);
+            }
         }
 
         m_allocator.Destroy();

@@ -71,6 +71,8 @@ namespace C3D
 
         [[nodiscard]] u64 GetAllocCount(u8 allocatorId = 0) const;
 
+        [[nodiscard]] u64 GetAllocCount(MemoryType memoryType, u8 allocatorId = 0) const;
+
         [[nodiscard]] u64 GetMemoryUsage(MemoryType memoryType, u8 allocatorId = DYNAMIC_ALLOCATOR_ID) const;
 
         [[nodiscard]] u64 GetRequestedMemoryUsage(MemoryType memoryType, u8 allocatorId = DYNAMIC_ALLOCATOR_ID) const;

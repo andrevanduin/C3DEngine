@@ -301,6 +301,9 @@ namespace C3D
 
         VK_CHECK(vkCreateRenderPass(m_context->device.GetLogical(), &createInfo, m_context->allocator, &handle));
 
+        auto name = String::FromFormat("VULKAN_RENDERPASS_{}", config.name);
+        VulkanUtils::SetDebugObjectName(m_context, VK_OBJECT_TYPE_RENDER_PASS, handle, name);
+
         if (colorAttachmentReferences)
         {
             Memory.Free(colorAttachmentReferences);
@@ -385,14 +388,7 @@ namespace C3D
         vkCmdBeginRenderPass(commandBuffer->handle, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
         commandBuffer->state = VulkanCommandBufferState::InRenderPass;
 
-#ifdef _DEBUG
-        f32 r      = Random.Generate(0.0f, 1.0f);
-        f32 g      = Random.Generate(0.0f, 1.0f);
-        f32 b      = Random.Generate(0.0f, 1.0f);
-        vec4 color = { r, g, b, 1.0f };
-#endif
-
-        VK_BEGIN_CMD_DEBUG_LABEL(m_context, commandBuffer->handle, m_name, color);
+        Renderer.BeginDebugLabel(m_name, Random.GenerateColor());
     }
 
     void VulkanRenderpass::End(VulkanCommandBuffer* commandBuffer) const
@@ -400,6 +396,6 @@ namespace C3D
         vkCmdEndRenderPass(commandBuffer->handle);
         commandBuffer->state = VulkanCommandBufferState::Recording;
 
-        VK_END_CMD_DEBUG_LABEL(m_context, commandBuffer->handle);
+        Renderer.EndDebugLabel();
     }
 }  // namespace C3D

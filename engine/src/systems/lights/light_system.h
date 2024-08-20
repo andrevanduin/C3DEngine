@@ -14,8 +14,14 @@ namespace C3D
     /** @brief Shader data required for a directional light */
     struct DirectionalLightData
     {
-        vec4 color     = vec4(1.0);
-        vec4 direction = vec4(0);  // Ignore w (only for 16 byte alignment)
+        vec4 color;
+        vec4 direction;
+
+        f32 shadowDistance;
+        f32 shadowFadeDistance;
+        f32 shadowSplitMultiplier;
+
+        vec2 padding = vec2(0);
     };
 
     /** @brief Structure for a directional light (typically used to emulate a sun) */

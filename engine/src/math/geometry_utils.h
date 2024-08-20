@@ -7,9 +7,9 @@
 namespace C3D::GeometryUtils
 {
     template <typename T>
-    void GenerateNormals(DynamicArray<T>& vertices, const DynamicArray<u32>& indices)
+    void GenerateNormals(DynamicArray<T>& vertices, const DynamicArray<u32>& indices, u32 indexCount)
     {
-        for (u32 i = 0; i < indices.Size(); i += 3)
+        for (u32 i = 0; i < indexCount; i += 3)
         {
             const u32 i0 = indices[i + 0];
             const u32 i1 = indices[i + 1];
@@ -28,7 +28,7 @@ namespace C3D::GeometryUtils
     }
 
     void GenerateTangents(DynamicArray<Vertex3D>& vertices, const DynamicArray<u32>& indices);
-    void GenerateTerrainTangents(DynamicArray<TerrainVertex>& vertices, const DynamicArray<u32>& indices);
+    void GenerateTerrainTangents(DynamicArray<TerrainVertex>& vertices, const DynamicArray<u32>& indices, u32 indexCount);
 
     void DeduplicateVertices(GeometryConfig& config);
 

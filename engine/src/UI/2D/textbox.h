@@ -42,6 +42,7 @@ namespace C3D::UI_2D
 
         bool Initialize(Component& self, const Config& config);
         void OnUpdate(Component& self);
+        void OnPrepareRender(Component& self);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
         void OnResize(Component& self);
 

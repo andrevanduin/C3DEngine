@@ -12,10 +12,11 @@ namespace C3D::UI_2D
         Component component;
 
         component.MakeInternal<InternalData>(pAllocator);
-        component.onInitialize = &Initialize;
-        component.onDestroy    = &Destroy;
-        component.onRender     = &OnRender;
-        component.onClick      = &DefaultMethods::OnClick;
+        component.onInitialize    = &Initialize;
+        component.onDestroy       = &Destroy;
+        component.onPrepareRender = &OnPrepareRender;
+        component.onRender        = &OnRender;
+        component.onClick         = &DefaultMethods::OnClick;
 
         return component;
     }
@@ -25,6 +26,12 @@ namespace C3D::UI_2D
         auto& data = self.GetInternal<InternalData>();
         data.nineSlice.Initialize(self, "Button", AtlasIDButton, config.size, config.cornerSize);
         return true;
+    }
+
+    void Button::OnPrepareRender(Component& self)
+    {
+        auto& data = self.GetInternal<InternalData>();
+        data.nineSlice.OnPrepareRender(self);
     }
 
     void Button::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)

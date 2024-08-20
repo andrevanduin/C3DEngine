@@ -9,10 +9,7 @@
 #include "vulkan_renderpass.h"
 #include "vulkan_swapchain.h"
 
-#define VK_CHECK(expr)                   \
-    {                                    \
-        C3D_ASSERT((expr) == VK_SUCCESS) \
-    }
+#define VK_CHECK(expr) { C3D_ASSERT((expr) == VK_SUCCESS) }
 
 struct shaderc_compiler;
 
@@ -40,6 +37,9 @@ namespace C3D
         VkInstance instance;
         VkSurfaceKHR surface;
         VkAllocationCallbacks* allocator = nullptr;
+
+        /** @brief A boolean indicating if we should be using validation layers. */
+        bool useValidationLayers = false;
 
         VulkanDevice device;
         VulkanSwapchain swapchain;

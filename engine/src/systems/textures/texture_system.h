@@ -158,7 +158,8 @@ namespace C3D
         Texture m_defaultCubeTexture;
         Texture m_defaultTerrainTexture;
 
-        HashMap<String, TextureReference> m_registeredTextures;
+        DynamicArray<TextureReference> m_textures;
+        HashMap<String, u32> m_nameToTextureIndexMap;
 
         Array<LoadingTexture, MAX_LOADING_TEXTURES> m_loadingTextures;
         Array<LoadingArrayTexture, MAX_LOADING_TEXTURES> m_loadingArrayTextures;

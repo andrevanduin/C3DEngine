@@ -23,10 +23,11 @@ namespace C3D
 
     enum RendererViewMode : u8
     {
-        Default  = 0,
-        Lighting = 1,
-        Normals  = 2,
-        Cascades = 3,
+        Default   = 0,
+        Lighting  = 1,
+        Normals   = 2,
+        Cascades  = 3,
+        Wireframe = 4,
     };
 
     enum RendererConfigFlagBits : u8
@@ -35,6 +36,8 @@ namespace C3D
         FlagVSyncEnabled = 0x1,
         /** @brief Configure renderer to try to save power wherever possible (useful when on battery power for example). */
         FlagPowerSavingEnabled = 0x2,
+        /** @brief Configure the renderer to use validation layers (if supported by the backend). */
+        FlagUseValidationLayers = 0x4,
     };
 
     typedef u8 RendererConfigFlags;
@@ -78,7 +81,7 @@ namespace C3D
         Fragment,
         Compute
     };
-    
+
     struct ShaderStageConfig
     {
         ShaderStage stage = ShaderStage::None;

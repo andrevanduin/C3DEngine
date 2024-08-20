@@ -12,6 +12,8 @@ namespace C3D
 {
     class FrameData;
 
+    constexpr auto MATERIAL_SYSTEM_DEFAULT_MAX_MATERIALS = 128;
+
     constexpr auto DEFAULT_TERRAIN_MATERIAL_NAME = "default_terrain";
     constexpr auto DEFAULT_PBR_MATERIAL_NAME     = "default_pbr";
 
@@ -33,16 +35,16 @@ namespace C3D
 
     struct MaterialSystemConfig
     {
-        u32 maxMaterialCount;
+        u32 maxMaterials = MATERIAL_SYSTEM_DEFAULT_MAX_MATERIALS;
     };
 
     struct MaterialReference
     {
-        MaterialReference(bool shouldAutoRelease) : autoRelease(shouldAutoRelease) {}
+        MaterialReference(bool shouldAutoRelease, u32 index) : autoRelease(shouldAutoRelease) { material.id = index; }
 
-        u32 referenceCount = 1;
-        bool autoRelease;
         Material material;
+        u32 referenceCount = 1;
+        bool autoRelease   = false;
     };
 
     struct TerrainUniformLocations
@@ -151,8 +153,11 @@ namespace C3D
         void DestroyMaterial(Material& mat) const;
 
         Material m_defaultTerrainMaterial, m_defaultPbrMaterial;
+
         /** @brief HashMap to map names to material-references */
-        HashMap<String, MaterialReference> m_registeredMaterials;
+        HashMap<String, u32> m_nameToMaterialIndexMap;
+        /** @brief An array used to store our MaterialReferences */
+        DynamicArray<MaterialReference> m_materials;
 
         /** @brief Current irradiance and shadow textures. */
         Texture* m_currentIrradianceTexture = nullptr;

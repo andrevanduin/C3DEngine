@@ -16,8 +16,11 @@ struct SimpleSceneSkyboxConfig
 struct SimpleSceneDirectionalLightConfig
 {
     C3D::String name;
-    vec4 color;
-    vec4 direction;
+    vec4 color                  = vec4(1.0);
+    vec4 direction              = vec4(0);  // Ignore w (only for 16 byte alignment)
+    float shadowDistance        = 200.0f;
+    float shadowFadeDistance    = 20.0f;
+    float shadowSplitMultiplier = 0.95f;
 };
 
 struct SimpleSceneTerrainConfig

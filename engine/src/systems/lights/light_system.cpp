@@ -11,7 +11,7 @@ namespace C3D
         INFO_LOG("Initializing.");
 
         // NOTE: Perform some kind of config/init here?
-        m_pointLights.Create(128);
+        m_pointLights.Create();
         m_initialized = true;
         return true;
     }

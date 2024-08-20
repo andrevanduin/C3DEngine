@@ -5,6 +5,7 @@ version = 2
 name = Shader.Builtin.Terrain
 depthTest  = true
 depthWrite = true
+supportsWireframe = true
 maxInstances = 5
 [/general]
 
@@ -28,7 +29,7 @@ projection = mat4
 view = mat4
 lightSpaces = mat4[4]
 cascadeSplits = vec4
-dirLight = struct32
+dirLight = struct48
 viewPosition = vec3
 mode = u32
 usePCF = u32

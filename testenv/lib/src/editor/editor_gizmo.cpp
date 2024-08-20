@@ -80,6 +80,16 @@ bool EditorGizmo::Unload()
     return true;
 }
 
+void EditorGizmo::OnPrepareRender(C3D::FrameData& frameData)
+{
+    if (m_isDirty)
+    {
+        auto& data = m_modeData[ToUnderlying(m_mode)];
+        Renderer.UpdateGeometryVertices(data.geometry, 0, data.vertices.Size(), data.vertices.GetData(), false);
+        m_isDirty = false;
+    }
+}
+
 void EditorGizmo::Update() {}
 
 void EditorGizmo::Refresh()
@@ -625,7 +635,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
                     }
                 }
 
-                Renderer.UpdateGeometryVertices(data.geometry, 0, data.vertices.Size(), data.vertices.GetData());
+                m_isDirty = true;
             }
         }
         else if (m_mode == EditorGizmoMode::Rotate)
@@ -691,7 +701,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
                 }
             }
 
-            Renderer.UpdateGeometryVertices(data.geometry, 0, data.vertices.Size(), data.vertices.GetData());
+            m_isDirty = true;
         }
     }
 }

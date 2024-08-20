@@ -180,14 +180,14 @@ namespace C3D
 
     struct ShaderUniform
     {
-        u64 offset;
-        u16 location;
-        u16 index;
-        u16 size;
-        u8 setIndex;
-        u8 arrayLength;
-        ShaderScope scope;
-        ShaderUniformType type;
+        u64 offset             = INVALID_ID_U64;
+        u16 location           = INVALID_ID_U16;
+        u16 index              = INVALID_ID_U16;
+        u16 size               = 0;
+        u8 setIndex            = INVALID_ID_U8;
+        u8 arrayLength         = 0;
+        ShaderScope scope      = ShaderScope::None;
+        ShaderUniformType type = ShaderUniformType::Uniform_Unknown;
     };
 
     struct ShaderAttribute

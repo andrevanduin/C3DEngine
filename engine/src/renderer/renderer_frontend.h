@@ -141,7 +141,8 @@ namespace C3D
         bool CreateGeometry(Geometry& geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount,
                             const void* indices) const;
         bool UploadGeometry(Geometry& geometry);
-        void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) const;
+        void UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices,
+                                    bool includeInFrameWorkload) const;
         void DestroyGeometry(Geometry& geometry) const;
 
         void DrawGeometry(const GeometryRenderData& data) const;
@@ -150,6 +151,7 @@ namespace C3D
         void EndRenderpass(void* pass) const;
 
         bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const;
+        bool ReloadShader(Shader& shader) const;
         void DestroyShader(Shader& shader) const;
 
         bool InitializeShader(Shader& shader) const;
@@ -162,6 +164,15 @@ namespace C3D
         bool ShaderApplyGlobals(const FrameData& frameData, const Shader& shader, bool needsUpdate) const;
         bool ShaderApplyInstance(const FrameData& frameData, const Shader& shader, bool needsUpdate) const;
         bool ShaderApplyLocal(const FrameData& frameData, const Shader& shader) const;
+
+        /**
+         * @brief Enables/disables wireframe rendering for the provided shader.
+         *
+         * @param shader The shader for which you want to enable/disable wireframe
+         * @param enabled A boolean indicating if wireframe should be enabled or disabled
+         * @return True if successfully switched; false if unsupported or failed
+         */
+        bool ShaderSetWireframe(Shader& shader, bool enabled) const;
 
         bool AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config, u32& outInstanceId) const;
         bool ReleaseShaderInstanceResources(const Shader& shader, u32 instanceId) const;
@@ -177,20 +188,37 @@ namespace C3D
         void CreateRenderpassInternals(const RenderpassConfig& config, void** internalData) const;
         void DestroyRenderpassInternals(void* internalData) const;
 
-        [[nodiscard]] Texture* GetWindowAttachment(u8 index) const;
-        [[nodiscard]] Texture* GetDepthAttachment(u8 index) const;
-
-        [[nodiscard]] u8 GetWindowAttachmentIndex() const;
-        [[nodiscard]] u8 GetWindowAttachmentCount() const;
-
         [[nodiscard]] RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
                                                        RenderBufferTrackType trackType) const;
 
         bool AllocateInRenderBuffer(RenderBufferType type, u64 size, u64& outOffset);
         bool FreeInRenderBuffer(RenderBufferType type, u64 size, u64 offset);
-        bool LoadRangeInRenderBuffer(RenderBufferType type, u64 offset, u64 size, const void* data);
+        bool LoadRangeInRenderBuffer(RenderBufferType type, u64 offset, u64 size, const void* data, bool includeInFrameWorkload);
 
         bool DestroyRenderBuffer(RenderBuffer* buffer) const;
+
+        /**
+         * @brief Begins the marking of a section of render commands under the provided name and color.
+         * Each renderer backend will have a different implementation of this (or possibly an empty implementation)
+         * NOTE: For non-debug builds this method becomes a no-op
+         *
+         * @param text The debug text/name you want to use for your label
+         * @param color The color of your label
+         */
+        void BeginDebugLabel(const String& text, const vec3& color) const;
+
+        /**
+         * @brief Ends the last debug section of commands.
+         * Each renderer backend will have a different implementation of this (or possibly an empty implementation)
+         * NOTE: For non-debug builds this method becomes a no-op
+         */
+        void EndDebugLabel() const;
+
+        /**
+         * @brief Wait for the renderer backend to be completly idle.
+         * NOTE: This incurs a lot of overhead so only use this method in non-time critcal code
+         */
+        void WaitForIdle() const;
 
         const Viewport* GetActiveViewport() const;
         void SetActiveViewport(const Viewport* viewport);
@@ -199,6 +227,12 @@ namespace C3D
 
         void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) const;
         [[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const;
+
+        [[nodiscard]] Texture* GetWindowAttachment(u8 index) const;
+        [[nodiscard]] Texture* GetDepthAttachment(u8 index) const;
+
+        [[nodiscard]] u8 GetWindowAttachmentIndex() const;
+        [[nodiscard]] u8 GetWindowAttachmentCount() const;
 
     private:
         u8 m_windowRenderTargetCount = 0;

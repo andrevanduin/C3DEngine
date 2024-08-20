@@ -80,6 +80,8 @@ namespace C3D
 
         bool HasSupportFor(VulkanDeviceSupportFlagBits feature) const;
 
+        bool SupportsFillmodeNonSolid() const { return m_features.fillModeNonSolid; }
+
         [[nodiscard]] i32 FindMemoryIndex(const u32 typeFilter, const u32 propertyFlags) const;
 
         VkDevice GetLogical() const { return m_logicalDevice; }

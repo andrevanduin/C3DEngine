@@ -5,21 +5,25 @@ layout(location = 0) out vec4 outColor;
 
 struct DirectionalLight 
 {
-	vec4 color;
-	vec4 direction;
+    vec4 color;
+    vec4 direction;
+    float shadowDistance;
+    float shadowFadeDistance;
+    float shadowSplitMultiplier;
+    float padding;
 };
 
 struct PointLight 
 {
-	vec4 color;
-	vec4 position;
-	// Usually 1, make sure denominator never gets smaller than 1
-	float fConstant;
-	// Reduces light intensity linearly
-	float linear;
-	// Makes the light fall of slower at longer dinstances
-	float quadratic;
-	float padding;
+    vec4 color;
+    vec4 position;
+    // Usually 1, make sure denominator never gets smaller than 1
+    float fConstant;
+    // Reduces light intensity linearly
+    float linear;
+    // Makes the light fall of slower at longer dinstances
+    float quadratic;
+    float padding;
 };
 
 const int POINT_LIGHT_MAX = 10;
@@ -28,13 +32,13 @@ const int MAX_SHADOW_CASCADES = 4;
 
 layout(set = 0, binding = 0) uniform globalUniformObject
 {
-	mat4 projection;
-	mat4 view;
+    mat4 projection;
+    mat4 view;
     mat4 lightSpace[MAX_SHADOW_CASCADES];
     vec4 ambientColor;
     DirectionalLight dirLight;
-	vec3 viewPosition;
-	int mode;
+    vec3 viewPosition;
+    int mode;
     int usePcf;
     float bias;
     vec2 padding;
@@ -42,25 +46,25 @@ layout(set = 0, binding = 0) uniform globalUniformObject
 
 struct MaterialPhongProperties
 {
-	vec4 diffuseColor;
-	vec3 padding;
-	float shininess;
+    vec4 diffuseColor;
+    vec3 padding;
+    float shininess;
 };
 
 struct MaterialTerrainProperties
 {
-	MaterialPhongProperties materials[MAX_MATERIALS];
-	vec3 padding;
-	int numMaterials;
-	vec4 padding2;
+    MaterialPhongProperties materials[MAX_MATERIALS];
+    vec3 padding;
+    int numMaterials;
+    vec4 padding2;
 };
 
 layout(set = 1, binding = 0) uniform instanceUniformObject
 {
-	MaterialTerrainProperties properties;
-	PointLight pLights[POINT_LIGHT_MAX];
-	vec3 padding;
-	int numPLights;
+    MaterialTerrainProperties properties;
+    PointLight pLights[POINT_LIGHT_MAX];
+    vec3 padding;
+    int numPLights;
 } instanceUbo;
 
 // Material texture indices
@@ -85,13 +89,13 @@ layout(location = 2) in struct dto
 {
     vec4 lightSpaceFragPosition[MAX_SHADOW_CASCADES];
     vec4 cascadeSplits;
-	vec2 texCoord;
-	vec3 normal;
-	vec3 viewPosition;
-	vec3 fragPosition;
-	vec4 color;
-	vec3 tangent;
-	vec4 materialWeights;
+    vec2 texCoord;
+    vec3 normal;
+    vec3 viewPosition;
+    vec3 fragPosition;
+    vec4 color;
+    vec3 tangent;
+    vec4 materialWeights;
     float bias;
     vec3 padding;
 } inDto;
@@ -193,6 +197,18 @@ void main()
     }
     float shadow = CalculateShadow(inDto.lightSpaceFragPosition[cascadeIndex], cascadeIndex);
 
+    // Fade out the shadow map past a certain distance
+    float fadeStart = globalUbo.dirLight.shadowDistance;
+    float fadeDistance = globalUbo.dirLight.shadowFadeDistance; 
+
+    // The end of the fade-out range
+    float fadeEnd = fadeStart + fadeDistance;
+
+    float zClamp = clamp(length(inDto.viewPosition - inDto.fragPosition), fadeStart, fadeEnd);
+    float fadeFactor = (fadeEnd - zClamp) / (fadeEnd - fadeStart + 0.00001); // Avoid a division by 0
+
+    shadow = clamp(shadow + (1.0 - fadeFactor), 0.0, 1.0);
+
 	// Calculate reflectance at normal incidence; if dia-electric (plastic-like) use baseReflectivity
     // of 0.04 and if it's a metal, use the albedo color as baseReflectivity.
     vec3 baseReflectivity = vec3(0.04);
@@ -263,10 +279,14 @@ void main()
 		// Ensure the alpha is based on the albedo's original alpha value.
 		outColor = vec4(color, albedo.a);
 	}
-	else // inMode == 2 (normals-only)
+	else if (inMode == 2) // (normals-only)
 	{
 		outColor = vec4(abs(normal), 1.0);
 	}
+    else if (inMode == 4) // Wireframe
+    {
+        outColor = vec4(1.0, 0.0, 1.0, 1.0); // Solid magenta
+    }
 }
 
 // Percentage-Closer Filtering

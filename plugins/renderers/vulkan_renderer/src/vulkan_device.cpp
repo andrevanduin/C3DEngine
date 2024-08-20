@@ -584,12 +584,6 @@ namespace C3D
             return false;
         }
 
-        if (!m_features.fillModeNonSolid)
-        {
-            ERROR_LOG("Device does not support FillModeNonSolid which is required.");
-            return false;
-        }
-
         return true;
     }
 

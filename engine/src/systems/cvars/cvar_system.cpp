@@ -26,7 +26,7 @@ namespace C3D
         m_config   = config;
         m_pConsole = config.pConsole;
 
-        m_cVars.Create(config.maxCVars);
+        m_cVars.Create();
 
         if (!Create("vsync", true)) return false;
 

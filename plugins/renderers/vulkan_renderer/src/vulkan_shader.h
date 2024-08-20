@@ -135,6 +135,8 @@ namespace C3D
         VulkanBuffer uniformBuffer;
         /** @brief An array of pipelines used by this shader. */
         DynamicArray<VulkanPipeline*> pipelines;
+        /** @brief An array of wireframe pipelines used by this shader.*/
+        DynamicArray<VulkanPipeline*> wireframePipelines;
         /** @brief The index of the currently bound pipeline. */
         u8 boundPipelineIndex = INVALID_ID_U8;
         /** @brief The currently selected topology. */

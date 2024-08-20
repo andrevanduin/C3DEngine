@@ -97,14 +97,15 @@ namespace C3D
         virtual void CreateTexture(const u8* pixels, Texture* texture) = 0;
         virtual void CreateWritableTexture(Texture* texture)           = 0;
 
-        virtual void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels)  = 0;
-        virtual void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory) = 0;
-        virtual void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba)            = 0;
+        virtual void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels, bool includeInFrameWorkload) = 0;
+        virtual void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory)                             = 0;
+        virtual void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba)                                        = 0;
 
         virtual void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) = 0;
         virtual void DestroyTexture(Texture* texture)                             = 0;
 
         virtual bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const = 0;
+        virtual bool ReloadShader(Shader& shader)                                               = 0;
         virtual void DestroyShader(Shader& shader)                                              = 0;
 
         virtual bool InitializeShader(Shader& shader) = 0;
@@ -117,6 +118,14 @@ namespace C3D
         virtual bool ShaderApplyGlobals(const FrameData& frameData, const Shader& shader, bool needsUpdate)  = 0;
         virtual bool ShaderApplyInstance(const FrameData& frameData, const Shader& shader, bool needsUpdate) = 0;
         virtual bool ShaderApplyLocal(const FrameData& frameData, const Shader& shader)                      = 0;
+
+        /**
+         * @brief Queries if the provided shader supports rendering in wireframe mode.
+         *
+         * @param shader The shader you want to query
+         * @return True if the shader supports wireframe; false otherwise
+         */
+        virtual bool ShaderSupportsWireframe(const Shader& shader) = 0;
 
         virtual bool AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config,
                                                     u32& outInstanceId)            = 0;
@@ -137,6 +146,13 @@ namespace C3D
         virtual RenderBuffer* CreateRenderBuffer(const String& name, RenderBufferType type, u64 totalSize,
                                                  RenderBufferTrackType trackType) = 0;
         virtual bool DestroyRenderBuffer(RenderBuffer* buffer)                    = 0;
+
+        virtual void WaitForIdle() = 0;
+
+        /** @brief Begins a debug label with the provided text and color. */
+        virtual void BeginDebugLabel(const String& text, const vec3& color) = 0;
+        /** @brief Ends the previous debug label. */
+        virtual void EndDebugLabel() = 0;
 
         virtual Texture* GetWindowAttachment(u8 index) = 0;
         virtual Texture* GetDepthAttachment(u8 index)  = 0;

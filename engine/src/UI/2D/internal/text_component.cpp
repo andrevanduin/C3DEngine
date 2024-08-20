@@ -89,8 +89,82 @@ namespace C3D::UI_2D
         vertices = DynamicArray<Vertex2D>();
         indices  = DynamicArray<u32>();
 
-        Regenerate(self);
+        RecalculateGeometry(self);
+
         return true;
+    }
+
+    void TextComponent::OnPrepareRender(Component& self)
+    {
+        if (isDirty)
+        {
+            // We need enough vertex and index buffer space for our new pending capacity
+            const u64 vertexBufferSize = sizeof(Vertex2D) * vertices.Size();
+            const u64 indexBufferSize  = sizeof(u32) * indices.Size();
+
+            const u32 neededCharacterCapacity = vertices.Size() / VERTICES_PER_QUAD;
+            bool needsRealloc                 = neededCharacterCapacity > characterCapacity;
+
+            if (needsRealloc)
+            {
+                // Our new data is larger than our previous data so we must reallocate in our buffers
+                if (characterCapacity > 0)
+                {
+                    // We previously had some data which we need to free
+                    const u64 oldVertexBufferSize = sizeof(Vertex2D) * characterCapacity * VERTICES_PER_QUAD;
+                    const u64 oldIndexBufferSize  = sizeof(u32) * characterCapacity * INDICES_PER_QUAD;
+
+                    // So first we free the current allocation for vertices
+                    if (!Renderer.FreeInRenderBuffer(RenderBufferType::Vertex, oldVertexBufferSize,
+                                                     renderable.renderData.vertexBufferOffset))
+                    {
+                        ERROR_LOG("Failed to free in Render's Vertex Buffer with size: {} and offset: {}.", oldVertexBufferSize,
+                                  renderable.renderData.vertexBufferOffset);
+                    }
+                    // And our indices
+                    if (!Renderer.FreeInRenderBuffer(RenderBufferType::Index, oldIndexBufferSize, renderable.renderData.indexBufferOffset))
+                    {
+                        ERROR_LOG("Failed to free in Render's Index Buffer with size: {} and offset: {}.", oldIndexBufferSize,
+                                  renderable.renderData.indexBufferOffset);
+                    }
+                }
+
+                // We allocate new bigger capacity for our vertices and override our newVertexBufferOffset
+                if (!Renderer.AllocateInRenderBuffer(RenderBufferType::Vertex, vertexBufferSize, renderable.renderData.vertexBufferOffset))
+                {
+                    ERROR_LOG("Failed to allocate in Render's Vertex Buffer width size: {}", vertexBufferSize);
+                }
+                // And our indices (and override our newIndexBufferOffset)
+                if (!Renderer.AllocateInRenderBuffer(RenderBufferType::Index, indexBufferSize, renderable.renderData.indexBufferOffset))
+                {
+                    ERROR_LOG("Failed to allocate in Render's Index Buffer width size: {}", indexBufferSize);
+                }
+
+                // And store our new capacity and vertex/index buffer offset
+                characterCapacity = neededCharacterCapacity;
+            }
+
+            // Only load ranges if we actually have data
+            if (vertexBufferSize > 0)
+            {
+                // Load up our vertex and index buffer data
+                if (!Renderer.LoadRangeInRenderBuffer(RenderBufferType::Vertex, renderable.renderData.vertexBufferOffset, vertexBufferSize,
+                                                      vertices.GetData(), true))
+                {
+                    ERROR_LOG("Failed to LoadRange() for vertex buffer.");
+                }
+                if (!Renderer.LoadRangeInRenderBuffer(RenderBufferType::Index, renderable.renderData.indexBufferOffset, indexBufferSize,
+                                                      indices.GetData(), true))
+                {
+                    ERROR_LOG("Failed to LoadRange() for index buffer.");
+                }
+            }
+
+            renderable.renderData.vertexCount = vertices.Size();
+            renderable.renderData.indexCount  = indices.Size();
+
+            isDirty = false;
+        }
     }
 
     void TextComponent::OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations)
@@ -121,7 +195,7 @@ namespace C3D::UI_2D
         Renderer.DrawGeometry(renderable.renderData);
     }
 
-    void TextComponent::Regenerate(Component& self)
+    void TextComponent::RecalculateGeometry(Component& self)
     {
         const u64 utf8Size = text.SizeUtf8();
 
@@ -129,44 +203,6 @@ namespace C3D::UI_2D
         const u64 indexCount       = utf8Size * INDICES_PER_QUAD;
         const u64 vertexBufferSize = sizeof(Vertex2D) * vertexCount;
         const u64 indexBufferSize  = sizeof(u32) * indexCount;
-
-        if (utf8Size > capacity)
-        {
-            // New text is larger then the current capacity we allocated for
-            if (capacity > 0)
-            {
-                // If we previously had some data we need to free it
-                const u64 oldVertexBufferSize = sizeof(Vertex2D) * capacity * VERTICES_PER_QUAD;
-                const u64 oldIndexBufferSize  = sizeof(u32) * capacity * INDICES_PER_QUAD;
-
-                // So first we free the current allocation for vertices
-                if (!Renderer.FreeInRenderBuffer(RenderBufferType::Vertex, oldVertexBufferSize, renderable.renderData.vertexBufferOffset))
-                {
-                    ERROR_LOG("Failed to free in Render's Vertex Buffer with size: {} and offset: {}.", oldVertexBufferSize,
-                              renderable.renderData.vertexBufferOffset);
-                }
-                // And our indices
-                if (!Renderer.FreeInRenderBuffer(RenderBufferType::Index, oldIndexBufferSize, renderable.renderData.indexBufferOffset))
-                {
-                    ERROR_LOG("Failed to free in Render's Index Buffer with size: {} and offset: {}.", oldIndexBufferSize,
-                              renderable.renderData.indexBufferOffset);
-                }
-            }
-
-            // Then we allocate new bigger capacity for our vertices
-            if (!Renderer.AllocateInRenderBuffer(RenderBufferType::Vertex, vertexBufferSize, renderable.renderData.vertexBufferOffset))
-            {
-                ERROR_LOG("Failed to allocate in Render's Vertex Buffer width size: {}", vertexBufferSize);
-            }
-            // And our indices
-            if (!Renderer.AllocateInRenderBuffer(RenderBufferType::Index, indexBufferSize, renderable.renderData.indexBufferOffset))
-            {
-                ERROR_LOG("Failed to allocate in Render's Index Buffer width size: {}", indexBufferSize);
-            }
-
-            // Save off our new max capacity
-            capacity = utf8Size;
-        }
 
         f32 x = 0, y = 0;
 
@@ -263,56 +299,43 @@ namespace C3D::UI_2D
             uc++;
         }
 
-        if (utf8Size > 0)
-        {
-            // Load up our vertex and index buffer data
-            if (!Renderer.LoadRangeInRenderBuffer(RenderBufferType::Vertex, renderable.renderData.vertexBufferOffset, vertexBufferSize,
-                                                  vertices.GetData()))
-            {
-                ERROR_LOG("Failed to LoadRange() for vertex buffer.");
-            }
-            if (!Renderer.LoadRangeInRenderBuffer(RenderBufferType::Index, renderable.renderData.indexBufferOffset, indexBufferSize,
-                                                  indices.GetData()))
-            {
-                ERROR_LOG("Failed to LoadRange() for index buffer.");
-            }
-        }
-
         renderable.renderData.vertexSize      = sizeof(Vertex2D);
         renderable.renderData.indexSize       = sizeof(u32);
-        renderable.renderData.vertexCount     = vertices.Size();
-        renderable.renderData.indexCount      = indices.Size();
         renderable.renderData.windingInverted = false;
+        isDirty                               = true;
     }
 
     void TextComponent::SetText(Component& self, const char* _text)
     {
         text = _text;
-        Regenerate(self);
+        RecalculateGeometry(self);
     }
 
     void TextComponent::Insert(Component& self, u32 index, char c)
     {
         text.Insert(index, c);
-        Regenerate(self);
+        RecalculateGeometry(self);
     }
 
     void TextComponent::Insert(Component& self, u32 index, const String& t)
     {
         text.Insert(index, t);
-        Regenerate(self);
+        RecalculateGeometry(self);
     }
 
     void TextComponent::RemoveAt(Component& self, u32 index)
     {
         text.RemoveAt(index);
-        Regenerate(self);
+        RecalculateGeometry(self);
     }
 
     void TextComponent::RemoveRange(Component& self, u32 characterIndexStart, u32 characterIndexEnd, bool regenerate)
     {
         text.RemoveRange(characterIndexStart, characterIndexEnd);
-        if (regenerate) Regenerate(self);
+        if (regenerate)
+        {
+            RecalculateGeometry(self);
+        }
     }
 
     void TextComponent::Destroy(Component& self)
@@ -326,13 +349,13 @@ namespace C3D::UI_2D
             Renderer.ReleaseShaderInstanceResources(UI2D.GetShader(), renderable.instanceId);
         }
 
-        const auto vertexSize = capacity * VERTICES_PER_QUAD * sizeof(Vertex2D);
+        const auto vertexSize = characterCapacity * VERTICES_PER_QUAD * sizeof(Vertex2D);
         if (!Renderer.FreeInRenderBuffer(RenderBufferType::Vertex, vertexSize, renderable.renderData.vertexBufferOffset))
         {
             ERROR_LOG("Failed to Free in Renderer's Vertex buffer.");
         }
 
-        const auto indexSize = capacity * INDICES_PER_QUAD * sizeof(u32);
+        const auto indexSize = characterCapacity * INDICES_PER_QUAD * sizeof(u32);
         if (!Renderer.FreeInRenderBuffer(RenderBufferType::Index, indexSize, renderable.renderData.indexBufferOffset))
         {
             ERROR_LOG("Failed to Free in Renderer's Index buffer.");

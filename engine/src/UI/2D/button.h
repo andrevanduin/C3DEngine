@@ -16,6 +16,8 @@ namespace C3D::UI_2D
         Component Create(const DynamicAllocator* pAllocator);
 
         bool Initialize(Component& self, const Config& config);
+
+        void OnPrepareRender(Component& self);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
 
         void Destroy(Component& self, const DynamicAllocator* pAllocator);

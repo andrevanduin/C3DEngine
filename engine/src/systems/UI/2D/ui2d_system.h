@@ -36,6 +36,7 @@ namespace C3D
         void Prepare(Viewport* viewport);
 
         bool OnUpdate(const FrameData& frameData) override;
+        bool OnPrepareRender(FrameData& frameData) override;
 
         /* ------ Components Start ------ */
 

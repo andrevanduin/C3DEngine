@@ -67,6 +67,23 @@ namespace C3D
 
     bool DebugBox3D::Update() { return true; }
 
+    void DebugBox3D::OnPrepareRender(FrameData& frameData)
+    {
+        if (m_isDirty)
+        {
+            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData(), false);
+
+            m_geometry.generation++;
+            // Rollover to zero when we reach INVALID_ID_U16 again for the generation
+            if (m_geometry.generation == INVALID_ID_U16)
+            {
+                m_geometry.generation = 0;
+            }
+
+            m_isDirty = false;
+        }
+    }
+
     void DebugBox3D::SetParent(Transform* parent) { m_transform.SetParent(parent); }
 
     void DebugBox3D::SetPosition(const vec3& position) { m_transform.SetPosition(position); }
@@ -77,15 +94,6 @@ namespace C3D
         if (m_geometry.generation != INVALID_ID_U16 && !m_vertices.Empty())
         {
             UpdateVertexColor();
-
-            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
-
-            m_geometry.generation++;
-            // Rollover to zero when we reach INVALID_ID_U16 again for the generation
-            if (m_geometry.generation == INVALID_ID_U16)
-            {
-                m_geometry.generation = 0;
-            }
         }
     }
 
@@ -94,15 +102,6 @@ namespace C3D
         if (m_geometry.generation != INVALID_ID_U16 && !m_vertices.Empty())
         {
             RecalculateExtents(extents);
-
-            Renderer.UpdateGeometryVertices(m_geometry, 0, m_vertices.Size(), m_vertices.GetData());
-
-            m_geometry.generation++;
-            // Rollover to zero when we reach INVALID_ID_U16 again for the generation
-            if (m_geometry.generation == INVALID_ID_U16)
-            {
-                m_geometry.generation = 0;
-            }
         }
     }
 
@@ -112,6 +111,7 @@ namespace C3D
         {
             vert.color = m_color;
         }
+        m_isDirty = true;
     }
 
     void DebugBox3D::RecalculateExtents(const Extents3D& extents)
@@ -165,5 +165,7 @@ namespace C3D
             m_vertices[22].position = vec4(extents.max.x, extents.max.y, extents.min.z, 1.0f);
             m_vertices[23].position = vec4(extents.max.x, extents.max.y, extents.max.z, 1.0f);
         }
+
+        m_isDirty = true;
     }
 }  // namespace C3D

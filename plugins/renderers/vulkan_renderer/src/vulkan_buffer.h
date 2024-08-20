@@ -25,8 +25,8 @@ namespace C3D
         bool Resize(u64 newSize) override;
 
         bool Read(u64 offset, u64 size, void** outMemory) override;
-        bool LoadRange(u64 offset, u64 size, const void* data) override;
-        bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size) override;
+        bool LoadRange(u64 offset, u64 size, const void* data, bool includeInFrameWorkload) override;
+        bool CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size, bool includeInFrameWorkload) override;
 
         bool Draw(u64 offset, u32 elementCount, bool bindOnly) override;
 
@@ -37,7 +37,7 @@ namespace C3D
         VkBuffer handle;
 
     protected:
-        bool CopyRangeInternal(u64 srcOffset, VkBuffer dst, u64 dstOffset, u64 size) const;
+        bool CopyRangeInternal(u64 srcOffset, VkBuffer dst, u64 dstOffset, u64 size, bool includeInFrameWorkload) const;
 
         VkBufferUsageFlagBits m_usage;
 

@@ -69,7 +69,7 @@ namespace C3D
         m_components.Reserve(512);
 
         // Create our hashmap
-        m_componentMap.Create(1024);
+        m_componentMap.Create();
 
         m_pass = UI2DPass();
 
@@ -166,6 +166,18 @@ namespace C3D
             if (component.onUpdate)
             {
                 component.onUpdate(component);
+            }
+        }
+        return true;
+    }
+
+    bool UI2DSystem::OnPrepareRender(FrameData& frameData)
+    {
+        for (auto& component : m_components)
+        {
+            if (component.onPrepareRender)
+            {
+                component.onPrepareRender(component);
             }
         }
         return true;

@@ -164,9 +164,9 @@ namespace C3D
 
     bool RenderBuffer::Read(u64 offset, u64 size, void** outMemory) { return true; }
 
-    bool RenderBuffer::LoadRange(u64 offset, u64 size, const void* data) { return true; }
+    bool RenderBuffer::LoadRange(u64 offset, u64 size, const void* data, bool includeInFrameWorkload) { return true; }
 
-    bool RenderBuffer::CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size) { return true; }
+    bool RenderBuffer::CopyRange(u64 srcOffset, RenderBuffer* dest, u64 dstOffset, u64 size, bool includeInFrameWorkload) { return true; }
 
     bool RenderBuffer::Draw(u64 offset, u32 elementCount, bool bindOnly) { return true; }
 }  // namespace C3D

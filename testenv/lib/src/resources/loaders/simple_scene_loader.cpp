@@ -200,6 +200,18 @@ void C3D::ResourceLoader<SimpleSceneConfig>::ParseDirectionalLight(const C3D::St
     {
         cfg.directionalLightConfig.color = value.ToVec4();
     }
+    else if (name.IEquals("shadowDistance"))
+    {
+        cfg.directionalLightConfig.shadowDistance = value.ToF32();
+    }
+    else if (name.IEquals("shadowFadeDistance"))
+    {
+        cfg.directionalLightConfig.shadowFadeDistance = value.ToF32();
+    }
+    else if (name.IEquals("shadowSplitMultiplier"))
+    {
+        cfg.directionalLightConfig.shadowSplitMultiplier = value.ToF32();
+    }
     else
     {
         throw Exception("Unknown element: '{}' specified for Directional Light", name);

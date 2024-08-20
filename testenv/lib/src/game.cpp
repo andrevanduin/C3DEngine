@@ -70,7 +70,7 @@ bool TestEnv::OnBoot()
 
     // Setup viewports
     C3D::Rect2D worldViewportRect = { 0.0f, 0.0f, 1280.0f - 40, 720.0f };
-    if (!m_state->worldViewport.Create(worldViewportRect, C3D::DegToRad(45.0f), 0.1f, 400.0f,
+    if (!m_state->worldViewport.Create(worldViewportRect, C3D::DegToRad(45.0f), 0.1f, 1000.0f,
                                        C3D::RendererProjectionMatrixType::Perspective))
     {
         ERROR_LOG("Failed to create World Viewport.");
@@ -81,14 +81,6 @@ bool TestEnv::OnBoot()
     if (!m_state->uiViewport.Create(uiViewportRect, 0.0f, -100.0f, 100.0f, C3D::RendererProjectionMatrixType::Orthographic))
     {
         ERROR_LOG("Failed to create UI Viewport.");
-        return false;
-    }
-
-    C3D::Rect2D wireframeViewportRect = { 20.0f, 20.0f, 128.0f, 72.0f };
-    if (!m_state->wireframeViewport.Create(wireframeViewportRect, 0.015f, -4000.0f, 4000.0f,
-                                           C3D::RendererProjectionMatrixType::OrthographicCentered))
-    {
-        ERROR_LOG("Failed to create Wireframe Viewport.");
         return false;
     }
 
@@ -252,6 +244,13 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
             Event.Fire(C3D::EventCodeSetRenderMode, this, context);
         }
 
+        if (Input.IsKeyPressed(C3D::KeyF5))
+        {
+            C3D::EventContext context = {};
+            context.data.i32[0]       = C3D::RendererViewMode::Wireframe;
+            Event.Fire(C3D::EventCodeSetRenderMode, this, context);
+        }
+
         // Gizmo mode keys
         if (Input.IsKeyPressed('1'))
         {
@@ -330,13 +329,6 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         }
     }
 
-    if (!m_state->simpleScene.Update(frameData))
-    {
-        ERROR_LOG("Failed to update main scene.");
-    }
-
-    m_state->gizmo.Update();
-
     if (m_state->simpleScene.GetState() == SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
     {
         m_state->reloadState = ReloadState::Loading;
@@ -344,8 +336,22 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         LoadTestScene();
     }
 
-    if (m_state->simpleScene.GetState() == SceneState::Loaded)
+    const auto pos      = m_state->camera->GetPosition();
+    const auto nearClip = m_state->worldViewport.GetNearClip();
+    const auto farClip  = m_state->worldViewport.GetFarClip();
+
+    if (m_state->simpleScene.GetState() >= SceneState::Loaded)
     {
+        if (!m_state->simpleScene.Update(frameData))
+        {
+            ERROR_LOG("Failed to update main scene.");
+        }
+
+        // Update LODs for the scene based on distance from the camera
+        m_state->simpleScene.UpdateLodFromViewPosition(frameData, pos, nearClip, farClip);
+
+        m_state->gizmo.Update();
+
         // Rotate
         quat rotation = angleAxis(0.2f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
 
@@ -370,7 +376,6 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     const auto fWidth  = static_cast<f32>(m_pEngine->GetWindowWidth());
     const auto fHeight = static_cast<f32>(m_pEngine->GetWindowHeight());
 
-    const auto pos = m_state->camera->GetPosition();
     const auto rot = m_state->camera->GetEulerRotation();
 
     const auto mouse = Input.GetMousePosition();
@@ -409,6 +414,8 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     static bool resized = false;
     if (!resized)
     {
+        const auto fHeight = static_cast<f32>(m_pEngine->GetWindowHeight());
+
         auto debugLabelMaxX = UI2D.GetTextMaxX(m_state->debugInfoLabel);
         auto debugLabelMaxY = UI2D.GetTextMaxY(m_state->debugInfoLabel);
 
@@ -430,6 +437,23 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
     // Only when the scene is loaded we prepare the shadow, scene and editor pass
     if (m_state->simpleScene.GetState() == SceneState::Loaded)
     {
+        // Prepare our scene for rendering
+        m_state->simpleScene.OnPrepareRender(frameData);
+
+        // Prepare the editor gizmo for rendering
+        m_state->gizmo.OnPrepareRender(frameData);
+
+        // Prepare debug boxes and lines for rendering
+        for (auto& box : m_state->testBoxes)
+        {
+            box.OnPrepareRender(frameData);
+        }
+
+        for (auto& line : m_state->testLines)
+        {
+            line.OnPrepareRender(frameData);
+        }
+
         // Prepare the shadow pass
         m_state->shadowPass.Prepare(frameData, m_state->worldViewport, m_state->camera);
 
@@ -445,6 +469,7 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
         // Get all the relevant terrains from the scene
         m_state->simpleScene.QueryTerrains(frameData, cullingData.lightDirection, cullingData.center, cullingData.radius,
                                            cullingData.terrains);
+
         // Also keep track of how many terrains are being used in our shadow pass
         frameData.drawnShadowMeshCount += cullingData.terrains.Size();
 
@@ -463,21 +488,10 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 
 bool TestEnv::OnRender(C3D::FrameData& frameData)
 {
-    if (!Renderer.Begin(frameData))
-    {
-        ERROR_LOG("Failed to Begin the Renderer.");
-    }
-
     // Execute our Rendergraph
     if (!m_state->frameGraph.ExecuteFrame(frameData))
     {
         ERROR_LOG("Execute frame failed for the Rendergraph.");
-        return false;
-    }
-
-    if (!Renderer.End(frameData))
-    {
-        ERROR_LOG("Failed to end the Renderer.");
         return false;
     }
 
@@ -491,9 +505,6 @@ void TestEnv::OnResize(u16 width, u16 height)
     // Resize our viewports
     C3D::Rect2D worldViewportRect = { 0.0f, 0.0f, static_cast<f32>(width), static_cast<f32>(height) };
     m_state->worldViewport.Resize(worldViewportRect);
-
-    C3D::Rect2D wireframeViewportRect = { 20.0f, 20.0f, halfWidth - 40.0f, height - 40.0f };
-    m_state->wireframeViewport.Resize(wireframeViewportRect);
 
     C3D::Rect2D uiViewportRect = { 0.0f, 0.0f, static_cast<f32>(width), static_cast<f32>(height) };
     m_state->uiViewport.Resize(uiViewportRect);
@@ -603,6 +614,10 @@ void TestEnv::OnLibraryLoad()
             case C3D::RendererViewMode::Cascades:
                 DEBUG_LOG("Renderer mode set to cascades.");
                 m_state->renderMode = C3D::RendererViewMode::Cascades;
+                break;
+            case C3D::RendererViewMode::Wireframe:
+                DEBUG_LOG("Renderer mode set to wireframe.")
+                m_state->renderMode = C3D::RendererViewMode::Wireframe;
                 break;
             default:
                 FATAL_LOG("Unknown render mode.");

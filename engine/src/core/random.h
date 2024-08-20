@@ -4,6 +4,8 @@
 
 #include "containers/array.h"
 #include "containers/dynamic_array.h"
+#include "containers/string.h"
+#include "math/math_types.h"
 
 namespace C3D
 {
@@ -24,9 +26,7 @@ namespace C3D
         }
 
         template <typename T>
-        [[nodiscard]] std::enable_if_t<std::is_integral_v<T>, DynamicArray<T>> GenerateMultiple(const int amount,
-                                                                                                const T low,
-                                                                                                const T high)
+        [[nodiscard]] std::enable_if_t<std::is_integral_v<T>, DynamicArray<T>> GenerateMultiple(const int amount, const T low, const T high)
         {
             std::uniform_int_distribution distribution(low, high);
             DynamicArray<T> values;
@@ -43,8 +43,7 @@ namespace C3D
         }
 
         template <typename T>
-        [[nodiscard]] std::enable_if_t<std::is_floating_point_v<T>, DynamicArray<T>> GenerateMultiple(const int amount,
-                                                                                                      const T low,
+        [[nodiscard]] std::enable_if_t<std::is_floating_point_v<T>, DynamicArray<T>> GenerateMultiple(const int amount, const T low,
                                                                                                       const T high)
         {
             std::uniform_real_distribution distribution(low, high);
@@ -52,6 +51,22 @@ namespace C3D
             std::generate(values.begin(), values.end(), [&] { return distribution(m_generator); });
             return values;
         }
+
+        /**
+         * @brief Generate a vec3 color (r, g, b)
+         *
+         * @return vec3 The vec3 containing the generated color
+         */
+        vec3 GenerateColor();
+
+        /**
+         * @brief Generates a random string of [minLength, maxLength] alphanumeric characters.
+         *
+         * @param minLength The minimum length of the string
+         * @param maxLength The maximum length of the string
+         * @return String The generated string
+         */
+        String GenerateString(u32 minLength, u32 maxLength);
 
     private:
         std::mt19937 m_generator;

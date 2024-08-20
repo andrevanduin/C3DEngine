@@ -6,6 +6,7 @@ version = 2
 name = Shader.PBR
 depthTest = true
 depthWrite = true
+supportsWireframe = true
 maxInstances = 256
 [/general]
 
@@ -39,7 +40,7 @@ padding = vec2
 materialTextures = sampler2D[3]
 shadowTextures = sampler2DArray
 iblCubeTexture = samplerCube
-dirLight = struct32
+dirLight = struct48
 pLights = struct480
 properties = struct32
 numPLights = u32

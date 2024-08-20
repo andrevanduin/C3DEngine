@@ -60,7 +60,6 @@ struct GameState final : C3D::ApplicationState
 
     C3D::Viewport worldViewport;
     C3D::Viewport uiViewport;
-    C3D::Viewport wireframeViewport;
 
     C3D::Rendergraph frameGraph;
     SkyboxPass skyboxPass;

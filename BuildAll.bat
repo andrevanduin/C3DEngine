@@ -13,4 +13,4 @@ if "%cfg%" == "" (
     set cfg=Debug
 )
 
-cmake --build c:/Users/Cesar/Desktop/dev/C3DEngine/build --config %cfg%
+cmake --build c:/Users/Cesar/Desktop/dev/C3DEngine/build --config %cfg% -- -j 8

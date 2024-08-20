@@ -198,7 +198,7 @@ namespace C3D
         VK_CHECK(vkBindBufferMemory(logicalDevice, newBuffer, newMemory, 0));
 
         // Copy over the data
-        CopyRangeInternal(0, newBuffer, 0, totalSize);
+        CopyRangeInternal(0, newBuffer, 0, totalSize, false);
 
         // Make sure anything potentially using these is finished
         m_context->device.WaitIdle();
@@ -258,7 +258,7 @@ namespace C3D
             read.Bind(0);
 
             // Perform the copy from device local to the read buffer
-            CopyRange(offset, &read, 0, size);
+            CopyRange(offset, &read, 0, size, true);
 
             auto logicalDevice = m_context->device.GetLogical();
 
@@ -287,7 +287,7 @@ namespace C3D
         return true;
     }
 
-    bool VulkanBuffer::LoadRange(const u64 offset, const u64 size, const void* data)
+    bool VulkanBuffer::LoadRange(const u64 offset, const u64 size, const void* data, bool includeInFrameWorkload)
     {
         if (!data)
         {
@@ -306,14 +306,14 @@ namespace C3D
             }
 
             // Load the data into the staging buffer
-            if (!m_context->stagingBuffer.LoadRange(stagingOffset, size, data))
+            if (!m_context->stagingBuffer.LoadRange(stagingOffset, size, data, includeInFrameWorkload))
             {
                 ERROR_LOG("Failed to run load range into staging buffer.");
                 return false;
             }
 
             // Perform the copy from the staging to the device local buffer
-            if (!m_context->stagingBuffer.CopyRangeInternal(stagingOffset, handle, offset, size))
+            if (!m_context->stagingBuffer.CopyRangeInternal(stagingOffset, handle, offset, size, includeInFrameWorkload))
             {
                 ERROR_LOG("Failed to copy range from staging buffer.");
                 return false;
@@ -333,14 +333,14 @@ namespace C3D
         return true;
     }
 
-    bool VulkanBuffer::CopyRange(const u64 srcOffset, RenderBuffer* dest, const u64 dstOffset, const u64 size)
+    bool VulkanBuffer::CopyRange(const u64 srcOffset, RenderBuffer* dest, const u64 dstOffset, const u64 size, bool includeInFrameWorkload)
     {
         if (!dest || size == 0)
         {
             ERROR_LOG("Requires a valid destination and a nonzero size.");
             return false;
         }
-        return CopyRangeInternal(srcOffset, dynamic_cast<VulkanBuffer*>(dest)->handle, dstOffset, size);
+        return CopyRangeInternal(srcOffset, dynamic_cast<VulkanBuffer*>(dest)->handle, dstOffset, size, includeInFrameWorkload);
     }
 
     bool VulkanBuffer::Draw(const u64 offset, const u32 elementCount, const bool bindOnly)
@@ -378,15 +378,16 @@ namespace C3D
 
     bool VulkanBuffer::IsHostCoherent() const { return m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; }
 
-    bool VulkanBuffer::CopyRangeInternal(const u64 srcOffset, const VkBuffer dst, const u64 dstOffset, const u64 size) const
+    bool VulkanBuffer::CopyRangeInternal(const u64 srcOffset, const VkBuffer dst, const u64 dstOffset, const u64 size,
+                                         bool includeInFrameWorkload) const
     {
         // TODO: Assuming queue and pool usage here. Might want dedicated queue.
         auto graphicsCommandPool = m_context->device.GetGraphicsCommandPool();
         auto queue               = m_context->device.GetGraphicsQueue();
 
-        vkQueueWaitIdle(queue);
-        // Create a one-time-use command buffer.
         VulkanCommandBuffer tempCommandBuffer;
+
+        vkQueueWaitIdle(queue);
         tempCommandBuffer.AllocateAndBeginSingleUse(m_context, graphicsCommandPool);
 
         // Prepare the copy command and add it to the command buffer.
@@ -396,8 +397,54 @@ namespace C3D
         copyRegion.size      = size;
         vkCmdCopyBuffer(tempCommandBuffer.handle, handle, dst, 1, &copyRegion);
 
-        // Submit the buffer for execution and wait for it to complete.
         tempCommandBuffer.EndSingleUse(m_context, graphicsCommandPool, queue);
+
+        /*
+        const VulkanCommandBuffer* commandBuffer;
+        VulkanCommandBuffer tempCommandBuffer;
+
+        // If we don't want to include this copy in the frame workload we utilize a temp command buffer.
+        if (!includeInFrameWorkload)
+        {
+            vkQueueWaitIdle(queue);
+            tempCommandBuffer.AllocateAndBeginSingleUse(m_context, graphicsCommandPool);
+            commandBuffer = &tempCommandBuffer;
+        }
+        else
+        {
+            // Otherwise we use our graphics command buffer to schedule as part of this frame's workload
+            commandBuffer = &m_context->graphicsCommandBuffers[m_context->imageIndex];
+        }
+
+        // Prepare the copy command and add it to the command buffer.
+        VkBufferCopy copyRegion;
+        copyRegion.srcOffset = srcOffset;
+        copyRegion.dstOffset = dstOffset;
+        copyRegion.size      = size;
+        vkCmdCopyBuffer(commandBuffer->handle, handle, dst, 1, &copyRegion);
+
+        if (!includeInFrameWorkload)
+        {
+            // Submit the buffer for execution and wait for it to complete.
+            tempCommandBuffer.EndSingleUse(m_context, graphicsCommandPool, queue);
+        }
+        else
+        {
+            // Otherwise this submission will be handled later and we need to add a memory barrier to ensure this data doesn't get read
+            // before it's uploaded fully
+            VkBufferMemoryBarrier barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER };
+            barrier.buffer                = dst;
+            barrier.offset                = dstOffset;
+            barrier.size                  = size;
+            barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+            barrier.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask         = VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+
+            // don't read vertex data as we're writing it
+            vkCmdPipelineBarrier(commandBuffer->handle, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr,
+                                 1, &barrier, 0, nullptr);
+        }*/
 
         return true;
     }

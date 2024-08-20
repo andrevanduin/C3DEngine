@@ -74,42 +74,43 @@ namespace C3D
 
         DynamicArray<const char*> requiredValidationLayerNames;
 
-#if defined(_DEBUG)
-        // If we are building in DEBUG mode we want to add validation layers
-        Logger::Info("[VULKAN_INSTANCE] - Create() - Validation layers are enabled.");
-        requiredValidationLayerNames.EmplaceBack("VK_LAYER_KHRONOS_validation");
-        // NOTE: If needed for debugging we can enable this validation layer
-        // requiredValidationLayerNames.EmplaceBack("VK_LAYER_LUNARG_api_dump");
-
-        Logger::Info("[VULKAN_INSTANCE] - Create() - Required instance layers that need to be loaded: {}.",
-                     StringUtils::Join(requiredValidationLayerNames, ", "));
-
-        // Check if all our required validation layers are available
-        u32 availableLayerCount = 0;
-        VK_CHECK(vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr));
-
-        DynamicArray<VkLayerProperties> availableLayers;
-        availableLayers.Resize(availableLayerCount);
-
-        VK_CHECK(vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.GetData()));
-
-        for (auto requiredValidationLayerName : requiredValidationLayerNames)
+        if (context.useValidationLayers)
         {
-            auto index =
-                std::find_if(availableLayers.begin(), availableLayers.end(), [requiredValidationLayerName](const VkLayerProperties& props) {
-                    return StringUtils::Equals(props.layerName, requiredValidationLayerName);
-                });
-            if (index == availableLayers.end())
+            // If we are require validation layers we add them here
+            Logger::Info("[VULKAN_INSTANCE] - Create() - Validation layers are enabled.");
+            requiredValidationLayerNames.EmplaceBack("VK_LAYER_KHRONOS_validation");
+            // NOTE: If needed for debugging we can enable this validation layer
+            // requiredValidationLayerNames.EmplaceBack("VK_LAYER_LUNARG_api_dump");
+
+            Logger::Info("[VULKAN_INSTANCE] - Create() - Required instance layers that need to be loaded: {}.",
+                         StringUtils::Join(requiredValidationLayerNames, ", "));
+
+            // Check if all our required validation layers are available
+            u32 availableLayerCount = 0;
+            VK_CHECK(vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr));
+
+            DynamicArray<VkLayerProperties> availableLayers;
+            availableLayers.Resize(availableLayerCount);
+
+            VK_CHECK(vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.GetData()));
+
+            for (auto requiredValidationLayerName : requiredValidationLayerNames)
             {
-                Logger::Error("[VULKAN_INSTANCE] - Create() - Required layer: '{}' is not available.", requiredValidationLayerName);
-                return false;
+                auto index = std::find_if(availableLayers.begin(), availableLayers.end(),
+                                          [requiredValidationLayerName](const VkLayerProperties& props) {
+                                              return StringUtils::Equals(props.layerName, requiredValidationLayerName);
+                                          });
+                if (index == availableLayers.end())
+                {
+                    Logger::Error("[VULKAN_INSTANCE] - Create() - Required layer: '{}' is not available.", requiredValidationLayerName);
+                    return false;
+                }
+
+                Logger::Info("[VULKAN_INSTANCE] - Create() - Required layer: '{}' was found.", requiredValidationLayerName);
             }
 
-            Logger::Info("[VULKAN_INSTANCE] - Create() - Required layer: '{}' was found.", requiredValidationLayerName);
+            Logger::Info("[VULKAN_INSTANCE] - Create() - All required layers are present.");
         }
-
-        Logger::Info("[VULKAN_INSTANCE] - Create() - All required layers are present.");
-#endif
 
         createInfo.enabledLayerCount   = requiredValidationLayerNames.Size();
         createInfo.ppEnabledLayerNames = requiredValidationLayerNames.GetData();

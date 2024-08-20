@@ -26,7 +26,7 @@ namespace C3D
             return false;
         }
 
-        m_emitters.Create(512);
+        m_emitters.Create();
 
         AudioPluginConfig pluginConfig;
         pluginConfig.maxSources   = m_config.numAudioChannels;
@@ -47,7 +47,7 @@ namespace C3D
         }
 
         // Ensure there is enough room for audio files
-        m_audioFiles.Create(512);
+        m_audioFiles.Create();
 
         return true;
     }

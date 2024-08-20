@@ -112,6 +112,8 @@ namespace C3D
             return reinterpret_cast<SystemType*>(GetInstance().m_systems[type]);
         }
 
+        bool OnPrepareRender(FrameData& frameData);
+
         void OnShutdown();
 
         static SystemManager& GetInstance();

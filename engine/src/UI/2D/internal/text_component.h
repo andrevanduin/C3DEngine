@@ -21,13 +21,17 @@ namespace C3D::UI_2D
         DynamicArray<Vertex2D> vertices;
         DynamicArray<u32> indices;
 
-        u32 capacity = 0;
-
+        u32 characterCapacity = 0;
         RenderableComponent renderable;
 
+        bool isDirty = false;
+
         bool Initialize(Component& self, const Config& config);
+
+        void OnPrepareRender(Component& self);
         void OnRender(Component& self, const FrameData& frameData, const ShaderLocations& locations);
-        void Regenerate(Component& self);
+        void RecalculateGeometry(Component& self);
+
         void SetText(Component& self, const char* _text);
 
         void Insert(Component& self, u32 index, char c);

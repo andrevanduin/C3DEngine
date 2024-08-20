@@ -26,6 +26,7 @@ namespace C3D
         bool Unload();
 
         bool Update();
+        void OnPrepareRender(FrameData& frameData);
 
         void SetParent(Transform* parent);
 
@@ -56,6 +57,8 @@ namespace C3D
         Transform m_transform;
 
         DynamicArray<ColorVertex3D> m_vertices;
+
+        bool m_isDirty = true;
 
         Geometry m_geometry;
     };

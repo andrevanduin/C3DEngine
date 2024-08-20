@@ -75,6 +75,10 @@ namespace C3D
     void RenderSystem::OnShutdown()
     {
         INFO_LOG("Shutting down.");
+
+        // Wait for the backend to be completly idle
+        WaitForIdle();
+
         // Destroy our render buffers
         m_backendPlugin->DestroyRenderBuffer(m_geometryVertexBuffer);
         m_backendPlugin->DestroyRenderBuffer(m_geometryIndexBuffer);
@@ -173,7 +177,7 @@ namespace C3D
 
     void RenderSystem::WriteDataToTexture(Texture* texture, const u32 offset, const u32 size, const u8* pixels) const
     {
-        m_backendPlugin->WriteDataToTexture(texture, offset, size, pixels);
+        m_backendPlugin->WriteDataToTexture(texture, offset, size, pixels, true);
     }
 
     void RenderSystem::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory) const
@@ -242,7 +246,8 @@ namespace C3D
         }
 
         // Load the data
-        if (!m_geometryVertexBuffer->LoadRange(geometry.vertexBufferOffset, vertexSize, geometry.vertices))
+        // TODO: Passing false here produces a queue wait and should be offloaded to another queue
+        if (!m_geometryVertexBuffer->LoadRange(geometry.vertexBufferOffset, vertexSize, geometry.vertices, false))
         {
             ERROR_LOG("Failed to upload to the vertex buffer.");
             return false;
@@ -261,7 +266,8 @@ namespace C3D
             }
 
             // Load the data
-            if (!m_geometryIndexBuffer->LoadRange(geometry.indexBufferOffset, indexSize, geometry.indices))
+            // TODO: Passing false here produces a queue wait and should be offloaded to another queue
+            if (!m_geometryIndexBuffer->LoadRange(geometry.indexBufferOffset, indexSize, geometry.indices, false))
             {
                 ERROR_LOG("Failed to upload to the index buffer.");
                 return false;
@@ -274,10 +280,11 @@ namespace C3D
         return true;
     }
 
-    void RenderSystem::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices) const
+    void RenderSystem::UpdateGeometryVertices(const Geometry& geometry, u32 offset, u32 vertexCount, const void* vertices,
+                                              bool includeInFrameWorkload) const
     {
         u64 vertexSize = geometry.vertexSize * vertexCount;
-        if (!m_geometryVertexBuffer->LoadRange(geometry.vertexBufferOffset + offset, vertexSize, vertices))
+        if (!m_geometryVertexBuffer->LoadRange(geometry.vertexBufferOffset + offset, vertexSize, vertices, includeInFrameWorkload))
         {
             ERROR_LOG("Failed to LoadRange for the provided vertices.");
         }
@@ -365,11 +372,11 @@ namespace C3D
         // Get the uniform count
         shader.globalUniformCount        = 0;
         shader.globalUniformSamplerCount = 0;
-        shader.globalSamplerIndices.Clear();
+        shader.globalSamplers.Clear();
 
         shader.instanceUniformCount        = 0;
         shader.instanceUniformSamplerCount = 0;
-        shader.instanceSamplerIndices.Clear();
+        shader.instanceSamplers.Clear();
 
         shader.localUniformCount = 0;
 
@@ -384,8 +391,8 @@ namespace C3D
                     {
                         shader.globalUniformSamplerCount++;
 
-                        auto index = static_cast<u16>(shader.uniforms.GetIndex(uniform.name));
-                        shader.globalSamplerIndices.PushBack(index);
+                        auto index = shader.uniformNameToIndexMap.Get(uniform.name);
+                        shader.globalSamplers.PushBack(index);
                     }
                     else
                     {
@@ -397,8 +404,8 @@ namespace C3D
                     {
                         shader.instanceUniformSamplerCount++;
 
-                        auto index = static_cast<u16>(shader.uniforms.GetIndex(uniform.name));
-                        shader.instanceSamplerIndices.PushBack(index);
+                        auto index = shader.uniformNameToIndexMap.Get(uniform.name);
+                        shader.instanceSamplers.PushBack(index);
                     }
                     else
                     {
@@ -426,13 +433,68 @@ namespace C3D
 
             stageConfig.source = source.text;
 
+#ifdef _DEBUG
+            auto watchId = OS.WatchFile(source.fullPath.Data());
+            if (watchId == INVALID_ID)
+            {
+                WARN_LOG("Failed to watch shader source file: '{}' for changes. Hot-reloading of the: '{}' Shader will not work.",
+                         source.fullPath, shader.name);
+            }
+
+            shader.moduleWatchIds.PushBack(watchId);
+#endif
+
             Resources.Unload(source);
         }
 
         return m_backendPlugin->CreateShader(shader, config, pass);
     }
 
-    void RenderSystem::DestroyShader(Shader& shader) const { return m_backendPlugin->DestroyShader(shader); }
+    bool RenderSystem::ReloadShader(Shader& shader) const
+    {
+        DynamicArray<ShaderStageConfig> newStageConfigs(shader.stageConfigs.Size());
+
+        for (auto& config : shader.stageConfigs)
+        {
+            TextResource stage;
+            if (!Resources.Load(config.fileName, stage))
+            {
+                ERROR_LOG("Failed to read shader source file: '{}'. Shader reloading has been stopped.", config.fileName);
+                return false;
+            }
+
+            // Our new config can copy everything from the old one
+            ShaderStageConfig newConfig;
+            newConfig.fileName = config.fileName;
+            newConfig.name     = config.name;
+            newConfig.stage    = config.stage;
+            // Except the source which we will replace with the newly read one
+            newConfig.source = stage.text;
+            newStageConfigs.PushBack(newConfig);
+
+            Resources.Unload(stage);
+        }
+
+        // Replace the old stage configs with the new ones
+        shader.stageConfigs = newStageConfigs;
+
+        return m_backendPlugin->ReloadShader(shader);
+    }
+
+    void RenderSystem::DestroyShader(Shader& shader) const
+    {
+#ifdef _DEBUG
+        // Unwatch all the shader source files
+        for (auto watchId : shader.moduleWatchIds)
+        {
+            if (!OS.UnwatchFile(watchId))
+            {
+                WARN_LOG("Failed to unwatch shader source file for shader: '{}'.", shader.name);
+            }
+        }
+#endif
+        return m_backendPlugin->DestroyShader(shader);
+    }
 
     bool RenderSystem::InitializeShader(Shader& shader) const { return m_backendPlugin->InitializeShader(shader); }
 
@@ -460,6 +522,18 @@ namespace C3D
     bool RenderSystem::ShaderApplyLocal(const FrameData& frameData, const Shader& shader) const
     {
         return m_backendPlugin->ShaderApplyLocal(frameData, shader);
+    }
+
+    bool RenderSystem::ShaderSetWireframe(Shader& shader, bool enabled) const
+    {
+        if (!m_backendPlugin->ShaderSupportsWireframe(shader))
+        {
+            WARN_LOG("Shader: '{}' does not support rendering in Wireframe mode.", shader.name);
+            return false;
+        }
+
+        shader.wireframeEnabled = enabled;
+        return true;
     }
 
     bool RenderSystem::AcquireShaderInstanceResources(const Shader& shader, const ShaderInstanceResourceConfig& config,
@@ -541,14 +615,14 @@ namespace C3D
         }
     }
 
-    bool RenderSystem::LoadRangeInRenderBuffer(RenderBufferType type, u64 offset, u64 size, const void* data)
+    bool RenderSystem::LoadRangeInRenderBuffer(RenderBufferType type, u64 offset, u64 size, const void* data, bool includeInFrameWorkload)
     {
         switch (type)
         {
             case RenderBufferType::Vertex:
-                return m_geometryVertexBuffer->LoadRange(offset, size, data);
+                return m_geometryVertexBuffer->LoadRange(offset, size, data, includeInFrameWorkload);
             case RenderBufferType::Index:
-                return m_geometryIndexBuffer->LoadRange(offset, size, data);
+                return m_geometryIndexBuffer->LoadRange(offset, size, data, includeInFrameWorkload);
             default:
                 ERROR_LOG("Invalid RenderBufferType provided.");
                 return false;
@@ -556,6 +630,22 @@ namespace C3D
     }
 
     bool RenderSystem::DestroyRenderBuffer(RenderBuffer* buffer) const { return m_backendPlugin->DestroyRenderBuffer(buffer); }
+
+    void RenderSystem::BeginDebugLabel(const String& text, const vec3& color) const
+    {
+#ifdef _DEBUG
+        m_backendPlugin->BeginDebugLabel(text, color);
+#endif
+    }
+
+    void RenderSystem::EndDebugLabel() const
+    {
+#ifdef _DEBUG
+        m_backendPlugin->EndDebugLabel();
+#endif
+    }
+
+    void RenderSystem::WaitForIdle() const { m_backendPlugin->WaitForIdle(); }
 
     const Viewport* RenderSystem::GetActiveViewport() const { return m_activeViewport; }
 

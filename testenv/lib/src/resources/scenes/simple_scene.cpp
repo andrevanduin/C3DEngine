@@ -33,8 +33,8 @@ bool SimpleScene::Create(const SimpleSceneConfig& config)
 
     m_skybox = nullptr;
 
-    m_meshes.Create(1024);
-    m_terrains.Create(512);
+    m_meshes.Create();
+    m_terrains.Create();
 
     m_config = config;
 
@@ -87,9 +87,12 @@ bool SimpleScene::Initialize()
 
         auto dirLight = C3D::DirectionalLight();
 
-        dirLight.name           = dirLightConfig.name;
-        dirLight.data.color     = dirLightConfig.color;
-        dirLight.data.direction = dirLightConfig.direction;
+        dirLight.name                       = dirLightConfig.name;
+        dirLight.data.color                 = dirLightConfig.color;
+        dirLight.data.direction             = dirLightConfig.direction;
+        dirLight.data.shadowDistance        = dirLightConfig.shadowDistance;
+        dirLight.data.shadowFadeDistance    = dirLightConfig.shadowFadeDistance;
+        dirLight.data.shadowSplitMultiplier = dirLightConfig.shadowSplitMultiplier;
 
         m_directionalLight = m_config.directionalLightConfig.name;
 
@@ -318,6 +321,80 @@ bool SimpleScene::Update(C3D::FrameData& frameData)
     return true;
 }
 
+void SimpleScene::OnPrepareRender(C3D::FrameData& frameData)
+{
+    for (auto& mesh : m_meshes)
+    {
+        if (mesh.HasDebugBox())
+        {
+            auto box = mesh.GetDebugBox();
+            box->OnPrepareRender(frameData);
+        }
+    }
+
+    for (auto& name : m_pointLights)
+    {
+        auto light = Lights.GetPointLight(name);
+        auto debug = static_cast<LightDebugData*>(light->debugData);
+
+        if (debug->box.IsValid())
+        {
+            debug->box.OnPrepareRender(frameData);
+        }
+    }
+}
+
+void SimpleScene::UpdateLodFromViewPosition(FrameData& frameData, const vec3& viewPosition, f32 nearClip, f32 farClip)
+{
+    for (auto& terrain : m_terrains)
+    {
+        mat4 model = terrain.GetModel();
+
+        // Calculate LOD splits based on clip range
+        f32 range = farClip - nearClip;
+
+        u32 numberOfLods = terrain.GetNumberOfLods();
+
+        // The first split distance is always 0
+        f32* splits = frameData.allocator->Allocate<f32>(MemoryType::Array, numberOfLods + 1);
+        splits[0]   = 0.0f;
+        for (u32 l = 0; l < numberOfLods; ++l)
+        {
+            f32 pct = (l + 1) / static_cast<f32>(numberOfLods);
+            // Linear splits
+            splits[l + 1] = (nearClip + range) * pct;
+        }
+
+        // Calculate chunk LODs based on distance from the camera
+        for (auto& chunk : terrain.GetChunks())
+        {
+            // Translate/scale the center
+            vec3 center = model * vec4(chunk.GetCenter(), 1.0f);
+
+            // Check the distance from our view position to the chunk
+            f32 distanceToChunk = glm::distance(viewPosition, center);
+            u8 lod              = INVALID_ID_U8;
+            for (u8 l = 0; l < numberOfLods; ++l)
+            {
+                // If the distance to the chunk is between this and the next split we have found the right LOD
+                if (distanceToChunk >= splits[l] && distanceToChunk <= splits[l + 1])
+                {
+                    lod = l;
+                    break;
+                }
+            }
+            if (lod == INVALID_ID_U8)
+            {
+                // In case we can't find a distance (for example chunks outside of our frustum)
+                // We simply use the lowest LOD
+                lod = numberOfLods - 1;
+            }
+
+            chunk.SetCurrentLOD(lod);
+        }
+    }
+}
+
 void SimpleScene::QueryMeshes(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
                               DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
 {
@@ -478,7 +555,20 @@ void SimpleScene::QueryTerrains(FrameData& frameData, const Frustum& frustum, co
 
                     if (frustum.IntersectsWithAABB({ center, halfExtents }))
                     {
-                        C3D::GeometryRenderData data(terrain.GetId(), model, chunk.GetGeometry(), windingInverted);
+                        C3D::GeometryRenderData data;
+                        data.uuid            = terrain.GetId();
+                        data.material        = terrain.GetMaterial();
+                        data.windingInverted = windingInverted;
+                        data.model           = model;
+
+                        data.vertexCount        = chunk.GetVertexCount();
+                        data.vertexSize         = chunk.GetVertexSize();
+                        data.vertexBufferOffset = chunk.GetVertexBufferOffset();
+
+                        data.indexCount        = chunk.GetIndexCount();
+                        data.indexSize         = chunk.GetIndexSize();
+                        data.indexBufferOffset = chunk.GetIndexBufferOffset();
+
                         terrainData.PushBack(data);
                     }
                 }
@@ -519,7 +609,20 @@ void SimpleScene::QueryTerrains(FrameData& frameData, const vec3& direction, con
                     // If it's within the distance we include it
                     if ((distToLine - chunkRadius) <= radius)
                     {
-                        C3D::GeometryRenderData data(terrain.GetId(), model, chunk.GetGeometry(), windingInverted);
+                        C3D::GeometryRenderData data;
+                        data.uuid            = terrain.GetId();
+                        data.material        = terrain.GetMaterial();
+                        data.windingInverted = windingInverted;
+                        data.model           = model;
+
+                        data.vertexCount        = chunk.GetVertexCount();
+                        data.vertexSize         = chunk.GetVertexSize();
+                        data.vertexBufferOffset = chunk.GetVertexBufferOffset();
+
+                        data.indexCount        = chunk.GetIndexCount();
+                        data.indexSize         = chunk.GetIndexSize();
+                        data.indexBufferOffset = chunk.GetIndexBufferOffset();
+
                         terrainData.PushBack(data);
                     }
                 }
@@ -568,11 +671,26 @@ void SimpleScene::QueryTerrains(FrameData& frameData, DynamicArray<GeometryRende
     {
         if (terrain.GetId())
         {
-            // TODO: Check terrain generation
-            // TODO: Frustum culling
+            mat4 model           = terrain.GetModel();
+            bool windingInverted = terrain.GetTransform()->GetDeterminant() < 0;
+
             for (auto& chunk : terrain.GetChunks())
             {
-                terrainData.EmplaceBack(terrain.GetId(), terrain.GetModel(), chunk.GetGeometry());
+                C3D::GeometryRenderData data;
+                data.uuid            = terrain.GetId();
+                data.material        = terrain.GetMaterial();
+                data.windingInverted = windingInverted;
+                data.model           = model;
+
+                data.vertexCount        = chunk.GetVertexCount();
+                data.vertexSize         = chunk.GetVertexSize();
+                data.vertexBufferOffset = chunk.GetVertexBufferOffset();
+
+                data.indexCount        = chunk.GetIndexCount();
+                data.indexSize         = chunk.GetIndexSize();
+                data.indexBufferOffset = chunk.GetIndexBufferOffset();
+
+                terrainData.PushBack(data);
             }
         }
     }

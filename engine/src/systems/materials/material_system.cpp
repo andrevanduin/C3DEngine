@@ -25,7 +25,7 @@ namespace C3D
     {
         INFO_LOG("Initializing.");
 
-        if (config.maxMaterialCount == 0)
+        if (config.maxMaterials == 0)
         {
             ERROR_LOG("config.maxTextureCount must be > 0.");
             return false;
@@ -33,8 +33,11 @@ namespace C3D
 
         m_config = config;
 
-        // Create our hashmap for the materials
-        m_registeredMaterials.Create(config.maxMaterialCount);
+        // Reserve enough space to store our materials
+        m_materials.Reserve(config.maxMaterials);
+
+        // Create our HashMap to store Name to index mappings
+        m_nameToMaterialIndexMap.Create();
 
         // Get the uniform indices and save them off for quick lookups
         // Start with the PBR shader
@@ -107,7 +110,7 @@ namespace C3D
     void MaterialSystem::OnShutdown()
     {
         INFO_LOG("Destroying all loaded materials.");
-        for (auto& ref : m_registeredMaterials)
+        for (auto& ref : m_materials)
         {
             if (ref.material.id != INVALID_ID)
             {
@@ -115,20 +118,22 @@ namespace C3D
             }
         }
 
+        // Destroy our Material array and our HashMap
+        m_materials.Destroy();
+        m_nameToMaterialIndexMap.Destroy();
+
         INFO_LOG("Destroying default materials.");
         DestroyMaterial(m_defaultTerrainMaterial);
         DestroyMaterial(m_defaultPbrMaterial);
-
-        // Cleanup our registered Material hashmap
-        m_registeredMaterials.Destroy();
     }
 
     Material* MaterialSystem::Acquire(const String& name)
     {
-        if (m_registeredMaterials.Has(name))
+        if (m_nameToMaterialIndexMap.Has(name))
         {
             // The material already exists
-            MaterialReference& ref = m_registeredMaterials.Get(name);
+            auto index             = m_nameToMaterialIndexMap.Get(name);
+            MaterialReference& ref = m_materials[index];
             ref.referenceCount++;
 
             TRACE("Material: '{}' already exists. The refCount is now: {}.", name, ref.referenceCount);
@@ -155,10 +160,11 @@ namespace C3D
 
     Material& MaterialSystem::AcquireReference(const String& name, bool autoRelease, bool& needsCreation)
     {
-        if (m_registeredMaterials.Has(name))
+        if (m_nameToMaterialIndexMap.Has(name))
         {
             // The material already exists
-            MaterialReference& ref = m_registeredMaterials.Get(name);
+            auto index             = m_nameToMaterialIndexMap.Get(name);
+            MaterialReference& ref = m_materials[index];
             ref.referenceCount++;
 
             TRACE("Material: '{}' already exists. The refCount is now: {}.", name, ref.referenceCount);
@@ -168,17 +174,32 @@ namespace C3D
         }
 
         // The material does not exist yet
-        // Add a new reference into the registered materials hashmap
-        m_registeredMaterials.Set(name, MaterialReference(autoRelease));
+        // Add a new reference into the materials array and add it to our HashMap
+        u32 index = INVALID_ID;
+        for (u32 i = 0; i < m_materials.Size(); ++i)
+        {
+            auto& current = m_materials[i];
 
-        // Get a reference to it so we can start using it
-        auto& ref = m_registeredMaterials.Get(name);
-        // Set the material id to the index into the registered material hashmap
-        ref.material.id = m_registeredMaterials.GetIndex(name);
+            if (current.material.id == INVALID_ID)
+            {
+                index   = i;
+                current = MaterialReference(autoRelease, i);
+            }
+        }
+
+        if (index == INVALID_ID)
+        {
+            // We did not find an empty spot in our array so let's append
+            index = m_materials.Size();
+            m_materials.EmplaceBack(autoRelease, index);
+        }
+
+        // Store the name and index combination in our HashMap
+        m_nameToMaterialIndexMap.Set(name, index);
         // Mark that this material still needs to be created
         needsCreation = true;
-        // Return a pointer to the material
-        return ref.material;
+        // Return a reference to the material
+        return m_materials[index].material;
     }
 
     Material* MaterialSystem::AcquireTerrain(const String& name, const DynamicArray<String>& materialNames, bool autoRelease)
@@ -402,13 +423,14 @@ namespace C3D
             return;
         }
 
-        if (!m_registeredMaterials.Has(name))
+        if (!m_nameToMaterialIndexMap.Has(name))
         {
             WARN_LOG("Tried to release a material that does not exist: '{}'.", name);
             return;
         }
 
-        MaterialReference& ref = m_registeredMaterials.Get(name);
+        auto index             = m_nameToMaterialIndexMap.Get(name);
+        MaterialReference& ref = m_materials[index];
         ref.referenceCount--;
 
         if (ref.referenceCount == 0 && ref.autoRelease)
@@ -423,7 +445,9 @@ namespace C3D
             DestroyMaterial(ref.material);
 
             // Remove the material reference
-            m_registeredMaterials.Delete(nameCopy);
+            m_materials[index].material.id = INVALID_ID;
+            // Also remove it from our name to index HashMap
+            m_nameToMaterialIndexMap.Delete(nameCopy);
 
             TRACE("The Material: '{}' was released. The texture was unloaded because refCount = 0 and autoRelease = true.", nameCopy);
         }
@@ -1092,7 +1116,7 @@ namespace C3D
 
                 for (u32 i = 0; i < instanceSamplerCount; ++i)
                 {
-                    auto& u                       = shader->uniforms.GetByIndex(shader->instanceSamplerIndices[i]);
+                    auto& u                       = shader->uniforms[shader->instanceSamplers[i]];
                     auto& uniformConfig           = instanceConfig.uniformConfigs[i];
                     uniformConfig.uniformLocation = u.location;
                     uniformConfig.textureMapCount = Max(u.arrayLength, (u8)1);

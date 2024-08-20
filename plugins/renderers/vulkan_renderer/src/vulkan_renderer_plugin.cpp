@@ -54,6 +54,12 @@ namespace C3D
         m_context.allocator = nullptr;
 #endif
 
+        if (config.flags & RendererConfigFlagBits::FlagUseValidationLayers)
+        {
+            m_context.useValidationLayers = true;
+            INFO_LOG("Validation layers are requested.");
+        }
+
         // Just set some basic default values. They will be overridden anyway.
         m_context.frameBufferWidth  = 1280;
         m_context.frameBufferHeight = 720;
@@ -656,6 +662,32 @@ namespace C3D
         return true;
     }
 
+    void VulkanRendererPlugin::WaitForIdle()
+    {
+        auto result = m_context.device.WaitIdle();
+        if (!VulkanUtils::IsSuccess(result))
+        {
+            ERROR_LOG("Failed to wait for device idle: '{}'.", VulkanUtils::ResultString(result));
+        }
+    }
+
+    void VulkanRendererPlugin::BeginDebugLabel(const String& text, const vec3& color)
+    {
+#ifdef _DEBUG
+        auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+        vec4 rgba           = vec4(color, 1.0f);
+#endif
+        VK_BEGIN_CMD_DEBUG_LABEL(&m_context, commandBuffer.handle, text, rgba);
+    }
+
+    void VulkanRendererPlugin::EndDebugLabel()
+    {
+#ifdef _DEBUG
+        auto& commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex];
+#endif
+        VK_END_CMD_DEBUG_LABEL(&m_context, commandBuffer.handle);
+    }
+
     Texture* VulkanRendererPlugin::GetWindowAttachment(const u8 index)
     {
         if (index >= m_context.swapchain.imageCount)
@@ -724,7 +756,7 @@ namespace C3D
                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
 
         // Load the data
-        WriteDataToTexture(texture, 0, static_cast<u32>(imageSize), pixels);
+        WriteDataToTexture(texture, 0, static_cast<u32>(imageSize), pixels, false);
         texture->generation++;
     }
 
@@ -774,7 +806,8 @@ namespace C3D
         texture->generation++;
     }
 
-    void VulkanRendererPlugin::WriteDataToTexture(Texture* texture, u32 offset, const u32 size, const u8* pixels)
+    void VulkanRendererPlugin::WriteDataToTexture(Texture* texture, u32 offset, const u32 size, const u8* pixels,
+                                                  bool includeInFrameWorkload)
     {
         const auto image           = static_cast<VulkanImage*>(texture->internalData);
         const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
@@ -788,7 +821,7 @@ namespace C3D
         }
 
         // Load the data into our staging buffer
-        if (!m_context.stagingBuffer.LoadRange(stagingOffset, size, pixels))
+        if (!m_context.stagingBuffer.LoadRange(stagingOffset, size, pixels, includeInFrameWorkload))
         {
             ERROR_LOG("Failed to load range into staging buffer.");
             return;
@@ -1050,7 +1083,7 @@ namespace C3D
             // Add a binding for each configured sampler
             for (u32 i = 0; i < shader.globalUniformSamplerCount; ++i)
             {
-                const ShaderUniform& u                                 = shader.uniforms.GetByIndex(shader.globalSamplerIndices[i]);
+                const ShaderUniform& u                                 = shader.uniforms[shader.globalSamplers[i]];
                 setConfig.bindings[globalBindingIndex].binding         = globalBindingIndex;
                 setConfig.bindings[globalBindingIndex].descriptorCount = Max(u.arrayLength, (u8)1);
                 setConfig.bindings[globalBindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1090,7 +1123,7 @@ namespace C3D
             // Add a binding for each configured sampler
             for (u32 i = 0; i < shader.instanceUniformSamplerCount; ++i)
             {
-                const ShaderUniform& u                                   = shader.uniforms.GetByIndex(shader.instanceSamplerIndices[i]);
+                const ShaderUniform& u                                   = shader.uniforms[shader.instanceSamplers[i]];
                 setConfig.bindings[instanceBindingIndex].binding         = instanceBindingIndex;
                 setConfig.bindings[instanceBindingIndex].descriptorCount = Max(u.arrayLength, (u8)1);
                 setConfig.bindings[instanceBindingIndex].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1116,6 +1149,8 @@ namespace C3D
 
         return true;
     }
+
+    bool VulkanRendererPlugin::ReloadShader(Shader& shader) { return CreateShaderModulesAndPipelines(shader); }
 
     void VulkanRendererPlugin::DestroyShader(Shader& shader)
     {
@@ -1160,7 +1195,18 @@ namespace C3D
                     Memory.Delete(pipeline);
                 }
             }
+
+            for (const auto pipeline : vulkanShader->wireframePipelines)
+            {
+                if (pipeline)
+                {
+                    pipeline->Destroy();
+                    Memory.Delete(pipeline);
+                }
+            }
+
             vulkanShader->pipelines.Destroy();
+            vulkanShader->wireframePipelines.Destroy();
 
             // Cleanup Shader Modules
             for (u32 i = 0; i < vulkanShader->stageCount; i++)
@@ -1195,17 +1241,15 @@ namespace C3D
         const VkAllocationCallbacks* vkAllocator = m_context.allocator;
         const auto vulkanShader                  = static_cast<VulkanShader*>(shader.apiSpecificData);
 
-        for (u32 i = 0; i < vulkanShader->stageCount; i++)
+        bool needsWireframe = shader.flags & ShaderFlagWireframe;
+        // Determine if we support wireframe and disable if we don't
+        if (!m_context.device.SupportsFillmodeNonSolid())
         {
-            if (!CreateShaderModule(shader.stageConfigs[i], vulkanShader->stages[i]))
-            {
-                ERROR_LOG("Unable to create: '{}' shader module for: '{}'. Shader will be destroyed.", shader.stageConfigs[i].fileName,
-                          shader.name);
-                return false;
-            }
+            WARN_LOG("Renderer backend does not support fillModeNonSolid. Wireframe mode will not be available.");
+            needsWireframe = false;
         }
 
-        // Static lookup table for our types -> Vulkan ones.
+        // Static lookup table to convert our internal types to the Vulkan ones.
         static VkFormat* types = nullptr;
         static VkFormat t[10];
         if (!types)
@@ -1224,9 +1268,8 @@ namespace C3D
         }
 
         // Process attributes
-        const u64 attributeCount = shader.attributes.Size();
-        u32 offset               = 0;
-        for (u32 i = 0; i < attributeCount; i++)
+        u32 offset = 0;
+        for (u32 i = 0; i < shader.attributes.Size(); i++)
         {
             // Setup the new attribute
             VkVertexInputAttributeDescription attribute{};
@@ -1239,7 +1282,7 @@ namespace C3D
             offset += shader.attributes[i].size;
         }
 
-        // Create descriptor pool
+        // Define the descriptor pool creation info
         VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
         poolInfo.poolSizeCount              = vulkanShader->descriptorPoolSizeCount;
         poolInfo.pPoolSizes                 = vulkanShader->descriptorPoolSizes;
@@ -1251,6 +1294,7 @@ namespace C3D
         pool_info.flags |= VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
 #endif
 
+        // Create the descriptor pool
         VkResult result = vkCreateDescriptorPool(logicalDevice, &poolInfo, vkAllocator, &vulkanShader->descriptorPool);
         if (!VulkanUtils::IsSuccess(result))
         {
@@ -1273,50 +1317,44 @@ namespace C3D
             }
         }
 
-        // TODO: This shouldn't be here :(
-        const auto fWidth  = static_cast<f32>(m_context.frameBufferWidth);
-        const auto fHeight = static_cast<f32>(m_context.frameBufferHeight);
-
-        // Viewport
-        VkViewport viewport;
-        viewport.x        = 0.0f;
-        viewport.y        = fHeight;
-        viewport.width    = fWidth;
-        viewport.height   = -fHeight;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-
-        // Scissor
-        VkRect2D scissor;
-        scissor.offset.x = scissor.offset.y = 0;
-        scissor.extent.width                = m_context.frameBufferWidth;
-        scissor.extent.height               = m_context.frameBufferHeight;
-
-        VkPipelineShaderStageCreateInfo stageCreateInfos[VULKAN_SHADER_MAX_STAGES] = {};
-        for (u32 i = 0; i < vulkanShader->stageCount; i++)
-        {
-            stageCreateInfos[i] = vulkanShader->stages[i].shaderStageCreateInfo;
-        }
-
         // NOTE: We only support dynamic topology.
         if (m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_NATIVE_DYNAMIC_STATE) ||
             m_context.device.HasSupportFor(VULKAN_DEVICE_SUPPORT_FLAG_DYNAMIC_STATE))
         {
             // Total of 3 topology classes
             vulkanShader->pipelines.Resize(3);
+            // We will also have 3 topology classes for wireframe (if it's supported and requested)
+            if (needsWireframe)
+            {
+                vulkanShader->wireframePipelines.Resize(3);
+            }
 
             // Point class
             if (shader.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST)
             {
-                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_POINT] =
-                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST);
+                constexpr auto topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_POINT_LIST;
+
+                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_POINT] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, topologyTypes);
+
+                if (needsWireframe)
+                {
+                    vulkanShader->wireframePipelines[VULKAN_TOPOLOGY_CLASS_POINT] =
+                        Memory.New<VulkanPipeline>(MemoryType::Vulkan, topologyTypes);
+                }
             }
 
             // Line class
             if (shader.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST || shader.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP)
             {
-                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_LINE] =
-                    Memory.New<VulkanPipeline>(MemoryType::Vulkan, PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST | PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP);
+                constexpr auto topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_LINE_LIST | PRIMITIVE_TOPOLOGY_TYPE_LINE_STRIP;
+
+                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_LINE] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, topologyTypes);
+
+                if (needsWireframe)
+                {
+                    vulkanShader->wireframePipelines[VULKAN_TOPOLOGY_CLASS_LINE] =
+                        Memory.New<VulkanPipeline>(MemoryType::Vulkan, topologyTypes);
+                }
             }
 
             // Triangle class
@@ -1324,9 +1362,16 @@ namespace C3D
                 shader.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP ||
                 shader.topologyTypes & PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN)
             {
-                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_TRIANGLE] = Memory.New<VulkanPipeline>(
-                    MemoryType::Vulkan,
-                    PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN);
+                constexpr auto topologyTypes =
+                    PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_STRIP | PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_FAN;
+
+                vulkanShader->pipelines[VULKAN_TOPOLOGY_CLASS_TRIANGLE] = Memory.New<VulkanPipeline>(MemoryType::Vulkan, topologyTypes);
+
+                if (needsWireframe)
+                {
+                    vulkanShader->wireframePipelines[VULKAN_TOPOLOGY_CLASS_TRIANGLE] =
+                        Memory.New<VulkanPipeline>(MemoryType::Vulkan, topologyTypes);
+                }
             }
         }
         else
@@ -1336,39 +1381,10 @@ namespace C3D
             return false;
         }
 
-        for (u32 i = 0; i < VULKAN_TOPOLOGY_CLASS_MAX; i++)
+        if (!CreateShaderModulesAndPipelines(shader))
         {
-            if (!vulkanShader->pipelines[i]) continue;
-
-            VulkanPipelineConfig config = {};
-            config.renderpass           = vulkanShader->renderpass;
-            config.stride               = shader.attributeStride;
-            config.attributes.Copy(vulkanShader->attributes, shader.attributes.Size());
-            config.descriptorSetLayouts.Copy(vulkanShader->descriptorSetLayouts, vulkanShader->descriptorSetCount);
-            config.stages.Copy(stageCreateInfos, vulkanShader->stageCount);
-            config.viewport    = viewport;
-            config.scissor     = scissor;
-            config.cullMode    = vulkanShader->cullMode;
-            config.shaderFlags = shader.flags;
-            config.pushConstantRanges.Resize(1);
-            Range pushConstantRange;
-            pushConstantRange.offset     = 0;
-            pushConstantRange.size       = shader.localUboStride;
-            config.pushConstantRanges[0] = pushConstantRange;
-            config.shaderName            = shader.name;
-            config.topologyTypes         = shader.topologyTypes;
-
-            if (vulkanShader->boundPipelineIndex == INVALID_ID_U8)
-            {
-                // Set the bound pipeline to the first valid pipeline
-                vulkanShader->boundPipelineIndex = i;
-            }
-
-            if (!vulkanShader->pipelines[i]->Create(&m_context, config))
-            {
-                ERROR_LOG("Failed to create pipeline for topology type: '{}'.", i);
-                return false;
-            }
+            ERROR_LOG("Failed to create modules and pipelines for: '{}'.", shader.name);
+            return false;
         }
 
         if (vulkanShader->boundPipelineIndex == INVALID_ID_U8)
@@ -1434,10 +1450,15 @@ namespace C3D
     bool VulkanRendererPlugin::UseShader(const Shader& shader)
     {
         const auto vulkanShader = static_cast<VulkanShader*>(shader.apiSpecificData);
-        vulkanShader->pipelines[vulkanShader->boundPipelineIndex]->Bind(&m_context.graphicsCommandBuffers[m_context.imageIndex],
-                                                                        VK_PIPELINE_BIND_POINT_GRAPHICS);
+        auto commandBuffer      = &m_context.graphicsCommandBuffers[m_context.imageIndex];
 
+        // Pick the correct pipeline
+        auto& pipelines = shader.wireframeEnabled ? vulkanShader->wireframePipelines : vulkanShader->pipelines;
+        // And then bind it
+        pipelines[vulkanShader->boundPipelineIndex]->Bind(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS);
+        // Also keep track of the currently bound shader
         m_context.boundShader = &shader;
+
         return true;
     }
 
@@ -1587,8 +1608,12 @@ namespace C3D
             }
         }
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                vulkanShader->pipelines[vulkanShader->boundPipelineIndex]->layout, 0, 1, &globalDescriptorSet, 0, nullptr);
+        // Pick the correct pipeline
+        auto& pipelines = shader.wireframeEnabled ? vulkanShader->wireframePipelines : vulkanShader->pipelines;
+
+        // Bind the global descriptor set to be updated
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[vulkanShader->boundPipelineIndex]->layout, 0, 1,
+                                &globalDescriptorSet, 0, nullptr);
         return true;
     }
 
@@ -1753,10 +1778,12 @@ namespace C3D
         // Determine the first descriptor set index. If there are no global this will be 0 otherwise it will be 1
         u32 firstSet = (shader.globalUniformCount > 0 || shader.globalUniformSamplerCount > 0) ? 1 : 0;
 
+        // Pick the correct pipeline
+        auto& pipelines = shader.wireframeEnabled ? vulkanShader->wireframePipelines : vulkanShader->pipelines;
+
         // We always bind for every instance however
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                vulkanShader->pipelines[vulkanShader->boundPipelineIndex]->layout, firstSet, 1, &instanceDescriptorSet, 0,
-                                nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines[vulkanShader->boundPipelineIndex]->layout,
+                                firstSet, 1, &instanceDescriptorSet, 0, nullptr);
         return true;
     }
 
@@ -1765,10 +1792,20 @@ namespace C3D
         const auto vulkanShader       = static_cast<VulkanShader*>(shader.apiSpecificData);
         VkCommandBuffer commandBuffer = m_context.graphicsCommandBuffers[m_context.imageIndex].handle;
 
-        vkCmdPushConstants(commandBuffer, vulkanShader->pipelines[vulkanShader->boundPipelineIndex]->layout,
+        // Pick the correct pipeline
+        auto& pipelines = shader.wireframeEnabled ? vulkanShader->wireframePipelines : vulkanShader->pipelines;
+
+        vkCmdPushConstants(commandBuffer, pipelines[vulkanShader->boundPipelineIndex]->layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 128, vulkanShader->localPushConstantBlock);
 
         return true;
+    }
+
+    bool VulkanRendererPlugin::ShaderSupportsWireframe(const Shader& shader)
+    {
+        // If the shader has at least one wireframe pipeline it supports wireframe rendering
+        const auto vulkanShader = static_cast<VulkanShader*>(shader.apiSpecificData);
+        return !vulkanShader->wireframePipelines.Empty();
     }
 
     VkSamplerAddressMode VulkanRendererPlugin::ConvertRepeatType(const char* axis, const TextureRepeat repeat) const
@@ -1838,7 +1875,7 @@ namespace C3D
             {
                 auto& samplerState = instanceState.samplerUniforms[i];
                 // Grab a pointer to the uniform associated with this sampler
-                samplerState.uniform = &shader.uniforms.GetByIndex(shader.instanceSamplerIndices[i]);
+                samplerState.uniform = &shader.uniforms[shader.instanceSamplers[i]];
                 // Grab the uniform texture config also
                 const auto& tc = config.uniformConfigs[i];
                 // Get the samplers array length (or 1 in case of a single sampler)
@@ -2177,6 +2214,167 @@ namespace C3D
         CreateCommandBuffers();
 
         m_context.recreatingSwapChain = false;
+        return true;
+    }
+
+    bool VulkanRendererPlugin::CreateShaderModulesAndPipelines(Shader& shader)
+    {
+        constexpr auto VULKAN_SHADER_NUM_PIPELINES = 3;
+
+        auto vulkanShader   = static_cast<VulkanShader*>(shader.apiSpecificData);
+        bool needsWireframe = !vulkanShader->wireframePipelines.Empty();
+
+        VulkanShaderStage newStages[VULKAN_SHADER_MAX_STAGES];
+        VulkanPipeline* newPipelines[VULKAN_SHADER_NUM_PIPELINES];
+        VulkanPipeline* newWireframePipelines[VULKAN_SHADER_NUM_PIPELINES];
+
+        for (u32 i = 0; i < vulkanShader->stageCount; i++)
+        {
+            if (!CreateShaderModule(shader.stageConfigs[i], newStages[i]))
+            {
+                ERROR_LOG("Unable to create: '{}' shader module for: '{}'. Stopping Shader creation.", shader.stageConfigs[i].fileName,
+                          shader.name);
+                return false;
+            }
+        }
+
+        // TODO: This shouldn't be here :(
+        const auto fWidth  = static_cast<f32>(m_context.frameBufferWidth);
+        const auto fHeight = static_cast<f32>(m_context.frameBufferHeight);
+
+        // Viewport
+        VkViewport viewport;
+        viewport.x        = 0.0f;
+        viewport.y        = fHeight;
+        viewport.width    = fWidth;
+        viewport.height   = -fHeight;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
+        // Scissor
+        VkRect2D scissor;
+        scissor.offset.x = scissor.offset.y = 0;
+        scissor.extent.width                = m_context.frameBufferWidth;
+        scissor.extent.height               = m_context.frameBufferHeight;
+
+        VkPipelineShaderStageCreateInfo stageCreateInfos[VULKAN_SHADER_MAX_STAGES] = {};
+        for (u32 i = 0; i < vulkanShader->stageCount; i++)
+        {
+            stageCreateInfos[i] = newStages[i].shaderStageCreateInfo;
+        }
+
+        bool inError = false;
+        for (u32 i = 0; i < VULKAN_TOPOLOGY_CLASS_MAX; i++)
+        {
+            // Check if there is currently a pipeline there
+            if (!vulkanShader->pipelines[i]) continue;
+
+            VulkanPipelineConfig config = {};
+            config.renderpass           = vulkanShader->renderpass;
+            config.stride               = shader.attributeStride;
+            config.attributes.Copy(vulkanShader->attributes, shader.attributes.Size());
+            config.descriptorSetLayouts.Copy(vulkanShader->descriptorSetLayouts, vulkanShader->descriptorSetCount);
+            config.stages.Copy(stageCreateInfos, vulkanShader->stageCount);
+            config.viewport = viewport;
+            config.scissor  = scissor;
+            config.cullMode = vulkanShader->cullMode;
+            // For the non-wireframe shader we pass flags without wireframe
+            config.shaderFlags = (shader.flags & ~ShaderFlagWireframe);
+            config.pushConstantRanges.Resize(1);
+            Range pushConstantRange;
+            pushConstantRange.offset     = 0;
+            pushConstantRange.size       = shader.localUboStride;
+            config.pushConstantRanges[0] = pushConstantRange;
+            config.shaderName            = shader.name;
+            config.topologyTypes         = shader.topologyTypes;
+
+            if (vulkanShader->boundPipelineIndex == INVALID_ID_U8)
+            {
+                // Set the bound pipeline to the first valid pipeline
+                vulkanShader->boundPipelineIndex = i;
+            }
+
+            newPipelines[i] = Memory.New<VulkanPipeline>(MemoryType::RenderSystem, vulkanShader->pipelines[i]->GetSupportedTopologyTypes());
+            if (!newPipelines[i]->Create(&m_context, config))
+            {
+                ERROR_LOG("Failed to create pipeline for topology type: '{}'.", i);
+                inError = true;
+                break;
+            }
+
+            if (needsWireframe)
+            {
+                // If we need the wireframe pipeline for this topology type then we simply use the same config but with the wireframe flag
+                newWireframePipelines[i] =
+                    Memory.New<VulkanPipeline>(MemoryType::RenderSystem, vulkanShader->wireframePipelines[i]->GetSupportedTopologyTypes());
+
+                config.shaderFlags = shader.flags;
+                if (!newWireframePipelines[i]->Create(&m_context, config))
+                {
+                    ERROR_LOG("Failed to create wireframe pipeline for topology type: '{}'.", i);
+                    inError = true;
+                    break;
+                }
+            }
+        }
+
+        if (inError)
+        {
+            ERROR_LOG("Failed to Create Shader Modules or Pipelines for: '{}'.", shader.name);
+            ERROR_LOG("Deleting newly created pipelines.");
+            for (u32 i = 0; i < vulkanShader->pipelines.Size(); ++i)
+            {
+                if (newPipelines[i])
+                {
+                    newPipelines[i]->Destroy();
+                    Memory.Delete(newPipelines[i]);
+                }
+
+                if (newWireframePipelines[i])
+                {
+                    newWireframePipelines[i]->Destroy();
+                    Memory.Delete(newWireframePipelines[i]);
+                }
+            }
+
+            ERROR_LOG("Deleting newly created modules.");
+            for (auto& stage : newStages)
+            {
+                vkDestroyShaderModule(m_context.device.GetLogical(), stage.handle, m_context.allocator);
+            }
+
+            return false;
+        }
+
+        // We succesfully created our new modules and pipelines so let's destroy the old ones and replace them.
+        INFO_LOG("Replacing old pipelines with newly generated ones for: '{}'.", shader.name);
+        m_context.device.WaitIdle();
+        for (u32 i = 0; i < vulkanShader->pipelines.Size(); ++i)
+        {
+            if (vulkanShader->pipelines[i])
+            {
+                vulkanShader->pipelines[i]->Destroy();
+                Memory.Delete(vulkanShader->pipelines[i]);
+
+                vulkanShader->pipelines[i] = newPipelines[i];
+
+                if (needsWireframe)
+                {
+                    vulkanShader->wireframePipelines[i]->Destroy();
+                    Memory.Delete(vulkanShader->wireframePipelines[i]);
+
+                    vulkanShader->wireframePipelines[i] = newWireframePipelines[i];
+                }
+            }
+        }
+
+        INFO_LOG("Replacing old modules with newly generated ones for: '{}'.", shader.name);
+        for (u32 i = 0; i < vulkanShader->stageCount; ++i)
+        {
+            vkDestroyShaderModule(m_context.device.GetLogical(), vulkanShader->stages[i].handle, m_context.allocator);
+            vulkanShader->stages[i] = newStages[i];
+        }
+
         return true;
     }
 

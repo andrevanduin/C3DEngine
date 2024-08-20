@@ -218,7 +218,7 @@ namespace C3D
         {
             if (value.ToBool()) resource.flags |= ShaderFlagStencilWrite;
         }
-        else if (name.IEquals("wireframe"))
+        else if (name.IEquals("supportsWireframe"))
         {
             if (value.ToBool()) resource.flags |= ShaderFlagWireframe;
         }

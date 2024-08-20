@@ -301,6 +301,8 @@ namespace C3D
 
     void VulkanPipeline::Destroy()
     {
+        if (!m_context) return;
+
         auto logicalDevice = m_context->device.GetLogical();
 
         if (m_handle)

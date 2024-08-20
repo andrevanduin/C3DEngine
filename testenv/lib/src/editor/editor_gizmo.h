@@ -72,6 +72,8 @@ public:
     bool Load();
     bool Unload();
 
+    void OnPrepareRender(C3D::FrameData& frameData);
+
     void Update();
     void Refresh();
 
@@ -112,4 +114,6 @@ private:
 
     EditorGizmoInteractionType m_interaction;
     EditorGizmoOrientation m_orientation;
+
+    bool m_isDirty = true;
 };

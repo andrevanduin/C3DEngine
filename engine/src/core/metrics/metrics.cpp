@@ -246,6 +246,11 @@ namespace C3D
 
     u64 MetricSystem::GetAllocCount(const u8 allocatorId) const { return m_memoryStats[allocatorId].allocCount; }
 
+    u64 MetricSystem::GetAllocCount(MemoryType memoryType, u8 allocatorId) const
+    {
+        return m_memoryStats[allocatorId].taggedAllocations[ToUnderlying(memoryType)].count;
+    }
+
     u64 MetricSystem::GetMemoryUsage(const MemoryType memoryType, const u8 allocatorId) const
     {
 #ifdef C3D_MEMORY_METRICS_POINTERS
