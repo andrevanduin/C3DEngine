@@ -11,17 +11,17 @@ u8 RingQueueShouldCreateAndDestroy()
 {
     C3D::RingQueue<int> queue(10);
 
-    ExpectShouldBe(10, queue.Capacity());
-    ExpectShouldBe(0, queue.Size());
-    ExpectShouldNotBe(nullptr, (void*)queue.GetData());
-    ExpectShouldBe(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::RingQueue));
+    ExpectEqual(10, queue.Capacity());
+    ExpectEqual(0, queue.Size());
+    ExpectNotEqual(nullptr, (void*)queue.GetData());
+    ExpectEqual(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::RingQueue));
 
     queue.Destroy();
 
-    ExpectShouldBe(0, queue.Capacity());
-    ExpectShouldBe(0, queue.Size());
-    ExpectShouldBe(nullptr, (void*)queue.GetData());
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::RingQueue));
+    ExpectEqual(0, queue.Capacity());
+    ExpectEqual(0, queue.Size());
+    ExpectEqual(nullptr, (void*)queue.GetData());
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::RingQueue));
 
     return true;
 }
@@ -31,13 +31,13 @@ u8 RingQueueShouldDestroyWhenLeavingScope()
     {
         const C3D::RingQueue<int> queue(10);
 
-        ExpectShouldBe(10, queue.Capacity());
-        ExpectShouldBe(0, queue.Size());
-        ExpectShouldNotBe(nullptr, (void*)queue.GetData());
-        ExpectShouldBe(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::RingQueue));
+        ExpectEqual(10, queue.Capacity());
+        ExpectEqual(0, queue.Size());
+        ExpectNotEqual(nullptr, (void*)queue.GetData());
+        ExpectEqual(sizeof(int) * 10, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::RingQueue));
     }
 
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::RingQueue));
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::RingQueue));
     return true;
 }
 

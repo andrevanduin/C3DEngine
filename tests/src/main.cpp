@@ -31,11 +31,13 @@ int main(int argc, char** argv)
     DynamicArray::RegisterTests(manager);
 
     Stack::RegisterTests(manager);
+
     String::RegisterTests(manager);
     CString::RegisterTests(manager);
 
     HashTable::RegisterTests(manager);
     HashMap::RegisterTests(manager);
+
     RingQueue::RegisterTests(manager);
 
     FileSystem::RegisterTests(manager);

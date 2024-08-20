@@ -32,9 +32,7 @@ void TestManager::RunTests()
 {
     using namespace C3D;
 
-    u32 passed  = 0;
-    u32 failed  = 0;
-    u32 skipped = 0;
+    u32 passed = 0;
 
     PlatformSystemConfig config;
     config.applicationName           = "Tests";
@@ -72,18 +70,36 @@ void TestManager::RunTests()
         }
         else if (result == SKIPPED)
         {
-            skipped++;
             WARN_LOG("Result: SKIPPED (Ran in {:.4f} sec)", testTime.GetElapsed());
+            m_skipped.push_back(test);
         }
         else if (result == FAILED)
         {
-            failed++;
             ERROR_LOG("Result: FAILED (Ran in {:.4f} sec)", testTime.GetElapsed());
+            m_failures.push_back(test);
         }
     }
 
-    INFO_LOG("Results: {} passed, {} failed and {} skipped. Total runtime {:.4f} sec.", passed, failed, skipped,
+    INFO_LOG("Results: {} passed, {} failed and {} skipped. Total runtime {:.4f} sec.", passed, m_failures.size(), m_skipped.size(),
              testTime.GetTotalElapsed());
+
+    if (!m_skipped.empty())
+    {
+        INFO_LOG("The following tests have been SKIPPED:");
+        for (auto& test : m_skipped)
+        {
+            WARN_LOG("({}/{}): {} - {}", i, m_tests.size(), test.name, test.description);
+        }
+    }
+
+    if (!m_failures.empty())
+    {
+        INFO_LOG("The following tests have FAILED:");
+        for (auto& test : m_failures)
+        {
+            ERROR_LOG("({}/{}): {} - {}", i, m_tests.size(), test.name, test.description)
+        }
+    }
 
     systemsManager.OnShutdown();
 }

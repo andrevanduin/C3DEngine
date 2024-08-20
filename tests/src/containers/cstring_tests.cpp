@@ -1,18 +1,16 @@
 
 #include "cstring_tests.h"
 
-#include <iostream>
+#include <containers/cstring.h>
 
 #include "../expect.h"
-#include "../util.h"
-#include "containers/cstring.h"
 
 u8 CStringShouldCreateEmptyWithEmptyCtor()
 {
     C3D::CString<128> str;
 
-    ExpectShouldBe(0, str.Size());
-    ExpectShouldBe('\0', str[0]);
+    ExpectEqual(0, str.Size());
+    ExpectEqual('\0', str[0]);
 
     return true;
 }

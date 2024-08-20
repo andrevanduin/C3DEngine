@@ -13,7 +13,7 @@ u8 StackAllocatorShouldCreate()
     C3D::StackAllocator<KibiBytes(8)> allocator;
     allocator.Create("Test Allocator");
 
-    ExpectShouldBe(KibiBytes(8), allocator.GetTotalSize());
+    ExpectEqual(KibiBytes(8), allocator.GetTotalSize());
 
     return true;
 }
@@ -23,7 +23,7 @@ u8 StackAllocatorShouldErrorOnOverAllocation()
     C3D::StackAllocator<KibiBytes(2)> allocator;
     allocator.Create("Test Allocator");
 
-    ExpectToThrow(std::bad_alloc, [&] { allocator.AllocateBlock(C3D::MemoryType::Test, KibiBytes(8)); });
+    ExpectThrow(std::bad_alloc, [&] { allocator.AllocateBlock(C3D::MemoryType::Test, KibiBytes(8)); });
 
     return true;
 }
