@@ -11,10 +11,10 @@ u8 ArrayShouldCreate()
     C3D::Array<int, 10> array{};
     array[0] = 5;
 
-    ExpectShouldBe(10, array.Size());
-    ExpectShouldNotBe(nullptr, (void*)array.Data());
+    ExpectEqual(10, array.Size());
+    ExpectNotEqual(nullptr, (void*)array.Data());
 
-    ExpectShouldBe(5, array[0]);
+    ExpectEqual(5, array[0]);
     return true;
 }
 
@@ -22,10 +22,10 @@ u8 ArrayShouldCreateWithInitializerList()
 {
     C3D::Array<int, 10> array = { 1, 2, 3, 4 };
 
-    ExpectShouldBe(10, array.Size());
-    ExpectShouldNotBe(nullptr, (void*)array.Data());
+    ExpectEqual(10, array.Size());
+    ExpectNotEqual(nullptr, (void*)array.Data());
 
-    ExpectShouldBe(1, array[0]);
+    ExpectEqual(1, array[0]);
     return true;
 }
 
@@ -33,9 +33,9 @@ u8 ArrayShouldSetAndGetValuesCorrectly()
 {
     C3D::Array<int, 10> array = { 1, 2, 3, 4 };
 
-    ExpectShouldBe(1, array[0]);
+    ExpectEqual(1, array[0]);
     array[0] = 18;
-    ExpectShouldBe(18, array[0]);
+    ExpectEqual(18, array[0]);
     return true;
 }
 
@@ -46,7 +46,7 @@ u8 ArrayShouldBeIterable()
 
     for (auto i = 0; i < 4; i++)
     {
-        ExpectShouldBe(expectedValues[i], array[i]);
+        ExpectEqual(expectedValues[i], array[i]);
     }
     return true;
 }
@@ -59,7 +59,7 @@ u8 ArrayShouldBeIterableWithBeginAndEnd()
     auto index = 0;
     for (auto i : array)
     {
-        ExpectShouldBe(expectedValues[index], i);
+        ExpectEqual(expectedValues[index], i);
         index++;
     }
     return true;

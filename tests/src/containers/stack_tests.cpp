@@ -9,8 +9,8 @@ u8 StackShouldCreateEmptyWithDefaultCtor()
 {
     const C3D::Stack<int> stack;
 
-    ExpectShouldBe(0, stack.Capacity());
-    ExpectShouldBe(0, stack.Size());
+    ExpectEqual(0, stack.Capacity());
+    ExpectEqual(0, stack.Size());
 
     return true;
 }
@@ -24,15 +24,15 @@ u8 StackShouldCleanupWhenLeaveScope()
         stack.Push(3);
         stack.Push(10);
 
-        ExpectShouldBe(4, stack.Capacity());
-        ExpectShouldBe(4, stack.Size());
-        ExpectShouldBe(10, stack.Pop())
+        ExpectEqual(4, stack.Capacity());
+        ExpectEqual(4, stack.Size());
+        ExpectEqual(10, stack.Pop())
 
-            ExpectShouldNotBe(nullptr, (void*)stack.GetData());
-        ExpectShouldBe(sizeof(int) * 4, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::Stack));
+            ExpectNotEqual(nullptr, (void*)stack.GetData());
+        ExpectEqual(sizeof(int) * 4, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::Stack));
     }
 
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::Stack));
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::Stack));
 
     return true;
 }
@@ -48,11 +48,11 @@ u8 StackShouldPop()
     for (auto i = 4; i > 0; i--)
     {
         // Capacity should remain the same
-        ExpectShouldBe(4, stack.Capacity());
+        ExpectEqual(4, stack.Capacity());
         // Size should decrease by 1 each time
-        ExpectShouldBe(i, stack.Size());
+        ExpectEqual(i, stack.Size());
         // Numbers should be sequential in descending order
-        ExpectShouldBe(i, stack.Pop());
+        ExpectEqual(i, stack.Pop());
     }
 
     return true;
@@ -66,13 +66,13 @@ u8 StackShouldClear()
     stack.Push(3);
     stack.Push(4);
 
-    ExpectShouldBe(4 * sizeof(int), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::Stack));
-    ExpectShouldBe(4, stack.Size());
+    ExpectEqual(4 * sizeof(int), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::Stack));
+    ExpectEqual(4, stack.Size());
 
     stack.Clear();
 
-    ExpectShouldBe(4 * sizeof(int), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::Stack));
-    ExpectShouldBe(0, stack.Size());
+    ExpectEqual(4 * sizeof(int), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::Stack));
+    ExpectEqual(0, stack.Size());
 
     return true;
 }
@@ -88,7 +88,7 @@ u8 StackShouldBeIterable()
     auto num = 1;
     for (auto i : stack)
     {
-        ExpectShouldBe(num, i);
+        ExpectEqual(num, i);
         num++;
     }
 
@@ -102,7 +102,7 @@ u8 StackShouldBeConstructableByInitializerList()
     auto num = 1;
     for (auto i : stack)
     {
-        ExpectShouldBe(num, i);
+        ExpectEqual(num, i);
         num++;
     }
 

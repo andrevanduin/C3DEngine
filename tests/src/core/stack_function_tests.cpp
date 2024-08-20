@@ -26,7 +26,7 @@ u8 CreateStaticFunc()
 {
     C3D::StackFunction<int(), 16> func(StaticFunc);
 
-    ExpectShouldBe(5, func());
+    ExpectEqual(5, func());
 
     return true;
 }
@@ -35,7 +35,7 @@ u8 CreateLambda()
 {
     C3D::StackFunction<int(), 16> func(LAMBDA);
 
-    ExpectShouldBe(6, func());
+    ExpectEqual(6, func());
 
     return true;
 }
@@ -46,7 +46,7 @@ u8 CreateMemberFunc()
 
     C3D::StackFunction<int(), 16> func([&]() { return instance.MemberFunc(); });
 
-    ExpectShouldBe(7, func());
+    ExpectEqual(7, func());
 
     return true;
 }
@@ -57,7 +57,7 @@ u8 CreateClassWithOperator()
 
     C3D::StackFunction<int(), 16> func(instance);
 
-    ExpectShouldBe(8, func());
+    ExpectEqual(8, func());
 
     return true;
 }
@@ -70,8 +70,8 @@ u8 CopyConstructorShouldWork()
         // Use copy constructor to copy our func
         C3D::StackFunction<int(), 16> otherFunc(func);
 
-        ExpectShouldBe(5, func());
-        ExpectShouldBe(5, otherFunc());
+        ExpectEqual(5, func());
+        ExpectEqual(5, otherFunc());
     }
 
     {
@@ -80,8 +80,8 @@ u8 CopyConstructorShouldWork()
         // Use copy constructor to copy our func
         C3D::StackFunction<int(), 16> otherFunc(func);
 
-        ExpectShouldBe(6, func());
-        ExpectShouldBe(6, otherFunc());
+        ExpectEqual(6, func());
+        ExpectEqual(6, otherFunc());
     }
 
     {
@@ -92,8 +92,8 @@ u8 CopyConstructorShouldWork()
         // Use copy constructor to copy our func
         C3D::StackFunction<int(), 16> otherFunc(func);
 
-        ExpectShouldBe(7, func());
-        ExpectShouldBe(7, otherFunc());
+        ExpectEqual(7, func());
+        ExpectEqual(7, otherFunc());
     }
 
     {
@@ -104,8 +104,8 @@ u8 CopyConstructorShouldWork()
         // Use copy constructor to copy our func
         C3D::StackFunction<int(), 16> otherFunc(func);
 
-        ExpectShouldBe(8, func());
-        ExpectShouldBe(8, otherFunc());
+        ExpectEqual(8, func());
+        ExpectEqual(8, otherFunc());
     }
 
     return true;
@@ -119,8 +119,8 @@ u8 CopyAssignmentOperatorShouldWork()
         // Use copy assigment operator
         C3D::StackFunction<int(), 16> otherFunc = func;
 
-        ExpectShouldBe(5, func());
-        ExpectShouldBe(5, otherFunc());
+        ExpectEqual(5, func());
+        ExpectEqual(5, otherFunc());
     }
 
     {
@@ -129,8 +129,8 @@ u8 CopyAssignmentOperatorShouldWork()
         // Use copy assigment operator
         C3D::StackFunction<int(), 16> otherFunc = func;
 
-        ExpectShouldBe(6, func());
-        ExpectShouldBe(6, otherFunc());
+        ExpectEqual(6, func());
+        ExpectEqual(6, otherFunc());
     }
 
     {
@@ -141,8 +141,8 @@ u8 CopyAssignmentOperatorShouldWork()
         // Use copy assigment operator
         C3D::StackFunction<int(), 16> otherFunc = func;
 
-        ExpectShouldBe(7, func());
-        ExpectShouldBe(7, otherFunc());
+        ExpectEqual(7, func());
+        ExpectEqual(7, otherFunc());
     }
 
     {
@@ -153,8 +153,8 @@ u8 CopyAssignmentOperatorShouldWork()
         // Use copy assigment operator
         C3D::StackFunction<int(), 16> otherFunc = func;
 
-        ExpectShouldBe(8, func());
-        ExpectShouldBe(8, otherFunc());
+        ExpectEqual(8, func());
+        ExpectEqual(8, otherFunc());
     }
 
     return true;
@@ -168,7 +168,7 @@ u8 MoveConstructorShouldWork()
         // Move func into otherFunc
         C3D::StackFunction<int(), 16> otherFunc(std::move(func));
 
-        ExpectShouldBe(5, otherFunc());
+        ExpectEqual(5, otherFunc());
     }
 
     {
@@ -177,7 +177,7 @@ u8 MoveConstructorShouldWork()
         // Move func into otherFunc
         C3D::StackFunction<int(), 16> otherFunc(std::move(func));
 
-        ExpectShouldBe(6, otherFunc());
+        ExpectEqual(6, otherFunc());
     }
 
     {
@@ -188,7 +188,7 @@ u8 MoveConstructorShouldWork()
         // Move func into otherFunc
         C3D::StackFunction<int(), 16> otherFunc(std::move(func));
 
-        ExpectShouldBe(7, otherFunc());
+        ExpectEqual(7, otherFunc());
     }
 
     {
@@ -199,7 +199,7 @@ u8 MoveConstructorShouldWork()
         // Move func into otherFunc
         C3D::StackFunction<int(), 16> otherFunc(std::move(func));
 
-        ExpectShouldBe(8, otherFunc());
+        ExpectEqual(8, otherFunc());
     }
 
     return true;
@@ -213,7 +213,7 @@ u8 MoveAssignmentOperatorShouldWork()
         // Use move assignment operartor to assign func to otherFunc
         C3D::StackFunction<int(), 16> otherFunc = std::move(func);
 
-        ExpectShouldBe(5, otherFunc());
+        ExpectEqual(5, otherFunc());
     }
 
     {
@@ -222,7 +222,7 @@ u8 MoveAssignmentOperatorShouldWork()
         // Use move assignment operartor to assign func to otherFunc
         C3D::StackFunction<int(), 16> otherFunc = std::move(func);
 
-        ExpectShouldBe(6, otherFunc());
+        ExpectEqual(6, otherFunc());
     }
 
     {
@@ -233,7 +233,7 @@ u8 MoveAssignmentOperatorShouldWork()
         // Use move assignment operartor to assign func to otherFunc
         C3D::StackFunction<int(), 16> otherFunc = std::move(func);
 
-        ExpectShouldBe(7, otherFunc());
+        ExpectEqual(7, otherFunc());
     }
 
     {
@@ -244,7 +244,7 @@ u8 MoveAssignmentOperatorShouldWork()
         // Use move assignment operartor to assign func to otherFunc
         C3D::StackFunction<int(), 16> otherFunc = std::move(func);
 
-        ExpectShouldBe(8, otherFunc());
+        ExpectEqual(8, otherFunc());
     }
 
     return true;
@@ -272,19 +272,19 @@ u8 CallShouldWork()
     {
         // No args
         C3D::StackFunction<bool(), 16> func(NoArgFunc);
-        ExpectToBeTrue(func());
+        ExpectTrue(func());
     }
 
     {
         // One arg
         C3D::StackFunction<int(int a), 16> func(OneArgFunc);
-        ExpectShouldBe(5, func(5));
+        ExpectEqual(5, func(5));
     }
 
     {
         // Multiple args
         C3D::StackFunction<int(int a, int b), 16> func(AddFunc);
-        ExpectShouldBe(12, func(2, 10));
+        ExpectEqual(12, func(2, 10));
     }
 
     {
@@ -292,7 +292,7 @@ u8 CallShouldWork()
         C3D::StackFunction<int(const int& a), 16> func(OneConstRefArgFunc);
 
         int a = 5;
-        ExpectShouldBe(4, func(a));
+        ExpectEqual(4, func(a));
     }
 
     {
@@ -301,7 +301,7 @@ u8 CallShouldWork()
 
         int a = 5;
         func(a);
-        ExpectShouldBe(15, a);
+        ExpectEqual(15, a);
     }
 
     {
@@ -311,7 +311,7 @@ u8 CallShouldWork()
         int b   = 3;
         float c = 0.0f;
 
-        ExpectToBeTrue(func(2, 3, c, "Test with combination of args"));
+        ExpectTrue(func(2, 3, c, "Test with combination of args"));
     }
 
     return true;

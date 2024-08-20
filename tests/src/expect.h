@@ -6,7 +6,7 @@
 /**
  * @brief Expects expected to be equal to actual.
  */
-#define ExpectShouldBe(expected, actual)                                                                        \
+#define ExpectEqual(expected, actual)                                                                           \
     if ((actual) != (expected))                                                                                 \
     {                                                                                                           \
         C3D::Logger::Error("--> Expected {}, but got: {}. File: {}:{}.", expected, actual, __FILE__, __LINE__); \
@@ -16,7 +16,7 @@
 /**
  * @brief Expects expected to NOT be equal to actual.
  */
-#define ExpectShouldNotBe(expected, actual)                                                                                  \
+#define ExpectNotEqual(expected, actual)                                                                                     \
     if ((actual) == (expected))                                                                                              \
     {                                                                                                                        \
         C3D::Logger::Error("--> Expected {} != {}, but they are equal. File: {}:{}.", expected, actual, __FILE__, __LINE__); \
@@ -26,7 +26,7 @@
 /**
  * @brief Expects expected to be actual given a tolerance of K_FLOAT_EPSILON.
  */
-#define ExpectFloatToBe(expected, actual)                                                                       \
+#define ExpectFloatEqual(expected, actual)                                                                      \
     if (kabs((expected) - (actual)) > 0.001f)                                                                   \
     {                                                                                                           \
         C3D::Logger::Error("--> Expected {}, but got: {}. File: {}:{}.", expected, actual, __FILE__, __LINE__); \
@@ -36,7 +36,7 @@
 /**
  * @brief Expects actual to be true.
  */
-#define ExpectToBeTrue(actual)                                                                     \
+#define ExpectTrue(actual)                                                                         \
     if ((actual) != true)                                                                          \
     {                                                                                              \
         C3D::Logger::Error("--> Expected true, but got: false. File: {}:{}.", __FILE__, __LINE__); \
@@ -46,7 +46,7 @@
 /**
  * @brief Expects actual to be false.
  */
-#define ExpectToBeFalse(actual)                                                                    \
+#define ExpectFalse(actual)                                                                        \
     if ((actual) != false)                                                                         \
     {                                                                                              \
         C3D::Logger::Error("--> Expected false, but got: true. File: {}:{}.", __FILE__, __LINE__); \
@@ -57,7 +57,7 @@
     C3D::Logger::Error("Asserted failure: {}", (error)); \
     return false;
 
-#define ExpectToThrow(errorType, func)                                                         \
+#define ExpectThrow(errorType, func)                                                           \
     try                                                                                        \
     {                                                                                          \
         func();                                                                                \

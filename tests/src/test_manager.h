@@ -21,6 +21,7 @@ struct TestEntry
     std::string name;
     std::string description;
     std::string type;
+    std::string failureMsg;
 };
 
 class TestManager
@@ -39,4 +40,6 @@ private:
     std::string m_prevType;
 
     std::vector<TestEntry> m_tests;
+    std::vector<TestEntry> m_skipped;
+    std::vector<TestEntry> m_failures;
 };
