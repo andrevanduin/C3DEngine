@@ -1,26 +1,27 @@
 
 #include "string_tests.h"
 
+#include <containers/string.h>
+#include <core/metrics/metrics.h>
+#include <core/random.h>
+
 #include <any>
 #include <iostream>
 #include <variant>
 #include <vector>
 
 #include "../expect.h"
-#include "../util.h"
-#include "containers/string.h"
-#include "core/metrics/metrics.h"
 
 u8 StringShouldCreateEmptyWithEmptyCtor()
 {
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
     {
         const C3D::String str;
 
-        ExpectShouldBe(0, str.Size());
-        ExpectShouldBe('\0', str[0]);
+        ExpectEqual(0, str.Size());
+        ExpectEqual('\0', str[0]);
     }
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
     return true;
 }
 
@@ -33,12 +34,12 @@ u8 StringOperatorEqualsConstChar()
         const char* other = "123456";
 
         stack = other;
-        ExpectToBeTrue(stack == C3D::String("123456"));
+        ExpectTrue(stack == C3D::String("123456"));
 
         // Since both are stack allocated we expect no dynamic memory usage
-        ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+        ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
     }
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 
     {
         // operator=(const char* other) with other.length >= 15
@@ -46,12 +47,12 @@ u8 StringOperatorEqualsConstChar()
         const char* other = "1234567891011121314151617";
 
         stack = other;
-        ExpectToBeTrue(stack == C3D::String("1234567891011121314151617"));
+        ExpectTrue(stack == C3D::String("1234567891011121314151617"));
 
         // Since other is > 15 we expect a dynamic memory allocation
-        ExpectShouldBe(std::strlen(other) + 1, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::C3DString));
+        ExpectEqual(std::strlen(other) + 1, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::C3DString));
     }
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 
     // Starting string is heap allocated
     {
@@ -60,12 +61,12 @@ u8 StringOperatorEqualsConstChar()
         const char* other = "123456";
 
         heap = other;
-        ExpectToBeTrue(heap == C3D::String("123456"));
+        ExpectTrue(heap == C3D::String("123456"));
 
         // Since other is < 15 we expect no memory usage
-        ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+        ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
     }
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 
     {
         // operator=(const char* other) with other.length >= 15
@@ -73,21 +74,19 @@ u8 StringOperatorEqualsConstChar()
         const char* other = "1234567891011121314151617";
 
         heap = other;
-        ExpectToBeTrue(heap == C3D::String("1234567891011121314151617"));
+        ExpectTrue(heap == C3D::String("1234567891011121314151617"));
 
         // Since other is > 15 we expect a dynamic memory allocation
-        ExpectShouldBe(std::strlen(other) + 1, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::C3DString));
+        ExpectEqual(std::strlen(other) + 1, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::C3DString));
     }
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 
     return true;
 }
 
 u8 StringShouldDoIntegerConversion()
 {
-    Util util;
-
-    const auto randomIntegers = util.GenerateRandom<i32>(500, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+    const auto randomIntegers = C3D::Random.GenerateMultiple<i32>(500, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
     for (auto& randomInteger : randomIntegers)
     {
         // Generate our string
@@ -101,7 +100,7 @@ u8 StringShouldDoIntegerConversion()
         {
             return false;
         }
-        // ExpectToBeTrue();
+        // ExpectTrue();
     }
 
     return true;
@@ -109,8 +108,8 @@ u8 StringShouldDoIntegerConversion()
 
 u8 StringShouldDoBooleanConversion()
 {
-    ExpectToBeTrue(C3D::String("true") == C3D::String(true));
-    ExpectToBeTrue(C3D::String("false") == C3D::String(false));
+    ExpectTrue(C3D::String("true") == C3D::String(true));
+    ExpectTrue(C3D::String("false") == C3D::String(false));
     return true;
 }
 
@@ -121,11 +120,11 @@ u8 StringShouldUseSso()
     {
         // All sizes < 16 characters should not allocate memory
         const C3D::String str(std::string(size, 'a').data());
-        ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+        ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
 
         // Copying should also not result in allocated memory
         C3D::String otherStr = str;
-        ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
+        ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
     }
 
     return true;
@@ -133,8 +132,8 @@ u8 StringShouldUseSso()
 
 u8 StringShouldCompare()
 {
-    ExpectToBeTrue(C3D::String("Test2") == C3D::String("Test2"));
-    ExpectToBeTrue(C3D::String("Test") != C3D::String("Test2"));
+    ExpectTrue(C3D::String("Test2") == C3D::String("Test2"));
+    ExpectTrue(C3D::String("Test") != C3D::String("Test2"));
 
     return true;
 }
@@ -162,29 +161,29 @@ u8 StringShouldAppend()
     const C3D::String b("World");
 
     a.Append(b);
-    ExpectToBeTrue(std::strcmp("Hello World", a.Data()) == 0);
-    ExpectShouldBe(11, a.Size());
+    ExpectTrue(std::strcmp("Hello World", a.Data()) == 0);
+    ExpectEqual(11, a.Size());
 
     C3D::String c("Longer string that has to be heap ");
     const C3D::String d("allocated");
 
     c.Append(d);
-    ExpectToBeTrue(std::strcmp("Longer string that has to be heap allocated", c.Data()) == 0);
-    ExpectShouldBe(43, c.Size());
+    ExpectTrue(std::strcmp("Longer string that has to be heap allocated", c.Data()) == 0);
+    ExpectEqual(43, c.Size());
 
     C3D::String e("Long String That we will add to another");
     const C3D::String f(" very long string to test if it also works when not using SSO");
 
     e.Append(f);
-    ExpectToBeTrue(
+    ExpectTrue(
         std::strcmp("Long String That we will add to another very long string to test if it also works when not using SSO", e.Data()) == 0);
-    ExpectShouldBe(100, e.Size());
+    ExpectEqual(100, e.Size());
 
     C3D::String ch("Test123");
     ch.Append('4');
 
-    ExpectShouldBe("Test1234", ch);
-    ExpectShouldBe(8, ch.Size());
+    ExpectEqual("Test1234", ch);
+    ExpectEqual(8, ch.Size());
 
     return true;
 }
@@ -193,19 +192,19 @@ u8 StringShouldTrim()
 {
     C3D::String right("Test123  ");
     right.TrimRight();
-    ExpectShouldBe("Test123", right);
+    ExpectEqual("Test123", right);
 
     C3D::String left("   Test123");
     left.TrimLeft();
-    ExpectShouldBe("Test123", left);
+    ExpectEqual("Test123", left);
 
     C3D::String trim("    Test 1234567    ");
     trim.Trim();
-    ExpectShouldBe("Test 1234567", trim);
+    ExpectEqual("Test 1234567", trim);
 
     C3D::String newLines("\n\nTest1234\n\n\n\n");
     newLines.Trim();
-    ExpectShouldBe("Test1234", newLines);
+    ExpectEqual("Test1234", newLines);
 
     return true;
 }
@@ -216,9 +215,9 @@ u8 StringShouldSplit()
 
     auto result = test.Split('=');
 
-    ExpectShouldBe(2, result.Size());
-    ExpectShouldBe("size", result[0]);
-    ExpectShouldBe("21", result[1]);
+    ExpectEqual(2, result.Size());
+    ExpectEqual("size", result[0]);
+    ExpectEqual("21", result[1]);
 
     return true;
 }
@@ -229,25 +228,25 @@ u8 StringInsert()
 
     // Test if we can insert at a random spot
     test.Insert(1, '2');
-    ExpectToBeTrue(test == C3D::String("1234"));
+    ExpectTrue(test == C3D::String("1234"));
 
     // Test if we can insert at the start
     test.Insert(0, '0');
-    ExpectToBeTrue(test == C3D::String("01234"));
+    ExpectTrue(test == C3D::String("01234"));
 
     // Test if we can insert at the end
     test.Insert(5, '5');
-    ExpectToBeTrue(test == C3D::String("012345"));
+    ExpectTrue(test == C3D::String("012345"));
 
     // This should also work for heap allocated strings
     C3D::String heapTest("aaaaaaaaaaaaaaaa");
     heapTest.Insert(16, 'b');
-    ExpectToBeTrue(heapTest == C3D::String("aaaaaaaaaaaaaaaab"));
-    ExpectShouldBe(17, heapTest.Size());
+    ExpectTrue(heapTest == C3D::String("aaaaaaaaaaaaaaaab"));
+    ExpectEqual(17, heapTest.Size());
 
     heapTest.Insert(5, '5');
-    ExpectToBeTrue(heapTest == C3D::String("aaaaa5aaaaaaaaaaab"));
-    ExpectShouldBe(18, heapTest.Size());
+    ExpectTrue(heapTest == C3D::String("aaaaa5aaaaaaaaaaab"));
+    ExpectEqual(18, heapTest.Size());
 
     return true;
 }
@@ -258,25 +257,25 @@ u8 StringInsertOtherString()
 
     // Test if we can insert at a random spot
     test.Insert(1, "34");
-    ExpectToBeTrue(test == C3D::String("2345"));
+    ExpectTrue(test == C3D::String("2345"));
 
     // Test if we can insert at the start
     test.Insert(0, "01");
-    ExpectToBeTrue(test == C3D::String("012345"));
+    ExpectTrue(test == C3D::String("012345"));
 
     // Test if we can insert at the end
     test.Insert(6, "6789");
-    ExpectToBeTrue(test == C3D::String("0123456789"));
+    ExpectTrue(test == C3D::String("0123456789"));
 
     // This should also work for heap allocated strings
     C3D::String heapTest("aaaaaaaaaaaaaaaa");
     heapTest.Insert(16, "babab");
-    ExpectToBeTrue(heapTest == C3D::String("aaaaaaaaaaaaaaaababab"));
-    ExpectShouldBe(21, heapTest.Size());
+    ExpectTrue(heapTest == C3D::String("aaaaaaaaaaaaaaaababab"));
+    ExpectEqual(21, heapTest.Size());
 
     heapTest.Insert(5, "cccccccccccccccccccc");
-    ExpectToBeTrue(heapTest == C3D::String("aaaaaccccccccccccccccccccaaaaaaaaaaababab"));
-    ExpectShouldBe(41, heapTest.Size());
+    ExpectTrue(heapTest == C3D::String("aaaaaccccccccccccccccccccaaaaaaaaaaababab"));
+    ExpectEqual(41, heapTest.Size());
 
     return true;
 }
@@ -287,15 +286,15 @@ u8 StringRemoveAt()
 
     // Test if we can remove at a random location
     test.RemoveAt(2);
-    ExpectToBeTrue(test == C3D::String("01234"));
+    ExpectTrue(test == C3D::String("01234"));
 
     // Test if we can remove at the start
     test.RemoveAt(0);
-    ExpectToBeTrue(test == C3D::String("1234"));
+    ExpectTrue(test == C3D::String("1234"));
 
     // Test if we can remove at the end
     test.RemoveAt(3);
-    ExpectToBeTrue(test == C3D::String("123"));
+    ExpectTrue(test == C3D::String("123"));
 
     // Ensure we don't crash when we try to remove at index > size
     test.RemoveAt(100);
@@ -313,49 +312,49 @@ u8 StringRemoveRange()
         // Remove range at the start of the string
         C3D::String test("0123456789");
         test.RemoveRange(0, 4);
-        ExpectToBeTrue(test == C3D::String("456789"));
+        ExpectTrue(test == C3D::String("456789"));
     }
 
     {
         // Remove range at the end of the string
         C3D::String test("0123456789");
         test.RemoveRange(7, 10);
-        ExpectToBeTrue(test == C3D::String("0123456"));
+        ExpectTrue(test == C3D::String("0123456"));
     }
 
     {
         // Remove range in the middle of the string
         C3D::String test("0123456789");
         test.RemoveRange(3, 5);
-        ExpectToBeTrue(test == C3D::String("01256789"));
+        ExpectTrue(test == C3D::String("01256789"));
     }
 
     {
         // Ignore ranges with start == end
         C3D::String test("0123456789");
         test.RemoveRange(2, 2);
-        ExpectToBeTrue(test == C3D::String("0123456789"));
+        ExpectTrue(test == C3D::String("0123456789"));
     }
 
     {
         // Ignore ranges starting > str.Size()
         C3D::String test("01234");
         test.RemoveRange(8, 9);
-        ExpectToBeTrue(test == C3D::String("01234"));
+        ExpectTrue(test == C3D::String("01234"));
     }
 
     {
         // Ignore ranges ending > str.Size()
         C3D::String test("01234");
         test.RemoveRange(2, 10);
-        ExpectToBeTrue(test == C3D::String("01234"));
+        ExpectTrue(test == C3D::String("01234"));
     }
 
     {
         // Ignore ranges start > end
         C3D::String test("01234");
         test.RemoveRange(3, 1);
-        ExpectToBeTrue(test == C3D::String("01234"));
+        ExpectTrue(test == C3D::String("01234"));
     }
 
     return true;

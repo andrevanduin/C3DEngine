@@ -10,43 +10,43 @@
 u8 HashTableShouldCreateAndDestroy()
 {
     C3D::HashTable<int> hashtable;
-    ExpectToBeTrue(hashtable.Create(128));
+    ExpectTrue(hashtable.Create(128));
 
-    ExpectShouldBe(128 * sizeof(int), C3D::HashTable<int>::GetMemoryRequirement(128))
-        ExpectShouldBe(128 * sizeof(int), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::HashTable))
+    ExpectEqual(128 * sizeof(int), C3D::HashTable<int>::GetMemoryRequirement(128));
+    ExpectEqual(128 * sizeof(int), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::HashTable));
 
-            hashtable.Destroy();
+    hashtable.Destroy();
 
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
 }
 
 u8 HashTableShouldSetAndGetForValueTypes()
 {
     C3D::HashTable<int> hashtable;
-    ExpectToBeTrue(hashtable.Create(128))
+    ExpectTrue(hashtable.Create(128));
 
-        int testValue = 5;
+    int testValue = 5;
 
-    ExpectToBeTrue(hashtable.Set("test", testValue)) ExpectShouldBe(testValue, hashtable.Get("test"))
+    ExpectTrue(hashtable.Set("test", testValue)) ExpectEqual(testValue, hashtable.Get("test"));
 
-        hashtable.Destroy();
+    hashtable.Destroy();
 
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
 }
 
 u8 HashTableShouldSetAndGetForPointerTypes()
 {
     C3D::HashTable<int*> hashtable;
-    ExpectToBeTrue(hashtable.Create(128))
+    ExpectTrue(hashtable.Create(128));
 
-        int testValue = 5;
-    int* pTestValue   = &testValue;
+    int testValue   = 5;
+    int* pTestValue = &testValue;
 
-    ExpectToBeTrue(hashtable.Set("test", pTestValue)) ExpectShouldBe(testValue, *hashtable.Get("test"))
+    ExpectTrue(hashtable.Set("test", pTestValue)) ExpectEqual(testValue, *hashtable.Get("test"));
 
-        hashtable.Destroy();
+    hashtable.Destroy();
 
-    ExpectShouldBe(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
 }
 
 void HashTable::RegisterTests(TestManager& manager)
