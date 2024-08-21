@@ -8,8 +8,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "DYNAMIC_ALLOCATOR";
-
     DynamicAllocator::DynamicAllocator(const AllocatorType type) : BaseAllocator(ToUnderlying(type)) {}
 
     bool DynamicAllocator::Create(void* memory, const u64 totalMemory, const u64 usableMemory)

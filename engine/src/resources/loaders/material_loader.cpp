@@ -10,8 +10,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "MATERIAL_LOADER";
-
     ResourceLoader<MaterialConfig>::ResourceLoader()
         : IResourceLoader(MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials"), BaseTextLoader<MaterialConfig>()
     {}

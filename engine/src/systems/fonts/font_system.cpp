@@ -9,8 +9,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "FONT_SYSTEM";
-
     bool FontSystem::OnInit(const FontSystemConfig& config)
     {
         if (config.maxBitmapFontCount == 0 || config.maxSystemFontCount == 0)

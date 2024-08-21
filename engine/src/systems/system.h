@@ -33,14 +33,14 @@ namespace C3D
     public:
         virtual bool OnInit()
         {
-            INSTANCE_INFO_LOG("SYSTEM", "Initializing.");
+            INFO_LOG("SYSTEM", "Initializing.");
             m_initialized = true;
             return true;
         }
 
         void OnShutdown() override
         {
-            INSTANCE_INFO_LOG("SYSTEM", "Shutting down.");
+            INFO_LOG("SYSTEM", "Shutting down.");
             m_initialized = false;
         }
 
@@ -54,7 +54,7 @@ namespace C3D
     public:
         virtual bool OnInit(const T& config = {})
         {
-            INSTANCE_INFO_LOG("SYSTEM", "Initializing.");
+            INFO_LOG("SYSTEM", "Initializing.");
             m_initialized = true;
             m_config      = config;
             return true;
@@ -62,7 +62,7 @@ namespace C3D
 
         void OnShutdown() override
         {
-            INSTANCE_INFO_LOG("SYSTEM", "Shutting down.");
+            INFO_LOG("SYSTEM", "Shutting down.");
             m_initialized = false;
         }
 

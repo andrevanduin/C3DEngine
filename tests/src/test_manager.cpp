@@ -5,8 +5,6 @@
 #include <core/logger.h>
 #include <systems/system_manager.h>
 
-constexpr const char* INSTANCE_NAME = "TEST_MANAGER";
-
 TestManager::TestManager(const u64 memorySize)
 {
     C3D::Logger::Init();

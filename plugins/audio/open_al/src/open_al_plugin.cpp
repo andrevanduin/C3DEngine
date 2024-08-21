@@ -10,8 +10,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "OPEN_AL_PLUGIN";
-
     bool OpenALPlugin::Init(const AudioPluginConfig& config)
     {
         INFO_LOG("Initializing OpenAL Plugin.");

@@ -9,8 +9,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "OPEN_AL_SOURCE";
-
     bool Source::Create(u32 chunkSize)
     {
         m_chunkSize = chunkSize;

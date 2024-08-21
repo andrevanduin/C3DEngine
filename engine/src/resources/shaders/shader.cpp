@@ -3,8 +3,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "SHADER";
-
     u16 Shader::GetUniformIndex(const String& uniformName) const
     {
         if (id == INVALID_ID)

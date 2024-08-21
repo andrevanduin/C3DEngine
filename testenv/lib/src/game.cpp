@@ -26,16 +26,11 @@
 
 #include "math/ray.h"
 #include "passes/editor_pass.h"
-#include "passes/scene_pass.h"
-#include "passes/skybox_pass.h"
 #include "resources/debug/debug_box_3d.h"
 #include "resources/debug/debug_line_3d.h"
 #include "resources/loaders/simple_scene_loader.h"
 #include "resources/scenes/simple_scene.h"
 #include "resources/scenes/simple_scene_config.h"
-#include "test_env_types.h"
-
-constexpr const char* INSTANCE_NAME = "TEST_ENV";
 
 TestEnv::TestEnv(C3D::ApplicationState* state) : Application(state), m_state(reinterpret_cast<GameState*>(state)) {}
 
@@ -62,9 +57,9 @@ bool TestEnv::OnBoot()
     m_state->fontConfig.maxBitmapFontCount = 101;
     m_state->fontConfig.maxSystemFontCount = 101;
 
-    if (!ConfigureRendergraph())
+    if (!CreateRendergraphs())
     {
-        ERROR_LOG("Failed to create Rendergraph.");
+        ERROR_LOG("Failed to create Rendergraphs.");
         return false;
     }
 
@@ -89,13 +84,9 @@ bool TestEnv::OnBoot()
 
 bool TestEnv::OnRun(C3D::FrameData& frameData)
 {
-    // Register our simple scene loader so we can use it to load our simple scene
-    const auto simpleSceneLoader = Memory.New<C3D::ResourceLoader<SimpleSceneConfig>>(C3D::MemoryType::ResourceLoader);
-    Resources.RegisterLoader(simpleSceneLoader);
-
-    if (!m_state->frameGraph.LoadResources())
+    if (!InitializeRendergraphs())
     {
-        ERROR_LOG("Failed to load resources for Framegraph.");
+        ERROR_LOG("Failed to initialize Rendergraphs.");
         return false;
     }
 
@@ -129,6 +120,8 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
         ERROR_LOG("Failed to load Editor Gizmo.");
         return false;
     }
+
+    m_state->editorRendergraph.SetGizmo(&m_state->gizmo);
 
     auto font = Fonts.Acquire("Ubuntu Mono 21px", C3D::FontType::Bitmap, 32);
 
@@ -165,8 +158,8 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     });
     */
 
-    CVars.Create("moveSpeed", m_state->moveSpeed, [this](const CVar& cvar) { m_state->moveSpeed = cvar.GetValue<f64>(); });
-    CVars.Create("moveSpeedFast", m_state->moveSpeed, [this](const CVar& cvar) { m_state->moveSpeedFast = cvar.GetValue<f64>(); });
+    CVars.Create("moveSpeed", m_state->moveSpeed, [this](const C3D::CVar& cvar) { m_state->moveSpeed = cvar.GetValue<f64>(); });
+    CVars.Create("moveSpeedFast", m_state->moveSpeed, [this](const C3D::CVar& cvar) { m_state->moveSpeedFast = cvar.GetValue<f64>(); });
 
     m_state->testMusic = Audio.LoadStream("Woodland Fantasy");
 
@@ -329,7 +322,7 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         }
     }
 
-    if (m_state->simpleScene.GetState() == SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
+    if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
     {
         m_state->reloadState = ReloadState::Loading;
         INFO_LOG("Loading Main Scene...");
@@ -340,7 +333,7 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     const auto nearClip = m_state->worldViewport.GetNearClip();
     const auto farClip  = m_state->worldViewport.GetFarClip();
 
-    if (m_state->simpleScene.GetState() >= SceneState::Loaded)
+    if (m_state->simpleScene.GetState() >= C3D::SceneState::Loaded)
     {
         if (!m_state->simpleScene.Update(frameData))
         {
@@ -432,66 +425,57 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 
     auto camera = m_state->camera;
 
-    m_state->skyboxPass.Prepare(&m_state->worldViewport, m_state->camera, m_state->simpleScene.GetSkybox());
-
-    // Only when the scene is loaded we prepare the shadow, scene and editor pass
-    if (m_state->simpleScene.GetState() == SceneState::Loaded)
+    // Prepare debug boxes and lines for rendering
+    for (auto& box : m_state->testBoxes)
     {
-        // Prepare our scene for rendering
-        m_state->simpleScene.OnPrepareRender(frameData);
-
-        // Prepare the editor gizmo for rendering
-        m_state->gizmo.OnPrepareRender(frameData);
-
-        // Prepare debug boxes and lines for rendering
-        for (auto& box : m_state->testBoxes)
-        {
-            box.OnPrepareRender(frameData);
-        }
-
-        for (auto& line : m_state->testLines)
-        {
-            line.OnPrepareRender(frameData);
-        }
-
-        // Prepare the shadow pass
-        m_state->shadowPass.Prepare(frameData, m_state->worldViewport, m_state->camera);
-
-        // Query meshes and terrains seen by the furthest out cascade since all passes will "see" the same
-        // Get all the relevant meshes from the scene
-        auto& cullingData = m_state->shadowPass.GetCullingData();
-
-        m_state->simpleScene.QueryMeshes(frameData, cullingData.lightDirection, cullingData.center, cullingData.radius,
-                                         cullingData.geometries);
-        // Keep track of how many meshes are being used in our shadow pass
-        frameData.drawnShadowMeshCount = cullingData.geometries.Size();
-
-        // Get all the relevant terrains from the scene
-        m_state->simpleScene.QueryTerrains(frameData, cullingData.lightDirection, cullingData.center, cullingData.radius,
-                                           cullingData.terrains);
-
-        // Also keep track of how many terrains are being used in our shadow pass
-        frameData.drawnShadowMeshCount += cullingData.terrains.Size();
-
-        // Prepare the scene pass
-        m_state->scenePass.Prepare(&m_state->worldViewport, m_state->camera, frameData, m_state->simpleScene, m_state->renderMode,
-                                   m_state->testLines, m_state->testBoxes, m_state->shadowPass.GetCascadeData());
-
-        // Prepare the editor pass
-        m_state->editorPass.Prepare(&m_state->worldViewport, m_state->camera, &m_state->gizmo);
+        box.OnPrepareRender(frameData);
     }
 
-    UI2D.Prepare(&m_state->uiViewport);
+    for (auto& line : m_state->testLines)
+    {
+        line.OnPrepareRender(frameData);
+    }
+
+    if (!m_state->mainRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->simpleScene, m_state->renderMode,
+                                                  m_state->testLines, m_state->testBoxes))
+    {
+        ERROR_LOG("Failed to prepare main rendergraph.");
+        return false;
+    }
+
+    if (!m_state->editorRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->simpleScene))
+    {
+        ERROR_LOG("Failed to prepare editor rendergraph.");
+        return false;
+    }
+
+    if (!m_state->ui2dRendergraph.OnPrepareRender(frameData, m_state->uiViewport))
+    {
+        ERROR_LOG("Failed to prepare UI2D rendergraph.");
+        return false;
+    }
 
     return true;
 }
 
 bool TestEnv::OnRender(C3D::FrameData& frameData)
 {
-    // Execute our Rendergraph
-    if (!m_state->frameGraph.ExecuteFrame(frameData))
+    // Execute our Rendergraphs
+    if (!m_state->mainRendergraph.ExecuteFrame(frameData))
     {
-        ERROR_LOG("Execute frame failed for the Rendergraph.");
+        ERROR_LOG("Execute frame failed for the Main Rendergraph.");
+        return false;
+    }
+
+    if (!m_state->editorRendergraph.ExecuteFrame(frameData))
+    {
+        ERROR_LOG("Execute frame failed for Editor Rendergraph.");
+        return false;
+    }
+
+    if (!m_state->ui2dRendergraph.ExecuteFrame(frameData))
+    {
+        ERROR_LOG("Execute frame failed for UI2D Rendergraph.");
         return false;
     }
 
@@ -509,7 +493,20 @@ void TestEnv::OnResize(u16 width, u16 height)
     C3D::Rect2D uiViewportRect = { 0.0f, 0.0f, static_cast<f32>(width), static_cast<f32>(height) };
     m_state->uiViewport.Resize(uiViewportRect);
 
-    m_state->frameGraph.OnResize(width, height);
+    if (!m_state->mainRendergraph.OnResize(width, height))
+    {
+        ERROR_LOG("Failed to resize main rendergaph.");
+    }
+
+    if (!m_state->editorRendergraph.OnResize(width, height))
+    {
+        ERROR_LOG("Failed to resize editor rendergraph.");
+    }
+
+    if (!m_state->ui2dRendergraph.OnResize(width, height))
+    {
+        ERROR_LOG("Failed to resize UI2D rednergraph.");
+    }
 
     auto debugLabelMaxX = UI2D.GetTextMaxX(m_state->debugInfoLabel);
     auto debugLabelMaxY = UI2D.GetTextMaxY(m_state->debugInfoLabel);
@@ -524,7 +521,9 @@ void TestEnv::OnShutdown()
     m_state->simpleScene.Unload(true);
 
     // Destroy our Rendergraph
-    m_state->frameGraph.Destroy();
+    m_state->mainRendergraph.Destroy();
+    m_state->editorRendergraph.Destroy();
+    m_state->ui2dRendergraph.Destroy();
 
     // Destroy our test geometry
     for (auto& line : m_state->testLines)
@@ -640,7 +639,7 @@ void TestEnv::OnLibraryLoad()
     m_pConsole->RegisterCommand("reload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         m_state->reloadState = ReloadState::Unloading;
 
-        if (m_state->simpleScene.GetState() == SceneState::Loaded)
+        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
         {
             INFO_LOG("Unloading models...");
             m_state->simpleScene.Unload();
@@ -662,201 +661,56 @@ void TestEnv::OnLibraryUnload()
     m_pConsole->UnregisterCommand("reload_scene");
 }
 
-bool TestEnv::ConfigureRendergraph() const
+bool TestEnv::CreateRendergraphs() const
 {
-    if (!m_state->frameGraph.Create("FRAME_RENDERGRAPH", this))
+    C3D::ForwardRendergraphConfig mainConfig;
+    mainConfig.shadowMapResolution = 4096;
+    mainConfig.pFrameAllocator     = m_pEngine->GetFrameAllocator();
+
+    if (!m_state->mainRendergraph.Create("MAIN_RENDERGRAPH", mainConfig))
     {
-        ERROR_LOG("Failed to create Frame Rendergraph.");
+        ERROR_LOG("Failed to create main rendergraph.");
         return false;
     }
 
-    // Add our global sources
-    if (!m_state->frameGraph.AddGlobalSource("COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
-                                             C3D::RendergraphSourceOrigin::Global))
+    EditorRendergraphConfig editorConfig;
+    editorConfig.pFrameAllocator = m_pEngine->GetFrameAllocator();
+
+    if (!m_state->editorRendergraph.Create("EDITOR_RENDERGRAPH", editorConfig))
     {
-        ERROR_LOG("Failed to add global color buffer source to Rendergraph.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddGlobalSource("DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
-                                             C3D::RendergraphSourceOrigin::Global))
-    {
-        ERROR_LOG("Failed to add global depth buffer source to Rendergraph.");
+        ERROR_LOG("Failed to create editor rendergraph.");
         return false;
     }
 
-    // Skybox pass
-    m_state->skyboxPass = SkyboxPass();
-    if (!m_state->frameGraph.AddPass("SKYBOX", &m_state->skyboxPass))
+    UI2DRendergraphConfig ui2DConfig;
+    ui2DConfig.pFrameAllocator = m_pEngine->GetFrameAllocator();
+
+    if (!m_state->ui2dRendergraph.Create("UI2D_RENDERGRAPH", ui2DConfig))
     {
-        ERROR_LOG("Failed to add SKYBOX pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("SKYBOX", "COLOR_BUFFER"))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER sink to Skybox pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("SKYBOX", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
-                                       C3D::RendergraphSourceOrigin::Other))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER source to Skybox pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("COLOR_BUFFER", "SKYBOX", "COLOR_BUFFER"))
-    {
-        ERROR_LOG("Failed to link Global COLOR_BUFFER source to SKYBOX COLOR_BUFFER sink.");
+        ERROR_LOG("Failed to create UI2D rendergraph.");
         return false;
     }
 
-    // ShadowMap pass
-    ShadowMapPassConfig config;
-    config.resolution = 4096;
+    return true;
+}
 
-    m_state->shadowPass = ShadowMapPass("SHADOW", config);
-    if (!m_state->frameGraph.AddPass("SHADOW", &m_state->shadowPass))
+bool TestEnv::InitializeRendergraphs() const
+{
+    if (!m_state->mainRendergraph.Initialize())
     {
-        ERROR_LOG("Failed to add: SHADOW pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("SHADOW", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
-                                       C3D::RendergraphSourceOrigin::Self))
-    {
-        ERROR_LOG("Failed to add DEPTH_BUFFER to Shadow pass.");
+        ERROR_LOG("Failed to initialize main rendergraph.");
         return false;
     }
 
-    // Scene pass
-    m_state->scenePass = ScenePass();
-    if (!m_state->frameGraph.AddPass("SCENE", &m_state->scenePass))
+    if (!m_state->editorRendergraph.Initialize())
     {
-        ERROR_LOG("Failed to add SCENE pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("SCENE", "COLOR_BUFFER"))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER sink to Scene pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("SCENE", "DEPTH_BUFFER"))
-    {
-        ERROR_LOG("Failed to add DEPTH_BUFFER sink to Scene pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("SCENE", "SHADOW_MAP"))
-    {
-        ERROR_LOG("Failed to add SHADOW_MAP_0 sink to Scene pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("SCENE", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
-                                       C3D::RendergraphSourceOrigin::Other))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER source to Scene pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("SCENE", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
-                                       C3D::RendergraphSourceOrigin::Global))
-    {
-        ERROR_LOG("Failed to add DEPTH_BUFFER source to Scene pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("SKYBOX", "COLOR_BUFFER", "SCENE", "COLOR_BUFFER"))
-    {
-        ERROR_LOG("Failed to link SKYBOX COLOR_BUFFER source to SCENE COLOR_BUFFER sink.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("DEPTH_BUFFER", "SCENE", "DEPTH_BUFFER"))
-    {
-        ERROR_LOG("Failed to link Global DEPTH_BUFFER source to SCENE DEPTH_BUFFER sink.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("SHADOW", "DEPTH_BUFFER", "SCENE", "SHADOW_MAP"))
-    {
-        ERROR_LOG("Failed to link SHADOW  DEPTH_BUFFER source to SCENE SHADOW_MAP sink.");
+        ERROR_LOG("Failed to initialize editor rendergraph.");
         return false;
     }
 
-    // Editor pass
-    m_state->editorPass = EditorPass();
-    if (!m_state->frameGraph.AddPass("EDITOR", &m_state->editorPass))
+    if (!m_state->ui2dRendergraph.Initialize())
     {
-        ERROR_LOG("Failed to add EDITOR pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("EDITOR", "COLOR_BUFFER"))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER sink to Editor pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("EDITOR", "DEPTH_BUFFER"))
-    {
-        ERROR_LOG("Failed to add DEPTH_BUFFER sink to Editor pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("EDITOR", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
-                                       C3D::RendergraphSourceOrigin::Other))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER source to Editor pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("EDITOR", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
-                                       C3D::RendergraphSourceOrigin::Other))
-    {
-        ERROR_LOG("Failed to add DEPTH_BUFFER source to Editor pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("SCENE", "COLOR_BUFFER", "EDITOR", "COLOR_BUFFER"))
-    {
-        ERROR_LOG("Failed to link SCENE COLOR_BUFFER source to EDITOR COLOR_BUFFER sink.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("SCENE", "DEPTH_BUFFER", "EDITOR", "DEPTH_BUFFER"))
-    {
-        ERROR_LOG("Failed to link SCENE DEPTH_BUFFER source to EDITOR DEPTH_BUFFER sink.");
-        return false;
-    }
-
-    // UI Pass
-    if (!m_state->frameGraph.AddPass("UI", UI2D.GetPass()))
-    {
-        ERROR_LOG("Failed to add UI pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("UI", "COLOR_BUFFER"))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER sink to UI pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSink("UI", "DEPTH_BUFFER"))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER sink to UI pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("UI", "COLOR_BUFFER", C3D::RendergraphSourceType::RenderTargetColor,
-                                       C3D::RendergraphSourceOrigin::Other))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER source to UI pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.AddSource("UI", "DEPTH_BUFFER", C3D::RendergraphSourceType::RenderTargetDepthStencil,
-                                       C3D::RendergraphSourceOrigin::Global))
-    {
-        ERROR_LOG("Failed to add COLOR_BUFFER source to UI pass.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("EDITOR", "COLOR_BUFFER", "UI", "COLOR_BUFFER"))
-    {
-        ERROR_LOG("Failed to link Editor COLOR_BUFFER source to UI COLOR_BUFFER sink.");
-        return false;
-    }
-    if (!m_state->frameGraph.Link("DEPTH_BUFFER", "UI", "DEPTH_BUFFER"))
-    {
-        ERROR_LOG("Failed to link Global DEPTH_BUFFER source to UI DEPTH_BUFFER sink.");
-        return false;
-    }
-
-    if (!m_state->frameGraph.Finalize(m_pEngine->GetFrameAllocator()))
-    {
-        ERROR_LOG("Failed to finalize rendergraph.");
+        ERROR_LOG("Failed to initialize UI2D rendergraph.");
         return false;
     }
 
@@ -886,7 +740,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
     }
 
     // If our scene is not loaded we also ignore everything below
-    if (m_state->simpleScene.GetState() < SceneState::Loaded)
+    if (m_state->simpleScene.GetState() < C3D::SceneState::Loaded)
     {
         return false;
     }
@@ -1072,7 +926,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 {
     if (code == C3D::EventCodeDebug1)
     {
-        if (m_state->simpleScene.GetState() == SceneState::Uninitialized)
+        if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized)
         {
             INFO_LOG("Loading Main Scene...");
             LoadTestScene();
@@ -1083,7 +937,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
     if (code == C3D::EventCodeDebug2)
     {
-        if (m_state->simpleScene.GetState() == SceneState::Loaded)
+        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
         {
             UnloadTestScene();
         }
@@ -1096,7 +950,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
 bool TestEnv::LoadTestScene()
 {
-    SimpleSceneConfig sceneConfig;
+    C3D::SimpleSceneConfig sceneConfig;
     Resources.Load("test_scene", sceneConfig);
 
     if (!m_state->simpleScene.Create(sceneConfig))

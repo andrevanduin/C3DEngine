@@ -21,8 +21,6 @@ namespace
         YZAxis  = 5,
         XYZAxis = 6,
     };
-
-    constexpr const char* INSTANCE_NAME = "EDITOR_GIZMO";
 }  // namespace
 
 bool EditorGizmo::Create()

@@ -14,8 +14,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "TERRAIN";
-
     void TerrainChunkLod::Initialize(const Terrain& terrain, u32 index)
     {
         u32 tileStride = terrain.m_chunkSize;
@@ -182,7 +180,7 @@ namespace C3D
 
     void TerrainChunk::Load(const Terrain& terrain, u32 xOffset, u32 zOffset)
     {
-        INFO_LOG("xOffset = {}, zOffset = {}", xOffset, zOffset);
+        auto timer = ScopedTimer(String::FromFormat("Loading chunk at: {}, {}", xOffset, zOffset));
 
         f32 xPos = xOffset * terrain.m_chunkSize * terrain.m_tileScaleX;
         f32 zPos = zOffset * terrain.m_chunkSize * terrain.m_tileScaleZ;
@@ -193,147 +191,116 @@ namespace C3D
         f32 yMin = FLT_MAX;
         f32 yMax = FLT_MIN;
 
+        // Generate our vertices
+        for (u32 z = 0, i = 0; z < chunkStride; ++z)
         {
-            auto timer = ScopedTimer("Generating TerrainChunk vertices");
-
-            // Generate our vertices
-            for (u32 z = 0, i = 0; z < chunkStride; ++z)
+            for (u32 x = 0; x < chunkStride; ++x, ++i)
             {
-                for (u32 x = 0; x < chunkStride; ++x, ++i)
+                auto& vert      = m_vertices[i];
+                vert.position.x = xPos + (x * terrain.m_tileScaleX);
+                vert.position.z = zPos + (z * terrain.m_tileScaleZ);
+
+                u32 globalX = x + (xOffset * chunkStride);
+                if (xOffset > 0)
                 {
-                    auto& vert      = m_vertices[i];
-                    vert.position.x = xPos + (x * terrain.m_tileScaleX);
-                    vert.position.z = zPos + (z * terrain.m_tileScaleZ);
-
-                    u32 globalX = x + (xOffset * chunkStride);
-                    if (xOffset > 0)
-                    {
-                        globalX -= xOffset;
-                    }
-                    u32 globalZ = z + (zOffset * chunkStride);
-                    if (zOffset > 0)
-                    {
-                        globalZ -= zOffset;
-                    }
-
-                    u32 globalTerrainIndex = globalX + (globalZ * (terrain.m_tileCountX + 1));
-                    const auto height      = terrain.m_config.vertexConfigs[globalTerrainIndex].height;
-
-                    vert.position.y = height * terrain.m_tileScaleY;
-                    vert.color      = WHITE;
-                    vert.normal     = { 0, 1, 0 };
-                    vert.texture    = vec2(static_cast<f32>(xOffset + x), static_cast<f32>(zOffset + z));
-
-                    yMin = C3D::Min(yMin, vert.position.y);
-                    yMax = C3D::Max(yMax, vert.position.y);
-
-                    vert.materialWeights[0] = AttenuationMinMax(-0.2f, 0.2f, height);
-                    vert.materialWeights[1] = AttenuationMinMax(0.0f, 0.3f, height);
-                    vert.materialWeights[2] = AttenuationMinMax(0.15f, 0.9f, height);
-                    vert.materialWeights[3] = AttenuationMinMax(0.5f, 1.2f, height);
+                    globalX -= xOffset;
                 }
-            }
-        }
-
-        {
-            auto timer = ScopedTimer("Generating TerrainChunk skirts");
-
-            u32 targetVertexIndex = m_surfaceVertexCount;
-            for (u8 s = 0; s < TSS_MAX; ++s)
-            {
-                for (u32 i = 0; i < chunkStride; ++i, ++targetVertexIndex)
+                u32 globalZ = z + (zOffset * chunkStride);
+                if (zOffset > 0)
                 {
-                    TerrainVertex* source;
-                    if (s == TSS_LEFT)
-                    {
-                        source = &m_vertices[i * chunkStride];
-                    }
-                    else if (s == TSS_RIGHT)
-                    {
-                        source = &m_vertices[i * chunkStride + terrain.m_chunkSize];
-                    }
-                    else if (s == TSS_TOP)
-                    {
-                        source = &m_vertices[i];
-                    }
-                    else  // s == TSS_BOTTOM
-                    {
-                        source = &m_vertices[i + (chunkStride * terrain.m_chunkSize)];
-                    }
-
-                    // Copy the source vertex data to the target
-                    m_vertices[targetVertexIndex] = *source;
-                    // But lower it's height
-                    m_vertices[targetVertexIndex].position.y -= 0.1f * terrain.m_tileScaleY;
+                    globalZ -= zOffset;
                 }
+
+                u32 globalTerrainIndex = globalX + (globalZ * (terrain.m_tileCountX + 1));
+                const auto height      = terrain.m_config.vertexConfigs[globalTerrainIndex].height;
+
+                vert.position.y = height * terrain.m_tileScaleY;
+                vert.color      = WHITE;
+                vert.normal     = { 0, 1, 0 };
+                vert.texture    = vec2(static_cast<f32>(xOffset + x), static_cast<f32>(zOffset + z));
+
+                yMin = C3D::Min(yMin, vert.position.y);
+                yMax = C3D::Max(yMax, vert.position.y);
+
+                vert.materialWeights[0] = AttenuationMinMax(-0.2f, 0.2f, height);
+                vert.materialWeights[1] = AttenuationMinMax(0.0f, 0.3f, height);
+                vert.materialWeights[2] = AttenuationMinMax(0.15f, 0.9f, height);
+                vert.materialWeights[3] = AttenuationMinMax(0.5f, 1.2f, height);
             }
         }
 
+        u32 targetVertexIndex = m_surfaceVertexCount;
+        for (u8 s = 0; s < TSS_MAX; ++s)
         {
-            auto timer = ScopedTimer("Calculate TerrainChunk extents");
-
-            vec3 min = m_vertices.First().position;
-            min.y    = yMin;
-
-            vec3 max = m_vertices.Last().position;
-            max.y    = yMax;
-
-            m_center      = (min + max) * 0.5f;
-            m_extents.min = min;
-            m_extents.max = max;
-        }
-
-        {
-            auto timer = ScopedTimer("Generating TerrainChunk LODs");
-
-            // Generate our LODs
-            for (u32 i = 0; i < m_lods.Size(); ++i)
+            for (u32 i = 0; i < chunkStride; ++i, ++targetVertexIndex)
             {
-                m_lods[i].GenerateIndices(terrain, *this, i);
+                TerrainVertex* source;
+                if (s == TSS_LEFT)
+                {
+                    source = &m_vertices[i * chunkStride];
+                }
+                else if (s == TSS_RIGHT)
+                {
+                    source = &m_vertices[i * chunkStride + terrain.m_chunkSize];
+                }
+                else if (s == TSS_TOP)
+                {
+                    source = &m_vertices[i];
+                }
+                else  // s == TSS_BOTTOM
+                {
+                    source = &m_vertices[i + (chunkStride * terrain.m_chunkSize)];
+                }
+
+                // Copy the source vertex data to the target
+                m_vertices[targetVertexIndex] = *source;
+                // But lower it's height
+                m_vertices[targetVertexIndex].position.y -= 0.1f * terrain.m_tileScaleY;
             }
+        }
+
+        vec3 min = m_vertices.First().position;
+        min.y    = yMin;
+
+        vec3 max = m_vertices.Last().position;
+        max.y    = yMax;
+
+        m_center      = (min + max) * 0.5f;
+        m_extents.min = min;
+        m_extents.max = max;
+
+        // Generate our LODs
+        for (u32 i = 0; i < m_lods.Size(); ++i)
+        {
+            m_lods[i].GenerateIndices(terrain, *this, i);
         }
 
         const auto& firstLod = m_lods.First();
 
         // Generate normals and tangents only for the first LOD
+        GeometryUtils::GenerateNormals(m_vertices, firstLod.GetIndices(), firstLod.GetSurfaceIndexCount());
+        GeometryUtils::GenerateTerrainTangents(m_vertices, firstLod.GetIndices(), firstLod.GetSurfaceIndexCount());
+
+        const auto totalSize = m_vertices.Size() * sizeof(TerrainVertex);
+        if (!Renderer.AllocateInRenderBuffer(RenderBufferType::Vertex, totalSize, m_vertexBufferOffset))
         {
-            auto timer = ScopedTimer("Generating TerrainChunk normals");
-            GeometryUtils::GenerateNormals(m_vertices, firstLod.GetIndices(), firstLod.GetSurfaceIndexCount());
+            ERROR_LOG("Failed to allocate space for the vertex buffer.");
+            return;
         }
 
+        // TODO: Passing false here produces a queue wait and should be offloaded to another queue
+        if (!Renderer.LoadRangeInRenderBuffer(RenderBufferType::Vertex, m_vertexBufferOffset, totalSize, m_vertices.GetData(), false))
         {
-            auto timer = ScopedTimer("Generating TerrainChunk tangents");
-            GeometryUtils::GenerateTerrainTangents(m_vertices, firstLod.GetIndices(), firstLod.GetSurfaceIndexCount());
+            ERROR_LOG("Failed to load vertices into vertex buffer.");
+            return;
         }
 
+        for (auto& lod : m_lods)
         {
-            auto timer = ScopedTimer("Uploading TerrainChunk vertices");
-
-            const auto totalSize = m_vertices.Size() * sizeof(TerrainVertex);
-            if (!Renderer.AllocateInRenderBuffer(RenderBufferType::Vertex, totalSize, m_vertexBufferOffset))
+            if (!lod.UploadIndices())
             {
-                ERROR_LOG("Failed to allocate space for the vertex buffer.");
+                ERROR_LOG("Failed to upload LOD indices.");
                 return;
-            }
-
-            // TODO: Passing false here produces a queue wait and should be offloaded to another queue
-            if (!Renderer.LoadRangeInRenderBuffer(RenderBufferType::Vertex, m_vertexBufferOffset, totalSize, m_vertices.GetData(), false))
-            {
-                ERROR_LOG("Failed to load vertices into vertex buffer.");
-                return;
-            }
-        }
-
-        {
-            auto timer = ScopedTimer("Uploading TerrainChunk LOD indices");
-
-            for (auto& lod : m_lods)
-            {
-                if (!lod.UploadIndices())
-                {
-                    ERROR_LOG("Failed to upload LOD indices.");
-                    return;
-                }
             }
         }
 

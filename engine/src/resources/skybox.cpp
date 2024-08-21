@@ -9,11 +9,9 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "SKYBOX";
-
     bool Skybox::Create(const SkyboxConfig& config)
     {
-        m_config          = config;
+        m_config = config;
         return true;
     }
 

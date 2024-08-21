@@ -8,9 +8,8 @@
 
 namespace C3D::UI_2D
 {
-    constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
-    constexpr auto CORNER_SIZE          = u16vec2(1, 1);
-    constexpr auto BLINK_DELAY          = 0.7;
+    constexpr auto CORNER_SIZE = u16vec2(1, 1);
+    constexpr auto BLINK_DELAY = 0.7;
 
     constexpr auto TEXT_PADDING = 4.f;
 

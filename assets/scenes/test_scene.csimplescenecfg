@@ -15,9 +15,9 @@ cubemapName = skybox
 name = sun
 color = 30.0 30.0 25.0 1.0
 direction = 0.1 -1.0 0.1 1.0
-shadowDistance = 100.0
+shadowDistance = 150.0
 shadowFadeDistance = 5.0
-shadowSplitMultiplier = 0.91
+shadowSplitMultiplier = 0.6
 [/DirectionalLight]
 
 [Mesh]

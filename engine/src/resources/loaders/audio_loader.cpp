@@ -10,7 +10,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME  = "AUDIO_LOADER";
     constexpr auto AUDIO_EXTENSION_COUNT = 2;
 
     ResourceLoader<AudioFile>::ResourceLoader() : IResourceLoader(MemoryType::AudioType, ResourceType::AudioFile, nullptr, "audio") {}

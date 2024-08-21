@@ -35,10 +35,15 @@ namespace C3D
         /** @brief Optional method to populate a Rendertarget Attachment. */
         virtual bool PopulateAttachment(RenderTargetAttachment& attachment) { return true; }
 
+        void AddSource(const String& name, RendergraphSourceType type, RendergraphSourceOrigin origin);
+        void AddSink(const String& name);
+
         bool RegenerateRenderTargets(u32 width, u32 height);
 
         bool SourcesContains(const String& name) const;
         bool SinksContains(const String& name) const;
+
+        bool IsPrepared() const { return m_prepared; }
 
         RendergraphSource* GetSourceByName(const String& name) const;
         RendergraphSink* GetSinkByName(const String& name) const;
@@ -48,14 +53,19 @@ namespace C3D
         void SetViewport(Viewport* viewport) { m_viewport = viewport; }
         void SetCamera(Camera* camera) { m_camera = camera; }
 
-    protected:
-        void AddSource(const String& name, RendergraphSourceType type, RendergraphSourceOrigin origin);
-        void AddSink(const String& name);
+        void SetPresentsAfter(bool b) { m_presentsAfter = b; }
+        void SetPrepared(bool b) { m_prepared = b; }
 
+        DynamicArray<RendergraphSource>& Sources() { return m_sources; }
+        const DynamicArray<RendergraphSource>& Sources() const { return m_sources; }
+
+        const DynamicArray<RendergraphSink>& Sinks() const { return m_sinks; }
+
+    protected:
         String m_name;
 
-        Viewport* m_viewport = nullptr;
-        Camera* m_camera     = nullptr;
+        const Viewport* m_viewport = nullptr;
+        Camera* m_camera           = nullptr;
 
         bool m_presentsAfter = false;
         bool m_prepared      = false;
@@ -65,7 +75,5 @@ namespace C3D
         DynamicArray<RenderTarget> m_targets;
 
         void* m_pInternalData = nullptr;
-
-        friend class Rendergraph;
     };
 }  // namespace C3D

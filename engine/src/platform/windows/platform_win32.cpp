@@ -11,8 +11,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "PLATFORM";
-
     bool Platform::OnInit(const PlatformSystemConfig& config)
     {
         INFO_LOG("Started.");

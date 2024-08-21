@@ -33,7 +33,6 @@ namespace C3D
         bool OnInit(const UI2DSystemConfig& config) override;
 
         bool OnRun();
-        void Prepare(Viewport* viewport);
 
         bool OnUpdate(const FrameData& frameData) override;
         bool OnPrepareRender(FrameData& frameData) override;
@@ -145,7 +144,7 @@ namespace C3D
 
         /* ------- Generic Handlers End -------  */
 
-        UI2DPass* GetPass() { return &m_pass; }
+        const DynamicArray<UI_2D::Component>& GetComponents() const { return m_components; }
 
         void OnShutdown() override;
 
@@ -175,7 +174,6 @@ namespace C3D
         DynamicAllocator m_allocator;
         void* m_memoryBlock = nullptr;
 
-        UI2DPass m_pass;
         Shader* m_shader;
 
         HashMap<UUID, u32> m_componentMap;

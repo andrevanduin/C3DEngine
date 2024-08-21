@@ -12,8 +12,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "AUDIO_FILE";
-
     u64 AudioFile::LoadSamples(u32 chunkSize)
     {
         switch (m_fileType)

@@ -19,7 +19,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME       = "SHADOW_PASS";
     constexpr const char* SHADER_NAME         = "Shader.ShadowMap";
     constexpr const char* TERRAIN_SHADER_NAME = "Shader.ShadowMapTerrain";
 

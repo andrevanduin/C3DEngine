@@ -8,8 +8,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "VULKAN_PIPELINE";
-
     VkCullModeFlagBits GetVkCullMode(const FaceCullMode cullMode)
     {
         switch (cullMode)

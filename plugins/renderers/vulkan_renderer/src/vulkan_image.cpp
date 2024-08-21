@@ -10,8 +10,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "VULKAN_IMAGE";
-
     VulkanImage::~VulkanImage() { Destroy(); }
 
     constexpr VkImageType GetVkImageType(const TextureType type)

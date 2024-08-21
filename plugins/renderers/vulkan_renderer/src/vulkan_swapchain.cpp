@@ -13,8 +13,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "VULKAN_SWAPCHAIN";
-
     VkSurfaceFormatKHR VulkanSwapchain::GetSurfaceFormat() const
     {
         const auto& formats = m_context->device.GetSurfaceFormats();

@@ -8,8 +8,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "RENDERPASS";
-
     Renderpass::Renderpass() : m_name("EMPTY") {}
 
     Renderpass::Renderpass(const String& name) : m_name(name)

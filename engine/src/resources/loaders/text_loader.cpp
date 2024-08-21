@@ -9,8 +9,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "TEXT_LOADER";
-
     ResourceLoader<TextResource>::ResourceLoader() : IResourceLoader(MemoryType::String, ResourceType::Text, nullptr, "") {}
 
     bool ResourceLoader<TextResource>::Load(const char* name, TextResource& resource) const

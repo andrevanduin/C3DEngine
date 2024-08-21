@@ -13,8 +13,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "VULKAN_BUFFER";
-
     VulkanBuffer::VulkanBuffer(const VulkanContext* context, const String& name) : RenderBuffer(name), m_context(context) {}
 
     bool VulkanBuffer::Create(const RenderBufferType bufferType, const u64 size, RenderBufferTrackType trackType)

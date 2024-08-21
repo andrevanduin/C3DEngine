@@ -11,8 +11,6 @@
 
 #include "editor/editor_gizmo.h"
 
-constexpr const char* INSTANCE_NAME = "EDITOR_WORLD_VIEW";
-
 RenderViewEditorWorld::RenderViewEditorWorld() : RenderView("EDITOR_WORLD_VIEW", "") {}
 
 void RenderViewEditorWorld::OnSetupPasses()

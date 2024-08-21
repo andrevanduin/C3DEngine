@@ -3,8 +3,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "VIEWPORT";
-
     bool Viewport::Create(const Rect2D& rect, const f32 fov, const f32 nearClip, const f32 farClip,
                           const RendererProjectionMatrixType projectionMatrixType)
     {

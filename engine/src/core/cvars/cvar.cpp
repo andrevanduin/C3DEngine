@@ -3,8 +3,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "CVAR";
-
     bool CVar::AddOnChangeCallback(CVarOnChangedCallback&& callback)
     {
         for (auto& cb : m_onChangeCallbacks)

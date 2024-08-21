@@ -16,8 +16,6 @@
 #include <systems/resources/resource_system.h>
 #include <systems/shaders/shader_system.h>
 
-constexpr const char* INSTANCE_NAME = "RENDER_VIEW_WORLD";
-
 RenderViewWorld::RenderViewWorld() : RenderView("WORLD_VIEW", "") {}
 
 void RenderViewWorld::OnSetupPasses()

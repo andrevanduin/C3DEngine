@@ -162,17 +162,17 @@ namespace C3D
     {
         if (File::Exists(path))
         {
-            INSTANCE_INFO_LOG("MESH_LOADER", "File: '{}' already exists and will be overwritten.", path);
+            INFO_LOG("File: '{}' already exists and will be overwritten.", path);
         }
 
         File file;
         if (!file.Open(path, FileModeWrite | FileModeBinary))
         {
-            INSTANCE_ERROR_LOG("MESH_LOADER", "Failed to open path '{}'.", path);
+            ERROR_LOG("Failed to open path '{}'.", path);
             return false;
         }
 
-        INSTANCE_INFO_LOG("MESH_LOADER", "Started writing CSM file to: '{}'.", path);
+        INFO_LOG("Started writing CSM file to: '{}'.", path);
 
         // Version
         constexpr u16 version = 0x0001u;
@@ -220,7 +220,8 @@ namespace C3D
             file.Write(&geometry.maxExtents);
         }
 
-        INSTANCE_INFO_LOG("MESH_LOADER", "{} Bytes written to file: '{}'.", file.bytesWritten, name);
+        INFO_LOG("{} Bytes written to file: '{}'.", file.bytesWritten, name);
+
         file.Close();
         return true;
     }

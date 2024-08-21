@@ -10,8 +10,7 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "TERRAIN_LOADER";
-    constexpr auto FILE_EXTENSION       = "cterrain";
+    constexpr auto FILE_EXTENSION = "cterrain";
 
     ResourceLoader<TerrainConfig>::ResourceLoader() : IResourceLoader(MemoryType::Terrain, ResourceType::Terrain, nullptr, "terrains") {}
 

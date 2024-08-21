@@ -26,7 +26,7 @@ namespace C3D
             const auto createPluginFunc = LoadFunction<Plugin* (*)(Args...)>("CreatePlugin");
             if (!createPluginFunc)
             {
-                INSTANCE_ERROR_LOG("PLUGIN", "Failed to load create function.");
+                ERROR_LOG("Failed to load create function.");
                 return nullptr;
             }
             return createPluginFunc(args...);
@@ -38,7 +38,7 @@ namespace C3D
             const auto deletePluginFunc = LoadFunction<void (*)(Plugin*)>("DeletePlugin");
             if (!deletePluginFunc)
             {
-                INSTANCE_ERROR_LOG("PLUGIN", "Failed to load delete function.");
+                ERROR_LOG("Failed to load delete function.");
             }
             deletePluginFunc(plugin);
         }

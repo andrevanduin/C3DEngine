@@ -91,6 +91,6 @@ namespace C3D
         RendergraphSink(const String& name) : name(name) {}
 
         String name;
-        RendergraphSource* boundSource = nullptr;
+        const RendergraphSource* boundSource = nullptr;
     };
 }  // namespace C3D

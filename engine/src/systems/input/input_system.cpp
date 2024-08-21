@@ -14,8 +14,6 @@ namespace
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "INPUT";
-
     bool InputSystem::OnInit()
     {
         INFO_LOG("Initializing.");

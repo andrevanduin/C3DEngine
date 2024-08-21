@@ -7,8 +7,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "JOB_SYSTEM";
-
     bool JobSystem::OnInit(const JobSystemConfig& config)
     {
         if (config.threadCount == 0)

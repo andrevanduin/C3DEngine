@@ -27,7 +27,8 @@ public:
     void OnLibraryUnload() override;
 
 private:
-    bool ConfigureRendergraph() const;
+    bool CreateRendergraphs() const;
+    bool InitializeRendergraphs() const;
 
     bool OnEvent(u16 code, void* sender, const C3D::EventContext& context);
     bool OnDebugEvent(u16 code, void* sender, const C3D::EventContext& context);

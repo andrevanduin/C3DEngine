@@ -10,8 +10,6 @@
 
 namespace C3D::UI_2D
 {
-    constexpr const char* INSTANCE_NAME = "UI2D_COMPONENT";
-
     Component::Component() { m_id.Generate(); }
 
     bool Component::Initialize(ComponentType _type, const Config& config)

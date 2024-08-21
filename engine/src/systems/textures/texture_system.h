@@ -213,7 +213,7 @@ namespace C3D
 #ifdef _DEBUG
             if (handle == INVALID_ID || handle >= m_textures.Size())
             {
-                INSTANCE_FATAL_LOG("TEXTURE_SYSTEM", "Tried to Get() a non-existant texture.");
+                FATAL_LOG("Tried to get the internals of a non-existant texture.");
             }
 #endif
             return static_cast<Type*>(m_textures[handle].texture.internalData);

@@ -10,8 +10,6 @@
 
 namespace C3D::UI_2D
 {
-    constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
-
     bool NineSliceComponent::Initialize(Component& self, const char* name, AtlasID _atlasID, const u16vec2& size,
                                         const u16vec2& _cornerSize, const vec4& _color)
     {

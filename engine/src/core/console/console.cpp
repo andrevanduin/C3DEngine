@@ -12,9 +12,9 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "UI_CONSOLE";
-    constexpr auto BLINK_TIME           = 0.9f;
-    constexpr auto SCROLL_DELAY         = 0.1f;
+
+    constexpr auto BLINK_TIME   = 0.9f;
+    constexpr auto SCROLL_DELAY = 0.1f;
 
     void UIConsole::OnInit()
     {

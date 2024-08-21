@@ -9,8 +9,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "BITMAP_FONT_LOADER";
-
     // These are in order of priority to be looked up (since we would much rather load our custom binary format)
     constexpr static SupportedBitmapFontFileType SUPPORTED_FILE_TYPES[2] = {
         { ".cbf", BitmapFontFileType::CBF, true },

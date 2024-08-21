@@ -18,8 +18,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "RENDERER";
-
     bool RenderSystem::OnInit(const RenderSystemConfig& config)
     {
         m_config = config;

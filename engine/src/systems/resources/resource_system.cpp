@@ -11,6 +11,7 @@
 #include "resources/loaders/material_loader.h"
 #include "resources/loaders/mesh_loader.h"
 #include "resources/loaders/shader_loader.h"
+#include "resources/loaders/simple_scene_loader.h"
 #include "resources/loaders/terrain_loader.h"
 #include "resources/loaders/text_loader.h"
 
@@ -55,9 +56,10 @@ namespace C3D
         const auto bitmapFontLoader = Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader);
         const auto terrainLoader    = Memory.New<ResourceLoader<TerrainConfig>>(MemoryType::ResourceLoader);
         const auto audioLoader      = Memory.New<ResourceLoader<AudioFile>>(MemoryType::ResourceLoader);
+        const auto sceneLoader      = Memory.New<ResourceLoader<SimpleSceneConfig>>(MemoryType::ResourceLoader);
 
-        for (IResourceLoader* loaders[9] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader, meshLoader,
-                                             bitmapFontLoader, terrainLoader, audioLoader };
+        for (IResourceLoader* loaders[10] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader, meshLoader,
+                                              bitmapFontLoader, terrainLoader, audioLoader, sceneLoader };
              const auto loader : loaders)
         {
             if (!RegisterLoader(loader))

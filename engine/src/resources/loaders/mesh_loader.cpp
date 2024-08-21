@@ -11,8 +11,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "MESH_LOADER";
-
     ResourceLoader<MeshResource>::ResourceLoader() : IResourceLoader(MemoryType::Geometry, ResourceType::Mesh, nullptr, "models") {}
 
     bool ResourceLoader<MeshResource>::Load(const char* name, MeshResource& resource) const

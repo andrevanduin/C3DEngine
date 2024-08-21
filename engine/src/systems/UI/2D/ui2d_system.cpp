@@ -27,9 +27,8 @@ namespace C3D
 {
     using namespace UI_2D;
 
-    constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
-    constexpr const char* SHADER_NAME   = "Shader.Builtin.UI2D";
-    constexpr u16vec2 atlasSize         = u16vec2(512, 512);  // Size of the entire UI atlas
+    constexpr const char* SHADER_NAME = "Shader.Builtin.UI2D";
+    constexpr u16vec2 atlasSize       = u16vec2(512, 512);  // Size of the entire UI atlas
 
     bool UI2DSystem::OnInit(const UI2DSystemConfig& config)
     {
@@ -70,8 +69,6 @@ namespace C3D
 
         // Create our hashmap
         m_componentMap.Create();
-
-        m_pass = UI2DPass();
 
         m_callbacks.PushBack(Event.Register(
             EventCodeButtonClicked, [this](const u16 code, void* sender, const C3D::EventContext& context) { return OnClick(context); }));
@@ -156,8 +153,6 @@ namespace C3D
 
         return true;
     }
-
-    void UI2DSystem::Prepare(Viewport* viewport) { m_pass.Prepare(viewport, &m_components); }
 
     bool UI2DSystem::OnUpdate(const FrameData& frameData)
     {

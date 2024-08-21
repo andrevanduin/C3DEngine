@@ -69,8 +69,7 @@ namespace C3D
         auto result = vkQueueWaitIdle(queue);
         if (!VulkanUtils::IsSuccess(result))
         {
-            INSTANCE_ERROR_LOG("VULKAN_COMMAND_BUFFER", "vkQueueWaitIdle failed with following error: {}.",
-                               VulkanUtils::ResultString(result));
+            ERROR_LOG("vkQueueWaitIdle failed with following error: {}.", VulkanUtils::ResultString(result));
         }
 
         // VK_CHECK(vkQueueWaitIdle(queue));
