@@ -127,16 +127,16 @@ namespace C3D
          */
         void SetDepthTestingEnabled(bool enabled) const;
 
-        void CreateTexture(const u8* pixels, Texture* texture) const;
-        void CreateWritableTexture(Texture* texture) const;
+        void CreateTexture(Texture& texture, const u8* pixels) const;
+        void CreateWritableTexture(Texture& texture) const;
 
-        void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) const;
-        void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels) const;
+        void ResizeTexture(Texture& texture, u32 newWidth, u32 newHeight) const;
+        void WriteDataToTexture(Texture& texture, u32 offset, u32 size, const u8* pixels) const;
 
-        void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory) const;
-        void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba) const;
+        void ReadDataFromTexture(Texture& texture, u32 offset, u32 size, void** outMemory) const;
+        void ReadPixelFromTexture(Texture& texture, u32 x, u32 y, u8** outRgba) const;
 
-        void DestroyTexture(Texture* texture) const;
+        void DestroyTexture(Texture& texture) const;
 
         bool CreateGeometry(Geometry& geometry, u32 vertexSize, u64 vertexCount, const void* vertices, u32 indexSize, u64 indexCount,
                             const void* indices) const;
@@ -228,8 +228,8 @@ namespace C3D
         void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) const;
         [[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const;
 
-        [[nodiscard]] Texture* GetWindowAttachment(u8 index) const;
-        [[nodiscard]] Texture* GetDepthAttachment(u8 index) const;
+        [[nodiscard]] TextureHandle GetWindowAttachment(u8 index) const;
+        [[nodiscard]] TextureHandle GetDepthAttachment(u8 index) const;
 
         [[nodiscard]] u8 GetWindowAttachmentIndex() const;
         [[nodiscard]] u8 GetWindowAttachmentCount() const;

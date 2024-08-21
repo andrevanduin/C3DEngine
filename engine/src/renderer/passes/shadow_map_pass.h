@@ -97,7 +97,7 @@ namespace C3D
         Viewport m_viewport;
 
         // Depth textures we use to render our shadow map to
-        C3D::DynamicArray<C3D::Texture> m_depthTextures;
+        C3D::DynamicArray<C3D::TextureHandle> m_depthTextures;
 
         // One per cascade
         CascadeResources m_cascades[MAX_SHADOW_CASCADE_COUNT];

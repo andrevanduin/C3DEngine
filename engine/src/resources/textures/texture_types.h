@@ -5,6 +5,8 @@ namespace C3D
 {
     constexpr auto TEXTURE_NAME_MAX_LENGTH = 256;
 
+    using TextureHandle = u32;
+
     enum class TextureFilter
     {
         ModeNearest = 0x0,
@@ -78,6 +80,8 @@ namespace C3D
 
     enum TextureType
     {
+        /** @brief An undefined texture type.  */
+        TextureTypeNone,
         /** @brief A standard 2D texture. */
         TextureType2D,
         /** @brief A 2D array texture. */

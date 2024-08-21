@@ -105,10 +105,10 @@ namespace C3D
          * @brief Sets the provided cubemap texture to be used as Irradiance for all future drawing of materials that do not have an
          * explicitly set irradiance texture. This texture must be a cubemap texture, otherwise this operation will fail.
          *
-         * @param irradianceCubeTexture The texture you want to use as an irradiance texture
+         * @param handle A handle to the texture you want to use as an irradiance texture
          * @return True if successful; false otherwise
          */
-        bool SetIrradiance(Texture* irradianceCubeTexture);
+        bool SetIrradiance(TextureHandle handle);
 
         /** @brief Reset the current irradiance cubemap texture to the default. */
         void ResetIrradiance();
@@ -116,11 +116,10 @@ namespace C3D
         /**
          * @brief Sets the provided shadowmap texture to be used for all future draw calls.
          *
-         * @param shadowTexture The texture that should be used as shadow map
+         * @param handle handle to the texture that should be used as shadow map
          * @param cascadeIndex The cascade index (level) (between 0 and 4)
-         * @return True if successful; false otherwise
          */
-        bool SetShadowMap(Texture* shadowTexture, u8 cascadeIndex);
+        void SetShadowMap(TextureHandle handle, u8 cascadeIndex);
 
         /**
          * @brief Sets the Directional light-space matrix to be used for future draw calls.
@@ -145,7 +144,7 @@ namespace C3D
 
         Material& AcquireReference(const String& name, bool autoRelease, bool& needsCreation);
 
-        bool AssignMap(TextureMap& map, const MaterialConfigMap& config, Texture* defaultTexture) const;
+        bool AssignMap(TextureMap& map, const MaterialConfigMap& config, TextureHandle defaultTexture) const;
         bool ApplyPointLights(Material* material, u16 pLightsLoc, u16 numPLightsLoc) const;
 
         bool LoadMaterial(const MaterialConfig& config, Material& mat) const;
@@ -160,8 +159,8 @@ namespace C3D
         DynamicArray<MaterialReference> m_materials;
 
         /** @brief Current irradiance and shadow textures. */
-        Texture* m_currentIrradianceTexture = nullptr;
-        Texture* m_currentShadowTexture     = nullptr;
+        TextureHandle m_currentIrradianceTexture = INVALID_ID;
+        TextureHandle m_currentShadowTexture     = INVALID_ID;
 
         mat4 m_directionalLightSpace[MAX_SHADOW_CASCADE_COUNT] = { mat4(1.0f), mat4(1.0f), mat4(1.0f), mat4(1.0f) };
 

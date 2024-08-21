@@ -47,7 +47,7 @@ private:
     C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> m_terrains;
     C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> m_debugGeometries;
 
-    C3D::Texture* m_irradianceCubeTexture = nullptr;
+    C3D::TextureHandle m_irradianceCubeTexture = INVALID_ID;
 
     mat4 m_directionalLightViews[4];
     mat4 m_directionalLightProjections[4];

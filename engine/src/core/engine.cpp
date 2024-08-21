@@ -71,6 +71,7 @@ namespace C3D
 
         constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
         constexpr ShaderSystemConfig shaderSystemConfig;
+        constexpr TextureSystemConfig textureSystemConfig{ 65536 };
         const PlatformSystemConfig platformConfig{ windowName.Data(), appState->windowConfig };
         const CVarSystemConfig cVarSystemConfig{ 31, m_pConsole };
         const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin,
@@ -85,9 +86,16 @@ namespace C3D
         systemsManager.RegisterSystem<InputSystem>(InputSystemType);                              // Input System
         systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);  // Resource System
         systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);        // Shader System
-        systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);        // Render System
-        systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);              // UI2D System
-        systemsManager.RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);           //  Audio System
+
+        // We must initialize the Texture system first since our RenderSystem depends on it
+        systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
+        systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);     // Render System
+
+        // But we can only create default textures once we have our RenderSystem running
+        Textures.CreateDefaultTextures();
+
+        systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);     // UI2D System
+        systemsManager.RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);  //  Audio System
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
@@ -127,13 +135,11 @@ namespace C3D
         }
 
         const JobSystemConfig jobSystemConfig{ static_cast<u8>(threadCount - 1), jobThreadTypes };
-        constexpr TextureSystemConfig textureSystemConfig{ 65536 };
         constexpr CameraSystemConfig cameraSystemConfig{ 61 };
 
-        systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);              // Job System
-        systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
-        systemsManager.RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);       // Font System
-        systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);     // Camera System
+        systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);           // Job System
+        systemsManager.RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);    // Font System
+        systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);  // Camera System
 
         Event.Register(EventCodeResized,
                        [this](const u16 code, void* sender, const EventContext& context) { return OnResizeEvent(code, sender, context); });

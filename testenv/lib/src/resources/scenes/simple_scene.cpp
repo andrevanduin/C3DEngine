@@ -14,6 +14,7 @@
 #include <systems/lights/light_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
+#include <systems/textures/texture_system.h>
 
 #include "test_env_types.h"
 
@@ -425,7 +426,7 @@ void SimpleScene::QueryMeshes(FrameData& frameData, const Frustum& frustum, cons
 
                     // Check if transparent. If so, put into a separate, temp array to be
                     // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
-                    if (geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
+                    if (Textures.HasTransparency(geometry->material->maps[0].texture))
                     {
                         // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
                         // Get the center, extract the global position from the model matrix and add it to the center,
@@ -492,7 +493,7 @@ void SimpleScene::QueryMeshes(FrameData& frameData, const vec3& direction, const
 
                     // Check if transparent. If so, put into a separate, temp array to be
                     // sorted by distance from the camera. Otherwise, we can just directly insert into the geometries dynamic array
-                    if (geometry->material->maps[0].texture->flags & C3D::TextureFlag::HasTransparency)
+                    if (Textures.HasTransparency(geometry->material->maps[0].texture))
                     {
                         // For meshes _with_ transparency, add them to a separate list to be sorted by distance later.
                         // Get the center, extract the global position from the model matrix and add it to the center,

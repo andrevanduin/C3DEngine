@@ -23,8 +23,8 @@ namespace C3D
               repeatW(config.repeatW)
         {}
 
-        /** @brief Pointer to the corresponding texture. */
-        Texture* texture = nullptr;
+        /** @brief A handle to the corresponding texture. */
+        TextureHandle texture = INVALID_ID;
         /** @brief Texture filtering mode for minification. */
         TextureFilter minifyFilter = TextureFilter::ModeLinear;
         /** @brief Texture filtering mode for magnification. */
