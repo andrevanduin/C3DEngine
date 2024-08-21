@@ -9,8 +9,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "MESH";
-
     bool Mesh::Create(const MeshConfig& cfg)
     {
         config     = cfg;

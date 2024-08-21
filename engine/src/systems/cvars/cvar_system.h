@@ -36,11 +36,11 @@ namespace C3D
         {
             if (Exists(name))
             {
-                INSTANCE_ERROR_LOG("CVAR_SYSTEM", "A CVar named: '{}' already exists.", name);
+                ERROR_LOG("CVAR_SYSTEM", "A CVar named: '{}' already exists.", name);
                 return false;
             }
 
-            INSTANCE_INFO_LOG("CVAR_SYSTEM", "Successfully created CVar: '{}'.", name);
+            INFO_LOG("CVAR_SYSTEM", "Successfully created CVar: '{}'.", name);
             m_cVars.Set(name, CVar(name, value));
             return true;
         }

@@ -25,8 +25,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "ENGINE";
-
     Engine::Engine(Application* pApplication, UIConsole* pConsole) : m_application(pApplication), m_pConsole(pConsole)
     {
         m_application->m_pConsole = pConsole;

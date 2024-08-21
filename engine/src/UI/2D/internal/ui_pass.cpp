@@ -17,8 +17,7 @@
 #include "systems/shaders/shader_system.h"
 #include "systems/system_manager.h"
 
-constexpr const char* INSTANCE_NAME = "UI_PASS";
-constexpr const char* SHADER_NAME   = "Shader.Builtin.UI2D";
+constexpr const char* SHADER_NAME = "Shader.Builtin.UI2D";
 
 namespace C3D
 {
@@ -88,10 +87,10 @@ namespace C3D
         return true;
     }
 
-    void UI2DPass::Prepare(Viewport* viewport, const DynamicArray<UI_2D::Component>* components)
+    void UI2DPass::Prepare(const Viewport& viewport, const DynamicArray<UI_2D::Component>& components)
     {
-        m_pComponents = components;
-        m_viewport    = viewport;
+        m_pComponents = &components;
+        m_viewport    = &viewport;
         m_prepared    = true;
     }
 

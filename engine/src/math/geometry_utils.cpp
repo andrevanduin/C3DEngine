@@ -9,8 +9,6 @@
 
 namespace C3D::GeometryUtils
 {
-    constexpr const char* INSTANCE_NAME = "GEOMETRY_UITLS";
-
     void GenerateTangents(DynamicArray<Vertex3D>& vertices, const DynamicArray<u32>& indices)
     {
         for (u32 i = 0; i < indices.Size(); i += 3)

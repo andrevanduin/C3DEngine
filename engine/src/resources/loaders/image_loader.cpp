@@ -15,8 +15,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "IMAGE_LOADER";
-
     ResourceLoader<Image>::ResourceLoader()
         : IResourceLoader(MemoryType::Texture, ResourceType::Image, nullptr, "textures")
     {}

@@ -8,8 +8,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "LINEAR_ALLOCATOR";
-
     LinearAllocator::LinearAllocator() : BaseAllocator(ToUnderlying(AllocatorType::Linear)) {}
 
     void LinearAllocator::Create(const char* name, const u64 totalSize, void* memory)

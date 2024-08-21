@@ -22,7 +22,7 @@ namespace C3D
             auto componentId = ComponentType::GetId();
             if (componentId > m_componentPools.Size())
             {
-                INSTANCE_ERROR_LOG("ECS", "ComponentId falls outside of range of Component Pools.");
+                ERROR_LOG("ComponentId falls outside of range of Component Pools.");
                 return false;
             }
 

@@ -75,7 +75,7 @@ namespace C3D
         {
             if (!std::holds_alternative<T>(m_value))
             {
-                INSTANCE_FATAL_LOG("CVAR", "Tried setting with value of invalid type.");
+                FATAL_LOG("Tried setting with value of invalid type.");
             }
 
             m_value = value;
@@ -90,7 +90,7 @@ namespace C3D
         {
             if (!std::holds_alternative<T>(m_value))
             {
-                INSTANCE_FATAL_LOG("CVAR", "Tried getting value of invalid type.");
+                FATAL_LOG("Tried getting value of invalid type.");
             }
             return std::get<T>(m_value);
         }

@@ -10,9 +10,8 @@
 
 namespace C3D::UI_2D
 {
-    constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
-    constexpr u64 VERTICES_PER_QUAD     = 4;
-    constexpr u64 INDICES_PER_QUAD      = 6;
+    constexpr u64 VERTICES_PER_QUAD = 4;
+    constexpr u64 INDICES_PER_QUAD  = 6;
 
     FontGlyph* GetFontGlyph(const FontData& data, const i32 codepoint)
     {

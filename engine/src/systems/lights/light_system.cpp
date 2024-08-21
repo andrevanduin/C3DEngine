@@ -4,8 +4,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "LIGHT_SYSTEM";
-
     bool LightSystem::OnInit()
     {
         INFO_LOG("Initializing.");

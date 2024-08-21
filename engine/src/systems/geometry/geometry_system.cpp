@@ -10,8 +10,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "GEOMETRY_SYSTEM";
-
     bool GeometrySystem::OnInit(const GeometrySystemConfig& config)
     {
         INFO_LOG("Initializing.");

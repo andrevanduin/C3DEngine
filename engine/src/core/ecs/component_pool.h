@@ -18,7 +18,7 @@ namespace C3D
         template <typename Type>
         bool Create(const String& name, u64 maxComponents, Allocator* allocator)
         {
-            INSTANCE_INFO_LOG("COMPONENT_POOL", "Creating: '{}' with room for: '{}' components", name, maxComponents);
+            INFO_LOG("Creating: '{}' with room for: '{}' components", name, maxComponents);
 
             m_allocator     = allocator;
             m_name          = name;
@@ -29,7 +29,7 @@ namespace C3D
 
         void Destroy()
         {
-            INSTANCE_INFO_LOG("COMPONENT_POOL", "Destroying: '{}'.", m_name);
+            INFO_LOG("Destroying: '{}'.", m_name);
             m_allocator->Free(m_components);
         }
 

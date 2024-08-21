@@ -955,7 +955,7 @@ namespace C3D
                        ((m_data[index + 2] & 0b00111111) << 6) + (m_data[index + 3] & 0b00111111);
             }
 
-            INSTANCE_ERROR_LOG("STRING", "Invalid 5 or 6-byte character in String.");
+            ERROR_LOG("Invalid 5 or 6-byte character in String.");
             advance = 1;
             return -1;
         }
@@ -1107,7 +1107,7 @@ namespace C3D
                     i += 4;  // 4-byte character
                 else
                 {
-                    INSTANCE_ERROR_LOG("STRING", "Invalid 5 or 6-byte character in String.");
+                    ERROR_LOG("Invalid 5 or 6-byte character in String.");
                     return 0;
                 }
             }

@@ -3,8 +3,6 @@
 
 namespace C3D::UI_2D
 {
-    constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
-
     Component Label::Create(const DynamicAllocator* pAllocator)
     {
         Component component;

@@ -5,15 +5,15 @@
 
 namespace C3D
 {
-    Frustum::Frustum(const vec3& position, const vec3& forward, const vec3& right, const vec3& up, Viewport* viewport)
+    Frustum::Frustum(const vec3& position, const vec3& forward, const vec3& right, const vec3& up, const Viewport& viewport)
     {
-        const f32 halfV       = viewport->GetFarClip() * tanf(viewport->GetFov() * 0.5f);
-        const f32 halfH       = halfV * viewport->GetAspectRatio();
-        const vec3 forwardFar = forward * viewport->GetFarClip();
+        const f32 halfV       = viewport.GetFarClip() * tanf(viewport.GetFov() * 0.5f);
+        const f32 halfH       = halfV * viewport.GetAspectRatio();
+        const vec3 forwardFar = forward * viewport.GetFarClip();
         const vec3 rightHalfH = right * halfH;
         const vec3 upHalfV    = up * halfV;
 
-        sides[FrustumPlaneTop]    = Plane3D((forward * viewport->GetNearClip()) + position, forward);
+        sides[FrustumPlaneTop]    = Plane3D((forward * viewport.GetNearClip()) + position, forward);
         sides[FrustumPlaneBottom] = Plane3D(position + forwardFar, -1.0f * forward);
         sides[FrustumPlaneRight]  = Plane3D(position, glm::cross(up, forwardFar + rightHalfH));
         sides[FrustumPlaneLeft]   = Plane3D(position, glm::cross(forwardFar - rightHalfH, up));

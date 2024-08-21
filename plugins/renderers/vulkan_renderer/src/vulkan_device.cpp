@@ -11,8 +11,6 @@ namespace C3D
 {
     constexpr auto VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME = "VK_KHR_portability_subset";
 
-    constexpr const char* INSTANCE_NAME = "VULKAN_DEVICE";
-
     bool VulkanDevice::Create(VulkanContext* context)
     {
         m_context = context;

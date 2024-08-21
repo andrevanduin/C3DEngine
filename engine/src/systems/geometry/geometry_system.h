@@ -96,14 +96,13 @@ namespace C3D
 
         if (!g)
         {
-            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM",
-                               "Unable to obtain free slot for geometry. Adjust config to allow for more space. Returning nullptr.");
+            ERROR_LOG("Unable to obtain free slot for geometry. Adjust config to allow for more space. Returning nullptr.");
             return nullptr;
         }
 
         if (!CreateGeometry(config, g))
         {
-            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM", "Failed to create geometry. Returning nullptr.");
+            ERROR_LOG("Failed to create geometry. Returning nullptr.");
             return nullptr;
         }
 
@@ -115,7 +114,7 @@ namespace C3D
     {
         if (!g)
         {
-            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM", "Requires a valid pointer to geometry.");
+            ERROR_LOG("Requires a valid pointer to geometry.");
             return false;
         }
 
@@ -123,7 +122,7 @@ namespace C3D
         if (!Renderer.CreateGeometry(*g, sizeof(VertexType), config.vertices.Size(), config.vertices.GetData(), sizeof(IndexType),
                                      config.indices.Size(), config.indices.GetData()))
         {
-            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM", "Creating geometry failed during the Renderer's CreateGeometry.");
+            ERROR_LOG("Creating geometry failed during the Renderer's CreateGeometry.");
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;
@@ -134,7 +133,7 @@ namespace C3D
 
         if (!Renderer.UploadGeometry(*g))
         {
-            INSTANCE_ERROR_LOG("GEOMETRY_SYSTEM", "Creating geometry failed during the Renderer's UploadGeometry.");
+            ERROR_LOG("Creating geometry failed during the Renderer's UploadGeometry.");
             m_registeredGeometries[g->id].referenceCount = 0;
             m_registeredGeometries[g->id].autoRelease    = false;
             g->id                                        = INVALID_ID;

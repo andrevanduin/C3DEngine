@@ -7,8 +7,6 @@
 
 namespace C3D::OpenAL
 {
-    constexpr const char* INSTANCE_NAME = "OPEN_AL";
-
     const char* GetErrorStr(ALCenum error)
     {
         switch (error)

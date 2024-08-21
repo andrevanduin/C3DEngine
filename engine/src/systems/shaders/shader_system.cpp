@@ -10,8 +10,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "SHADER_SYSTEM";
-
     bool ShaderSystem::OnInit(const ShaderSystemConfig& config)
     {
         INFO_LOG("Initializing.");

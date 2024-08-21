@@ -60,15 +60,14 @@ namespace C3D
 
             if (systemType > MaxKnownSystemType)
             {
-                INSTANCE_ERROR_LOG("SYSTEM_MANAGER", "The provided systemType should be 0 <= {} < {}.", systemType,
-                                   ToUnderlying(MaxKnownSystemType));
+                ERROR_LOG("The provided systemType should be 0 <= {} < {}.", systemType, ToUnderlying(MaxKnownSystemType));
                 return false;
             }
 
             auto s = m_allocator.New<System>(MemoryType::CoreSystem);
             if (!s->OnInit())
             {
-                INSTANCE_FATAL_LOG("SYSTEM_MANAGER", "Failed to initialize system.");
+                FATAL_LOG("Failed to initialize system.");
                 return false;
             }
 
@@ -84,15 +83,14 @@ namespace C3D
 
             if (systemType > MaxKnownSystemType)
             {
-                INSTANCE_ERROR_LOG("SYSTEM_MANAGER", "The provided systemType should be 0 <= {} < {}.", systemType,
-                                   ToUnderlying(MaxKnownSystemType));
+                ERROR_LOG("The provided systemType should be 0 <= {} < {}.", systemType, ToUnderlying(MaxKnownSystemType));
                 return false;
             }
 
             auto s = m_allocator.New<System>(MemoryType::CoreSystem);
             if (!s->OnInit(config))
             {
-                INSTANCE_FATAL_LOG("SYSTEM_MANAGER", "Failed to initialize system.");
+                FATAL_LOG("Failed to initialize system.");
                 return false;
             }
 

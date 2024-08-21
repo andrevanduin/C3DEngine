@@ -5,8 +5,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "FREE_LIST";
-
     bool FreeList::Create(void* memory, const u64 memorySizeForNodes, const u64 smallestPossibleAllocation, const u64 managedSize)
     {
         m_smallestPossibleAllocation = smallestPossibleAllocation;

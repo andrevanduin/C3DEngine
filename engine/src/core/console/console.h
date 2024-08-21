@@ -63,11 +63,11 @@ namespace C3D
         {
             if (type == LogType::Info)
             {
-                INSTANCE_INFO_LOG("UI_CONSOLE", format, args...);
+                INFO_LOG(format, args...);
             }
             else
             {
-                INSTANCE_ERROR_LOG("UI_CONSOLE", format, args...);
+                ERROR_LOG(format, args...);
             }
         }
 

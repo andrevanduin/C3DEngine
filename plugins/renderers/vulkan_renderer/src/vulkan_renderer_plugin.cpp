@@ -33,8 +33,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "VULKAN_RENDERER";
-
     VulkanRendererPlugin::VulkanRendererPlugin() {}
 
     bool VulkanRendererPlugin::Init(const RendererPluginConfig& config, u8* outWindowRenderTargetCount)

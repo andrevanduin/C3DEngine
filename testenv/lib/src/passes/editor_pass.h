@@ -5,8 +5,7 @@
 #include <memory/allocators/linear_allocator.h>
 #include <renderer/renderer_types.h>
 #include <renderer/rendergraph/renderpass.h>
-
-#include "test_env_types.h"
+#include <resources/debug/debug_types.h>
 
 namespace C3D
 {
@@ -23,7 +22,7 @@ public:
     EditorPass();
 
     bool Initialize(const C3D::LinearAllocator* frameAllocator) override;
-    bool Prepare(C3D::Viewport* viewport, C3D::Camera* camera, EditorGizmo* gizmo);
+    bool Prepare(const C3D::Viewport& viewport, C3D::Camera* camera, EditorGizmo* gizmo);
     bool Execute(const C3D::FrameData& frameData) override;
 
 private:
@@ -31,5 +30,5 @@ private:
 
     C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> m_geometries;
 
-    DebugColorShaderLocations m_locations;
+    C3D::DebugColorShaderLocations m_locations;
 };

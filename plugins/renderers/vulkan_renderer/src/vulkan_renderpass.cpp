@@ -14,8 +14,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "VULKAN_RENDERPASS";
-
     bool VulkanRenderpass::Create(const RenderpassConfig& config, const VulkanContext* context)
     {
         m_name       = config.name;

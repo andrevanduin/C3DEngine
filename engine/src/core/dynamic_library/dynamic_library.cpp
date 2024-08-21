@@ -5,8 +5,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "DYNAMIC_LIBRARY";
-
     DynamicLibrary::~DynamicLibrary()
     {
         if (m_data && !m_name.Empty()) Unload();

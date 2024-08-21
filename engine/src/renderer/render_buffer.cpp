@@ -9,8 +9,6 @@ namespace C3D
     // TODO: Setting SMALLEST_POSSIBLE_FREELIST_ALLOCATION here to 8 could cause problems potentially.
     constexpr static auto SMALLEST_POSSIBLE_FREELIST_ALLOCATION = 8;
 
-    constexpr const char* INSTANCE_NAME = "RENDER_BUFFER";
-
     RenderBuffer::RenderBuffer(const String& name) : m_name(name) {}
 
     bool RenderBuffer::Create(const RenderBufferType bufferType, const u64 size, RenderBufferTrackType trackType)

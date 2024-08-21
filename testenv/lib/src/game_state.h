@@ -1,22 +1,21 @@
 
 #pragma once
+#include <UI/2D/internal/ui_rendergraph.h>
 #include <core/application.h>
 #include <core/audio/audio_types.h>
 #include <core/ecs/entity.h>
 #include <core/frame_data.h>
 #include <core/uuid.h>
 #include <renderer/passes/shadow_map_pass.h>
-#include <renderer/rendergraph/rendergraph.h>
+#include <renderer/rendergraph/forward_rendergraph.h>
 #include <renderer/viewport.h>
 #include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
+#include <resources/scenes/simple_scene.h>
 #include <systems/events/event_system.h>
 
 #include "editor/editor_gizmo.h"
-#include "passes/editor_pass.h"
-#include "passes/scene_pass.h"
-#include "passes/skybox_pass.h"
-#include "resources/scenes/simple_scene.h"
+#include "graphs/editor_rendergraph.h"
 
 namespace C3D
 {
@@ -49,7 +48,7 @@ struct GameState final : C3D::ApplicationState
     f64 moveSpeed = 25.0, moveSpeedFast = 100.0;
 
     // TEMP
-    SimpleScene simpleScene;
+    C3D::SimpleScene simpleScene;
     EditorGizmo gizmo;
     bool dragging = false;
 
@@ -61,11 +60,9 @@ struct GameState final : C3D::ApplicationState
     C3D::Viewport worldViewport;
     C3D::Viewport uiViewport;
 
-    C3D::Rendergraph frameGraph;
-    SkyboxPass skyboxPass;
-    ShadowMapPass shadowPass;
-    ScenePass scenePass;
-    EditorPass editorPass;
+    C3D::ForwardRendergraph mainRendergraph;
+    EditorRendergraph editorRendergraph;
+    C3D::UI2DRendergraph ui2dRendergraph;
 
     SelectedObject selectedObject;
 

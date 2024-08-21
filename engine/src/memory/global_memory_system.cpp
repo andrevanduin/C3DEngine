@@ -7,8 +7,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "GLOBAL_MEMORY_SYSTEM";
-
     void GlobalMemorySystem::Init(const MemorySystemConfig& config)
     {
         const u64 memoryRequirement = DynamicAllocator::GetMemoryRequirements(config.totalAllocSize);

@@ -14,8 +14,6 @@
 #include <systems/resources/resource_system.h>
 #include <systems/shaders/shader_system.h>
 
-constexpr const char* INSTANCE_NAME = "RENDER_VIEW_PICK";
-
 RenderViewPick::RenderViewPick() : RenderView("PICK_VIEW", "") {}
 
 void RenderViewPick::OnSetupPasses()

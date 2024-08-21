@@ -7,8 +7,6 @@
 
 namespace C3D::UI_2D
 {
-    constexpr const char* INSTANCE_NAME = "UI2D_SYSTEM";
-
     bool ClippingComponent::Initialize(Component& self, const char* name, const u16vec2& _size)
     {
         static u8 CURRENT_STENCIL_ID = 1;

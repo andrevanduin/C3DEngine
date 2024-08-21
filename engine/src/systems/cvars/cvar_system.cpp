@@ -3,22 +3,20 @@
 
 #include "core/engine.h"
 
-#define IMPLEMENT_CVAR_CREATE_FUNC(TypeName)                                                       \
-    bool CVarSystem::Create(const CVarName& name, TypeName value)                                  \
-    {                                                                                              \
-        if (Exists(name))                                                                          \
-        {                                                                                          \
-            INSTANCE_ERROR_LOG("Failed to create CVar. A CVar named: '{}' already exists!", name); \
-            return false;                                                                          \
-        }                                                                                          \
-        m_cVars.Set(name, CVar(CVarType::T##TypeName, name, value));                               \
-        return true;                                                                               \
+#define IMPLEMENT_CVAR_CREATE_FUNC(TypeName)                                              \
+    bool CVarSystem::Create(const CVarName& name, TypeName value)                         \
+    {                                                                                     \
+        if (Exists(name))                                                                 \
+        {                                                                                 \
+            ERROR_LOG("Failed to create CVar. A CVar named: '{}' already exists!", name); \
+            return false;                                                                 \
+        }                                                                                 \
+        m_cVars.Set(name, CVar(CVarType::T##TypeName, name, value));                      \
+        return true;                                                                      \
     }
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "CVAR_SYSTEM";
-
     bool CVarSystem::OnInit(const CVarSystemConfig& config)
     {
         INFO_LOG("Initializing.");

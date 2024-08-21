@@ -3,7 +3,6 @@
 
 namespace C3D
 {
-    constexpr const char* INSTANCE_NAME = "ECS";
 
     bool ECS::Create(u64 memorySize, u64 componentTypeCount, u64 maxComponents)
     {

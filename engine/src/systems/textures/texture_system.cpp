@@ -18,8 +18,6 @@ namespace C3D
 {
     static u32 LOADING_TEXTURE_ID = 0;
 
-    constexpr const char* INSTANCE_NAME = "TEXTURE_SYSTEM";
-
     bool TextureSystem::OnInit(const TextureSystemConfig& config)
     {
         INFO_LOG("Initializing.");

@@ -8,8 +8,7 @@
 
 #include "editor/editor_gizmo.h"
 
-constexpr const char* INSTANCE_NAME = "EDITOR_PASS";
-constexpr const char* SHADER_NAME   = "Shader.Builtin.Color3D";
+constexpr const char* SHADER_NAME = "Shader.Builtin.Color3D";
 
 EditorPass::EditorPass() : Renderpass("EDITOR") {}
 
@@ -62,11 +61,11 @@ bool EditorPass::Initialize(const C3D::LinearAllocator* frameAllocator)
     return true;
 }
 
-bool EditorPass::Prepare(C3D::Viewport* viewport, C3D::Camera* camera, EditorGizmo* gizmo)
+bool EditorPass::Prepare(const C3D::Viewport& viewport, C3D::Camera* camera, EditorGizmo* gizmo)
 {
     m_geometries.Reset();
 
-    m_viewport = viewport;
+    m_viewport = &viewport;
     m_camera   = camera;
 
     if (gizmo)

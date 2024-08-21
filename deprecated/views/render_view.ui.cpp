@@ -13,8 +13,6 @@
 
 #include "render_view_ui.h"
 
-constexpr const char* INSTANCE_NAME = "RENDER_VIEW_UI";
-
 RenderViewUi::RenderViewUi() : RenderView("UI_VIEW", "") {}
 
 void RenderViewUi::OnSetupPasses()

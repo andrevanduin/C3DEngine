@@ -18,7 +18,7 @@ namespace C3D
         UI2DPass();
 
         bool Initialize(const LinearAllocator* frameAllocator) override;
-        void Prepare(Viewport* viewport, const DynamicArray<UI_2D::Component>* components);
+        void Prepare(const Viewport& viewport, const DynamicArray<UI_2D::Component>& components);
         bool Execute(const FrameData& frameData) override;
 
     private:
