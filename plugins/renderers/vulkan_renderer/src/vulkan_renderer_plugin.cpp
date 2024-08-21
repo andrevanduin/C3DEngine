@@ -583,7 +583,7 @@ namespace C3D
         VkImageView attachmentViews[32] = { 0 };
         for (u32 i = 0; i < target.attachments.Size(); i++)
         {
-            auto internal = static_cast<VulkanImage*>(target.attachments[i].texture->internalData);
+            auto internal = Textures.GetInternals<VulkanImage>(target.attachments[i].texture);
             if (!internal->layerViews.Empty())
             {
                 attachmentViews[i] = internal->layerViews[layerIndex];
@@ -688,26 +688,24 @@ namespace C3D
         VK_END_CMD_DEBUG_LABEL(&m_context, commandBuffer.handle);
     }
 
-    Texture* VulkanRendererPlugin::GetWindowAttachment(const u8 index)
+    TextureHandle VulkanRendererPlugin::GetWindowAttachment(const u8 index)
     {
         if (index >= m_context.swapchain.imageCount)
         {
             FATAL_LOG("Attempting to get attachment index that is out of range: '{}'. Attachment count is: '{}'.", index,
                       m_context.swapchain.imageCount);
-            return nullptr;
         }
-        return &m_context.swapchain.renderTextures[index];
+        return m_context.swapchain.renderTextures[index].handle;
     }
 
-    Texture* VulkanRendererPlugin::GetDepthAttachment(u8 index)
+    TextureHandle VulkanRendererPlugin::GetDepthAttachment(u8 index)
     {
         if (index >= m_context.swapchain.imageCount)
         {
             FATAL_LOG("Attempting to get attachment index that is out of range: '{}'. Attachment count is: '{}'.", index,
                       m_context.swapchain.imageCount);
-            return nullptr;
         }
-        return &m_context.swapchain.depthTextures[index];
+        return m_context.swapchain.depthTextures[index].handle;
     }
 
     u8 VulkanRendererPlugin::GetWindowAttachmentIndex() { return static_cast<u8>(m_context.imageIndex); }
@@ -738,26 +736,26 @@ namespace C3D
         vulkanPass->End(commandBuffer);
     }
 
-    void VulkanRendererPlugin::CreateTexture(const u8* pixels, Texture* texture)
+    void VulkanRendererPlugin::CreateTexture(Texture& texture, const u8* pixels)
     {
         // Internal data creation
-        texture->internalData = Memory.New<VulkanImage>(MemoryType::Texture);
+        texture.internalData = Memory.New<VulkanImage>(MemoryType::Texture);
 
-        const auto image             = static_cast<VulkanImage*>(texture->internalData);
-        const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture->width) * texture->height * texture->channelCount *
-                                       (texture->type == TextureTypeCube ? 6 : texture->arraySize);
+        const auto image             = static_cast<VulkanImage*>(texture.internalData);
+        const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texture.width * texture.height * texture.channelCount * texture.arraySize);
 
         // NOTE: Assumes 8 bits per channel
         constexpr VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
-        image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, texture->arraySize, imageFormat,
+        image->Create(&m_context, texture.name, texture.type, texture.width, texture.height, texture.arraySize, imageFormat,
                       VK_IMAGE_TILING_OPTIMAL,
                       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
+                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture.mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
 
         // Load the data
         WriteDataToTexture(texture, 0, static_cast<u32>(imageSize), pixels, false);
-        texture->generation++;
+        // Increment the generation since we made changes
+        texture.generation++;
     }
 
     VkFormat ChannelCountToFormat(const u8 channelCount, const VkFormat defaultFormat)
@@ -777,16 +775,16 @@ namespace C3D
         }
     }
 
-    void VulkanRendererPlugin::CreateWritableTexture(Texture* texture)
+    void VulkanRendererPlugin::CreateWritableTexture(Texture& texture)
     {
-        texture->internalData = Memory.New<VulkanImage>(MemoryType::Texture);
-        const auto image      = static_cast<VulkanImage*>(texture->internalData);
+        texture.internalData = Memory.New<VulkanImage>(MemoryType::Texture);
+        const auto image     = static_cast<VulkanImage*>(texture.internalData);
 
         VkFormat imageFormat;
         VkImageUsageFlagBits usage;
         VkImageAspectFlagBits aspect;
 
-        if (texture->flags & TextureFlag::IsDepth)
+        if (texture.flags & TextureFlag::IsDepth)
         {
             usage       = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
             aspect      = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -797,20 +795,22 @@ namespace C3D
             usage       = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                                                             VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
             aspect      = VK_IMAGE_ASPECT_COLOR_BIT;
-            imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+            imageFormat = ChannelCountToFormat(texture.channelCount, VK_FORMAT_R8G8B8A8_UNORM);
         }
 
-        image->Create(&m_context, texture->name, texture->type, texture->width, texture->height, texture->arraySize, imageFormat,
-                      VK_IMAGE_TILING_OPTIMAL, usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, aspect);
+        // Create the VkImage corresponding to this writable texture
+        image->Create(&m_context, texture.name, texture.type, texture.width, texture.height, texture.arraySize, imageFormat,
+                      VK_IMAGE_TILING_OPTIMAL, usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture.mipLevels, aspect);
 
-        texture->generation++;
+        // Increment the generation since we made changes
+        texture.generation++;
     }
 
-    void VulkanRendererPlugin::WriteDataToTexture(Texture* texture, u32 offset, const u32 size, const u8* pixels,
+    void VulkanRendererPlugin::WriteDataToTexture(Texture& texture, u32 offset, const u32 size, const u8* pixels,
                                                   bool includeInFrameWorkload)
     {
-        const auto image           = static_cast<VulkanImage*>(texture->internalData);
-        const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+        const auto image           = static_cast<VulkanImage*>(texture.internalData);
+        const VkFormat imageFormat = ChannelCountToFormat(texture.channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
         // Allocate space in our staging buffer
         u64 stagingOffset = 0;
@@ -839,7 +839,7 @@ namespace C3D
         // Copy the data from the buffer.
         image->CopyFromBuffer(m_context.stagingBuffer.handle, stagingOffset, &tempCommandBuffer);
 
-        if (texture->mipLevels <= 1 || !image->CreateMipMaps(&tempCommandBuffer))
+        if (texture.mipLevels <= 1 || !image->CreateMipMaps(&tempCommandBuffer))
         {
             // If we don't need mips or the generation of the mips fails we fallback to ordinary transition.
             // Transition from optimal for receiving data to shader-read-only optimal layout.
@@ -849,40 +849,42 @@ namespace C3D
 
         tempCommandBuffer.EndSingleUse(&m_context, pool, queue);
 
-        texture->generation++;
+        // Increment the generation since we made changes
+        texture.generation++;
     }
 
-    void VulkanRendererPlugin::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight)
+    void VulkanRendererPlugin::ResizeTexture(Texture& texture, const u32 newWidth, const u32 newHeight)
     {
-        if (texture && texture->internalData)
+        if (texture.internalData)
         {
-            const auto image = static_cast<VulkanImage*>(texture->internalData);
+            const auto image = static_cast<VulkanImage*>(texture.internalData);
             Memory.Delete(image);
 
-            const VkFormat imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+            const VkFormat imageFormat = ChannelCountToFormat(texture.channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
             // Recalculate our mip levels
-            if (texture->mipLevels > 1)
+            if (texture.mipLevels > 1)
             {
                 // Take the base-2 log from the largest dimension floor it and add 1 for the base mip level.
-                texture->mipLevels = Floor(Log2(Max(newWidth, newHeight))) + 1;
+                texture.mipLevels = Floor(Log2(Max(newWidth, newHeight))) + 1;
             }
 
             // TODO: Lot's of assumptions here
-            image->Create(&m_context, texture->name, texture->type, newWidth, newHeight, texture->arraySize, imageFormat,
+            image->Create(&m_context, texture.name, texture.type, newWidth, newHeight, texture.arraySize, imageFormat,
                           VK_IMAGE_TILING_OPTIMAL,
                           VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture->mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
+                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, true, texture.mipLevels, VK_IMAGE_ASPECT_COLOR_BIT);
 
-            texture->generation++;
+            // Increment the generation since we have changed the texture
+            texture.generation++;
         }
     }
 
-    void VulkanRendererPlugin::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory)
+    void VulkanRendererPlugin::ReadDataFromTexture(Texture& texture, const u32 offset, const u32 size, void** outMemory)
     {
-        const auto image       = static_cast<VulkanImage*>(texture->internalData);
-        const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+        const auto image       = static_cast<VulkanImage*>(texture.internalData);
+        const auto imageFormat = ChannelCountToFormat(texture.channelCount, VK_FORMAT_R8G8B8A8_UNORM);
 
         // TODO: Add a global read buffer (with freelist) which is similar to staging buffer but meant for reading
         // Create a staging buffer and load data into it
@@ -921,10 +923,10 @@ namespace C3D
         staging.Destroy();
     }
 
-    void VulkanRendererPlugin::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba)
+    void VulkanRendererPlugin::ReadPixelFromTexture(Texture& texture, const u32 x, const u32 y, u8** outRgba)
     {
-        const auto image       = static_cast<VulkanImage*>(texture->internalData);
-        const auto imageFormat = ChannelCountToFormat(texture->channelCount, VK_FORMAT_R8G8B8A8_UNORM);
+        const auto image       = static_cast<VulkanImage*>(texture.internalData);
+        const auto imageFormat = ChannelCountToFormat(texture.channelCount, VK_FORMAT_R8G8B8A8_UNORM);
         // RGBA is 4 * sizeof a unsigned 8bit integer
         constexpr auto size = sizeof(u8) * 4;
 
@@ -964,15 +966,15 @@ namespace C3D
         staging.Destroy();
     }
 
-    void VulkanRendererPlugin::DestroyTexture(Texture* texture)
+    void VulkanRendererPlugin::DestroyTexture(Texture& texture)
     {
         m_context.device.WaitIdle();
 
-        if (const auto image = static_cast<VulkanImage*>(texture->internalData))
+        if (const auto image = static_cast<VulkanImage*>(texture.internalData))
         {
             image->Destroy();
-            Memory.Delete(texture->internalData);
-            texture->internalData = nullptr;
+            Memory.Delete(texture.internalData);
+            texture.internalData = nullptr;
         }
     }
 
@@ -1539,46 +1541,52 @@ namespace C3D
 
                     for (u32 d = 0; d < bindingDescriptorCount; ++d)
                     {
-                        TextureMap* map  = bindingSamplerState.textureMaps[d];
-                        const Texture* t = map->texture;
+                        TextureMap* map             = bindingSamplerState.textureMaps[d];
+                        TextureHandle textureHandle = map->texture;
                         // Ensure the texture is valid.
-                        if (!t)
+                        if (textureHandle == INVALID_ID)
                         {
-                            t = Textures.GetDefault();
-                            // If we are using the default texture, invalidate the maps generation so it's updated next run.
-                            map->generation = INVALID_ID;
-                        }
-                        else if (t->generation == INVALID_ID)
-                        {
-                            // generation is always invalid for default textures so let's check if we are using one
-                            if (!Textures.IsDefault(t))
-                            {
-                                // If the generation is invalid and we are not using a default texture we set a default one
-                                t = Textures.GetDefault();
-                            }
+                            textureHandle = Textures.GetDefault();
                             // If we are using the default texture, invalidate the maps generation so it's updated next run.
                             map->generation = INVALID_ID;
                         }
                         else
                         {
-                            // If the texture is valid, we ensure that the texture map's generation matches the texture.
-                            // If not, the texture map resources should be regenerated
-                            if (t->generation != map->generation)
+                            const auto& texture = Textures.Get(textureHandle);
+
+                            if (texture.generation == INVALID_ID)
                             {
-                                bool refreshRequired = t->mipLevels != map->mipLevels;
-                                if (refreshRequired && !RefreshTextureMapResources(*map))
+                                // generation is always invalid for default textures so let's check if we are using one
+                                if (!Textures.IsDefault(textureHandle))
                                 {
-                                    WARN_LOG(
-                                        "Failed to refresh texture map resources. This means the sampler settings could be out of date!");
+                                    // If the generation is invalid and we are not using a default texture we set a default one
+                                    textureHandle = Textures.GetDefault();
                                 }
-                                else
+                                // If we are using the default texture, invalidate the maps generation so it's updated next run.
+                                map->generation = INVALID_ID;
+                            }
+                            else
+                            {
+                                // If the texture is valid, we ensure that the texture map's generation matches the texture.
+                                // If not, the texture map resources should be regenerated
+                                if (texture.generation != map->generation)
                                 {
-                                    map->generation = t->generation;
+                                    bool refreshRequired = texture.mipLevels != map->mipLevels;
+                                    if (refreshRequired && !RefreshTextureMapResources(*map))
+                                    {
+                                        WARN_LOG(
+                                            "Failed to refresh texture map resources. This means the sampler settings could be out of "
+                                            "date!");
+                                    }
+                                    else
+                                    {
+                                        map->generation = texture.generation;
+                                    }
                                 }
                             }
                         }
 
-                        const auto vulkanTextureData = static_cast<VulkanTextureData*>(t->internalData);
+                        const auto vulkanTextureData = Textures.GetInternals<VulkanTextureData>(textureHandle);
                         imageInfos[d].imageLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                         imageInfos[d].imageView      = vulkanTextureData->image.view;
                         imageInfos[d].sampler        = m_context.samplers[map->internalId];
@@ -1691,61 +1699,66 @@ namespace C3D
                         // TODO: only update in the list if actually needing an update
                         TextureMap* map = bindingSamplerState.textureMaps[d];
 
-                        const Texture* t = map->texture;
+                        TextureHandle textureHandle = map->texture;
                         // Ensure the texture is valid.
-                        if (!t)
+                        if (textureHandle == INVALID_ID)
                         {
-                            t = Textures.GetDefault();
-                            // If we are using the default texture, invalidate the maps generation so it's updated next run.
-                            map->generation = INVALID_ID;
-                        }
-                        else if (t->generation == INVALID_ID)
-                        {
-                            // generation is always invalid for default textures so let's check if we are using one
-                            if (!Textures.IsDefault(t))
-                            {
-                                // If the generation is invalid and we are not using a default texture we set a default one
-                                if (t->type == TextureType2D)
-                                {
-                                    t = Textures.GetDefault();
-                                }
-                                else if (t->type == TextureType2DArray)
-                                {
-                                    t = Textures.GetDefaultTerrain();
-                                }
-                                else if (t->type == TextureTypeCube)
-                                {
-                                    t = Textures.GetDefaultCube();
-                                }
-                                else
-                                {
-                                    ERROR_LOG("Unknown texture type while trying to ApplyInstance. Falling back to default 2D");
-                                    t = Textures.GetDefault();
-                                }
-                            }
+                            textureHandle = Textures.GetDefault();
                             // If we are using the default texture, invalidate the maps generation so it's updated next run.
                             map->generation = INVALID_ID;
                         }
                         else
                         {
-                            // If the texture is valid, we ensure that the texture map's generation matches the texture.
-                            // If not, the texture map resources should be regenerated
-                            if (t->generation != map->generation)
+                            const auto& texture = Textures.Get(textureHandle);
+                            if (texture.generation == INVALID_ID)
                             {
-                                bool refreshRequired = t->mipLevels != map->mipLevels;
-                                if (refreshRequired && !RefreshTextureMapResources(*map))
+                                // Generation is always invalid for default textures so let's check if we are using one
+                                if (!Textures.IsDefault(textureHandle))
                                 {
-                                    WARN_LOG(
-                                        "Failed to refresh texture map resources. This means the sampler settings could be out of date!");
+                                    // If the generation is invalid and we are not using a default texture we set a default one
+                                    if (texture.type == TextureType2D)
+                                    {
+                                        textureHandle = Textures.GetDefault();
+                                    }
+                                    else if (texture.type == TextureType2DArray)
+                                    {
+                                        textureHandle = Textures.GetDefaultTerrain();
+                                    }
+                                    else if (texture.type == TextureTypeCube)
+                                    {
+                                        textureHandle = Textures.GetDefaultCube();
+                                    }
+                                    else
+                                    {
+                                        ERROR_LOG("Unknown texture type while trying to ApplyInstance. Falling back to default 2D");
+                                        textureHandle = Textures.GetDefault();
+                                    }
                                 }
-                                else
+                                // If we are using the default texture, invalidate the maps generation so it's updated next run.
+                                map->generation = INVALID_ID;
+                            }
+                            else
+                            {
+                                // If the texture is valid, we ensure that the texture map's generation matches the texture.
+                                // If not, the texture map resources should be regenerated
+                                if (texture.generation != map->generation)
                                 {
-                                    map->generation = t->generation;
+                                    bool refreshRequired = texture.mipLevels != map->mipLevels;
+                                    if (refreshRequired && !RefreshTextureMapResources(*map))
+                                    {
+                                        WARN_LOG(
+                                            "Failed to refresh texture map resources. This means the sampler settings could be out of "
+                                            "date!");
+                                    }
+                                    else
+                                    {
+                                        map->generation = texture.generation;
+                                    }
                                 }
                             }
                         }
 
-                        const auto vulkanTextureData = static_cast<VulkanTextureData*>(t->internalData);
+                        const auto vulkanTextureData = Textures.GetInternals<VulkanTextureData>(textureHandle);
                         imageInfos[d].imageLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                         imageInfos[d].imageView      = vulkanTextureData->image.view;
                         imageInfos[d].sampler        = m_context.samplers[map->internalId];
@@ -1862,7 +1875,7 @@ namespace C3D
             return false;
         }
 
-        Texture* defaultTexture = Textures.GetDefault();
+        TextureHandle defaultTexture = Textures.GetDefault();
 
         VulkanShaderInstanceState& instanceState = vulkanShader->instanceStates[outInstanceId];
         // Only setup if the shader actually requires it
@@ -2027,7 +2040,7 @@ namespace C3D
             return false;
         }
 
-        const auto samplerName = map.texture->name + "_texture_map_sampler";
+        const auto samplerName = Textures.GetName(map.texture) + "_texture_map_sampler";
         VK_SET_DEBUG_OBJECT_NAME(&m_context, VK_OBJECT_TYPE_SAMPLER, m_context.samplers[selectedSamplerIndex], samplerName);
 
         // Assign our sampler index to the internal id of our texture map so we can find the sampler later for use
@@ -2480,8 +2493,10 @@ namespace C3D
     {
         VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 
+        const auto& texture = Textures.Get(map.texture);
+
         // Sync mip levels between texture and texturemap
-        map.mipLevels = map.texture->mipLevels;
+        map.mipLevels = texture.mipLevels;
 
         samplerInfo.minFilter = ConvertFilterType("min", map.minifyFilter);
         samplerInfo.magFilter = ConvertFilterType("mag", map.magnifyFilter);
@@ -2502,7 +2517,7 @@ namespace C3D
         // Use the full range of mips available
         samplerInfo.minLod = 0.0f;
         // samplerInfo.minLod = map.texture->mipLevels > 1 ? map.texture->mipLevels : 0.0f;
-        samplerInfo.maxLod = map.texture->mipLevels;
+        samplerInfo.maxLod = texture.mipLevels;
 
         VkSampler sampler     = nullptr;
         const VkResult result = vkCreateSampler(m_context.device.GetLogical(), &samplerInfo, m_context.allocator, &sampler);

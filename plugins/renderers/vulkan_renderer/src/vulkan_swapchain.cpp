@@ -126,7 +126,7 @@ namespace C3D
 
         // HACK: Waiting here for the present queue prevents us from crashing the application
         // after it has been running for a while even though we are using the present queue here...
-        vkQueueWaitIdle(m_context->device.GetTransferQueue());
+        // vkQueueWaitIdle(m_context->device.GetTransferQueue());
 
         const auto result = vkQueuePresentKHR(presentQueue, &presentInfo);
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
@@ -228,7 +228,7 @@ namespace C3D
                 char texName[38] = "__internal_vulkan_swapChain_image_0__";
                 texName[34]      = '0' + static_cast<char>(i);
 
-                Textures.WrapInternal(texName, extent.width, extent.height, 4, false, true, false, internalData, &renderTextures[i]);
+                renderTextures[i] = Textures.WrapInternal(texName, extent.width, extent.height, 4, internalData);
 
                 if (!renderTextures[i].internalData)
                 {
@@ -242,7 +242,7 @@ namespace C3D
             for (u32 i = 0; i < imageCount; ++i)
             {
                 // Just update the dimensions.
-                Textures.Resize(&renderTextures[i], extent.width, extent.height, false);
+                Textures.Resize(renderTextures[i], extent.width, extent.height, false);
             }
         }
 
@@ -297,8 +297,8 @@ namespace C3D
                           1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 
             // Wrap it in a texture
-            Textures.WrapInternal(name.Data(), extent.width, extent.height, m_context->device.GetDepthChannelCount(), false, true, false,
-                                  image, &depthTextures[i]);
+            depthTextures[i] =
+                Textures.WrapInternal(name.Data(), extent.width, extent.height, m_context->device.GetDepthChannelCount(), image);
         }
 
         INFO_LOG("Successfully created.");
@@ -311,6 +311,9 @@ namespace C3D
         // Destroy our internal depth textures
         for (u32 i = 0; i < imageCount; i++)
         {
+            // First we let the texture system know that we are removing this texture
+            Textures.ReleaseInternal(depthTextures[i]);
+
             // First we destroy the internal vulkan specific data for every depth texture
             const auto image = static_cast<VulkanImage*>(depthTextures[i].internalData);
             Memory.Delete(image);

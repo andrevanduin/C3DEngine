@@ -457,31 +457,31 @@ namespace C3D
         }
     }
 
-    bool MaterialSystem::SetIrradiance(Texture* irradianceCubeTexture)
+    bool MaterialSystem::SetIrradiance(TextureHandle handle)
     {
-        if (!irradianceCubeTexture)
+        if (handle == INVALID_ID)
         {
             ERROR_LOG("Invalid irradiance cube texture provided.");
             return false;
         }
 
-        if (irradianceCubeTexture->type != TextureTypeCube)
+        const auto& texture = Textures.Get(handle);
+
+        if (texture.type != TextureTypeCube)
         {
             ERROR_LOG("Provied texture is not of type: TextureTypeCube.");
             return false;
         }
 
-        m_currentIrradianceTexture = irradianceCubeTexture;
-
+        m_currentIrradianceTexture = handle;
         return true;
     }
 
     void MaterialSystem::ResetIrradiance() { m_currentIrradianceTexture = Textures.GetDefaultCube(); }
 
-    bool MaterialSystem::SetShadowMap(Texture* shadowTexture, u8 cascadeIndex)
+    void MaterialSystem::SetShadowMap(TextureHandle handle, u8 cascadeIndex)
     {
-        m_currentShadowTexture = shadowTexture ? shadowTexture : Textures.GetDefaultAlbedo();
-        return true;
+        m_currentShadowTexture = (handle == INVALID_ID) ? Textures.GetDefaultAlbedo() : handle;
     }
 
     void MaterialSystem::SetDirectionalLightSpaceMatrix(const mat4& lightSpace, u8 cascadeIndex)
@@ -605,7 +605,8 @@ namespace C3D
 
                 // Irradiance map
                 material->maps[PBR_SAMP_IRRADIANCE_MAP].texture =
-                    material->irradianceTexture ? material->irradianceTexture : m_currentIrradianceTexture;
+                    material->irradianceTexture != INVALID_ID ? material->irradianceTexture : m_currentIrradianceTexture;
+
                 MATERIAL_APPLY_OR_FAIL(Shaders.SetUniformByIndex(m_pbrLocations.iblCubeTexture, &material->maps[PBR_SAMP_IRRADIANCE_MAP]));
 
                 // Directional light
@@ -631,7 +632,7 @@ namespace C3D
 
                 // Apply Irradiance map
                 material->maps[TERRAIN_SAMP_IRRADIANCE_MAP].texture =
-                    material->irradianceTexture ? material->irradianceTexture : m_currentIrradianceTexture;
+                    material->irradianceTexture != INVALID_ID ? material->irradianceTexture : m_currentIrradianceTexture;
 
                 MATERIAL_APPLY_OR_FAIL(
                     Shaders.SetUniformByIndex(m_terrainLocations.iblCubeTexture, &material->maps[TERRAIN_SAMP_IRRADIANCE_MAP]));
@@ -859,7 +860,7 @@ namespace C3D
         return true;
     }
 
-    bool MaterialSystem::AssignMap(TextureMap& map, const MaterialConfigMap& config, Texture* defaultTexture) const
+    bool MaterialSystem::AssignMap(TextureMap& map, const MaterialConfigMap& config, TextureHandle defaultTexture) const
     {
         map = TextureMap(config);
         if (!config.textureName.Empty())
@@ -1163,7 +1164,7 @@ namespace C3D
             if (map.texture)
             {
                 // Release the associated texture reference
-                Textures.Release(map.texture->name);
+                Textures.Release(map.texture);
             }
 
             // Release texture map resources

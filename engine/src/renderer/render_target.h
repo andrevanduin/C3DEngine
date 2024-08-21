@@ -1,11 +1,10 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "core/defines.h"
+#include "resources/textures/texture_types.h"
 
 namespace C3D
 {
-    struct Texture;
-
     enum RenderTargetAttachmentTypeBits : u8
     {
         RenderTargetAttachmentTypeColor   = 0x01,
@@ -69,7 +68,7 @@ namespace C3D
         RenderTargetAttachmentLoadOperation loadOperation;
         RenderTargetAttachmentStoreOperation storeOperation;
         bool presentAfter;
-        Texture* texture;
+        TextureHandle texture;
     };
 
     struct RenderTarget

@@ -386,6 +386,7 @@ namespace C3D
             {
                 auto& current = m_nodes[index];
                 // If the slot is empty we can immediatly return false
+
                 if (!current.occupied) return false;
                 // Check if this slot contains our key
                 if (current.key == key) return true;

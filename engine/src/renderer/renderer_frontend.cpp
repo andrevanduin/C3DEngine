@@ -166,31 +166,31 @@ namespace C3D
 
     void RenderSystem::SetDepthTestingEnabled(bool enabled) const { m_backendPlugin->SetDepthTestingEnabled(enabled); }
 
-    void RenderSystem::CreateTexture(const u8* pixels, Texture* texture) const { m_backendPlugin->CreateTexture(pixels, texture); }
+    void RenderSystem::CreateTexture(Texture& texture, const u8* pixels) const { m_backendPlugin->CreateTexture(texture, pixels); }
 
-    void RenderSystem::CreateWritableTexture(Texture* texture) const { m_backendPlugin->CreateWritableTexture(texture); }
+    void RenderSystem::CreateWritableTexture(Texture& texture) const { m_backendPlugin->CreateWritableTexture(texture); }
 
-    void RenderSystem::ResizeTexture(Texture* texture, const u32 newWidth, const u32 newHeight) const
+    void RenderSystem::ResizeTexture(Texture& texture, const u32 newWidth, const u32 newHeight) const
     {
         m_backendPlugin->ResizeTexture(texture, newWidth, newHeight);
     }
 
-    void RenderSystem::WriteDataToTexture(Texture* texture, const u32 offset, const u32 size, const u8* pixels) const
+    void RenderSystem::WriteDataToTexture(Texture& texture, const u32 offset, const u32 size, const u8* pixels) const
     {
         m_backendPlugin->WriteDataToTexture(texture, offset, size, pixels, true);
     }
 
-    void RenderSystem::ReadDataFromTexture(Texture* texture, const u32 offset, const u32 size, void** outMemory) const
+    void RenderSystem::ReadDataFromTexture(Texture& texture, const u32 offset, const u32 size, void** outMemory) const
     {
         m_backendPlugin->ReadDataFromTexture(texture, offset, size, outMemory);
     }
 
-    void RenderSystem::ReadPixelFromTexture(Texture* texture, const u32 x, const u32 y, u8** outRgba) const
+    void RenderSystem::ReadPixelFromTexture(Texture& texture, const u32 x, const u32 y, u8** outRgba) const
     {
         m_backendPlugin->ReadPixelFromTexture(texture, x, y, outRgba);
     }
 
-    void RenderSystem::DestroyTexture(Texture* texture) const { m_backendPlugin->DestroyTexture(texture); }
+    void RenderSystem::DestroyTexture(Texture& texture) const { m_backendPlugin->DestroyTexture(texture); }
 
     bool RenderSystem::CreateGeometry(Geometry& geometry, const u32 vertexSize, const u64 vertexCount, const void* vertices,
                                       const u32 indexSize, const u64 indexCount, const void* indices) const
@@ -573,9 +573,9 @@ namespace C3D
 
     void RenderSystem::DestroyRenderpassInternals(void* internalData) const { m_backendPlugin->DestroyRenderpassInternals(internalData); }
 
-    Texture* RenderSystem::GetWindowAttachment(const u8 index) const { return m_backendPlugin->GetWindowAttachment(index); }
+    TextureHandle RenderSystem::GetWindowAttachment(const u8 index) const { return m_backendPlugin->GetWindowAttachment(index); }
 
-    Texture* RenderSystem::GetDepthAttachment(const u8 index) const { return m_backendPlugin->GetDepthAttachment(index); }
+    TextureHandle RenderSystem::GetDepthAttachment(const u8 index) const { return m_backendPlugin->GetDepthAttachment(index); }
 
     u8 RenderSystem::GetWindowAttachmentIndex() const { return m_backendPlugin->GetWindowAttachmentIndex(); }
 

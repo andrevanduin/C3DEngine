@@ -47,16 +47,16 @@ namespace C3D
         void BeginRenderpass(void* pass, const Viewport* viewport, const RenderTarget& target) override;
         void EndRenderpass(void* pass) override;
 
-        void CreateTexture(const u8* pixels, Texture* texture) override;
-        void CreateWritableTexture(Texture* texture) override;
+        void CreateTexture(Texture& texture, const u8* pixels) override;
+        void CreateWritableTexture(Texture& texture) override;
 
-        void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels, bool includeInFrameWorkload) override;
-        void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) override;
+        void WriteDataToTexture(Texture& texture, u32 offset, u32 size, const u8* pixels, bool includeInFrameWorkload) override;
+        void ResizeTexture(Texture& texture, u32 newWidth, u32 newHeight) override;
 
-        void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory) override;
-        void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba) override;
+        void ReadDataFromTexture(Texture& texture, u32 offset, u32 size, void** outMemory) override;
+        void ReadPixelFromTexture(Texture& texture, u32 x, u32 y, u8** outRgba) override;
 
-        void DestroyTexture(Texture* texture) override;
+        void DestroyTexture(Texture& texture) override;
 
         bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const override;
         bool ReloadShader(Shader& shader) override;
@@ -98,8 +98,8 @@ namespace C3D
         void BeginDebugLabel(const String& text, const vec3& color) override;
         void EndDebugLabel() override;
 
-        Texture* GetWindowAttachment(u8 index) override;
-        Texture* GetDepthAttachment(u8 index) override;
+        TextureHandle GetWindowAttachment(u8 index) override;
+        TextureHandle GetDepthAttachment(u8 index) override;
 
         u8 GetWindowAttachmentIndex() override;
         u8 GetWindowAttachmentCount() override;

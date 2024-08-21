@@ -58,7 +58,7 @@ namespace C3D
 
     bool FontSystem::LoadBitmapFont(const BitmapFontConfig& config)
     {
-        if (m_bitmapNameLookup.Has(config.name.Data()))
+        if (m_bitmapNameLookup.Has(config.name))
         {
             WARN_LOG("A font named: '{}' already exists and won't be loaded again.", config.name);
             return true;
@@ -73,7 +73,7 @@ namespace C3D
         }
 
         // Acquire the texture
-        lookup.resource.data.atlas.texture = Textures.Acquire(lookup.resource.pages[0].file.Data(), true);
+        lookup.resource.data.atlas.texture = Textures.Acquire(lookup.resource.pages[0].file, true);
 
         const bool result = SetupFontData(lookup.resource.data);
 
@@ -301,8 +301,8 @@ namespace C3D
         // If it's a bitmap font, we release the reference to it's texture
         if (font.type == FontType::Bitmap && font.atlas.texture)
         {
-            Textures.Release(font.atlas.texture->name.Data());
+            Textures.Release(font.atlas.texture);
         }
-        font.atlas.texture = nullptr;
+        font.atlas.texture = INVALID_ID;
     }
 }  // namespace C3D

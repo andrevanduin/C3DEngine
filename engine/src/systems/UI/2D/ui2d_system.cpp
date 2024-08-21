@@ -689,10 +689,10 @@ namespace C3D
 
         m_componentMap.Destroy();
 
-        if (m_textureAtlas.texture)
+        if (m_textureAtlas.texture != INVALID_ID)
         {
-            Textures.Release(m_textureAtlas.texture->name);
-            m_textureAtlas.texture = nullptr;
+            Textures.Release(m_textureAtlas.texture);
+            m_textureAtlas.texture = INVALID_ID;
         }
 
         Renderer.ReleaseTextureMapResources(m_textureAtlas);

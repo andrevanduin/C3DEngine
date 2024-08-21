@@ -31,23 +31,15 @@ namespace C3D
     {
         u8 frameCount = Renderer.GetWindowAttachmentCount();
 
-        m_depthTextures.Resize(frameCount);
+        m_depthTextures.Reserve(frameCount);
 
         for (u32 i = 0; i < frameCount; ++i)
         {
-            // Depth
-            auto& dt = m_depthTextures[i];
-            dt.type  = TextureType2DArray;
-            dt.flags |= C3D::TextureFlag::IsDepth | C3D::TextureFlag::IsWritable;
-            dt.width     = m_config.resolution;
-            dt.height    = m_config.resolution;
-            dt.arraySize = MAX_SHADOW_CASCADE_COUNT;
-            dt.name      = C3D::String::FromFormat("SHADOW_MAP_PASS_{}x{}_DEPTH_TEXTURE_{}", m_config.resolution, m_config.resolution, i);
-            dt.mipLevels = 1;
-            dt.channelCount = 4;
-            dt.generation   = INVALID_ID;
+            auto name   = C3D::String::FromFormat("SHADOW_MAP_PASS_{}x{}_DEPTH_TEXTURE_{}", m_config.resolution, m_config.resolution, i);
+            auto handle = Textures.AcquireArrayWritable(name, m_config.resolution, m_config.resolution, 4, MAX_SHADOW_CASCADE_COUNT,
+                                                        TextureFlag::IsDepth);
 
-            Renderer.CreateWritableTexture(&dt);
+            m_depthTextures.PushBack(handle);
         }
 
         // Setup our renderpass
@@ -246,7 +238,7 @@ namespace C3D
                 RenderTargetAttachment attachment;
                 attachment.type           = RenderTargetAttachmentTypeDepth;
                 attachment.source         = RenderTargetAttachmentSource::Self;
-                attachment.texture        = &m_depthTextures[f];
+                attachment.texture        = m_depthTextures[f];
                 attachment.presentAfter   = true;
                 attachment.loadOperation  = RenderTargetAttachmentLoadOperation::DontCare;
                 attachment.storeOperation = RenderTargetAttachmentStoreOperation::Store;
@@ -608,7 +600,7 @@ namespace C3D
         INFO_LOG("Destroying internal depth textures.");
         for (auto& t : m_depthTextures)
         {
-            Renderer.DestroyTexture(&t);
+            Textures.Release(t);
         }
         m_depthTextures.Destroy();
 
@@ -632,10 +624,15 @@ namespace C3D
 
         if (source.name.IEquals("DEPTH_BUFFER"))
         {
-            for (u32 i = 0; i < frameCount; ++i)
+            // Ensure we only populate once we actually have depth textures
+            if (m_depthTextures.Size() == frameCount)
             {
-                source.textures[i] = &m_depthTextures[i];
+                for (u32 i = 0; i < frameCount; ++i)
+                {
+                    source.textures[i] = m_depthTextures[i];
+                }
             }
+
             return true;
         }
 
@@ -647,7 +644,7 @@ namespace C3D
     {
         if (attachment.type == RenderTargetAttachmentTypeDepth)
         {
-            attachment.texture = &m_depthTextures[0];
+            attachment.texture = m_depthTextures[0];
             return true;
         }
 

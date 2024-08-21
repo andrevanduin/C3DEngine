@@ -12,16 +12,15 @@ namespace C3D
     {
         Texture() = default;
 
-        Texture(const char* textureName, const TextureType type, const u32 width, const u32 height, const u8 channelCount,
-                const TextureFlagBits flags = 0);
+        Texture(const String& n, TextureType t, u32 w, u32 h, u8 channels, u16 layers = 1, TextureFlagBits f = 0)
+            : name(n), type(t), width(w), height(h), channelCount(channels), arraySize(layers), flags(f)
+        {}
 
-        void Set(TextureType _type, const char* _name, u32 _width, u32 _height, u8 _channelCount, TextureFlagBits _flags,
-                 void* _internalData = nullptr);
+        [[nodiscard]] bool IsWritable() const { return flags & TextureFlag::IsWritable; }
+        [[nodiscard]] bool IsWrapped() const { return flags & TextureFlag::IsWrapped; }
+        [[nodiscard]] bool HasTransparency() const { return flags & TextureFlag::HasTransparency; }
 
-        [[nodiscard]] bool IsWritable() const;
-        [[nodiscard]] bool IsWrapped() const;
-
-        u32 id = INVALID_ID;
+        u32 handle = INVALID_ID;
         String name;
 
         /** @brief The dimensions of the texture. */
@@ -33,7 +32,7 @@ namespace C3D
         /** @brief The amount of mip levels for this texture. Should always be atleast 1 (for the base layer). */
         u8 mipLevels = 1;
 
-        TextureType type;
+        TextureType type      = TextureTypeNone;
         TextureFlagBits flags = TextureFlag::None;
 
         u32 generation     = INVALID_ID;

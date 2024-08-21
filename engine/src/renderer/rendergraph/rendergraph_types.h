@@ -5,6 +5,7 @@
 #include "core/colors.h"
 #include "core/defines.h"
 #include "renderer/render_target.h"
+#include "resources/textures/texture_types.h"
 
 namespace C3D
 {
@@ -82,7 +83,7 @@ namespace C3D
         String name;
         RendergraphSourceType type;
         RendergraphSourceOrigin origin;
-        DynamicArray<Texture*> textures;
+        DynamicArray<TextureHandle> textures;
     };
 
     struct RendergraphSink

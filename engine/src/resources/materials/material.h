@@ -25,7 +25,7 @@ namespace C3D
         /** @brief The texture maps associated with this Material. */
         DynamicArray<TextureMap> maps;
         /** @brief An explicit irradiance texture to use for this material. If not set this material will use the scene's irradiance map. */
-        Texture* irradianceTexture = nullptr;
+        TextureHandle irradianceTexture = INVALID_ID;
         /** @brief The size of the properties structure for this Material. */
         u32 propertiesSize = 0;
         /** @brief The properties associated with this Material. */

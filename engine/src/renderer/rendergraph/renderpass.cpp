@@ -4,6 +4,7 @@
 #include "renderer/renderer_frontend.h"
 #include "resources/textures/texture.h"
 #include "systems/system_manager.h"
+#include "systems/textures/texture_system.h"
 
 namespace C3D
 {
@@ -35,7 +36,7 @@ namespace C3D
                 attachment.type                   = attachmentConfig.type;
                 attachment.loadOperation          = attachmentConfig.loadOperation;
                 attachment.storeOperation         = attachmentConfig.storeOperation;
-                attachment.texture                = nullptr;
+                attachment.texture                = INVALID_ID;
 
                 target.attachments.PushBack(attachment);
             }
@@ -127,8 +128,10 @@ namespace C3D
             auto h = height;
             if (target.attachments[0].source == RenderTargetAttachmentSource::Self)
             {
-                w = target.attachments[0].texture->width;
-                h = target.attachments[0].texture->height;
+                const auto& texture = Textures.Get(target.attachments[0].texture);
+
+                w = texture.width;
+                h = texture.height;
             }
 
             // Create the underlying target

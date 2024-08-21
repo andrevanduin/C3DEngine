@@ -94,15 +94,15 @@ namespace C3D
         virtual void BeginRenderpass(void* pass, const Viewport* viewport, const RenderTarget& target) = 0;
         virtual void EndRenderpass(void* pass)                                                         = 0;
 
-        virtual void CreateTexture(const u8* pixels, Texture* texture) = 0;
-        virtual void CreateWritableTexture(Texture* texture)           = 0;
+        virtual void CreateTexture(Texture& texture, const u8* pixels) = 0;
+        virtual void CreateWritableTexture(Texture& texture)           = 0;
 
-        virtual void WriteDataToTexture(Texture* texture, u32 offset, u32 size, const u8* pixels, bool includeInFrameWorkload) = 0;
-        virtual void ReadDataFromTexture(Texture* texture, u32 offset, u32 size, void** outMemory)                             = 0;
-        virtual void ReadPixelFromTexture(Texture* texture, u32 x, u32 y, u8** outRgba)                                        = 0;
+        virtual void WriteDataToTexture(Texture& texture, u32 offset, u32 size, const u8* pixels, bool includeInFrameWorkload) = 0;
+        virtual void ReadDataFromTexture(Texture& texture, u32 offset, u32 size, void** outMemory)                             = 0;
+        virtual void ReadPixelFromTexture(Texture& texture, u32 x, u32 y, u8** outRgba)                                        = 0;
 
-        virtual void ResizeTexture(Texture* texture, u32 newWidth, u32 newHeight) = 0;
-        virtual void DestroyTexture(Texture* texture)                             = 0;
+        virtual void ResizeTexture(Texture& texture, u32 newWidth, u32 newHeight) = 0;
+        virtual void DestroyTexture(Texture& texture)                             = 0;
 
         virtual bool CreateShader(Shader& shader, const ShaderConfig& config, void* pass) const = 0;
         virtual bool ReloadShader(Shader& shader)                                               = 0;
@@ -154,8 +154,8 @@ namespace C3D
         /** @brief Ends the previous debug label. */
         virtual void EndDebugLabel() = 0;
 
-        virtual Texture* GetWindowAttachment(u8 index) = 0;
-        virtual Texture* GetDepthAttachment(u8 index)  = 0;
+        virtual TextureHandle GetWindowAttachment(u8 index) = 0;
+        virtual TextureHandle GetDepthAttachment(u8 index)  = 0;
 
         virtual u8 GetWindowAttachmentIndex() = 0;
         virtual u8 GetWindowAttachmentCount() = 0;

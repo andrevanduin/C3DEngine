@@ -197,6 +197,10 @@ namespace C3D::UI_2D
 
         const u16 keyCode = ctx.keyCode;
 
+        // HACK: This should be handled differently
+        // Ignore '`' key so we don't type that into the console immediatly after opening it
+        if (keyCode == KeyGrave) return false;
+
         if (keyCode == KeyEnter)
         {
             // Deactivate this component
@@ -402,9 +406,6 @@ namespace C3D::UI_2D
 
         if (keyCode >= KeyA && keyCode <= KeyZ)
         {
-            // Ignore '`' key so we don't type that into the console immediatly after opening it
-            if (keyCode == KeyGrave) return false;
-
             if (ctrlHeld)
             {
                 // When holding control we do special operations depending on the key pressed
