@@ -104,8 +104,6 @@ namespace C3D
                 return;
             }
 
-            // Logger::Trace("[DYNAMIC_ARRAY] - Reserve({})", initialCapacity);
-
             // We allocate enough memory for the new capacity
             T* newElements = Allocator(m_allocator)->template Allocate<T>(MemoryType::DynamicArray, initialCapacity);
 

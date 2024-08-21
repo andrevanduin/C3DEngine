@@ -64,9 +64,6 @@ namespace C3D
         u8* dataBlock     = nullptr;
 
         u32 currentGeneration = INVALID_ID;
-        u32 resultCode;
-
-        Image resource;
     };
 
     class C3D_API TextureSystem final : public SystemWithConfig<TextureSystemConfig>
@@ -226,7 +223,7 @@ namespace C3D
 
     private:
         TextureHandle CreateDefaultTexture(const String& name, TextureType type, u32 width, u32 height, u8 channelCount, u8* pixels,
-                                  u16 arraySize = 1);
+                                           u16 arraySize = 1);
 
         TextureHandle CreateArrayWritable(const String& name, TextureType type, u32 width, u32 height, u8 channelCount, u16 arraySize,
                                           TextureFlagBits flags);

@@ -1,9 +1,12 @@
 
 #include "texture_system.h"
 
+#include <future>
+
 #include "core/engine.h"
 #include "core/jobs/job.h"
 #include "core/logger.h"
+#include "core/scoped_timer.h"
 #include "core/string_utils.h"
 #include "renderer/renderer_frontend.h"
 #include "resources/loaders/image_loader.h"
@@ -907,22 +910,48 @@ namespace C3D
         return result;
     }
 
+    struct AsyncResult
+    {
+        Image image;
+        bool success = true;
+    };
+
+    static AsyncResult LoadLayeredTextureLayer(const char* name)
+    {
+        AsyncResult result;
+
+        constexpr ImageLoadParams resourceParams{ true };
+        result.success = Resources.Load(name, result.image, resourceParams);
+        if (!result.success)
+        {
+            Resources.Unload(result.image);
+            ERROR_LOG("Failed to load texture resources for: '{}'.", name);
+        }
+        return result;
+    }
+
     bool TextureSystem::LoadLayeredTextureEntryPoint(u32 loadingTextureIndex)
     {
-        constexpr ImageLoadParams resourceParams{ true };
+        auto timer = ScopedTimer("LoadLayeredTexture");
 
         auto& loadingTexture = m_loadingArrayTextures[loadingTextureIndex];
 
         bool hasTransparency = false;
         u32 layerSize        = 0;
 
-        for (u32 layer = 0; layer < loadingTexture.layerCount; layer++)
-        {
-            auto& name = loadingTexture.layerNames[layer];
+        // Load the resources in parallel
+        std::future<AsyncResult> results[12];
 
-            if (!Resources.Load(name.Data(), loadingTexture.resource, resourceParams))
+        for (u32 i = 0; i < loadingTexture.layerCount; ++i)
+        {
+            results[i] = std::async(LoadLayeredTextureLayer, loadingTexture.layerNames[i].Data());
+        }
+
+        for (u32 layer = 0; layer < loadingTexture.layerCount; ++layer)
+        {
+            auto result = results[layer].get();
+            if (!result.success)
             {
-                ERROR_LOG("Failed to load texture resources for: '{}'.", name);
                 CleanupLoadingLayeredTexture(loadingTextureIndex);
                 return false;
             }
@@ -931,10 +960,10 @@ namespace C3D
             {
                 // First layer so let's save off the the width and height since all folowing textures must match
                 loadingTexture.tempTexture.generation   = INVALID_ID;
-                loadingTexture.tempTexture.width        = loadingTexture.resource.width;
-                loadingTexture.tempTexture.height       = loadingTexture.resource.height;
-                loadingTexture.tempTexture.channelCount = loadingTexture.resource.channelCount;
-                loadingTexture.tempTexture.mipLevels    = loadingTexture.resource.mipLevels;
+                loadingTexture.tempTexture.width        = result.image.width;
+                loadingTexture.tempTexture.height       = result.image.height;
+                loadingTexture.tempTexture.channelCount = result.image.channelCount;
+                loadingTexture.tempTexture.mipLevels    = result.image.mipLevels;
                 loadingTexture.tempTexture.arraySize    = loadingTexture.layerCount;
                 loadingTexture.tempTexture.type         = loadingTexture.outTexture->type;
                 loadingTexture.tempTexture.handle       = loadingTexture.outTexture->handle;
@@ -947,10 +976,9 @@ namespace C3D
             }
             else
             {
-                if (loadingTexture.resource.width != loadingTexture.tempTexture.width ||
-                    loadingTexture.resource.height != loadingTexture.tempTexture.height)
+                if (result.image.width != loadingTexture.tempTexture.width || result.image.height != loadingTexture.tempTexture.height)
                 {
-                    ERROR_LOG("Texture: '{}' dimensions don't match previous texture which is required.", name);
+                    ERROR_LOG("Texture: '{}' dimensions don't match previous texture which is required.", loadingTexture.layerNames[layer]);
                     CleanupLoadingLayeredTexture(loadingTextureIndex);
                     return false;
                 }
@@ -961,7 +989,7 @@ namespace C3D
                 // Check for transparency only if we haven't come across a transparent texture yet
                 for (u64 i = 0; i < layerSize; i += loadingTexture.tempTexture.channelCount)
                 {
-                    const u8 a = loadingTexture.resource.pixels[i + 3];  // Get the alpha channel of this pixel
+                    const u8 a = result.image.pixels[i + 3];  // Get the alpha channel of this pixel
                     if (a < 255)
                     {
                         hasTransparency = true;
@@ -972,9 +1000,9 @@ namespace C3D
 
             // Find the location of our current layer in our total texture and copy the pixels over from our resource
             u8* dataLocation = loadingTexture.dataBlock + (layer * layerSize);
-            std::memcpy(dataLocation, loadingTexture.resource.pixels, layerSize);
+            std::memcpy(dataLocation, result.image.pixels, layerSize);
 
-            Resources.Unload(loadingTexture.resource);
+            Resources.Unload(result.image);
         }
 
         // Ensure we take transparency into account
@@ -1056,8 +1084,7 @@ namespace C3D
     {
         auto& loadingTexture = m_loadingArrayTextures[loadingTextureIndex];
 
-        // Unload our image resource
-        Resources.Unload(loadingTexture.resource);
+        // Unload our image resources
         loadingTexture.name.Destroy();
 
         if (loadingTexture.dataBlock)
