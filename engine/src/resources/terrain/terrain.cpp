@@ -354,7 +354,8 @@ namespace C3D
     {
         if (m_config.resourceName)
         {
-            return LoadFromResource();
+            LoadFromResource();
+            return true;
         }
 
         // NOTE: no config so we will use defaults
@@ -419,18 +420,15 @@ namespace C3D
         m_extents = { vec3(0), vec3(0) };
     }
 
-    bool Terrain::LoadFromResource()
+    void Terrain::LoadFromResource()
     {
-        JobInfo info;
-        info.entryPoint = [this]() {
-            auto timer = ScopedTimer("Loading Terrain Resource");
-            return Resources.Load(m_config.resourceName, m_config);
-        };
-        info.onSuccess = [this]() { LoadJobSuccess(); };
-        info.onFailure = [this]() { LoadJobFailure(); };
+        Jobs.Submit([this]() { return LoadJobEntry(); }, [this]() { LoadJobSuccess(); }, [this]() { LoadJobFailure(); });
+    }
 
-        Jobs.Submit(std::move(info));
-        return true;
+    bool Terrain::LoadJobEntry()
+    {
+        auto timer = ScopedTimer("Loading Terrain Resource");
+        return Resources.Load(m_config.resourceName, m_config);
     }
 
     void Terrain::LoadJobSuccess()

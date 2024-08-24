@@ -30,27 +30,33 @@ namespace C3D
 
         bool OnUpdate(const FrameData& frameData) override;
 
-        C3D_API void Submit(JobInfo&& jobInfo);
+        C3D_API JobHandle Submit(const StackFunction<bool(), 24>& entry, const StackFunction<void(), 24>& onSuccess,
+                                 const StackFunction<void(), 24>& onFailure, JobType type = JobTypeGeneral,
+                                 JobPriority priority = JobPriority::Normal, u8* dependencies = nullptr, u8 numberOfDependencies = 0);
 
     private:
         void Runner(u32 index);
 
-        void ProcessQueue(RingQueue<JobInfo>& queue, std::mutex& queueMutex);
+        void ProcessQueue(RingQueue<JobInfo, 128>& queue, std::mutex& queueMutex);
 
         bool m_running   = false;
         u8 m_threadCount = 0;
 
         JobThread m_jobThreads[MAX_JOB_THREADS] = {};
 
-        RingQueue<JobInfo> m_lowPriorityQueue;
-        RingQueue<JobInfo> m_normalPriorityQueue;
-        RingQueue<JobInfo> m_highPriorityQueue;
+        RingQueue<JobInfo, 128> m_lowPriorityQueue;
+        RingQueue<JobInfo, 128> m_normalPriorityQueue;
+        RingQueue<JobInfo, 128> m_highPriorityQueue;
+
+        DynamicArray<JobResultEntry> m_pendingResults;
+
+        RingQueue<bool, 1024> m_jobStatus;
 
         std::mutex m_lowPriorityMutex;
         std::mutex m_normalPriorityMutex;
         std::mutex m_highPriorityMutex;
 
-        DynamicArray<JobResultEntry> m_pendingResults;
         std::mutex m_resultMutex;
+        std::mutex m_jobStatusMutex;
     };
 }  // namespace C3D

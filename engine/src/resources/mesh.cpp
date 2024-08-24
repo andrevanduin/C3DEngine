@@ -50,7 +50,8 @@ namespace C3D
     {
         if (config.resourceName)
         {
-            return LoadFromResource();
+            LoadFromResource();
+            return true;
         }
 
         for (auto& gConfig : config.geometryConfigs)
@@ -122,17 +123,17 @@ namespace C3D
         return true;
     }
 
-    bool Mesh::LoadFromResource()
+    void Mesh::LoadFromResource()
     {
         generation = INVALID_ID_U8;
 
-        JobInfo info;
-        info.entryPoint = [this]() { return Resources.Load(config.resourceName, m_resource); };
-        info.onSuccess  = [this]() { LoadJobSuccess(); };
-        info.onFailure  = [this]() { LoadJobFailure(); };
+        Jobs.Submit([this]() { return LoadJobEntry(); }, [this]() { LoadJobSuccess(); }, [this]() { LoadJobFailure(); });
+    }
 
-        Jobs.Submit(std::move(info));
-        return true;
+    bool Mesh::LoadJobEntry()
+    {
+        auto timer = ScopedTimer("Load Mesh from file");
+        return Resources.Load(config.resourceName, m_resource);
     }
 
     void Mesh::LoadJobSuccess()

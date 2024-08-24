@@ -21,11 +21,6 @@ namespace C3D
             return false;
         }
 
-        // Create our ring queues for our jobInfo's
-        m_lowPriorityQueue.Create(512);
-        m_normalPriorityQueue.Create(512);
-        m_highPriorityQueue.Create(512);
-
         m_threadCount = config.threadCount;
 
         m_pendingResults.Reserve(100);
@@ -42,6 +37,7 @@ namespace C3D
             m_jobThreads[i].thread   = std::thread([this, i] { Runner(i); });
             m_jobThreads[i].ClearInfo();
         }
+
         return true;
     }
 
@@ -57,9 +53,9 @@ namespace C3D
         }
 
         // Destroy our queues
-        m_lowPriorityQueue.Destroy();
-        m_normalPriorityQueue.Destroy();
-        m_highPriorityQueue.Destroy();
+        m_lowPriorityQueue.Clear();
+        m_normalPriorityQueue.Clear();
+        m_highPriorityQueue.Clear();
     }
 
     bool JobSystem::OnUpdate(const FrameData& frameData)
@@ -92,45 +88,68 @@ namespace C3D
         return true;
     }
 
-    void JobSystem::Submit(JobInfo&& jobInfo)
+    JobHandle JobSystem::Submit(const StackFunction<bool(), 24>& entry, const StackFunction<void(), 24>& onSuccess,
+                                const StackFunction<void(), 24>& onFailure, JobType type, JobPriority priority, u8* dependencies,
+                                u8 numberOfDependencies)
     {
-        // If the job priority is high, we try to start it immediately
-        if (jobInfo.priority == JobPriority::High)
+        JobInfo info;
+        // Copy over the type
+        info.type = type;
+        // Copy over the priority
+        info.priority = priority;
+        // Copy over the entry, onSuccess and onFailure functions
+        info.entryPoint = entry;
+        info.onSuccess  = onSuccess;
+        info.onFailure  = onFailure;
+        // Copy over the number of dependencies
+        info.numberOfDependencies = numberOfDependencies;
+        // copy over the dependencies
+        std::memcpy(info.dependencies, dependencies, numberOfDependencies);
+
+        // Linearly keep track of the next handle we will hand out
+        static u16 nextHandle = 0;
+        // Keep track off and increment the handle
+        u16 handle = nextHandle++;
+        // Store the handle on the JobInfo
+        info.handle = nextHandle++;
+
+        // If the job priority is high (and has no dependencies), we try to start it immediately
+        if (info.priority == JobPriority::High && info.numberOfDependencies == 0)
         {
             for (auto& thread : m_jobThreads)
             {
-                if (thread.typeMask & jobInfo.type)
+                if (thread.typeMask & info.type)
                 {
                     std::lock_guard threadLock(thread.mutex);
                     if (thread.IsFree())
                     {
-                        TRACE("Job immediately submitted on thread '{}' since it has HIGH priority.", thread.index);
-                        thread.SetInfo(std::move(jobInfo));
-                        return;
+                        TRACE("Job: '{}' immediately submitted on thread '{}' since it has HIGH priority.", handle, thread.index);
+                        thread.SetInfo(std::move(info));
+                        return handle;
                     }
                 }
             }
         }
 
         // We need to lock our queue in case the job is submitted from another job/thread
-        switch (jobInfo.priority)
+        switch (info.priority)
         {
             case JobPriority::High:
             {
                 std::lock_guard queueLock(m_highPriorityMutex);
-                m_highPriorityQueue.Enqueue(jobInfo);
+                m_highPriorityQueue.Enqueue(info);
                 break;
             }
             case JobPriority::Normal:
             {
                 std::lock_guard queueLock(m_normalPriorityMutex);
-                m_normalPriorityQueue.Enqueue(jobInfo);
+                m_normalPriorityQueue.Enqueue(info);
                 break;
             }
             case JobPriority::Low:
             {
                 std::lock_guard queueLock(m_lowPriorityMutex);
-                m_lowPriorityQueue.Enqueue(jobInfo);
+                m_lowPriorityQueue.Enqueue(info);
                 break;
             }
             default:
@@ -139,7 +158,8 @@ namespace C3D
                 break;
         }
 
-        TRACE("Job has been queued.");
+        TRACE("Job: '{}' has been queued.", handle);
+        return handle;
     }
 
     void JobSystem::Runner(const u32 index)
@@ -204,7 +224,7 @@ namespace C3D
         TRACE("Stopping job thread #{} (id={}, type={}).", index, threadId, currentThread.typeMask);
     }
 
-    void JobSystem::ProcessQueue(RingQueue<JobInfo>& queue, std::mutex& queueMutex)
+    void JobSystem::ProcessQueue(RingQueue<JobInfo, 128>& queue, std::mutex& queueMutex)
     {
         while (!queue.Empty())
         {
