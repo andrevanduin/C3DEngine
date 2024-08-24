@@ -29,7 +29,7 @@ namespace C3D
         }
 
         m_buffers.Resize(m_config.maxBuffers);
-        m_freeBuffers.Create(m_config.maxBuffers);
+        m_freeBuffers = Queue<u32>(m_config.maxBuffers);
 
         // TODO: We now just default to the first device. We should somehow iterate over the devices to pick the best one
         m_device = alcOpenDevice(nullptr);
@@ -244,8 +244,7 @@ namespace C3D
 
     u32 OpenALPlugin::FindFreeBuffer()
     {
-        auto freeCount = m_freeBuffers.Size();
-        if (freeCount == 0)
+        if (m_freeBuffers.Empty())
         {
             // We have no free buffers, let's try to free one first
             INFO_LOG("No free buffers found. Attempting to free an existing one.");
@@ -270,15 +269,15 @@ namespace C3D
         }
 
         // Check free count again
-        if (freeCount == 0)
+        if (m_freeBuffers.Empty())
         {
             // If it's still == 0 we can't proceed and must report an error
             ERROR_LOG("Could not find any free buffers, even after trying to free some in use buffers.");
             return INVALID_ID;
         }
 
-        u32 freeBufferId = m_freeBuffers.Dequeue();
-        DEBUG_LOG("Found a free buffer with id: {}. Now there are {} free buffers left.", freeBufferId, m_freeBuffers.Size());
+        u32 freeBufferId = m_freeBuffers.Pop();
+        DEBUG_LOG("Found a free buffer with id: {}. Now there are {} free buffers left.", freeBufferId, m_freeBuffers.Count());
 
         return freeBufferId;
     }
