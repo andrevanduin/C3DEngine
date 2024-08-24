@@ -12,7 +12,7 @@
 
 #include "../expect.h"
 
-u8 StringShouldCreateEmptyWithEmptyCtor()
+TEST(StringShouldCreateEmptyWithEmptyCtor)
 {
     ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
     {
@@ -22,10 +22,9 @@ u8 StringShouldCreateEmptyWithEmptyCtor()
         ExpectEqual('\0', str[0]);
     }
     ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
-    return true;
 }
 
-u8 StringOperatorEqualsConstChar()
+TEST(StringOperatorEqualsConstChar)
 {
     // Starting string is stack allocated
     {
@@ -80,11 +79,9 @@ u8 StringOperatorEqualsConstChar()
         ExpectEqual(std::strlen(other) + 1, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::C3DString));
     }
     ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
-
-    return true;
 }
 
-u8 StringShouldDoIntegerConversion()
+TEST(StringShouldDoIntegerConversion)
 {
     const auto randomIntegers = C3D::Random.GenerateMultiple<i32>(500, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
     for (auto& randomInteger : randomIntegers)
@@ -98,22 +95,18 @@ u8 StringShouldDoIntegerConversion()
         // Compare the char* that we can get from both to ensure it's the same
         if (std::strcmp(stdString.data(), s.Data()) != 0)
         {
-            return false;
+            AssertFail("C3D::String implementation did not match std::string");
         }
-        // ExpectTrue();
     }
-
-    return true;
 }
 
-u8 StringShouldDoBooleanConversion()
+TEST(StringShouldDoBooleanConversion)
 {
     ExpectTrue(C3D::String("true") == C3D::String(true));
     ExpectTrue(C3D::String("false") == C3D::String(false));
-    return true;
 }
 
-u8 StringShouldUseSso()
+TEST(StringShouldUseSso)
 {
     const std::vector<u64> sizes = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
     for (const auto size : sizes)
@@ -126,19 +119,15 @@ u8 StringShouldUseSso()
         C3D::String otherStr = str;
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::C3DString));
     }
-
-    return true;
 }
 
-u8 StringShouldCompare()
+TEST(StringShouldCompare)
 {
     ExpectTrue(C3D::String("Test2") == C3D::String("Test2"));
     ExpectTrue(C3D::String("Test") != C3D::String("Test2"));
-
-    return true;
 }
 
-u8 StringShouldBeTruthy()
+TEST(StringShouldBeTruthy)
 {
     const C3D::String empty;
     const C3D::String notEmpty("This string is not empty");
@@ -151,11 +140,9 @@ u8 StringShouldBeTruthy()
     {
         AssertFail("Non-Empty string should evaluate to true");
     }
-
-    return true;
 }
 
-u8 StringShouldAppend()
+TEST(StringShouldAppend)
 {
     C3D::String a("Hello ");
     const C3D::String b("World");
@@ -184,11 +171,9 @@ u8 StringShouldAppend()
 
     ExpectEqual("Test1234", ch);
     ExpectEqual(8, ch.Size());
-
-    return true;
 }
 
-u8 StringShouldTrim()
+TEST(StringShouldTrim)
 {
     C3D::String right("Test123  ");
     right.TrimRight();
@@ -205,11 +190,9 @@ u8 StringShouldTrim()
     C3D::String newLines("\n\nTest1234\n\n\n\n");
     newLines.Trim();
     ExpectEqual("Test1234", newLines);
-
-    return true;
 }
 
-u8 StringShouldSplit()
+TEST(StringShouldSplit)
 {
     C3D::String test("size=21");
 
@@ -218,11 +201,9 @@ u8 StringShouldSplit()
     ExpectEqual(2, result.Size());
     ExpectEqual("size", result[0]);
     ExpectEqual("21", result[1]);
-
-    return true;
 }
 
-u8 StringInsert()
+TEST(StringInsert)
 {
     C3D::String test("134");
 
@@ -247,11 +228,9 @@ u8 StringInsert()
     heapTest.Insert(5, '5');
     ExpectTrue(heapTest == C3D::String("aaaaa5aaaaaaaaaaab"));
     ExpectEqual(18, heapTest.Size());
-
-    return true;
 }
 
-u8 StringInsertOtherString()
+TEST(StringInsertOtherString)
 {
     C3D::String test("25");
 
@@ -276,11 +255,9 @@ u8 StringInsertOtherString()
     heapTest.Insert(5, "cccccccccccccccccccc");
     ExpectTrue(heapTest == C3D::String("aaaaaccccccccccccccccccccaaaaaaaaaaababab"));
     ExpectEqual(41, heapTest.Size());
-
-    return true;
 }
 
-u8 StringRemoveAt()
+TEST(StringRemoveAt)
 {
     C3D::String test("012234");
 
@@ -302,11 +279,9 @@ u8 StringRemoveAt()
     // Ensure we don't crash when we try to RemoveAt on a string with 0 chars
     C3D::String empty;
     empty.RemoveAt(4);
-
-    return true;
 }
 
-u8 StringRemoveRange()
+TEST(StringRemoveRange)
 {
     {
         // Remove range at the start of the string
@@ -356,8 +331,6 @@ u8 StringRemoveRange()
         test.RemoveRange(3, 1);
         ExpectTrue(test == C3D::String("01234"));
     }
-
-    return true;
 }
 
 void String::RegisterTests(TestManager& manager)

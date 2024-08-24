@@ -1,5 +1,6 @@
 
 #pragma once
+#include <containers/string.h>
 #include <core/defines.h>
 
 #include <string>
@@ -9,19 +10,29 @@
 
 #define REGISTER_TEST(name, description) manager.Register(name, #name, description)
 
+#define TEST(name) void name()
+
 constexpr auto FAILED  = 0;
 constexpr auto PASSED  = 1;
 constexpr auto SKIPPED = 2;
 
-using TestFunc = u8 (*)();
+using TestFunc = void (*)();
+
+struct TestResult
+{
+    u8 code;
+    std::string message;
+};
 
 struct TestEntry
 {
+    int index;
     TestFunc func;
+    TestResult result;
+
     std::string name;
     std::string description;
     std::string type;
-    std::string failureMsg;
 };
 
 class TestManager

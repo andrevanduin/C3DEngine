@@ -5,6 +5,8 @@
 #include <core/logger.h>
 #include <systems/system_manager.h>
 
+#include "expect.h"
+
 TestManager::TestManager(const u64 memorySize)
 {
     C3D::Logger::Init();
@@ -47,33 +49,50 @@ void TestManager::RunTests()
     {
         if (m_prevType != test.type)
         {
-            INFO_LOG("{:-^70}", test.type);
+            C3D::Logger::Info("--- Running '{}' Tests ---", test.type);
             m_prevType = test.type;
         }
 
         i++;
 
-        INFO_LOG("Executing ({}/{}): {} - {}", i, m_tests.size(), test.name, test.description);
+        C3D::Logger::Info("Executing ({}/{}): {} - {}", i, m_tests.size(), test.name, test.description);
 
         testTime.Begin();
 
-        const u8 result = test.func();
+        try
+        {
+            test.func();
+            test.result.code = true;
+        }
+        catch (const ExpectException& exc)
+        {
+            auto what = exc.what();
+
+            test.result.code    = false;
+            test.result.message = what;
+
+            C3D::Logger::Error(what);
+        }
 
         testTime.End();
 
-        if (result == PASSED)
+        // Store off the index so we can print it later if needed
+        test.index = i;
+
+        // Print the result if successful, otherwise store the result in m_skipped or m_failures depending on the status
+        if (test.result.code == PASSED)
         {
             passed++;
-            INFO_LOG("Result: SUCCESS (Ran in {:.4f} sec)", testTime.GetElapsed());
+            C3D::Logger::Info("Result: SUCCESS (Ran in {:.4f} sec)", testTime.GetElapsed());
         }
-        else if (result == SKIPPED)
+        else if (test.result.code == SKIPPED)
         {
-            WARN_LOG("Result: SKIPPED (Ran in {:.4f} sec)", testTime.GetElapsed());
+            C3D::Logger::Warn("Result: SKIPPED (Ran in {:.4f} sec)", testTime.GetElapsed());
             m_skipped.push_back(test);
         }
-        else if (result == FAILED)
+        else if (test.result.code == FAILED)
         {
-            ERROR_LOG("Result: FAILED (Ran in {:.4f} sec)", testTime.GetElapsed());
+            C3D::Logger::Error("Result: FAILED (Ran in {:.4f} sec)", testTime.GetElapsed());
             m_failures.push_back(test);
         }
     }
@@ -83,19 +102,21 @@ void TestManager::RunTests()
 
     if (!m_skipped.empty())
     {
-        INFO_LOG("The following tests have been SKIPPED:");
+        C3D::Logger::Info("The following tests have been SKIPPED:");
         for (auto& test : m_skipped)
         {
-            WARN_LOG("({}/{}): {} - {}", i, m_tests.size(), test.name, test.description);
+            C3D::Logger::Warn("({}/{}): {} - {}", test.index, m_tests.size(), test.name, test.description);
+            C3D::Logger::Warn(test.result.message.data());
         }
     }
 
     if (!m_failures.empty())
     {
-        INFO_LOG("The following tests have FAILED:");
+        C3D::Logger::Info("The following tests have FAILED:");
         for (auto& test : m_failures)
         {
-            ERROR_LOG("({}/{}): {} - {}", i, m_tests.size(), test.name, test.description)
+            C3D::Logger::Error("({}/{}): {} - {}", test.index, m_tests.size(), test.name, test.description);
+            C3D::Logger::Error(test.result.message.data());
         }
     }
 

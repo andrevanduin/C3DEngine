@@ -39,8 +39,9 @@ namespace C3D
         template <typename Functor>
         StackFunction(Functor func)
         {
-            static_assert(sizeof(FunctorHolder<Functor, Result, Args...>) <= sizeof(m_stack),
+            static_assert((sizeof(FunctorHolder<Functor, Result, Args...>) <= sizeof(m_stack)),
                           "Functor is too large to fit on defined stack (increase stackSize)");
+
             m_functorHolderPtr = reinterpret_cast<IFunctorHolder<Result, Args...>*>(std::addressof(m_stack));
             new (m_functorHolderPtr) FunctorHolder<Functor, Result, Args...>(func);
         }
@@ -115,10 +116,7 @@ namespace C3D
 
         operator bool() const noexcept { return m_functorHolderPtr != nullptr; }
 
-        bool operator==(const StackFunction& other) const
-        {
-            return std::memcmp(m_stack, other.m_stack, stackSize) == 0;
-        }
+        bool operator==(const StackFunction& other) const { return std::memcmp(m_stack, other.m_stack, stackSize) == 0; }
 
     private:
         template <typename ReturnType, typename... Arguments>

@@ -12,8 +12,8 @@ namespace C3D
     {
         static_assert(std::is_base_of_v<BaseAllocator<Allocator>, Allocator>, "Allocator must derive from BaseAllocator");
 
-        constexpr static auto default_capacity = 4;
-        constexpr static auto resize_factor    = 1.5f;
+        constexpr static auto DEFAULT_CAPACITY = 4;
+        constexpr static auto RESIZE_FACTOR    = 1.5f;
 
     public:
         using value_type      = Type;
@@ -24,11 +24,9 @@ namespace C3D
         using iterator        = Iterator<Type>;
         using const_iterator  = ConstIterator<Type>;
 
-        Stack(Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
-        {}
+        Stack(Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator) {}
 
-        Stack(const Stack& other) : m_capacity(0), m_size(0), m_elements(nullptr) { Copy(other); }
+        Stack(const Stack& other) { Copy(other); }
 
         Stack(Stack&& other) noexcept
             : m_capacity(other.Capacity()), m_size(other.Size()), m_elements(other.GetData()), m_allocator(other.m_allocator)
@@ -63,29 +61,27 @@ namespace C3D
             return *this;
         }
 
-        /*
+        /**
          * @brief Creates the array with enough memory allocated for the provided initial capacity.
          * No initialization is done on the internal memory.
          */
-        explicit Stack(const u64 initialCapacity, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_capacity(0), m_size(0), m_elements(nullptr), m_allocator(allocator)
+        Stack(const u64 initialCapacity, Allocator* allocator = BaseAllocator<Allocator>::GetDefault()) : m_allocator(allocator)
         {
             Reserve(initialCapacity);
         }
 
         Stack(std::initializer_list<Type> list, Allocator* allocator = BaseAllocator<Allocator>::GetDefault())
-            : m_capacity(0), m_size(0), m_elements(nullptr)
         {
             Copy(list.begin(), list.size(), allocator);
         }
 
         ~Stack() { Destroy(); }
 
-        /*
+        /**
          * @brief Reserves enough memory for the provided initial capacity.
          * The stack will still have the original size and no elements will be created or added
          */
-        void Reserve(u64 initialCapacity = default_capacity)
+        void Reserve(u64 initialCapacity = DEFAULT_CAPACITY)
         {
             if (m_capacity >= initialCapacity)
             {
@@ -124,7 +120,7 @@ namespace C3D
             m_elements = newElements;
         }
 
-        /*
+        /**
          * @brief Resizes the array to have enough memory for the requested size
          * The array will default construct elements in all newly created empty slots up to size - 1
          */
@@ -138,7 +134,7 @@ namespace C3D
             m_size = m_capacity;
         }
 
-        /*
+        /**
          * @brief Resizes the array internally to have capacity = size
          * This operation causes a reallocation (and thus copying of elements) if capacity != size
          */
@@ -169,7 +165,7 @@ namespace C3D
             m_capacity = m_size;
         }
 
-        /* @brief Destroys the underlying memory allocated by this dynamic array. */
+        /** @brief Destroys the underlying memory allocated by this dynamic array. */
         void Destroy()
         {
             // Call destructor for all elements
@@ -180,7 +176,7 @@ namespace C3D
             Free();
         }
 
-        /*
+        /**
          * @brief Adds the provided element to the top of the stack.
          * This will cause a resize if size + 1 >= capacity.
          */
@@ -197,7 +193,7 @@ namespace C3D
             m_size++;
         }
 
-        /*
+        /**
          * @brief Gets and removes the top element from the stack.
          */
         Type Pop()
@@ -211,7 +207,7 @@ namespace C3D
             return element;
         }
 
-        /*
+        /**
          * @brief Copies over the elements from the provided Stack
          * This is a destructive operation that will first delete all the memory in the
          * stack if there is any and resize the stack to the capacity and size of the provided stack
@@ -240,7 +236,7 @@ namespace C3D
             m_capacity = other.m_size;
         }
 
-        /*
+        /**
          * @brief Clears all elements in the stack (calling the destructor for every element)
          * Does not delete the memory and the capacity will remain the same.
          */
@@ -252,7 +248,7 @@ namespace C3D
             m_size = 0;
         }
 
-        /*
+        /**
          * @brief Set a pointer to an allocator (must have a base type of BaseAllocator)
          * This method must be used if the allocator could not be set during initialization
          * because the global memory system was not yet setup for example.
@@ -284,7 +280,7 @@ namespace C3D
         [[nodiscard]] const_iterator cend() const noexcept { return const_iterator(m_elements + m_size); }
 
     private:
-        /*
+        /**
          * @brief Copies over the provided amount of elements from the provided pointer
          * This is a destructive operation that will first delete all the memory in the
          * stack if there is any and resize the stack to the capacity and size that is provided
@@ -313,20 +309,20 @@ namespace C3D
             m_capacity = count;
         }
 
-        /*
+        /**
          * @brief ReAlloc our dynamic array to a greater size by our growth factor
          * If our capacity is currently 0 this will ReAlloc to our default capacity
          */
         void GrowthFactorReAlloc()
         {
             // Increase our capacity by the resize factor
-            auto newCapacity = static_cast<u64>(static_cast<f32>(m_capacity) * resize_factor);
-            if (newCapacity == 0) newCapacity = default_capacity;
+            auto newCapacity = static_cast<u64>(static_cast<f32>(m_capacity) * RESIZE_FACTOR);
+            if (newCapacity == 0) newCapacity = DEFAULT_CAPACITY;
 
             ReAlloc(newCapacity);
         }
 
-        /*
+        /**
          * @brief ReAlloc our dynamic array to a greater size by our growth factor
          * This method will always make the array grow at least as large as minCapacity
          * If our capacity is currently 0 this will ReAlloc to our default capacity
@@ -334,11 +330,11 @@ namespace C3D
         void GrowthFactorReAlloc(const u64 minCapacity)
         {
             // Set our initial new capacity to our current capacity (or default capacity if current capacity is 0)
-            auto newCapacity = m_capacity == 0 ? default_capacity : m_capacity;
+            auto newCapacity = m_capacity == 0 ? DEFAULT_CAPACITY : m_capacity;
             // Keep growing our capacity until it is at least as large as minCapacity
             while (minCapacity > newCapacity)
             {
-                newCapacity = static_cast<u64>(static_cast<f32>(newCapacity) * resize_factor);
+                newCapacity = static_cast<u64>(static_cast<f32>(newCapacity) * RESIZE_FACTOR);
             }
             // Actually ReAlloc our array
             ReAlloc(newCapacity);
@@ -379,10 +375,10 @@ namespace C3D
             }
         }
 
-        u64 m_capacity;
-        u64 m_size;
+        u64 m_capacity = 0;
+        u64 m_size     = 0;
 
-        Type* m_elements;
-        Allocator* m_allocator;
+        Type* m_elements       = nullptr;
+        Allocator* m_allocator = nullptr;
     };
 }  // namespace C3D

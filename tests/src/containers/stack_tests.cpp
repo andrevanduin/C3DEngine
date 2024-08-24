@@ -5,17 +5,15 @@
 #include "containers/stack.h"
 #include "core/metrics/metrics.h"
 
-u8 StackShouldCreateEmptyWithDefaultCtor()
+TEST(StackShouldCreateEmptyWithDefaultCtor)
 {
     const C3D::Stack<int> stack;
 
     ExpectEqual(0, stack.Capacity());
     ExpectEqual(0, stack.Size());
-
-    return true;
 }
 
-u8 StackShouldCleanupWhenLeaveScope()
+TEST(StackShouldCleanupWhenLeaveScope)
 {
     {
         C3D::Stack<int> stack;
@@ -33,11 +31,9 @@ u8 StackShouldCleanupWhenLeaveScope()
     }
 
     ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::Stack));
-
-    return true;
 }
 
-u8 StackShouldPop()
+TEST(StackShouldPop)
 {
     C3D::Stack<int> stack;
     stack.Push(1);
@@ -54,11 +50,9 @@ u8 StackShouldPop()
         // Numbers should be sequential in descending order
         ExpectEqual(i, stack.Pop());
     }
-
-    return true;
 }
 
-u8 StackShouldClear()
+TEST(StackShouldClear)
 {
     C3D::Stack<int> stack;
     stack.Push(1);
@@ -73,11 +67,9 @@ u8 StackShouldClear()
 
     ExpectEqual(4 * sizeof(int), Metrics.GetRequestedMemoryUsage(C3D::MemoryType::Stack));
     ExpectEqual(0, stack.Size());
-
-    return true;
 }
 
-u8 StackShouldBeIterable()
+TEST(StackShouldBeIterable)
 {
     C3D::Stack<int> stack;
     stack.Push(1);
@@ -91,11 +83,9 @@ u8 StackShouldBeIterable()
         ExpectEqual(num, i);
         num++;
     }
-
-    return true;
 }
 
-u8 StackShouldBeConstructableByInitializerList()
+TEST(StackShouldBeConstructableByInitializerList)
 {
     C3D::Stack stack = { 1, 2, 3, 4 };
 
@@ -105,8 +95,6 @@ u8 StackShouldBeConstructableByInitializerList()
         ExpectEqual(num, i);
         num++;
     }
-
-    return true;
 }
 
 void Stack::RegisterTests(TestManager& manager)

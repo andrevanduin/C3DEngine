@@ -22,47 +22,39 @@ public:
     int operator()() { return 8; }
 };
 
-u8 CreateStaticFunc()
+TEST(CreateStaticFunc)
 {
     C3D::StackFunction<int(), 16> func(StaticFunc);
 
     ExpectEqual(5, func());
-
-    return true;
 }
 
-u8 CreateLambda()
+TEST(CreateLambda)
 {
     C3D::StackFunction<int(), 16> func(LAMBDA);
 
     ExpectEqual(6, func());
-
-    return true;
 }
 
-u8 CreateMemberFunc()
+TEST(CreateMemberFunc)
 {
     TestClass instance;
 
     C3D::StackFunction<int(), 16> func([&]() { return instance.MemberFunc(); });
 
     ExpectEqual(7, func());
-
-    return true;
 }
 
-u8 CreateClassWithOperator()
+TEST(CreateClassWithOperator)
 {
     OperatorClass instance;
 
     C3D::StackFunction<int(), 16> func(instance);
 
     ExpectEqual(8, func());
-
-    return true;
 }
 
-u8 CopyConstructorShouldWork()
+TEST(CopyConstructorShouldWork)
 {
     {
         // Static
@@ -107,11 +99,9 @@ u8 CopyConstructorShouldWork()
         ExpectEqual(8, func());
         ExpectEqual(8, otherFunc());
     }
-
-    return true;
 }
 
-u8 CopyAssignmentOperatorShouldWork()
+TEST(CopyAssignmentOperatorShouldWork)
 {
     {
         // Static
@@ -156,11 +146,9 @@ u8 CopyAssignmentOperatorShouldWork()
         ExpectEqual(8, func());
         ExpectEqual(8, otherFunc());
     }
-
-    return true;
 }
 
-u8 MoveConstructorShouldWork()
+TEST(MoveConstructorShouldWork)
 {
     {
         // Static
@@ -201,11 +189,9 @@ u8 MoveConstructorShouldWork()
 
         ExpectEqual(8, otherFunc());
     }
-
-    return true;
 }
 
-u8 MoveAssignmentOperatorShouldWork()
+TEST(MoveAssignmentOperatorShouldWork)
 {
     {
         // Static
@@ -246,8 +232,6 @@ u8 MoveAssignmentOperatorShouldWork()
 
         ExpectEqual(8, otherFunc());
     }
-
-    return true;
 }
 
 static bool NoArgFunc() { return true; }
@@ -267,7 +251,7 @@ static bool CombinationFunc(int a, const int& b, float& c, const C3D::String& d)
     return c >= 4.0f;
 }
 
-u8 CallShouldWork()
+TEST(CallShouldWork)
 {
     {
         // No args
@@ -313,8 +297,6 @@ u8 CallShouldWork()
 
         ExpectTrue(func(2, 3, c, "Test with combination of args"));
     }
-
-    return true;
 }
 
 void StackFunction::RegisterTests(TestManager& manager)

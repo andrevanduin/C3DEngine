@@ -23,7 +23,7 @@ struct AllocStruct
     u16 alignment;
 };
 
-u8 DynamicAllocatorShouldCreateAndDestroy()
+TEST(DynamicAllocatorShouldCreateAndDestroy)
 {
     constexpr u64 usableMemory = MebiBytes(16);
     constexpr u64 neededMemory = C3D::DynamicAllocator::GetMemoryRequirements(usableMemory);
@@ -40,14 +40,12 @@ u8 DynamicAllocatorShouldCreateAndDestroy()
     Memory.Free(memoryBlock);
 
     ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicAllocator));
-
-    return true;
 }
 
 constexpr u16 POSSIBLE_ALIGNMENTS[3] = { 1, 4, 8 };
 
 template <u64 Size>
-bool MakeAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator)
+void MakeAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator)
 {
     for (auto& allocation : data)
     {
@@ -89,8 +87,6 @@ bool MakeAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator&
         // Fill our entire array with our randomly generated char for the entire size of our dataPtr
         std::fill_n(allocation.dataPtr, allocSize, allocation.data);
     }
-
-    return true;
 }
 
 template <u64 Size>
@@ -102,7 +98,7 @@ void CleanupAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocat
     }
 }
 
-u8 DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees()
+TEST(DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees)
 {
     constexpr u64 amountOfAllocations = 4000;
     constexpr u64 usableMemory        = MebiBytes(16);
@@ -133,12 +129,10 @@ u8 DynamicAllocatorShouldDoRandomSmallAllocationsAndFrees()
 
     allocator.Destroy();
     Memory.Free(memoryBlock);
-
-    return true;
 }
 
 template <u64 Size>
-bool IsDataCorrect(const std::array<AllocStruct, Size>& data)
+void IsDataCorrect(const std::array<AllocStruct, Size>& data)
 {
     // Verify that all our data is still correct
     for (const auto& d : data)
@@ -155,10 +149,9 @@ bool IsDataCorrect(const std::array<AllocStruct, Size>& data)
             ExpectEqual(d.data, d.dataPtr[i]);
         }
     }
-    return true;
 }
 
-u8 DynamicAllocatorShouldHaveNoDataCorruption()
+TEST(DynamicAllocatorShouldHaveNoDataCorruption)
 {
     constexpr u64 amountOfAllocations = 4000;
     constexpr u64 usableMemory        = MebiBytes(16);
@@ -173,22 +166,20 @@ u8 DynamicAllocatorShouldHaveNoDataCorruption()
 
     std::array<AllocStruct, amountOfAllocations> allocations{};
 
-    if (!MakeAllocations(allocations, allocator)) return false;
+    MakeAllocations(allocations, allocator);
 
     // Verify that all our data is still correct
-    if (!IsDataCorrect(allocations)) return false;
+    IsDataCorrect(allocations);
 
     // Cleanup our data
     CleanupAllocations(allocations, allocator);
 
     allocator.Destroy();
     Memory.Free(memoryBlock);
-
-    return true;
 }
 
 template <u64 Size>
-bool FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator, const int freeCount)
+void FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllocator& allocator, const int freeCount)
 {
     // Randomly pick some indices into the allocation array to free them
     const auto freeIndices = C3D::Random.GenerateMultiple<u64>(freeCount, 0, data.size() - 1);
@@ -204,11 +195,9 @@ bool FreeRandomAllocations(std::array<AllocStruct, Size>& data, C3D::DynamicAllo
             alloc.data    = 0;
         }
     }
-
-    return true;
 }
 
-u8 DynamicAllocatorShouldHaveNoDataCorruptionWithFrees()
+TEST(DynamicAllocatorShouldHaveNoDataCorruptionWithFrees)
 {
     constexpr u64 amountOfAllocations = 4000;
     constexpr u64 usableMemory        = MebiBytes(16);
@@ -224,30 +213,28 @@ u8 DynamicAllocatorShouldHaveNoDataCorruptionWithFrees()
     std::array<AllocStruct, amountOfAllocations> allocations;
 
     // Make some allocations
-    if (!MakeAllocations(allocations, allocator)) return false;
+    MakeAllocations(allocations, allocator);
 
     // Verify our memory
-    if (!IsDataCorrect(allocations)) return false;
+    IsDataCorrect(allocations);
 
     // Free ~800 random allocations
-    if (!FreeRandomAllocations(allocations, allocator, 800)) return false;
+    FreeRandomAllocations(allocations, allocator, 800);
 
     // Verify our memory again
-    if (!IsDataCorrect(allocations)) return false;
+    IsDataCorrect(allocations);
 
     // Make some allocations
-    if (!MakeAllocations(allocations, allocator)) return false;
+    MakeAllocations(allocations, allocator);
 
     // Verify our memory again
-    if (!IsDataCorrect(allocations)) return false;
+    IsDataCorrect(allocations);
 
     // Cleanup our data
     CleanupAllocations(allocations, allocator);
 
     allocator.Destroy();
     Memory.Free(memoryBlock);
-
-    return true;
 }
 
 void DynamicAllocator::RegisterTests(TestManager& manager)

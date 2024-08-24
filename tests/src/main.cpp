@@ -6,6 +6,7 @@
 #include "containers/dynamic_array_tests.h"
 #include "containers/hash_map_tests.h"
 #include "containers/hash_table_tests.h"
+#include "containers/queue_tests.h"
 #include "containers/ring_queue_tests.h"
 #include "containers/stack_tests.h"
 #include "containers/string_tests.h"
@@ -39,6 +40,7 @@ int main(int argc, char** argv)
     HashMap::RegisterTests(manager);
 
     RingQueue::RegisterTests(manager);
+    Queue::RegisterTests(manager);
 
     FileSystem::RegisterTests(manager);
 
