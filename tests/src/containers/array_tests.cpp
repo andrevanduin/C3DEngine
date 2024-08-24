@@ -6,7 +6,7 @@
 
 #include "../expect.h"
 
-u8 ArrayShouldCreate()
+TEST(ArrayShouldCreate)
 {
     C3D::Array<int, 10> array{};
     array[0] = 5;
@@ -15,10 +15,9 @@ u8 ArrayShouldCreate()
     ExpectNotEqual(nullptr, (void*)array.Data());
 
     ExpectEqual(5, array[0]);
-    return true;
 }
 
-u8 ArrayShouldCreateWithInitializerList()
+TEST(ArrayShouldCreateWithInitializerList)
 {
     C3D::Array<int, 10> array = { 1, 2, 3, 4 };
 
@@ -26,20 +25,18 @@ u8 ArrayShouldCreateWithInitializerList()
     ExpectNotEqual(nullptr, (void*)array.Data());
 
     ExpectEqual(1, array[0]);
-    return true;
 }
 
-u8 ArrayShouldSetAndGetValuesCorrectly()
+TEST(ArrayShouldSetAndGetValuesCorrectly)
 {
     C3D::Array<int, 10> array = { 1, 2, 3, 4 };
 
     ExpectEqual(1, array[0]);
     array[0] = 18;
     ExpectEqual(18, array[0]);
-    return true;
 }
 
-u8 ArrayShouldBeIterable()
+TEST(ArrayShouldBeIterable)
 {
     C3D::Array<int, 4> array = { 1, 2, 3, 4 };
     int expectedValues[4]    = { 1, 2, 3, 4 };
@@ -48,10 +45,9 @@ u8 ArrayShouldBeIterable()
     {
         ExpectEqual(expectedValues[i], array[i]);
     }
-    return true;
 }
 
-u8 ArrayShouldBeIterableWithBeginAndEnd()
+TEST(ArrayShouldBeIterableWithBeginAndEnd)
 {
     const C3D::Array<int, 4> array = { 1, 2, 3, 4 };
     int expectedValues[4]          = { 1, 2, 3, 4 };
@@ -62,7 +58,6 @@ u8 ArrayShouldBeIterableWithBeginAndEnd()
         ExpectEqual(expectedValues[index], i);
         index++;
     }
-    return true;
 }
 
 void Array::RegisterTests(TestManager& manager)

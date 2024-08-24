@@ -6,7 +6,7 @@
 
 #include "../expect.h"
 
-u8 FileSystemDirectoryFromPath()
+TEST(FileSystemDirectoryFromPath)
 {
     C3D::String path = "/assets/directory/test/text_file.txt";
 
@@ -14,11 +14,9 @@ u8 FileSystemDirectoryFromPath()
     C3D::String actualDirectory   = C3D::FileSystem::DirectoryFromPath(path);
 
     ExpectEqual(expectedDirectory, actualDirectory);
-
-    return true;
 }
 
-u8 FileNameFromPathWithExtension()
+TEST(FileNameFromPathWithExtension)
 {
     C3D::String path = "/assets/directory/test/text_file.txt";
 
@@ -26,11 +24,9 @@ u8 FileNameFromPathWithExtension()
     C3D::String actualFileName   = C3D::FileSystem::FileNameFromPath(path, true);
 
     ExpectEqual(expectedFileName, actualFileName);
-
-    return true;
 }
 
-u8 FileNameFromPathWithoutExtension()
+TEST(FileNameFromPathWithoutExtension)
 {
     C3D::String path = "/assets/directory/test/text_file.txt";
 
@@ -38,8 +34,6 @@ u8 FileNameFromPathWithoutExtension()
     C3D::String actualFileName   = C3D::FileSystem::FileNameFromPath(path);
 
     ExpectEqual(expectedFileName, actualFileName);
-
-    return true;
 }
 
 void FileSystem::RegisterTests(TestManager& manager)

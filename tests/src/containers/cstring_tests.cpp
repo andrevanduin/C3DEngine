@@ -5,14 +5,12 @@
 
 #include "../expect.h"
 
-u8 CStringShouldCreateEmptyWithEmptyCtor()
+TEST(CStringShouldCreateEmptyWithEmptyCtor)
 {
     C3D::CString<128> str;
 
     ExpectEqual(0, str.Size());
     ExpectEqual('\0', str[0]);
-
-    return true;
 }
 
 void CString::RegisterTests(TestManager& manager)

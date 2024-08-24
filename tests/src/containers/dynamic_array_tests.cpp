@@ -1,6 +1,4 @@
 
-#include "dynamic_array_tests.h"
-
 #include <containers/dynamic_array.h>
 #include <containers/string.h>
 #include <core/defines.h>
@@ -12,11 +10,12 @@
 #include <iostream>
 
 #include "../expect.h"
+#include "../test_manager.h"
 #include "../utilities/counting_test_object.h"
 
 namespace DynamicArray
 {
-    u8 DynamicArrayShouldCreateAndDestroy()
+    TEST(DynamicArrayShouldCreateAndDestroy)
     {
         C3D::DynamicArray<int> array(10);
 
@@ -31,18 +30,16 @@ namespace DynamicArray
         ExpectEqual(0, array.Size());
         ExpectEqual(nullptr, (void*)array.GetData());
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
-
-        return true;
     }
 
-    u8 DynamicArrayShouldCreateFromFixedSizeArray()
+    TEST(DynamicArrayShouldCreateFromFixedSizeArray)
     {
         C3D::DynamicArray<int> array;
 
-        return true;
+        // TODO: Add test
     }
 
-    u8 DynamicArrayShouldReserve()
+    TEST(DynamicArrayShouldReserve)
     {
         C3D::DynamicArray<int> array;
         array.Reserve(10);
@@ -58,11 +55,9 @@ namespace DynamicArray
         ExpectEqual(0, array.Size());
         ExpectEqual(nullptr, (void*)array.GetData());
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
-
-        return true;
     }
 
-    u8 DynamicArrayShouldReserveWithElementsPresent()
+    TEST(DynamicArrayShouldReserveWithElementsPresent)
     {
         C3D::DynamicArray<int> array(4);
 
@@ -84,11 +79,9 @@ namespace DynamicArray
         ExpectEqual(0, array.Size());
         ExpectEqual(nullptr, (void*)array.GetData());
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
-
-        return true;
     }
 
-    u8 DynamicArrayShouldResize()
+    TEST(DynamicArrayShouldResize)
     {
         C3D::DynamicArray<int> array;
         array.Resize(10);
@@ -108,11 +101,9 @@ namespace DynamicArray
         ExpectEqual(0, array.Size());
         ExpectEqual(nullptr, (void*)array.GetData());
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
-
-        return true;
     }
 
-    u8 DynamicArrayShouldAllocateLargeBlocks()
+    TEST(DynamicArrayShouldAllocateLargeBlocks)
     {
         C3D::DynamicArray<C3D::Vertex3D> array(32768);
 
@@ -135,11 +126,9 @@ namespace DynamicArray
         ExpectEqual(0, array.Size());
         ExpectEqual(nullptr, (void*)array.GetData());
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
-
-        return true;
     }
 
-    u8 DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize()
+    TEST(DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize)
     {
         C3D::DynamicArray<C3D::Vertex3D> array(4);
 
@@ -174,11 +163,9 @@ namespace DynamicArray
         ExpectEqual(0, array.Size());
         ExpectEqual(nullptr, (void*)array.GetData());
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
-
-        return true;
     }
 
-    u8 DynamicArrayShouldReallocate()
+    TEST(DynamicArrayShouldReallocate)
     {
         using namespace C3D::Tests;
 
@@ -204,11 +191,9 @@ namespace DynamicArray
         }
 
         ExpectEqual(0, TEST_OBJECT_COUNTER);
-
-        return true;
     }
 
-    u8 DynamicArrayShouldIterate()
+    TEST(DynamicArrayShouldIterate)
     {
         C3D::DynamicArray<int> array;
         array.PushBack(5);
@@ -222,10 +207,9 @@ namespace DynamicArray
         }
 
         ExpectEqual(array.Size(), counter);
-        return true;
     }
 
-    u8 DynamicArrayShouldDestroyWhenLeavingScope()
+    TEST(DynamicArrayShouldDestroyWhenLeavingScope)
     {
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
 
@@ -236,7 +220,6 @@ namespace DynamicArray
         }
 
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
-        return true;
     }
 
     struct TestElement
@@ -266,7 +249,7 @@ namespace DynamicArray
         int* pCounter;
     };
 
-    u8 DynamicArrayShouldCallDestructorsOfElementsWhenDestroyed()
+    TEST(DynamicArrayShouldCallDestructorsOfElementsWhenDestroyed)
     {
         auto counter = 0;
 
@@ -279,10 +262,9 @@ namespace DynamicArray
         array.Destroy();
 
         ExpectEqual(0, counter);
-        return true;
     }
 
-    u8 DynamicArrayShouldCallDestructorsOfElementsWhenGoingOutOfScope()
+    TEST(DynamicArrayShouldCallDestructorsOfElementsWhenGoingOutOfScope)
     {
         auto counter = 0;
 
@@ -295,10 +277,9 @@ namespace DynamicArray
         }
 
         ExpectEqual(0, counter);
-        return true;
     }
 
-    u8 DynamicArrayShouldFindAndErase()
+    TEST(DynamicArrayShouldFindAndErase)
     {
         C3D::DynamicArray<int> array;
 
@@ -313,11 +294,9 @@ namespace DynamicArray
         ExpectEqual(5, array[0]);
         ExpectEqual(7, array[1]);
         ExpectEqual(8, array[2]);
-
-        return true;
     }
 
-    u8 DynamicArrayEraseLast()
+    TEST(DynamicArrayEraseLast)
     {
         C3D::DynamicArray<int> array;
 
@@ -333,11 +312,9 @@ namespace DynamicArray
         ExpectEqual(6, array[1]);
         ExpectEqual(7, array[2]);
         ExpectEqual(3, array.Size());
-
-        return true;
     }
 
-    u8 DynamicArrayEraseByIndex()
+    TEST(DynamicArrayEraseByIndex)
     {
         C3D::DynamicArray<int> array;
 
@@ -352,11 +329,9 @@ namespace DynamicArray
         ExpectEqual(6, array[1]);
         ExpectEqual(8, array[2]);
         ExpectEqual(3, array.Size());
-
-        return true;
     }
 
-    u8 DynamicArrayEraseByIndexLast()
+    TEST(DynamicArrayEraseByIndexLast)
     {
         C3D::DynamicArray<int> array;
 
@@ -374,11 +349,9 @@ namespace DynamicArray
                 ExpectEqual(i, array.Size());
             }
         }
-
-        return true;
     }
 
-    u8 DynamicArrayShouldInsert()
+    TEST(DynamicArrayShouldInsert)
     {
         C3D::DynamicArray array = { 1, 2, 4, 5 };
         array.Insert(array.begin() + 2, 3);
@@ -387,11 +360,9 @@ namespace DynamicArray
         {
             ExpectEqual(i + 1, array[i]);
         }
-
-        return true;
     }
 
-    u8 DynamicArrayShouldInsertRange()
+    TEST(DynamicArrayShouldInsertRange)
     {
         C3D::DynamicArray array = { 1, 6 };
         C3D::DynamicArray range = { 2, 3, 4, 5 };
@@ -402,11 +373,9 @@ namespace DynamicArray
         {
             ExpectEqual(i + 1, array[i]);
         }
-
-        return true;
     }
 
-    u8 DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled()
+    TEST(DynamicArrayShouldPreserveExistingElementsWhenReserveIsCalled)
     {
         C3D::DynamicArray array = { 0, 1, 2, 3 };
         array.Reserve(32);
@@ -415,11 +384,9 @@ namespace DynamicArray
         {
             ExpectEqual(i, array[i]);
         }
-
-        return true;
     }
 
-    u8 DynamicArrayShouldShrinkCorrectly()
+    TEST(DynamicArrayShouldShrinkCorrectly)
     {
         C3D::DynamicArray<int> array;
         // We make sure our capacity is quite high
@@ -438,11 +405,9 @@ namespace DynamicArray
         // After shrinking our capacity should match our size
         ExpectEqual(array.Size(), array.Capacity());
         ExpectEqual(4, array.Size());
-
-        return true;
     }
 
-    u8 DynamicArrayShouldClearCorrectly()
+    TEST(DynamicArrayShouldClearCorrectly)
     {
         C3D::DynamicArray<C3D::String> array;
 
@@ -455,11 +420,9 @@ namespace DynamicArray
 
         ExpectEqual(0, array.Size());
         ExpectEqual(4, array.Capacity());
-
-        return true;
     }
 
-    u8 DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize()
+    TEST(DynamicArrayShouldNotDoAnythingWhenResizeIsCalledWithASmallerSize)
     {
         C3D::DynamicArray<int> array;
         array.Reserve(20);
@@ -479,11 +442,9 @@ namespace DynamicArray
         ExpectEqual(3, array[2]);
         ExpectEqual(4, array[3]);
         ExpectEqual(0, array[4]);
-
-        return true;
     }
 
-    u8 DynamicArrayShouldRemove()
+    TEST(DynamicArrayShouldRemove)
     {
         C3D::DynamicArray<C3D::String> array;
         array.Reserve(10);
@@ -503,8 +464,6 @@ namespace DynamicArray
         ExpectEqual("Test5", array[3]);
 
         ExpectEqual(4, array.Size());
-
-        return true;
     }
 
     class CopyConstructorObject
@@ -579,7 +538,7 @@ namespace DynamicArray
         u64 m_size = 0;
     };
 
-    u8 DynamicArrayShouldReallocWithNonTrivialCopyConstructorObjects()
+    TEST(DynamicArrayShouldReallocWithNonTrivialCopyConstructorObjects)
     {
         CopyConstructorObject obj1;
         CopyConstructorObject obj2;
@@ -601,8 +560,6 @@ namespace DynamicArray
         ExpectTrue(obj3.Match(array[2]));
         ExpectTrue(obj4.Match(array[3]));
         ExpectTrue(obj5.Match(array[4]));
-
-        return true;
     }
 
     void RegisterTests(TestManager& manager)

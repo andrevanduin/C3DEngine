@@ -7,28 +7,25 @@
 #include <memory/allocators/stack_allocator.h>
 
 #include "../expect.h"
+#include "../test_manager.h"
 
-u8 StackAllocatorShouldCreate()
+TEST(StackAllocatorShouldCreate)
 {
     C3D::StackAllocator<KibiBytes(8)> allocator;
     allocator.Create("Test Allocator");
 
     ExpectEqual(KibiBytes(8), allocator.GetTotalSize());
-
-    return true;
 }
 
-u8 StackAllocatorShouldErrorOnOverAllocation()
+TEST(StackAllocatorShouldErrorOnOverAllocation)
 {
     C3D::StackAllocator<KibiBytes(2)> allocator;
     allocator.Create("Test Allocator");
 
     ExpectThrow(std::bad_alloc, [&] { allocator.AllocateBlock(C3D::MemoryType::Test, KibiBytes(8)); });
-
-    return true;
 }
 
-u8 StackAllocatorShouldWorkWithDynamicArray()
+TEST(StackAllocatorShouldWorkWithDynamicArray)
 {
     C3D::StackAllocator<KibiBytes(8)> allocator;
     allocator.Create("Test Allocator");
@@ -40,8 +37,6 @@ u8 StackAllocatorShouldWorkWithDynamicArray()
         const auto value = C3D::Random.Generate(0, 64);
         array.PushBack(value);
     }
-
-    return true;
 }
 
 void StackAllocator::RegisterTests(TestManager& manager)

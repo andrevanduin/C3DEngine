@@ -12,7 +12,7 @@
 
 namespace HashMap
 {
-    u8 HashMapShouldCreateAndDestroy()
+    TEST(HashMapShouldCreateAndDestroy)
     {
         C3D::HashMap<C3D::String, u32> hashMap;
         hashMap.Create();
@@ -25,10 +25,9 @@ namespace HashMap
         hashMap.Destroy();
 
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashMap));
-        return true;
     }
 
-    u8 HashMapShouldSetAndGet()
+    TEST(HashMapShouldSetAndGet)
     {
         C3D::HashMap<C3D::String, u32> hashMap;
         hashMap.Create();
@@ -36,11 +35,9 @@ namespace HashMap
         hashMap.Set("Test", 5);
 
         ExpectEqual(5, hashMap.Get("Test"));
-
-        return true;
     }
 
-    u8 HashMapGetShouldBeEditable()
+    TEST(HashMapGetShouldBeEditable)
     {
         C3D::HashMap<C3D::String, u32> hashMap;
         hashMap.Create();
@@ -52,10 +49,9 @@ namespace HashMap
         test       = 12;
 
         ExpectEqual(12, hashMap.Get("Test"));
-        return true;
     }
 
-    u8 HashMapHasShouldWork()
+    TEST(HashMapHasShouldWork)
     {
         const char* test = "Test";
 
@@ -65,11 +61,9 @@ namespace HashMap
         hashMap.Set(test, "Other Test");
         ExpectTrue(hashMap.Has(test));
         ExpectFalse(hashMap.Has("Test1234"));
-
-        return true;
     }
 
-    u8 HashMapShouldIterate()
+    TEST(HashMapShouldIterate)
     {
         C3D::HashMap<C3D::String, u32> hashMap;
         hashMap.Create();
@@ -94,11 +88,9 @@ namespace HashMap
         {
             ExpectEqual(0, item);
         }
-
-        return true;
     }
 
-    u8 HashMapShouldOverrideForDuplicateKeys()
+    TEST(HashMapShouldOverrideForDuplicateKeys)
     {
         C3D::HashMap<C3D::String, u32> hashMap;
         hashMap.Create();
@@ -116,11 +108,9 @@ namespace HashMap
 
         ExpectEqual(10, hashMap.Get("Test"));
         ExpectEqual(1, hashMap.Count());
-
-        return true;
     }
 
-    u8 HashMapShouldWorkWhenGettingCloseToLoadFactor()
+    TEST(HashMapShouldWorkWhenGettingCloseToLoadFactor)
     {
         // Default LoadFactor == 0.75 and capacity == 32 so at 32 * 0.75 = 24 we have reached our LoadFactor
         // We insert 23 items to test verify our HashMap works as expected without it growing (which happens at count >= LoadFactor *
@@ -143,11 +133,9 @@ namespace HashMap
             ExpectTrue(hashMap.Contains(str));
             ExpectEqual(i, hashMap.Get(str));
         }
-
-        return true;
     }
 
-    u8 HashMapDeleteShouldWorkAsExpected()
+    TEST(HashMapDeleteShouldWorkAsExpected)
     {
         C3D::HashMap<C3D::String, u32> hashMap;
         hashMap.Create();
@@ -169,11 +157,9 @@ namespace HashMap
         ExpectEqual(3, hashMap.Get("Rens"));
         ExpectEqual(42, hashMap.Get("Feest"));
         ExpectFalse(hashMap.Contains("Bla"));
-
-        return true;
     }
 
-    u8 HashMapShouldGrowWhenLoadFactorIsReached()
+    TEST(HashMapShouldGrowWhenLoadFactorIsReached)
     {
         // Purposfully pick a small load factor so we don't have to add a lot of items before we grow
         C3D::HashMap<C3D::String, u32, std::hash<C3D::String>, 0.1> hashMap;
@@ -194,11 +180,9 @@ namespace HashMap
         ExpectEqual(84, hashMap.Get("pieter"));
         ExpectEqual(22, hashMap.Get("rens"));
         ExpectEqual(52, hashMap.Get("bla"));
-
-        return true;
     }
 
-    u8 HashMapShouldNotLeakMemory()
+    TEST(HashMapShouldNotLeakMemory)
     {
         using namespace C3D::Tests;
 
@@ -245,8 +229,6 @@ namespace HashMap
         C3D::Logger::Info("Test Memory left: {}", Metrics.GetMemoryUsage(C3D::MemoryType::Test));
 
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::Test));
-
-        return true;
     }
 
     struct TestObject
@@ -256,7 +238,7 @@ namespace HashMap
         bool deleted = false;
     };
 
-    u8 HashMapStressTest()
+    TEST(HashMapStressTest)
     {
         C3D::HashMap<C3D::String, u32> hashMap;
         hashMap.Create();
@@ -303,8 +285,6 @@ namespace HashMap
                 ExpectEqual(obj.value, hashMap.Get(obj.key));
             }
         }
-
-        return true;
     }
 
     void RegisterTests(TestManager& manager)

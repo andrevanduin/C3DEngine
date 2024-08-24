@@ -7,7 +7,7 @@
 #include "../expect.h"
 #include "core/metrics/metrics.h"
 
-u8 HashTableShouldCreateAndDestroy()
+TEST(HashTableShouldCreateAndDestroy)
 {
     C3D::HashTable<int> hashtable;
     ExpectTrue(hashtable.Create(128));
@@ -17,24 +17,25 @@ u8 HashTableShouldCreateAndDestroy()
 
     hashtable.Destroy();
 
-    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable));
 }
 
-u8 HashTableShouldSetAndGetForValueTypes()
+TEST(HashTableShouldSetAndGetForValueTypes)
 {
     C3D::HashTable<int> hashtable;
     ExpectTrue(hashtable.Create(128));
 
     int testValue = 5;
 
-    ExpectTrue(hashtable.Set("test", testValue)) ExpectEqual(testValue, hashtable.Get("test"));
+    ExpectTrue(hashtable.Set("test", testValue));
+    ExpectEqual(testValue, hashtable.Get("test"));
 
     hashtable.Destroy();
 
-    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable));
 }
 
-u8 HashTableShouldSetAndGetForPointerTypes()
+TEST(HashTableShouldSetAndGetForPointerTypes)
 {
     C3D::HashTable<int*> hashtable;
     ExpectTrue(hashtable.Create(128));
@@ -42,11 +43,12 @@ u8 HashTableShouldSetAndGetForPointerTypes()
     int testValue   = 5;
     int* pTestValue = &testValue;
 
-    ExpectTrue(hashtable.Set("test", pTestValue)) ExpectEqual(testValue, *hashtable.Get("test"));
+    ExpectTrue(hashtable.Set("test", pTestValue));
+    ExpectEqual(testValue, *hashtable.Get("test"));
 
     hashtable.Destroy();
 
-    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable)) return true;
+    ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::HashTable));
 }
 
 void HashTable::RegisterTests(TestManager& manager)
