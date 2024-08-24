@@ -1,7 +1,7 @@
 
 #pragma once
 #include <containers/dynamic_array.h>
-#include <containers/ring_queue.h>
+#include <containers/queue.h>
 #include <core/audio/audio_plugin.h>
 #include <core/defines.h>
 
@@ -53,9 +53,9 @@ namespace C3D
         u32 FindFreeBuffer();
 
         /** @brief The currently selected device to play audio on.*/
-        ALCdevice* m_device;
+        ALCdevice* m_device = nullptr;
         /** @brief The current audio context. */
-        ALCcontext* m_context;
+        ALCcontext* m_context = nullptr;
         /** @brief A pool of buffers to be used for all kinds of audio/music playback. */
         DynamicArray<ALuint> m_buffers;
 
@@ -67,6 +67,6 @@ namespace C3D
         /** @brief A collection of available sources. (size == config.maxSources) */
         Source* m_sources;
         /** @brief A collection of currently free/available buffer ids. */
-        RingQueue<u32> m_freeBuffers;
+        Queue<u32> m_freeBuffers;
     };
 }  // namespace C3D
