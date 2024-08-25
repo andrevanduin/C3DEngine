@@ -39,9 +39,11 @@ namespace C3D
         u16 reserved;
     };
 
-    struct Resource
+    struct IResource
     {
-        u32 loaderId = INVALID_ID;
+        IResource(ResourceType type) : resourceType(type) {}
+
+        ResourceType resourceType;
         /** @brief The resource version. */
         u8 version = 0;
         /** @brief The name of the resource. */

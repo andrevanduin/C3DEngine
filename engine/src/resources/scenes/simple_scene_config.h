@@ -50,8 +50,10 @@ namespace C3D
         String parentName;  // optional
     };
 
-    struct SimpleSceneConfig final : C3D::Resource
+    struct SimpleSceneConfig final : public IResource
     {
+        SimpleSceneConfig() : IResource(ResourceType::SimpleScene) {}
+
         String description;
         SimpleSceneSkyboxConfig skyboxConfig;
         SimpleSceneDirectionalLightConfig directionalLightConfig;

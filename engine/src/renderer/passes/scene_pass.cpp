@@ -8,7 +8,7 @@
 #include <renderer/viewport.h>
 #include <resources/debug/debug_box_3d.h>
 #include <resources/debug/debug_line_3d.h>
-#include <resources/loaders/shader_loader.h>
+#include <resources/managers/shader_manager.h>
 #include <resources/mesh.h>
 #include <resources/shaders/shader_types.h>
 #include <resources/terrain/terrain.h>
@@ -74,7 +74,7 @@ namespace C3D
             const char* name = SHADER_NAMES[i];
 
             C3D::ShaderConfig config;
-            if (!Resources.Load(name, config))
+            if (!Resources.Read(name, config))
             {
                 ERROR_LOG("Failed to load ShaderResource for: '{}'.", name);
                 return false;
@@ -85,7 +85,7 @@ namespace C3D
                 ERROR_LOG("Failed to Create: '{}'.", name);
                 return false;
             }
-            Resources.Unload(config);
+            Resources.Cleanup(config);
 
             SHADERS[i] = Shaders.Get(name);
             if (!SHADERS[i])

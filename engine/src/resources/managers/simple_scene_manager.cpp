@@ -1,5 +1,5 @@
 
-#include "simple_scene_loader.h"
+#include "simple_scene_manager.h"
 
 #include "core/exceptions.h"
 #include "platform/file_system.h"
@@ -10,12 +10,13 @@ namespace C3D
 {
     constexpr const char* FILE_EXTENSION = "csimplescenecfg";
 
-    ResourceLoader<SimpleSceneConfig>::ResourceLoader() : IResourceLoader(MemoryType::Scene, ResourceType::SimpleScene, nullptr, "scenes")
+    ResourceManager<SimpleSceneConfig>::ResourceManager()
+        : IResourceManager(MemoryType::Scene, ResourceType::SimpleScene, nullptr, "scenes")
     {}
 
-    bool ResourceLoader<SimpleSceneConfig>::Load(const char* name, SimpleSceneConfig& resource) const
+    bool ResourceManager<SimpleSceneConfig>::Read(const String& name, SimpleSceneConfig& resource) const
     {
-        if (std::strlen(name) == 0)
+        if (name.Empty())
         {
             ERROR_LOG("Provided name was empty.");
             return false;
@@ -31,6 +32,8 @@ namespace C3D
             return false;
         }
 
+        // TODO: Make this not hardcoded!
+        resource.version     = 1;
         resource.fullPath    = fullPath;
         resource.name        = name;
         resource.description = "";
@@ -79,17 +82,104 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<SimpleSceneConfig>::Unload(SimpleSceneConfig& resource) const
+    bool ResourceManager<SimpleSceneConfig>::Write(const SimpleSceneConfig& resource) const
     {
-        resource.name.Clear();
-        resource.description.Clear();
-        resource.fullPath.Clear();
-        resource.pointLights.Clear();
-        resource.meshes.Clear();
+        auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, resource.name, FILE_EXTENSION);
+        // auto fileName = String::FromFormat("{}.{}", resource.name, FILE_EXTENSION);
+
+        File file;
+        if (!file.Open(fullPath, FileModeWrite))
+        {
+            ERROR_LOG("Failed to open simple scene config file for reading: '{}'.", fullPath);
+            return false;
+        }
+
+        String buffer;
+        buffer.Reserve(256);
+
+        // TODO: Replace this non-hardcoded version
+        file.WriteLine("!version = {}", resource.version);
+
+        // Scene block
+        file.WriteLine("[Scene]");
+        file.WriteLine("name = {}", resource.name);
+        file.WriteLine("description = {}", resource.description);
+        file.WriteLine("[/Scene]");
+
+        // Skybox block
+        if (!resource.skyboxConfig.name.Empty() && !resource.skyboxConfig.cubemapName.Empty())
+        {
+            file.WriteLine("[Skybox]");
+            file.WriteLine("name = {}", resource.skyboxConfig.name);
+            file.WriteLine("cubemapName = {}", resource.skyboxConfig.cubemapName);
+            file.WriteLine("[/Skybox]");
+        }
+
+        // Directional light block
+        if (!resource.directionalLightConfig.name.Empty())
+        {
+            file.WriteLine("[DirectionalLight]");
+            file.WriteLine("name = {}", resource.directionalLightConfig.name);
+            file.WriteLine("color = {}", resource.directionalLightConfig.color);
+            file.WriteLine("direction = {}", resource.directionalLightConfig.direction);
+            file.WriteLine("shadowDistance = {}", resource.directionalLightConfig.shadowDistance);
+            file.WriteLine("shadowFadeDistance = {}", resource.directionalLightConfig.shadowFadeDistance);
+            file.WriteLine("shadowSplitMultiplier = {}", resource.directionalLightConfig.shadowSplitMultiplier);
+            file.WriteLine("[DirectionalLight]");
+        }
+
+        // Meshes
+        for (const auto& mesh : resource.meshes)
+        {
+            file.WriteLine("[Mesh]");
+            file.WriteLine("name = {}", mesh.name);
+            file.WriteLine("resourceName = {}", mesh.resourceName);
+            file.WriteLine("transform = {}", mesh.transform);
+            if (!mesh.parentName.Empty())
+            {
+                file.WriteLine("parent = {}", mesh.parentName);
+            }
+            file.WriteLine("[/Mesh]");
+        }
+
+        // Point lights
+        for (const auto& light : resource.pointLights)
+        {
+            file.WriteLine("[PointLight]");
+            file.WriteLine("name = {}", light.name);
+            file.WriteLine("color = {}", light.color);
+            file.WriteLine("position = {}", light.position);
+            file.WriteLine("constant = {}", light.constant);
+            file.WriteLine("linear = {}", light.linear);
+            file.WriteLine("quadratic = {}", light.quadratic);
+            file.WriteLine("[/PointLight]");
+        }
+
+        // Terrains
+        for (const auto& terrain : resource.terrains)
+        {
+            file.WriteLine("[Terrain]");
+            file.WriteLine("name = {}", terrain.name);
+            file.WriteLine("resourceName = {}", terrain.resourceName);
+            file.WriteLine("transform = {}", terrain.transform);
+            file.WriteLine("[/Terrain]");
+        }
+
+        file.Close();
+        return true;
     }
 
-    bool ResourceLoader<SimpleSceneConfig>::ParseTagContent(const String& line, const String& fileName, const u32 lineNumber, u32& version,
-                                                            const ParserTagType type, SimpleSceneConfig& cfg) const
+    void ResourceManager<SimpleSceneConfig>::Cleanup(SimpleSceneConfig& resource) const
+    {
+        resource.name.Destroy();
+        resource.description.Destroy();
+        resource.fullPath.Destroy();
+        resource.pointLights.Destroy();
+        resource.meshes.Destroy();
+    }
+
+    bool ResourceManager<SimpleSceneConfig>::ParseTagContent(const String& line, const String& fileName, const u32 lineNumber, u32& version,
+                                                             const ParserTagType type, SimpleSceneConfig& cfg) const
     {
         // Check if we have a '=' symbol
         if (!line.Contains('='))
@@ -153,7 +243,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<SimpleSceneConfig>::ParseScene(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SimpleSceneConfig>::ParseScene(const String& name, const String& value, SimpleSceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
@@ -169,7 +259,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<SimpleSceneConfig>::ParseSkybox(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SimpleSceneConfig>::ParseSkybox(const String& name, const String& value, SimpleSceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
@@ -185,7 +275,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<SimpleSceneConfig>::ParseDirectionalLight(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SimpleSceneConfig>::ParseDirectionalLight(const String& name, const String& value, SimpleSceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
@@ -217,7 +307,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<SimpleSceneConfig>::ParsePointLight(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SimpleSceneConfig>::ParsePointLight(const String& name, const String& value, SimpleSceneConfig& cfg) const
     {
         auto& pointLight = cfg.pointLights.Back();
 
@@ -251,7 +341,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<SimpleSceneConfig>::ParseMesh(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SimpleSceneConfig>::ParseMesh(const String& name, const String& value, SimpleSceneConfig& cfg) const
     {
         auto& mesh = cfg.meshes.Back();
 
@@ -277,7 +367,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<SimpleSceneConfig>::ParseTerrain(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SimpleSceneConfig>::ParseTerrain(const String& name, const String& value, SimpleSceneConfig& cfg) const
     {
         auto& terrain = cfg.terrains.Back();
 
@@ -299,7 +389,7 @@ namespace C3D
         }
     }
 
-    Transform ResourceLoader<SimpleSceneConfig>::ParseTransform(const String& value) const
+    Transform ResourceManager<SimpleSceneConfig>::ParseTransform(const String& value) const
     {
         const auto values = value.Split(' ');
         Transform transform;
@@ -328,9 +418,10 @@ namespace C3D
         return transform;
     }
 
-    ResourceLoader<SimpleSceneConfig>::ParserTagType ResourceLoader<SimpleSceneConfig>::ParseTag(const String& line, const String& fileName,
-                                                                                                 const u32 lineNumber,
-                                                                                                 SimpleSceneConfig& cfg) const
+    ResourceManager<SimpleSceneConfig>::ParserTagType ResourceManager<SimpleSceneConfig>::ParseTag(const String& line,
+                                                                                                   const String& fileName,
+                                                                                                   const u32 lineNumber,
+                                                                                                   SimpleSceneConfig& cfg) const
     {
         static bool closeTag = true;
         String name;

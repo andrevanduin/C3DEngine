@@ -10,7 +10,7 @@
 #include <renderer/renderer_frontend.h>
 #include <renderer/renderer_utils.h>
 #include <renderer/vertex.h>
-#include <resources/loaders/text_loader.h>
+#include <resources/managers/text_manager.h>
 #include <resources/shaders/shader.h>
 #include <resources/textures/texture.h>
 #include <shaderc/shaderc.h>

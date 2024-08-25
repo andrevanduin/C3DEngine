@@ -8,7 +8,11 @@
 #include <core/frame_data.h>
 #include <core/logger.h>
 #include <core/metrics/metrics.h>
+#include <math/ray.h>
 #include <renderer/renderer_types.h>
+#include <resources/managers/simple_scene_manager.h>
+#include <resources/scenes/simple_scene.h>
+#include <resources/scenes/simple_scene_config.h>
 #include <resources/skybox.h>
 #include <systems/UI/2D/ui2d_system.h>
 #include <systems/audio/audio_system.h>
@@ -24,13 +28,9 @@
 
 #include <glm/gtx/matrix_decompose.hpp>
 
-#include "math/ray.h"
 #include "passes/editor_pass.h"
 #include "resources/debug/debug_box_3d.h"
 #include "resources/debug/debug_line_3d.h"
-#include "resources/loaders/simple_scene_loader.h"
-#include "resources/scenes/simple_scene.h"
-#include "resources/scenes/simple_scene_config.h"
 
 TestEnv::TestEnv(C3D::ApplicationState* state) : Application(state), m_state(reinterpret_cast<GameState*>(state)) {}
 
@@ -951,7 +951,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 bool TestEnv::LoadTestScene()
 {
     C3D::SimpleSceneConfig sceneConfig;
-    Resources.Load("test_scene", sceneConfig);
+    Resources.Read("test_scene", sceneConfig);
 
     if (!m_state->simpleScene.Create(sceneConfig))
     {

@@ -37,6 +37,19 @@ namespace C3D
 
         bool WriteLine(const String& line);
 
+        template <class... Args>
+        bool WriteLine(const char* format, Args&&... args)
+        {
+            if (!isValid) return false;
+
+            fmt::vformat_to_n(m_buffer, 512, format, fmt::make_format_args(args...));
+
+            m_file << m_buffer << "\n";
+            // Flush to ensure that we don't have data loss if the engine crashes before closing the file
+            m_file.flush();
+            return true;
+        }
+
         template <u64 Capacity>
         bool WriteLine(const CString<Capacity>& line)
         {
@@ -177,6 +190,8 @@ namespace C3D
     private:
         u64 m_size;
         std::fstream m_file;
+
+        char m_buffer[512];
     };
 
     class C3D_API FileSystem

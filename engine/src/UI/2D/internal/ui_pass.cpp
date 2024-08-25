@@ -8,7 +8,7 @@
 #include "renderer/rendergraph/renderpass.h"
 #include "renderer/viewport.h"
 #include "resources/font.h"
-#include "resources/loaders/shader_loader.h"
+#include "resources/managers/shader_manager.h"
 #include "resources/mesh.h"
 #include "resources/textures/texture_map.h"
 #include "systems/fonts/font_system.h"
@@ -58,7 +58,7 @@ namespace C3D
         }
 
         C3D::ShaderConfig config;
-        if (!Resources.Load(SHADER_NAME, config))
+        if (!Resources.Read(SHADER_NAME, config))
         {
             ERROR_LOG("Failed to load ShaderResource for UI Shader.");
             return false;
@@ -69,7 +69,7 @@ namespace C3D
             ERROR_LOG("Failed to load UI Shader.");
             return false;
         }
-        Resources.Unload(config);
+        Resources.Cleanup(config);
 
         m_shader = Shaders.Get(SHADER_NAME);
         if (!m_shader)

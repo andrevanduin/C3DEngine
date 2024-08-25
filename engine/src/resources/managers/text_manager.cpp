@@ -1,5 +1,5 @@
 
-#include "text_loader.h"
+#include "text_manager.h"
 
 #include "core/engine.h"
 #include "core/logger.h"
@@ -9,11 +9,15 @@
 
 namespace C3D
 {
-    ResourceLoader<TextResource>::ResourceLoader() : IResourceLoader(MemoryType::String, ResourceType::Text, nullptr, "") {}
+    ResourceManager<TextResource>::ResourceManager() : IResourceManager(MemoryType::String, ResourceType::Text, nullptr, "") {}
 
-    bool ResourceLoader<TextResource>::Load(const char* name, TextResource& resource) const
+    bool ResourceManager<TextResource>::Read(const String& name, TextResource& resource) const
     {
-        if (std::strlen(name) == 0) return false;
+        if (name.Empty())
+        {
+            ERROR_LOG("No valid name was provided.");
+            return false;
+        }
 
         // TODO: try different extensions
         auto fullPath = String::FromFormat("{}/{}/{}", Resources.GetBasePath(), typePath, name);
@@ -49,7 +53,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<TextResource>::Unload(TextResource& resource)
+    void ResourceManager<TextResource>::Cleanup(TextResource& resource) const
     {
         resource.text.Destroy();
         resource.name.Destroy();

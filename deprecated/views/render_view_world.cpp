@@ -6,7 +6,7 @@
 #include <renderer/renderer_frontend.h>
 #include <renderer/renderer_types.h>
 #include <renderer/viewport.h>
-#include <resources/loaders/shader_loader.h>
+#include <resources/managers/shader_manager.h>
 #include <resources/mesh.h>
 #include <resources/textures/texture.h>
 #include <systems/cameras/camera_system.h>
@@ -80,7 +80,7 @@ bool RenderViewWorld::OnCreate()
     const auto skyboxShaderName   = "Shader.Builtin.Skybox";
 
     C3D::ShaderConfig shaderConfig;
-    if (!Resources.Load(materialShaderName, shaderConfig))
+    if (!Resources.Read(materialShaderName, shaderConfig))
     {
         ERROR_LOG("Failed to load ShaderResource for Material Shader.");
         return false;
@@ -91,9 +91,9 @@ bool RenderViewWorld::OnCreate()
         ERROR_LOG("Failed to create: '{}'.", materialShaderName);
         return false;
     }
-    Resources.Unload(shaderConfig);
+    Resources.Cleanup(shaderConfig);
 
-    if (!Resources.Load(terrainShaderName, shaderConfig))
+    if (!Resources.Read(terrainShaderName, shaderConfig))
     {
         ERROR_LOG("Failed to load ShaderResource for Terrain Shader.");
         return false;
@@ -104,9 +104,9 @@ bool RenderViewWorld::OnCreate()
         ERROR_LOG("Failed to create: '{}'.", terrainShaderName);
         return false;
     }
-    Resources.Unload(shaderConfig);
+    Resources.Cleanup(shaderConfig);
 
-    if (!Resources.Load(debugShaderName, shaderConfig))
+    if (!Resources.Read(debugShaderName, shaderConfig))
     {
         ERROR_LOG("Failed to load ShaderResource for Debug Shader.");
         return false;
@@ -117,9 +117,9 @@ bool RenderViewWorld::OnCreate()
         ERROR_LOG("Failed to create: '{}'.", debugShaderName);
         return false;
     }
-    Resources.Unload(shaderConfig);
+    Resources.Cleanup(shaderConfig);
 
-    if (!Resources.Load(skyboxShaderName, shaderConfig))
+    if (!Resources.Read(skyboxShaderName, shaderConfig))
     {
         ERROR_LOG("Failed to load ShaderResource for Skybox Shader.");
         return false;
@@ -130,7 +130,7 @@ bool RenderViewWorld::OnCreate()
         ERROR_LOG("Failed to load builtin Skybox Shader.");
         return false;
     }
-    Resources.Unload(shaderConfig);
+    Resources.Cleanup(shaderConfig);
 
     m_materialShader = Shaders.Get(m_customShaderName ? m_customShaderName.Data() : materialShaderName);
     m_terrainShader  = Shaders.Get(terrainShaderName);

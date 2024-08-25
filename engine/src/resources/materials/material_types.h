@@ -164,9 +164,9 @@ namespace C3D
         MaterialConfigMap(const String& name, const String& textureName) : name(name), textureName(textureName) {}
     };
 
-    struct MaterialConfig : Resource
+    struct MaterialConfig : public IResource
     {
-        MaterialConfig()
+        MaterialConfig() : IResource(ResourceType::Material)
         {
             // HACK: Currently since we assume all materials are PBR we setup our default config as follows:
             type       = MaterialType::PBR;

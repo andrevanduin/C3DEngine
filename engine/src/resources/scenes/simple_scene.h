@@ -67,9 +67,16 @@ namespace C3D
          * @brief Loads the scene. Allocates the resources required to actually show the scene.
          * After calling this method the scene becomes playable
          *
-         * @return True if successful, false otherwise
+         * @return True if successful; False otherwise
          */
         bool Load();
+
+        /**
+         * @brief Saves the scene to a file.
+         * 
+         * @return True if successful; False otherwise
+         */
+        bool Save();
 
         /**
          * @brief Marks the scene to be unloaded. Will start unloading as soon as possible.

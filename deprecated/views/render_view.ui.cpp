@@ -3,7 +3,7 @@
 #include <renderer/renderer_frontend.h>
 #include <renderer/viewport.h>
 #include <resources/font.h>
-#include <resources/loaders/shader_loader.h>
+#include <resources/managers/shader_manager.h>
 #include <resources/mesh.h>
 #include <resources/ui_text.h>
 #include <systems/materials/material_system.h>
@@ -43,7 +43,7 @@ bool RenderViewUi::OnCreate()
     // Builtin skybox shader
     const auto shaderName = "Shader.Builtin.UI";
     C3D::ShaderConfig shaderConfig;
-    if (!Resources.Load(shaderName, shaderConfig))
+    if (!Resources.Read(shaderName, shaderConfig))
     {
         ERROR_LOG("Failed to load ShaderResource.");
         return false;
@@ -55,7 +55,7 @@ bool RenderViewUi::OnCreate()
         return false;
     }
 
-    Resources.Unload(shaderConfig);
+    Resources.Cleanup(shaderConfig);
 
     m_shader             = Shaders.Get(m_customShaderName ? m_customShaderName.Data() : shaderName);
     m_diffuseMapLocation = Shaders.GetUniformIndex(m_shader, "diffuseTexture");

@@ -151,8 +151,10 @@ namespace C3D
     };
     typedef u32 ShaderFlagBits;
 
-    struct ShaderConfig final : Resource
+    struct ShaderConfig final : IResource
     {
+        ShaderConfig() : IResource(ResourceType::Shader) {}
+
         String name;
 
         /** @brief The face cull mode to be used. Default is BACK if not supplied. */

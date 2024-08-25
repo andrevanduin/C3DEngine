@@ -5,6 +5,10 @@
 
 void ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line)
 {
-    std::cout << "Assertion failed: " << expression << ", message: " << message << ", in file: " << file
-              << ", on line: " << line << std::endl;
+    std::cout << file << "(" << line << "): Assertion failed: '" << expression << "' with message: '" << message << "'\n";
+}
+
+void C3D_API ReportAssertionFailure(const char* expression, const char* file, i32 line)
+{
+    std::cout << file << "(" << line << "): Assertion failed: '" << expression << "'\n";
 }

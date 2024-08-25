@@ -5,7 +5,7 @@
 #include "core/scoped_timer.h"
 #include "platform/file_system.h"
 #include "renderer/vertex.h"
-#include "resource_loader.h"
+#include "resource_manager.h"
 #include "resources/geometry_config.h"
 #include "resources/materials/material_types.h"
 #include "systems/system_manager.h"
@@ -46,24 +46,26 @@ namespace C3D
         DynamicArray<MeshFaceData> faces;
     };
 
-    struct MeshResource final : Resource
+    struct MeshResource final : public IResource
     {
+        MeshResource() : IResource(ResourceType::Mesh) {}
+
         DynamicArray<GeometryConfig> geometryConfigs;
     };
 
-    struct UIMeshResource final : Resource
+    struct UIMeshResource final : IResource
     {
         DynamicArray<UIGeometryConfig> geometryConfigs;
     };
 
     template <>
-    class ResourceLoader<MeshResource> final : public IResourceLoader
+    class ResourceManager<MeshResource> final : public IResourceManager
     {
     public:
-        ResourceLoader();
+        ResourceManager();
 
-        bool Load(const char* name, MeshResource& resource) const;
-        void Unload(MeshResource& resource) const;
+        bool Read(const String& name, MeshResource& resource) const;
+        void Cleanup(MeshResource& resource) const;
 
     private:
         bool ImportObjFile(File& file, const String& outCsmFileName, DynamicArray<GeometryConfig>& outGeometries) const;
@@ -89,7 +91,7 @@ namespace C3D
     };
 
     template <typename VertexType, typename IndexType>
-    bool ResourceLoader<MeshResource>::LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const
+    bool ResourceManager<MeshResource>::LoadCsmFile(File& file, DynamicArray<IGeometryConfig<VertexType, IndexType>>& outGeometries) const
     {
         auto timer = ScopedTimer("LoadCsmFile");
 
@@ -157,8 +159,8 @@ namespace C3D
     }
 
     template <typename VertexType, typename IndexType>
-    bool ResourceLoader<MeshResource>::WriteCsmFile(const String& path, const char* name,
-                                                    DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const
+    bool ResourceManager<MeshResource>::WriteCsmFile(const String& path, const char* name,
+                                                     DynamicArray<IGeometryConfig<VertexType, IndexType>>& geometries) const
     {
         if (File::Exists(path))
         {

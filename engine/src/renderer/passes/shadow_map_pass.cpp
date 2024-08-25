@@ -6,7 +6,7 @@
 #include "renderer/geometry.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/viewport.h"
-#include "resources/loaders/shader_loader.h"
+#include "resources/managers/shader_manager.h"
 #include "resources/mesh.h"
 #include "resources/shaders/shader_types.h"
 #include "resources/skybox.h"
@@ -72,7 +72,7 @@ namespace C3D
         {
             // If it does not yet exist we load and create it
             C3D::ShaderConfig config;
-            if (!Resources.Load(SHADER_NAME, config))
+            if (!Resources.Read(SHADER_NAME, config))
             {
                 ERROR_LOG("Failed to load ShaderResource for: '{}'.", SHADER_NAME);
                 return false;
@@ -83,7 +83,7 @@ namespace C3D
                 ERROR_LOG("Failed to Create: '{}'.", SHADER_NAME);
                 return false;
             }
-            Resources.Unload(config);
+            Resources.Cleanup(config);
 
             m_shader = Shaders.Get(SHADER_NAME);
             if (!m_shader)
@@ -99,7 +99,7 @@ namespace C3D
         {
             // If it does not yet exist we load and create it
             C3D::ShaderConfig config;
-            if (!Resources.Load(TERRAIN_SHADER_NAME, config))
+            if (!Resources.Read(TERRAIN_SHADER_NAME, config))
             {
                 ERROR_LOG("Failed to load ShaderResource for: '{}'.", TERRAIN_SHADER_NAME);
                 return false;
@@ -110,7 +110,7 @@ namespace C3D
                 ERROR_LOG("Failed to Create: '{}'.", TERRAIN_SHADER_NAME);
                 return false;
             }
-            Resources.Unload(config);
+            Resources.Cleanup(config);
 
             m_terrainShader = Shaders.Get(TERRAIN_SHADER_NAME);
             if (!m_terrainShader)

@@ -8,7 +8,7 @@
 #include "core/string_utils.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/renderer_types.h"
-#include "resources/loaders/material_loader.h"
+#include "resources/managers/material_manager.h"
 #include "resources/shaders/shader.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/lights/light_system.h"
@@ -140,14 +140,14 @@ namespace C3D
         }
 
         MaterialConfig materialConfig;
-        if (!Resources.Load(name, materialConfig))
+        if (!Resources.Read(name, materialConfig))
         {
             ERROR_LOG("Failed to load material resource: '{}'. Returning nullptr.", name);
             return nullptr;
         }
 
         Material* m = AcquireFromConfig(materialConfig);
-        Resources.Unload(materialConfig);
+        Resources.Cleanup(materialConfig);
 
         if (!m)
         {
@@ -221,7 +221,7 @@ namespace C3D
             {
                 // Load each individual material config
                 MaterialConfig config;
-                if (!Resources.Load(name, config))
+                if (!Resources.Read(name, config))
                 {
                     ERROR_LOG("Failed to load material resources: '{}'.", name)
                     return nullptr;
@@ -241,7 +241,7 @@ namespace C3D
                 }
 
                 // Cleanup our config
-                Resources.Unload(config);
+                Resources.Cleanup(config);
             }
 
             // Create a new Terrain Material that will hold all these internal materials

@@ -133,7 +133,7 @@ namespace C3D
     bool Mesh::LoadJobEntry()
     {
         auto timer = ScopedTimer("Load Mesh from file");
-        return Resources.Load(config.resourceName, m_resource);
+        return Resources.Read(config.resourceName, m_resource);
     }
 
     void Mesh::LoadJobSuccess()
@@ -239,7 +239,7 @@ namespace C3D
 
         {
             auto timer = ScopedTimer("Unloading Resource");
-            Resources.Unload(m_resource);
+            Resources.Cleanup(m_resource);
         }
     }
 
@@ -247,7 +247,7 @@ namespace C3D
     {
         ERROR_LOG("Failed to load: '{}'.", config.resourceName);
 
-        Resources.Unload(m_resource);
+        Resources.Cleanup(m_resource);
     }
 
     bool UIMesh::LoadFromConfig(const UIGeometryConfig& config)

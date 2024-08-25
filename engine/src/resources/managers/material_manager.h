@@ -1,19 +1,18 @@
 
 #pragma once
-#include "base_text_loader.h"
+#include "base_text_manager.h"
 #include "resources/materials/material_types.h"
 
 namespace C3D
 {
     template <>
-    class C3D_API ResourceLoader<MaterialConfig> final : public IResourceLoader, BaseTextLoader<MaterialConfig>
+    class C3D_API ResourceManager<MaterialConfig> final : public IResourceManager, BaseTextManager<MaterialConfig>
     {
     public:
-        ResourceLoader();
+        ResourceManager();
 
-        bool Load(const char* name, MaterialConfig& resource) const;
-
-        static void Unload(MaterialConfig& resource);
+        bool Read(const String& name, MaterialConfig& resource) const;
+        void Cleanup(MaterialConfig& resource) const;
 
     private:
         enum ParserTagType

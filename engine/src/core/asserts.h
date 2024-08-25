@@ -13,6 +13,7 @@
 #endif
 
 void C3D_API ReportAssertionFailure(const char* expression, const char* message, const char* file, i32 line);
+void C3D_API ReportAssertionFailure(const char* expression, const char* file, i32 line);
 
 #define C3D_FAIL(msg)                                            \
     {                                                            \
@@ -20,16 +21,22 @@ void C3D_API ReportAssertionFailure(const char* expression, const char* message,
         DebugBreak();                                            \
     }
 
-#define C3D_ASSERT(expr)                                           \
-    {                                                              \
-        if (expr)                                                  \
-        {                                                          \
-        }                                                          \
-        else                                                       \
-        {                                                          \
-            ReportAssertionFailure(#expr, "", __FILE__, __LINE__); \
-            DebugBreak();                                          \
-        }                                                          \
+#define C3D_NOT_IMPLEMENTED()                                               \
+    {                                                                       \
+        ReportAssertionFailure("Not implemented yet.", __FILE__, __LINE__); \
+        DebugBreak();                                                       \
+    }
+
+#define C3D_ASSERT(expr)                                       \
+    {                                                          \
+        if (expr)                                              \
+        {                                                      \
+        }                                                      \
+        else                                                   \
+        {                                                      \
+            ReportAssertionFailure(#expr, __FILE__, __LINE__); \
+            DebugBreak();                                      \
+        }                                                      \
     }
 
 #define C3D_ASSERT_MSG(expr, message)                                   \
@@ -45,16 +52,16 @@ void C3D_API ReportAssertionFailure(const char* expression, const char* message,
     }
 
 #ifdef _DEBUG
-#define C3D_ASSERT_DEBUG(expr)                                     \
-    {                                                              \
-        if (expr)                                                  \
-        {                                                          \
-        }                                                          \
-        else                                                       \
-        {                                                          \
-            ReportAssertionFailure(#expr, "", __FILE__, __LINE__); \
-            DebugBreak();                                          \
-        }                                                          \
+#define C3D_ASSERT_DEBUG(expr)                                 \
+    {                                                          \
+        if (expr)                                              \
+        {                                                      \
+        }                                                      \
+        else                                                   \
+        {                                                      \
+            ReportAssertionFailure(#expr, __FILE__, __LINE__); \
+            DebugBreak();                                      \
+        }                                                      \
     }
 
 #define C3D_ASSERT_DEBUG_MSG(expr, message)                             \

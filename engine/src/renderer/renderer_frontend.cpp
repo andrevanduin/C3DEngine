@@ -8,7 +8,7 @@
 #include "geometry.h"
 #include "platform/platform.h"
 #include "renderer_utils.h"
-#include "resources/loaders/text_loader.h"
+#include "resources/managers/text_manager.h"
 #include "resources/shaders/shader.h"
 #include "systems/cvars/cvar_system.h"
 #include "systems/resources/resource_system.h"
@@ -424,7 +424,7 @@ namespace C3D
         for (auto& stageConfig : shader.stageConfigs)
         {
             TextResource source;
-            if (!Resources.Load(stageConfig.fileName, source))
+            if (!Resources.Read(stageConfig.fileName, source))
             {
                 ERROR_LOG("Failed to read shader file: '{}'.", stageConfig.fileName);
             }
@@ -442,7 +442,7 @@ namespace C3D
             shader.moduleWatchIds.PushBack(watchId);
 #endif
 
-            Resources.Unload(source);
+            Resources.Cleanup(source);
         }
 
         return m_backendPlugin->CreateShader(shader, config, pass);
@@ -455,7 +455,7 @@ namespace C3D
         for (auto& config : shader.stageConfigs)
         {
             TextResource stage;
-            if (!Resources.Load(config.fileName, stage))
+            if (!Resources.Read(config.fileName, stage))
             {
                 ERROR_LOG("Failed to read shader source file: '{}'. Shader reloading has been stopped.", config.fileName);
                 return false;
@@ -470,7 +470,7 @@ namespace C3D
             newConfig.source = stage.text;
             newStageConfigs.PushBack(newConfig);
 
-            Resources.Unload(stage);
+            Resources.Cleanup(stage);
         }
 
         // Replace the old stage configs with the new ones

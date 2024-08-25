@@ -14,7 +14,7 @@ namespace C3D
     {
         constexpr ImageLoadParams resourceParams{ true };
 
-        const auto result = Resources.Load(m_name.Data(), m_image, resourceParams);
+        const auto result = Resources.Read(m_name.Data(), m_image, resourceParams);
         if (result)
         {
             // Use our temporary texture to load into
@@ -81,7 +81,7 @@ namespace C3D
     void LoadingTexture::Cleanup()
     {
         // Unload our image resource
-        Resources.Unload(m_image);
+        Resources.Cleanup(m_image);
         // Destroy the resource name
         m_name.Destroy();
         // Destroy the underlying memory
@@ -99,10 +99,10 @@ namespace C3D
         AsyncResult result;
 
         constexpr ImageLoadParams resourceParams{ true };
-        result.success = Resources.Load(name, result.image, resourceParams);
+        result.success = Resources.Read(name, result.image, resourceParams);
         if (!result.success)
         {
-            Resources.Unload(result.image);
+            Resources.Cleanup(result.image);
             ERROR_LOG("Failed to load texture resources for: '{}'.", name);
         }
         return result;
@@ -185,7 +185,7 @@ namespace C3D
             u8* dataLocation = m_dataBlock + (layer * layerSize);
             std::memcpy(dataLocation, result.image.pixels, layerSize);
 
-            Resources.Unload(result.image);
+            Resources.Cleanup(result.image);
         }
 
         if (hasTransparency)

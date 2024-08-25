@@ -1,20 +1,19 @@
 
 #pragma once
-#include "base_text_loader.h"
-#include "resource_loader.h"
+#include "base_text_manager.h"
+#include "resource_manager.h"
 #include "resources/shaders/shader_types.h"
 
 namespace C3D
 {
     template <>
-    class C3D_API ResourceLoader<ShaderConfig> final : public IResourceLoader, BaseTextLoader<ShaderConfig>
+    class C3D_API ResourceManager<ShaderConfig> final : public IResourceManager, BaseTextManager<ShaderConfig>
     {
     public:
-        ResourceLoader();
+        ResourceManager();
 
-        bool Load(const char* name, ShaderConfig& resource) const;
-
-        static void Unload(ShaderConfig& resource);
+        bool Read(const String& name, ShaderConfig& resource) const;
+        void Cleanup(ShaderConfig& resource) const;
 
     private:
         enum class ParserTagType

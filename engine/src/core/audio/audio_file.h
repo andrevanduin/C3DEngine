@@ -15,9 +15,11 @@ namespace C3D
         MP3
     };
 
-    class C3D_API AudioFile : public Resource
+    class C3D_API AudioFile : public IResource
     {
     public:
+        AudioFile() : IResource(ResourceType::AudioFile) {}
+
         u64 LoadSamples(u32 chunkSize);
         void* StreamBufferData();
         void Rewind();

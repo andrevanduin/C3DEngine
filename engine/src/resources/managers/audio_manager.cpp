@@ -1,5 +1,5 @@
 
-#include "audio_loader.h"
+#include "audio_manager.h"
 
 #include <stb/stb_vorbis.h>
 
@@ -12,17 +12,21 @@ namespace C3D
 {
     constexpr auto AUDIO_EXTENSION_COUNT = 2;
 
-    ResourceLoader<AudioFile>::ResourceLoader() : IResourceLoader(MemoryType::AudioType, ResourceType::AudioFile, nullptr, "audio") {}
+    ResourceManager<AudioFile>::ResourceManager() : IResourceManager(MemoryType::AudioType, ResourceType::AudioFile, nullptr, "audio") {}
 
-    bool ResourceLoader<AudioFile>::Init()
+    bool ResourceManager<AudioFile>::Init()
     {
         mp3dec_init(&m_mp3Decoder);
         return true;
     }
 
-    bool ResourceLoader<AudioFile>::Load(const char* name, AudioFile& resource, const AudioFileParams& params) const
+    bool ResourceManager<AudioFile>::Read(const String& name, AudioFile& resource, const AudioFileParams& params) const
     {
-        if (std::strlen(name) == 0) return false;
+        if (name.Empty())
+        {
+            ERROR_LOG("No valid name was provided.");
+            return false;
+        }
 
         String fullPath(512);
 
@@ -65,7 +69,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<AudioFile>::Unload(AudioFile& resource)
+    void ResourceManager<AudioFile>::Cleanup(AudioFile& resource) const
     {
         resource.fullPath.Destroy();
         resource.name.Destroy();

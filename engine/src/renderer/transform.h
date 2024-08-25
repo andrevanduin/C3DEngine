@@ -70,3 +70,23 @@ namespace C3D
         mutable bool m_needsUpdate = true;
     };
 }  // namespace C3D
+
+template <>
+struct fmt::formatter<C3D::Transform>
+{
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const C3D::Transform& transform, FormatContext& ctx)
+    {
+        const auto p = transform.GetPosition();
+        const auto r = transform.GetRotation();
+        const auto s = transform.GetScale();
+
+        return fmt::format_to(ctx.out(), "{}, {}, {}, {}, {}, {}, {}, {}, {}, {}", p.x, p.y, p.z, r.x, r.y, r.z, r.w, s.x, s.y, s.z);
+    }
+};

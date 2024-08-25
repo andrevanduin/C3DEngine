@@ -236,7 +236,6 @@ namespace C3D
             {
                 // Skip threads that don't match the type of job
                 if ((thread.typeMask & jobInfo.type) == 0) continue;
-
                 {
                     // Lock our thread so we can access it
                     std::lock_guard threadLock(thread.mutex);

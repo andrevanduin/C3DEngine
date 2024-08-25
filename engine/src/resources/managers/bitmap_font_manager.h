@@ -2,7 +2,7 @@
 #pragma once
 #include "containers/dynamic_array.h"
 #include "containers/string.h"
-#include "resource_loader.h"
+#include "resource_manager.h"
 #include "resources/font.h"
 #include "resources/resource_types.h"
 
@@ -24,20 +24,22 @@ namespace C3D
         bool isBinary;
     };
 
-    struct BitmapFontResource : Resource
+    struct BitmapFontResource : public IResource
     {
+        BitmapFontResource() : IResource(ResourceType::BitmapFont) {}
+
         FontData data;
         DynamicArray<BitmapFontPage> pages;
     };
 
     template <>
-    class ResourceLoader<BitmapFontResource> final : public IResourceLoader
+    class ResourceManager<BitmapFontResource> final : public IResourceManager
     {
     public:
-        ResourceLoader();
+        ResourceManager();
 
-        bool Load(const char* name, BitmapFontResource& resource) const;
-        static void Unload(BitmapFontResource& resource);
+        bool Read(const String& name, BitmapFontResource& resource) const;
+        void Cleanup(BitmapFontResource& resource) const;
 
     private:
         bool ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource& data) const;

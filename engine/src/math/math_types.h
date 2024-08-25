@@ -125,7 +125,7 @@ struct fmt::formatter<vec2>
     template <typename FormatContext>
     auto format(vec2 const& vector, FormatContext& ctx)
     {
-        return fmt::format_to(ctx.out(), "({}, {})", vector.x, vector.y);
+        return fmt::format_to(ctx.out(), "{}, {}", vector.x, vector.y);
     }
 };
 
@@ -141,7 +141,7 @@ struct fmt::formatter<vec3>
     template <typename FormatContext>
     auto format(vec3 const& vector, FormatContext& ctx)
     {
-        return fmt::format_to(ctx.out(), "({}, {}, {})", vector.x, vector.y, vector.z);
+        return fmt::format_to(ctx.out(), "{}, {}, {}", vector.x, vector.y, vector.z);
     }
 };
 
@@ -157,6 +157,6 @@ struct fmt::formatter<vec4>
     template <typename FormatContext>
     auto format(vec4 const& vector, FormatContext& ctx)
     {
-        return fmt::format_to(ctx.out(), "({}, {}, {}, {})", vector.x, vector.y, vector.z, vector.w);
+        return fmt::format_to(ctx.out(), "{}, {}, {}, {}", vector.x, vector.y, vector.z, vector.w);
     }
 };

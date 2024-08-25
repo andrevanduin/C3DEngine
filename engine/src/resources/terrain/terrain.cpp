@@ -428,7 +428,7 @@ namespace C3D
     bool Terrain::LoadJobEntry()
     {
         auto timer = ScopedTimer("Loading Terrain Resource");
-        return Resources.Load(m_config.resourceName, m_config);
+        return Resources.Read(m_config.resourceName, m_config);
     }
 
     void Terrain::LoadJobSuccess()
@@ -517,7 +517,7 @@ namespace C3D
         {
             auto timer = ScopedTimer("Unloading Terrain Config");
 
-            Resources.Unload(m_config);
+            Resources.Cleanup(m_config);
         }
 
         m_id.Generate();
@@ -527,6 +527,6 @@ namespace C3D
     {
         ERROR_LOG("Failed to load: '{}'.", m_config.resourceName);
 
-        Resources.Unload(m_config);
+        Resources.Cleanup(m_config);
     }
 }  // namespace C3D

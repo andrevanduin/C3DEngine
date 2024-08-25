@@ -1,5 +1,5 @@
 
-#include "bitmap_font_loader.h"
+#include "bitmap_font_manager.h"
 
 #include "containers/string.h"
 #include "core/engine.h"
@@ -15,11 +15,11 @@ namespace C3D
         { ".fnt", BitmapFontFileType::FNT, false },
     };
 
-    ResourceLoader<BitmapFontResource>::ResourceLoader()
-        : IResourceLoader(MemoryType::BitmapFont, ResourceType::BitmapFont, nullptr, "fonts")
+    ResourceManager<BitmapFontResource>::ResourceManager()
+        : IResourceManager(MemoryType::BitmapFont, ResourceType::BitmapFont, nullptr, "fonts")
     {}
 
-    bool ResourceLoader<BitmapFontResource>::Load(const char* name, BitmapFontResource& resource) const
+    bool ResourceManager<BitmapFontResource>::Read(const String& name, BitmapFontResource& resource) const
     {
         File file;
 
@@ -78,12 +78,11 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<BitmapFontResource>::Unload(BitmapFontResource& resource)
+    void ResourceManager<BitmapFontResource>::Cleanup(BitmapFontResource& resource) const
     {
         resource.data.glyphs.Destroy();
         resource.data.kernings.Destroy();
         resource.pages.Destroy();
-        resource.loaderId = INVALID_ID;
 
         resource.fullPath.Destroy();
         resource.name.Destroy();
@@ -96,7 +95,7 @@ namespace C3D
         return false;                                                                         \
     }
 
-    bool ResourceLoader<BitmapFontResource>::ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource& data) const
+    bool ResourceManager<BitmapFontResource>::ImportFntFile(File& file, const String& outCbfFilename, BitmapFontResource& data) const
     {
         String line;
         line.Reserve(512);
@@ -170,7 +169,7 @@ namespace C3D
         return out.Size() == 2;
     }
 
-    bool ResourceLoader<BitmapFontResource>::ParseInfoLine(const String& line, BitmapFontResource& res)
+    bool ResourceManager<BitmapFontResource>::ParseInfoLine(const String& line, BitmapFontResource& res)
     {
         auto elements = line.Split('\"');
 
@@ -185,7 +184,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceLoader<BitmapFontResource>::ParseCommonLine(const String& line, BitmapFontResource& res) const
+    bool ResourceManager<BitmapFontResource>::ParseCommonLine(const String& line, BitmapFontResource& res) const
     {
         const auto elements = line.Split(' ');
         DynamicArray<String> values;
@@ -216,7 +215,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceLoader<BitmapFontResource>::ParseCharsLine(const String& line, BitmapFontResource& res) const
+    bool ResourceManager<BitmapFontResource>::ParseCharsLine(const String& line, BitmapFontResource& res) const
     {
         const auto elements = line.Split(' ');
         DynamicArray<String> values;
@@ -234,7 +233,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceLoader<BitmapFontResource>::ParseCharLine(const String& line, BitmapFontResource& res)
+    bool ResourceManager<BitmapFontResource>::ParseCharLine(const String& line, BitmapFontResource& res)
     {
         const auto elements = line.Split(' ');
         DynamicArray<String> values;
@@ -272,7 +271,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceLoader<BitmapFontResource>::ParsePageLine(const String& line, BitmapFontResource& res)
+    bool ResourceManager<BitmapFontResource>::ParsePageLine(const String& line, BitmapFontResource& res)
     {
         const auto elements = line.Split('\"');
         DynamicArray<String> values;
@@ -292,7 +291,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceLoader<BitmapFontResource>::ParseKerningsLine(const String& line, BitmapFontResource& res) const
+    bool ResourceManager<BitmapFontResource>::ParseKerningsLine(const String& line, BitmapFontResource& res) const
     {
         const auto elements = line.Split(' ');
         DynamicArray<String> values;
@@ -310,7 +309,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceLoader<BitmapFontResource>::ParseKerningLine(const String& line, BitmapFontResource& res)
+    bool ResourceManager<BitmapFontResource>::ParseKerningLine(const String& line, BitmapFontResource& res)
     {
         const auto elements = line.Split(' ');
         DynamicArray<String> values;
@@ -330,7 +329,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceLoader<BitmapFontResource>::ReadCbfFile(File& file, BitmapFontResource& res) const
+    bool ResourceManager<BitmapFontResource>::ReadCbfFile(File& file, BitmapFontResource& res) const
     {
         ResourceHeader header = {};
         file.Read(&header);
@@ -387,7 +386,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceLoader<BitmapFontResource>::WriteCbfFile(const String& path, const BitmapFontResource& res) const
+    bool ResourceManager<BitmapFontResource>::WriteCbfFile(const String& path, const BitmapFontResource& res) const
     {
         File file;
         if (!file.Open(path, FileModeWrite | FileModeBinary))

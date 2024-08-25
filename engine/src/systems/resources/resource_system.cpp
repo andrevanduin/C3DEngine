@@ -4,34 +4,34 @@
 #include "core/logger.h"
 
 // Default loaders
-#include "resources/loaders/audio_loader.h"
-#include "resources/loaders/binary_loader.h"
-#include "resources/loaders/bitmap_font_loader.h"
-#include "resources/loaders/image_loader.h"
-#include "resources/loaders/material_loader.h"
-#include "resources/loaders/mesh_loader.h"
-#include "resources/loaders/shader_loader.h"
-#include "resources/loaders/simple_scene_loader.h"
-#include "resources/loaders/terrain_loader.h"
-#include "resources/loaders/text_loader.h"
+#include "resources/managers/audio_manager.h"
+#include "resources/managers/binary_manager.h"
+#include "resources/managers/bitmap_font_manager.h"
+#include "resources/managers/image_manager.h"
+#include "resources/managers/material_manager.h"
+#include "resources/managers/mesh_manager.h"
+#include "resources/managers/shader_manager.h"
+#include "resources/managers/simple_scene_manager.h"
+#include "resources/managers/terrain_manager.h"
+#include "resources/managers/text_manager.h"
 
 namespace C3D
 {
     ResourceSystem::ResourceSystem()
     {
-        m_loaderTypes[ToUnderlying(ResourceType::None)]        = "None";
-        m_loaderTypes[ToUnderlying(ResourceType::Text)]        = "Text";
-        m_loaderTypes[ToUnderlying(ResourceType::Binary)]      = "Binary";
-        m_loaderTypes[ToUnderlying(ResourceType::Image)]       = "Image";
-        m_loaderTypes[ToUnderlying(ResourceType::Material)]    = "Material";
-        m_loaderTypes[ToUnderlying(ResourceType::Mesh)]        = "StaticMesh";
-        m_loaderTypes[ToUnderlying(ResourceType::Shader)]      = "Shader";
-        m_loaderTypes[ToUnderlying(ResourceType::BitmapFont)]  = "BitmapFont";
-        m_loaderTypes[ToUnderlying(ResourceType::SystemFont)]  = "SystemFont";
-        m_loaderTypes[ToUnderlying(ResourceType::SimpleScene)] = "SimpleScene";
-        m_loaderTypes[ToUnderlying(ResourceType::Terrain)]     = "Terrain";
-        m_loaderTypes[ToUnderlying(ResourceType::AudioFile)]   = "Audio";
-        m_loaderTypes[ToUnderlying(ResourceType::Custom)]      = "Custom";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::None)]        = "None";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Text)]        = "Text";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Binary)]      = "Binary";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Image)]       = "Image";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Material)]    = "Material";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Mesh)]        = "StaticMesh";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Shader)]      = "Shader";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::BitmapFont)]  = "BitmapFont";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::SystemFont)]  = "SystemFont";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::SimpleScene)] = "SimpleScene";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Terrain)]     = "Terrain";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::AudioFile)]   = "Audio";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Custom)]      = "Custom";
     }
 
     bool ResourceSystem::OnInit(const ResourceSystemConfig& config)
@@ -47,24 +47,27 @@ namespace C3D
         m_config      = config;
         m_initialized = true;
 
-        const auto textLoader       = Memory.New<ResourceLoader<TextResource>>(MemoryType::ResourceLoader);
-        const auto binaryLoader     = Memory.New<ResourceLoader<BinaryResource>>(MemoryType::ResourceLoader);
-        const auto imageLoader      = Memory.New<ResourceLoader<Image>>(MemoryType::ResourceLoader);
-        const auto materialLoader   = Memory.New<ResourceLoader<MaterialConfig>>(MemoryType::ResourceLoader);
-        const auto shaderLoader     = Memory.New<ResourceLoader<ShaderConfig>>(MemoryType::ResourceLoader);
-        const auto meshLoader       = Memory.New<ResourceLoader<MeshResource>>(MemoryType::ResourceLoader);
-        const auto bitmapFontLoader = Memory.New<ResourceLoader<BitmapFontResource>>(MemoryType::ResourceLoader);
-        const auto terrainLoader    = Memory.New<ResourceLoader<TerrainConfig>>(MemoryType::ResourceLoader);
-        const auto audioLoader      = Memory.New<ResourceLoader<AudioFile>>(MemoryType::ResourceLoader);
-        const auto sceneLoader      = Memory.New<ResourceLoader<SimpleSceneConfig>>(MemoryType::ResourceLoader);
+        const auto textLoader       = Memory.New<ResourceManager<TextResource>>(MemoryType::ResourceLoader);
+        const auto binaryLoader     = Memory.New<ResourceManager<BinaryResource>>(MemoryType::ResourceLoader);
+        const auto imageLoader      = Memory.New<ResourceManager<Image>>(MemoryType::ResourceLoader);
+        const auto materialLoader   = Memory.New<ResourceManager<MaterialConfig>>(MemoryType::ResourceLoader);
+        const auto shaderLoader     = Memory.New<ResourceManager<ShaderConfig>>(MemoryType::ResourceLoader);
+        const auto meshLoader       = Memory.New<ResourceManager<MeshResource>>(MemoryType::ResourceLoader);
+        const auto bitmapFontLoader = Memory.New<ResourceManager<BitmapFontResource>>(MemoryType::ResourceLoader);
+        const auto terrainLoader    = Memory.New<ResourceManager<TerrainConfig>>(MemoryType::ResourceLoader);
+        const auto audioLoader      = Memory.New<ResourceManager<AudioFile>>(MemoryType::ResourceLoader);
+        const auto sceneLoader      = Memory.New<ResourceManager<SimpleSceneConfig>>(MemoryType::ResourceLoader);
 
-        for (IResourceLoader* loaders[10] = { textLoader, binaryLoader, imageLoader, materialLoader, shaderLoader, meshLoader,
-                                              bitmapFontLoader, terrainLoader, audioLoader, sceneLoader };
-             const auto loader : loaders)
+        IResourceManager* managers[10] = { textLoader, binaryLoader,     imageLoader,   materialLoader, shaderLoader,
+                                           meshLoader, bitmapFontLoader, terrainLoader, audioLoader,    sceneLoader };
+
+        m_registeredManagers.Resize(16);
+
+        for (const auto manager : managers)
         {
-            if (!RegisterLoader(loader))
+            if (!RegisterManager(manager))
             {
-                FATAL_LOG("Failed for '{}' loader.", m_loaderTypes[ToUnderlying(loader->type)]);
+                FATAL_LOG("Failed for '{}' manager.", m_resourceManagerTypes[ToUnderlying(manager->type)]);
                 return false;
             }
         }
@@ -76,41 +79,35 @@ namespace C3D
     void ResourceSystem::OnShutdown()
     {
         INFO_LOG("Destroying all registered loaders.");
-        for (const auto loader : m_registeredLoaders)
+        for (const auto manager : m_registeredManagers)
         {
-            Memory.Delete(loader);
+            if (manager)
+            {
+                Memory.Delete(manager);
+            }
         }
-        m_registeredLoaders.Destroy();
+        m_registeredManagers.Destroy();
     }
 
-    bool ResourceSystem::RegisterLoader(IResourceLoader* newLoader)
+    bool ResourceSystem::RegisterManager(IResourceManager* newManager)
     {
         if (!m_initialized) return false;
 
-        for (const auto loader : m_registeredLoaders)
+        if (newManager->id == INVALID_ID_U16)
         {
-            if (loader->type == newLoader->type)
-            {
-                ERROR_LOG("A loader of type '{}' already exists so the new one will not be registered.",
-                          m_loaderTypes[ToUnderlying(newLoader->type)]);
-                return false;
-            }
-            if (loader->customType && !loader->customType.Empty() && loader->customType.IEquals(newLoader->customType))
-            {
-                ERROR_LOG("A loader of custom type '{}' already exists so the new one will not be registered.", newLoader->customType);
-                return false;
-            }
-        }
-
-        if (m_registeredLoaders.Size() >= m_config.maxLoaderCount)
-        {
-            ERROR_LOG("Could not find a free slot for the new resource loader. Increase config.maxLoaderCount.");
+            ERROR_LOG("Manager has an invalid id.");
             return false;
         }
 
-        newLoader->id = static_cast<u32>(m_registeredLoaders.Size());
-        m_registeredLoaders.PushBack(newLoader);
-        INFO_LOG("{}Loader registered.", m_loaderTypes[ToUnderlying(newLoader->type)]);
+        if (m_registeredManagers[newManager->id])
+        {
+            ERROR_LOG("Manager at index: {} already exists.", newManager->id);
+            return false;
+        }
+
+        m_registeredManagers[newManager->id] = newManager;
+
+        INFO_LOG("{}Manager registered.", m_resourceManagerTypes[ToUnderlying(newManager->type)]);
         return true;
     }
 

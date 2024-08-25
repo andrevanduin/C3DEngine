@@ -4,7 +4,7 @@
 #include <renderer/camera.h>
 #include <renderer/renderer_frontend.h>
 #include <renderer/viewport.h>
-#include <resources/loaders/shader_loader.h>
+#include <resources/managers/shader_manager.h>
 #include <resources/shaders/shader_types.h>
 #include <resources/skybox.h>
 #include <systems/resources/resource_system.h>
@@ -43,7 +43,7 @@ namespace C3D
         }
 
         ShaderConfig config;
-        if (!Resources.Load(SKYBOX_SHADER_NAME, config))
+        if (!Resources.Read(SKYBOX_SHADER_NAME, config))
         {
             ERROR_LOG("Failed to load ShaderResource for Skybox Shader.");
             return false;
@@ -54,7 +54,7 @@ namespace C3D
             ERROR_LOG("Failed to load builtin Skybox Shader.");
             return false;
         }
-        Resources.Unload(config);
+        Resources.Cleanup(config);
 
         m_shader = Shaders.Get(SKYBOX_SHADER_NAME);
         if (!m_shader)

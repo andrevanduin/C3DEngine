@@ -5,7 +5,7 @@
 #include "core/defines.h"
 #include "core/uuid.h"
 #include "resources/font.h"
-#include "resources/loaders/bitmap_font_loader.h"
+#include "resources/managers/bitmap_font_manager.h"
 #include "systems/system.h"
 
 namespace C3D

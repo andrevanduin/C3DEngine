@@ -2,7 +2,7 @@
 #pragma once
 #include "containers/string.h"
 #include "core/defines.h"
-#include "resources/loaders/image_loader.h"
+#include "resources/managers/image_manager.h"
 #include "texture.h"
 
 namespace C3D

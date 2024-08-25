@@ -6,7 +6,7 @@
 #include "containers/string.h"
 #include "core/defines.h"
 #include "core/logger.h"
-#include "resources/loaders/image_loader.h"
+#include "resources/managers/image_manager.h"
 #include "resources/textures/texture.h"
 #include "systems/system.h"
 

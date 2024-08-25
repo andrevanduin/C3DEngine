@@ -1,13 +1,15 @@
 
 #pragma once
-#include "resource_loader.h"
+#include "resource_manager.h"
 
 namespace C3D
 {
     constexpr auto IMAGE_LOADER_EXTENSION_COUNT = 4;
 
-    struct Image final : Resource
+    struct Image final : public IResource
     {
+        Image() : IResource(ResourceType::Image) {}
+
         u8 channelCount = 0;
         u32 width       = 0;
         u32 height      = 0;
@@ -25,14 +27,13 @@ namespace C3D
     };
 
     template <>
-    class ResourceLoader<Image> final : public IResourceLoader
+    class ResourceManager<Image> final : public IResourceManager
     {
     public:
-        ResourceLoader();
+        ResourceManager();
 
-        bool Load(const char* name, Image& resource) const;
-        bool Load(const char* name, Image& resource, const ImageLoadParams& params) const;
-
-        static void Unload(Image& resource);
+        bool Read(const String& name, Image& resource) const;
+        bool Read(const String& name, Image& resource, const ImageLoadParams& params) const;
+        void Cleanup(Image& resource) const;
     };
 }  // namespace C3D

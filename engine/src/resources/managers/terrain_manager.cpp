@@ -1,10 +1,10 @@
 
-#include "terrain_loader.h"
+#include "terrain_manager.h"
 
 #include "core/colors.h"
 #include "core/exceptions.h"
 #include "platform/file_system.h"
-#include "resources/loaders/image_loader.h"
+#include "resources/managers/image_manager.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
 
@@ -12,13 +12,13 @@ namespace C3D
 {
     constexpr auto FILE_EXTENSION = "cterrain";
 
-    ResourceLoader<TerrainConfig>::ResourceLoader() : IResourceLoader(MemoryType::Terrain, ResourceType::Terrain, nullptr, "terrains") {}
+    ResourceManager<TerrainConfig>::ResourceManager() : IResourceManager(MemoryType::Terrain, ResourceType::Terrain, nullptr, "terrains") {}
 
-    bool ResourceLoader<TerrainConfig>::Load(const char* name, TerrainConfig& resource) const
+    bool ResourceManager<TerrainConfig>::Read(const String& name, TerrainConfig& resource) const
     {
-        if (std::strlen(name) == 0)
+        if (name.Empty())
         {
-            ERROR_LOG("Failed because provided name is empty.");
+            ERROR_LOG("No valid name was provided.");
             return false;
         }
 
@@ -131,7 +131,7 @@ namespace C3D
         {
             Image heightmap;
             ImageLoadParams params = { false };
-            if (!Resources.Load(heightmapFile, heightmap, params))
+            if (!Resources.Read(heightmapFile, heightmap, params))
             {
                 WARN_LOG("Failed to load HeightmapFile: '{}' for Terrain: '{}'. Setting defaults.", heightmapFile, name);
 
@@ -195,14 +195,14 @@ namespace C3D
                 // The final vertex also needs a copy of the previous height
                 resource.vertexConfigs[j].height = resource.vertexConfigs[j - 1].height;
 
-                Resources.Unload(heightmap);
+                Resources.Cleanup(heightmap);
             }
         }
 
         return true;
     }
 
-    void ResourceLoader<TerrainConfig>::Unload(TerrainConfig& resource) const
+    void ResourceManager<TerrainConfig>::Cleanup(TerrainConfig& resource) const
     {
         resource.name.Destroy();
         resource.resourceName.Destroy();

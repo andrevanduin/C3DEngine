@@ -6,7 +6,7 @@
 #include <renderer/renderer_frontend.h>
 #include <renderer/renderer_types.h>
 #include <renderer/viewport.h>
-#include <resources/loaders/shader_loader.h>
+#include <resources/managers/shader_manager.h>
 #include <resources/mesh.h>
 #include <resources/textures/texture.h>
 #include <systems/cameras/camera_system.h>
@@ -64,7 +64,7 @@ bool RenderViewWireframe::OnCreate()
         auto currentInfo       = shaderInfos[i];
 
         C3D::ShaderConfig shaderConfig;
-        if (!Resources.Load(currentName, shaderConfig))
+        if (!Resources.Read(currentName, shaderConfig))
         {
             ERROR_LOG("Failed to load ShaderResource for: '{}'.", currentName);
             return false;
@@ -74,7 +74,7 @@ bool RenderViewWireframe::OnCreate()
             ERROR_LOG("Failed to create: '{}'.", currentName);
             return false;
         }
-        Resources.Unload(shaderConfig);
+        Resources.Cleanup(shaderConfig);
 
         currentInfo->shader = Shaders.Get(currentName);
         if (!currentInfo->shader)

@@ -6,7 +6,7 @@
 #include <core/uuid.h>
 #include <math/c3d_math.h>
 #include <renderer/renderer_frontend.h>
-#include <resources/loaders/shader_loader.h>
+#include <resources/managers/shader_manager.h>
 #include <resources/mesh.h>
 #include <resources/ui_text.h>
 #include <systems/cameras/camera_system.h>
@@ -73,7 +73,7 @@ bool RenderViewPick::OnCreate()
     // UI Shader
     constexpr auto uiShaderName = "Shader.Builtin.UIPick";
     C3D::ShaderConfig shaderConfig;
-    if (!Resources.Load(uiShaderName, shaderConfig))
+    if (!Resources.Read(uiShaderName, shaderConfig))
     {
         ERROR_LOG("Failed to load builtin UI Pick shader.");
         return false;
@@ -85,7 +85,7 @@ bool RenderViewPick::OnCreate()
         return false;
     }
 
-    Resources.Unload(shaderConfig);
+    Resources.Cleanup(shaderConfig);
     m_uiShaderInfo.shader = Shaders.Get(uiShaderName);
 
     // Get the uniform locations
@@ -103,7 +103,7 @@ bool RenderViewPick::OnCreate()
 
     // World Shader
     constexpr auto worldShaderName = "Shader.Builtin.WorldPick";
-    if (!Resources.Load(worldShaderName, shaderConfig))
+    if (!Resources.Read(worldShaderName, shaderConfig))
     {
         ERROR_LOG("Failed to load builtin World Pick shader.");
         return false;
@@ -115,7 +115,7 @@ bool RenderViewPick::OnCreate()
         return false;
     }
 
-    Resources.Unload(shaderConfig);
+    Resources.Cleanup(shaderConfig);
     m_worldShaderInfo.shader = Shaders.Get(worldShaderName);
 
     // Get the uniform locations
@@ -134,7 +134,7 @@ bool RenderViewPick::OnCreate()
 
     // Terrain Shader
     constexpr auto terrainShaderName = "Shader.Builtin.TerrainPick";
-    if (!Resources.Load(terrainShaderName, shaderConfig))
+    if (!Resources.Read(terrainShaderName, shaderConfig))
     {
         ERROR_LOG("Failed to load builtin Terrain Pick shader.");
         return false;
@@ -146,7 +146,7 @@ bool RenderViewPick::OnCreate()
         return false;
     }
 
-    Resources.Unload(shaderConfig);
+    Resources.Cleanup(shaderConfig);
     m_terrainShaderInfo.shader = Shaders.Get(terrainShaderName);
 
     // Get the uniform locations

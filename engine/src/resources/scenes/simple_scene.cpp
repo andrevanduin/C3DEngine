@@ -296,6 +296,20 @@ namespace C3D
         return true;
     }
 
+    bool SimpleScene::Save()
+    {
+        // Create a config based on the current objects in the scene
+        SimpleSceneConfig config;
+
+        if (!Resources.Write(config))
+        {
+            ERROR_LOG("Failed to write scene config to a file.");
+            return false;
+        }
+
+        return true;
+    }
+
     bool SimpleScene::Unload(bool immediate /* = false*/)
     {
         m_state = SceneState::Unloading;

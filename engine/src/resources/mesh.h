@@ -2,7 +2,7 @@
 #pragma once
 #include "containers/string.h"
 #include "core/uuid.h"
-#include "loaders/mesh_loader.h"
+#include "managers/mesh_manager.h"
 #include "renderer/transform.h"
 #include "resources/geometry_config.h"
 

@@ -1,5 +1,5 @@
 
-#include "image_loader.h"
+#include "image_manager.h"
 
 #include "core/logger.h"
 #include "math/c3d_math.h"
@@ -15,15 +15,17 @@
 
 namespace C3D
 {
-    ResourceLoader<Image>::ResourceLoader()
-        : IResourceLoader(MemoryType::Texture, ResourceType::Image, nullptr, "textures")
-    {}
+    ResourceManager<Image>::ResourceManager() : IResourceManager(MemoryType::Texture, ResourceType::Image, nullptr, "textures") {}
 
-    bool ResourceLoader<Image>::Load(const char* name, Image& resource) const { return Load(name, resource, {}); }
+    bool ResourceManager<Image>::Read(const String& name, Image& resource) const { return Read(name, resource, {}); }
 
-    bool ResourceLoader<Image>::Load(const char* name, Image& resource, const ImageLoadParams& params) const
+    bool ResourceManager<Image>::Read(const String& name, Image& resource, const ImageLoadParams& params) const
     {
-        if (std::strlen(name) == 0) return false;
+        if (name.Empty())
+        {
+            ERROR_LOG("No valid name was provided.");
+            return false;
+        }
 
         constexpr i32 requiredChannelCount = 4;
         stbi_set_flip_vertically_on_load_thread(params.flipY);
@@ -113,7 +115,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<Image>::Unload(Image& resource)
+    void ResourceManager<Image>::Cleanup(Image& resource) const
     {
         // Free the pixel data loaded in by STBI
         if (resource.pixels)

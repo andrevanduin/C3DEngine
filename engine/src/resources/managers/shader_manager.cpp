@@ -1,5 +1,5 @@
 
-#include "shader_loader.h"
+#include "shader_manager.h"
 
 #include "core/engine.h"
 #include "core/exceptions.h"
@@ -9,17 +9,17 @@
 
 namespace C3D
 {
-    ResourceLoader<ShaderConfig>::ResourceLoader()
-        : IResourceLoader(MemoryType::Shader, ResourceType::Shader, nullptr, "shaders"), BaseTextLoader<ShaderConfig>()
+    ResourceManager<ShaderConfig>::ResourceManager()
+        : IResourceManager(MemoryType::Shader, ResourceType::Shader, nullptr, "shaders"), BaseTextManager<ShaderConfig>()
     {}
 
-    bool ResourceLoader<ShaderConfig>::Load(const char* name, ShaderConfig& resource) const
+    bool ResourceManager<ShaderConfig>::Read(const String& name, ShaderConfig& resource) const
     {
         m_currentTagType = ParserTagType::None;
         return LoadAndParseFile(name, "shaders", "shadercfg", resource);
     }
 
-    void ResourceLoader<ShaderConfig>::Unload(ShaderConfig& resource)
+    void ResourceManager<ShaderConfig>::Cleanup(ShaderConfig& resource) const
     {
         // Cleanup stage configs
         resource.stageConfigs.Destroy();
@@ -38,7 +38,7 @@ namespace C3D
         resource.version = 0;
     }
 
-    void ResourceLoader<ShaderConfig>::SetDefaults(ShaderConfig& resource) const
+    void ResourceManager<ShaderConfig>::SetDefaults(ShaderConfig& resource) const
     {
         if (resource.version != 2)
         {
@@ -49,7 +49,7 @@ namespace C3D
         resource.topologyTypes = PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE_LIST;
     }
 
-    void ResourceLoader<ShaderConfig>::ParseNameValuePair(const String& name, const String& value, ShaderConfig& resource) const
+    void ResourceManager<ShaderConfig>::ParseNameValuePair(const String& name, const String& value, ShaderConfig& resource) const
     {
         switch (m_currentTagType)
         {
@@ -70,7 +70,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<ShaderConfig>::ParseTag(const String& name, bool isOpeningTag, ShaderConfig& resource) const
+    void ResourceManager<ShaderConfig>::ParseTag(const String& name, bool isOpeningTag, ShaderConfig& resource) const
     {
         if (isOpeningTag)
         {
@@ -186,7 +186,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<ShaderConfig>::ParseGeneral(const String& name, const String& value, ShaderConfig& resource) const
+    void ResourceManager<ShaderConfig>::ParseGeneral(const String& name, const String& value, ShaderConfig& resource) const
     {
         if (name.IEquals("name"))
         {
@@ -242,7 +242,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<ShaderConfig>::ParseStages(const String& name, const String& value, ShaderConfig& resource) const
+    void ResourceManager<ShaderConfig>::ParseStages(const String& name, const String& value, ShaderConfig& resource) const
     {
         ShaderStageConfig config;
         config.fileName = "shaders/" + value;
@@ -264,7 +264,7 @@ namespace C3D
         resource.stageConfigs.PushBack(config);
     }
 
-    void ResourceLoader<ShaderConfig>::ParseAttribute(const String& name, const String& value, ShaderConfig& resource) const
+    void ResourceManager<ShaderConfig>::ParseAttribute(const String& name, const String& value, ShaderConfig& resource) const
     {
         ShaderAttributeConfig attribute;
         attribute.name = name;
@@ -327,7 +327,7 @@ namespace C3D
         resource.attributes.PushBack(attribute);
     }
 
-    void ResourceLoader<ShaderConfig>::ParseUniform(const String& name, const String& value, ShaderConfig& resource) const
+    void ResourceManager<ShaderConfig>::ParseUniform(const String& name, const String& value, ShaderConfig& resource) const
     {
         ShaderUniformConfig uniform;
         uniform.name = name;
@@ -479,7 +479,7 @@ namespace C3D
         resource.uniforms.PushBack(uniform);
     }
 
-    void ResourceLoader<ShaderConfig>::ParseTopology(ShaderConfig& data, const String& value)
+    void ResourceManager<ShaderConfig>::ParseTopology(ShaderConfig& data, const String& value)
     {
         if (value.IEquals("triangleList"))
         {
@@ -511,7 +511,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<ShaderConfig>::ParseCullMode(ShaderConfig& data, const String& value)
+    void ResourceManager<ShaderConfig>::ParseCullMode(ShaderConfig& data, const String& value)
     {
         if (value.IEquals("front"))
         {

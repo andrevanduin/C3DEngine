@@ -3,21 +3,21 @@
 #include "core/exceptions.h"
 #include "core/logger.h"
 #include "platform/file_system.h"
-#include "resource_loader.h"
+#include "resource_manager.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
 
 namespace C3D
 {
     template <typename T>
-    class C3D_API BaseTextLoader
+    class C3D_API BaseTextManager
     {
     public:
-        bool LoadAndParseFile(const char* name, const char* typePath, const char* extension, T& resource) const
+        bool LoadAndParseFile(const String& name, const char* typePath, const char* extension, T& resource) const
         {
-            if (std::strlen(name) == 0)
+            if (name.Empty())
             {
-                Logger::Error("[BASE_TEXT_LOADER] - LoadAndParseFile() - Provided name was empty.");
+                ERROR_LOG("Provided name was empty.");
                 return false;
             }
 
@@ -30,7 +30,7 @@ namespace C3D
             File file;
             if (!file.Open(resource.fullPath, FileModeRead))
             {
-                Logger::Error("[BASE_TEXT_LOADER] - LoadAndParseFile() - Unable to open file for reading: '{}'.", resource.fullPath);
+                ERROR_LOG("Unable to open file for reading: '{}'.", resource.fullPath);
                 return false;
             }
 
@@ -87,8 +87,7 @@ namespace C3D
             }
             catch (const std::exception& exc)
             {
-                Logger::Error("[BASE_TEXT_LOADER] - LoadAndParseFile() - Failed to parse file: '{}'.\n {} on line: {}.", resource.fullPath,
-                              exc.what(), lineNumber);
+                ERROR_LOG("Failed to parse file: '{}'.\n {} on line: {}.", resource.fullPath, exc.what(), lineNumber);
                 return false;
             }
 

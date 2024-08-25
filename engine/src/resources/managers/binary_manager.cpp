@@ -1,5 +1,5 @@
 
-#include "binary_loader.h"
+#include "binary_manager.h"
 
 #include "core/engine.h"
 #include "core/logger.h"
@@ -9,11 +9,15 @@
 
 namespace C3D
 {
-    ResourceLoader<BinaryResource>::ResourceLoader() : IResourceLoader(MemoryType::Array, ResourceType::Binary, nullptr, "shaders") {}
+    ResourceManager<BinaryResource>::ResourceManager() : IResourceManager(MemoryType::Array, ResourceType::Binary, nullptr, "shaders") {}
 
-    bool ResourceLoader<BinaryResource>::Load(const char* name, BinaryResource& resource) const
+    bool ResourceManager<BinaryResource>::Read(const String& name, BinaryResource& resource) const
     {
-        if (std::strlen(name) == 0) return false;
+        if (name.Empty())
+        {
+            ERROR_LOG("No valid name was provided.")
+            return false;
+        }
 
         // TODO: try different extensions
         auto fullPath = String::FromFormat("{}/{}/{}", Resources.GetBasePath(), typePath, name);
@@ -50,10 +54,13 @@ namespace C3D
         return true;
     }
 
-    void ResourceLoader<BinaryResource>::Unload(BinaryResource& resource)
+    void ResourceManager<BinaryResource>::Cleanup(BinaryResource& resource) const
     {
-        Memory.Free(resource.data);
-        resource.data = nullptr;
+        if (resource.data)
+        {
+            Memory.Free(resource.data);
+            resource.data = nullptr;
+        }
 
         resource.name.Destroy();
         resource.fullPath.Destroy();

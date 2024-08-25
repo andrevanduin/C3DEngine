@@ -9,7 +9,7 @@
 #include "core/scoped_timer.h"
 #include "core/string_utils.h"
 #include "renderer/renderer_frontend.h"
-#include "resources/loaders/image_loader.h"
+#include "resources/managers/image_manager.h"
 #include "resources/textures/loading_texture.h"
 #include "systems/jobs/job_system.h"
 #include "systems/resources/resource_system.h"
@@ -729,7 +729,7 @@ namespace C3D
             const auto& textureName = textureNames[i];
 
             Image res{};
-            if (!Resources.Load(textureName.Data(), res, params))
+            if (!Resources.Read(textureName.Data(), res, params))
             {
                 ERROR_LOG("Failed to load image resource for texture '{}'.", textureName);
                 return false;
@@ -767,7 +767,7 @@ namespace C3D
             // Copy over the pixels to the correct location in the array
             std::memcpy(pixels + (imageSize * i), res.pixels, imageSize);
             // Cleanup our resource
-            Resources.Unload(res);
+            Resources.Cleanup(res);
         }
 
         // Acquire internal texture resources and upload to the GPU

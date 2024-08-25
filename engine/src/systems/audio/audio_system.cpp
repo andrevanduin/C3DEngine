@@ -3,7 +3,7 @@
 
 #include "core/audio/audio_plugin.h"
 #include "math/c3d_math.h"
-#include "resources/loaders/audio_loader.h"
+#include "resources/managers/audio_manager.h"
 #include "systems/resources/resource_system.h"
 
 namespace C3D
@@ -81,7 +81,7 @@ namespace C3D
         params.type      = AudioType::SoundEffect;
         params.chunkSize = m_config.chunkSize;
 
-        if (!Resources.Load(name, file, params))
+        if (!Resources.Read(name, file, params))
         {
             ERROR_LOG("Failed to load file: '{}'.", name);
         }
@@ -106,7 +106,7 @@ namespace C3D
         params.type      = AudioType::MusicStream;
         params.chunkSize = m_config.chunkSize;
 
-        if (!Resources.Load(name, file, params))
+        if (!Resources.Read(name, file, params))
         {
             ERROR_LOG("Failed to load file: '{}'.", name);
         }
@@ -358,7 +358,7 @@ namespace C3D
         // Unload it in the plugin
         m_audioPlugin->Unload(file);
         // Unload the resource
-        Resources.Unload(file);
+        Resources.Cleanup(file);
     }
 
     void AudioSystem::OnShutdown()

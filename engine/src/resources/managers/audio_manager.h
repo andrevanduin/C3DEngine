@@ -3,7 +3,7 @@
 #include "core/audio/audio_file.h"
 #include "core/audio/audio_types.h"
 #include "core/defines.h"
-#include "resource_loader.h"
+#include "resource_manager.h"
 
 namespace C3D
 {
@@ -14,15 +14,15 @@ namespace C3D
     };
 
     template <>
-    class C3D_API ResourceLoader<AudioFile> final : public IResourceLoader
+    class C3D_API ResourceManager<AudioFile> final : public IResourceManager
     {
     public:
-        ResourceLoader();
+        ResourceManager();
 
         bool Init() override;
 
-        bool Load(const char* name, AudioFile& resource, const AudioFileParams& params) const;
-        static void Unload(AudioFile& resource);
+        bool Read(const String& name, AudioFile& resource, const AudioFileParams& params) const;
+        void Cleanup(AudioFile& resource) const;
 
     private:
         mutable mp3dec_t m_mp3Decoder;

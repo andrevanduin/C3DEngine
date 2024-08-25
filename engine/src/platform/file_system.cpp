@@ -44,7 +44,8 @@ namespace C3D
         m_size       = 0;
         bytesWritten = 0;
         bytesRead    = 0;
-        currentPath  = "";
+
+        currentPath.Destroy();
 
         if (m_file.is_open())
         {

@@ -1,5 +1,5 @@
 
-#include "material_loader.h"
+#include "material_manager.h"
 
 #include "core/engine.h"
 #include "core/logger.h"
@@ -10,24 +10,24 @@
 
 namespace C3D
 {
-    ResourceLoader<MaterialConfig>::ResourceLoader()
-        : IResourceLoader(MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials"), BaseTextLoader<MaterialConfig>()
+    ResourceManager<MaterialConfig>::ResourceManager()
+        : IResourceManager(MemoryType::MaterialInstance, ResourceType::Material, nullptr, "materials"), BaseTextManager<MaterialConfig>()
     {}
 
-    bool ResourceLoader<MaterialConfig>::Load(const char* name, MaterialConfig& resource) const
+    bool ResourceManager<MaterialConfig>::Read(const String& name, MaterialConfig& resource) const
     {
         m_currentTagType = ParserTagType::Global;
         return LoadAndParseFile(name, "materials", "mt", resource);
     }
 
-    void ResourceLoader<MaterialConfig>::Unload(MaterialConfig& resource)
+    void ResourceManager<MaterialConfig>::Cleanup(MaterialConfig& resource) const
     {
         resource.shaderName.Destroy();
         resource.fullPath.Destroy();
         resource.name.Destroy();
     }
 
-    void ResourceLoader<MaterialConfig>::SetDefaults(MaterialConfig& resource) const
+    void ResourceManager<MaterialConfig>::SetDefaults(MaterialConfig& resource) const
     {
         if (resource.version == 1)
         {
@@ -35,7 +35,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseNameValuePair(const String& name, const String& value, MaterialConfig& resource) const
+    void ResourceManager<MaterialConfig>::ParseNameValuePair(const String& name, const String& value, MaterialConfig& resource) const
     {
         if (resource.version == 1)
         {
@@ -60,7 +60,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseGlobal(const String& name, const String& value, MaterialConfig& resource) const
+    void ResourceManager<MaterialConfig>::ParseGlobal(const String& name, const String& value, MaterialConfig& resource) const
     {
         if (name.IEquals("type"))
         {
@@ -123,7 +123,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseGlobalV2(const String& name, const String& value, MaterialConfig& resource) const
+    void ResourceManager<MaterialConfig>::ParseGlobalV2(const String& name, const String& value, MaterialConfig& resource) const
     {
         if (name.IEquals("type"))
         {
@@ -163,7 +163,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseTag(const String& name, bool isOpeningTag, MaterialConfig& resource) const
+    void ResourceManager<MaterialConfig>::ParseTag(const String& name, bool isOpeningTag, MaterialConfig& resource) const
     {
         if (isOpeningTag)
         {
@@ -249,7 +249,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseMap(const String& name, const String& value, MaterialConfig& resource) const
+    void ResourceManager<MaterialConfig>::ParseMap(const String& name, const String& value, MaterialConfig& resource) const
     {
         auto& map = resource.maps.Back();
 
@@ -295,7 +295,7 @@ namespace C3D
         }
     }
 
-    void ResourceLoader<MaterialConfig>::ParseProp(const String& name, const String& value, MaterialConfig& resource) const
+    void ResourceManager<MaterialConfig>::ParseProp(const String& name, const String& value, MaterialConfig& resource) const
     {
         auto& prop = resource.props.Back();
 
