@@ -38,34 +38,6 @@ namespace C3D
         bool autoRelease = false;
     };
 
-    /** @brief Structure to hold a texture that is currently being loaded. */
-    struct LoadingTexture
-    {
-        u32 id = INVALID_ID;
-        String resourceName;
-        Texture* outTexture = nullptr;
-        Texture tempTexture;
-        u32 currentGeneration = INVALID_ID;
-        Image imageResource;
-    };
-
-    struct LoadingArrayTexture
-    {
-        u32 id = INVALID_ID;
-        String name;
-
-        u32 layerCount = 0;
-        DynamicArray<String> layerNames;
-
-        Texture* outTexture = nullptr;
-        Texture tempTexture;
-
-        u64 dataBlockSize = 0;
-        u8* dataBlock     = nullptr;
-
-        u32 currentGeneration = INVALID_ID;
-    };
-
     class C3D_API TextureSystem final : public SystemWithConfig<TextureSystemConfig>
     {
     public:
@@ -237,18 +209,9 @@ namespace C3D
 
         void DestroyTexture(Texture& texture) const;
 
-        bool LoadTexture(Texture& texture);
-        bool LoadArrayTexture(Texture& texture, const DynamicArray<String>& layerNames);
+        void LoadTexture(Texture& texture);
+        void LoadArrayTexture(Texture& texture, const DynamicArray<String>& layerNames);
         bool LoadCubeTexture(const CString<TEXTURE_NAME_MAX_LENGTH>* textureNames, Texture& texture) const;
-
-        bool LoadTextureEntryPoint(u32 loadingTextureIndex);
-        bool LoadLayeredTextureEntryPoint(u32 loadingTextureIndex);
-
-        void LoadTextureSuccess(u32 loadingTextureIndex);
-        void LoadLayeredTextureSuccess(u32 loadingTextureIndex);
-
-        void CleanupLoadingTexture(u32 loadingTextureIndex);
-        void CleanupLoadingLayeredTexture(u32 loadingTextureIndex);
 
         TextureHandle m_defaultTexture;
         TextureHandle m_defaultAlbedoTexture;
@@ -259,8 +222,5 @@ namespace C3D
 
         DynamicArray<TextureReference> m_textures;
         HashMap<String, u32> m_nameToTextureIndexMap;
-
-        Array<LoadingTexture, MAX_LOADING_TEXTURES> m_loadingTextures;
-        Array<LoadingArrayTexture, MAX_LOADING_TEXTURES> m_loadingArrayTextures;
     };
 }  // namespace C3D

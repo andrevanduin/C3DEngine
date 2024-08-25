@@ -63,7 +63,9 @@ namespace C3D
         MeshConfig config;
 
     private:
-        bool LoadFromResource();
+        void LoadFromResource();
+
+        bool LoadJobEntry();
 
         void LoadJobSuccess();
 

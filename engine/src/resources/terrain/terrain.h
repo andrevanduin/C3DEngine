@@ -135,7 +135,9 @@ namespace C3D
         void SetTransform(const Transform& t) { m_transform = t; }
 
     private:
-        bool LoadFromResource();
+        void LoadFromResource();
+
+        bool LoadJobEntry();
 
         void LoadJobSuccess();
 

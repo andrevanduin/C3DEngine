@@ -10,14 +10,13 @@
 #include "core/string_utils.h"
 #include "renderer/renderer_frontend.h"
 #include "resources/loaders/image_loader.h"
+#include "resources/textures/loading_texture.h"
 #include "systems/jobs/job_system.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
 
 namespace C3D
 {
-    static u32 LOADING_TEXTURE_ID = 0;
-
     bool TextureSystem::OnInit(const TextureSystemConfig& config)
     {
         INFO_LOG("Initializing.");
@@ -76,12 +75,7 @@ namespace C3D
         texture.type      = TextureType2D;
         texture.arraySize = 1;
 
-        if (!LoadTexture(texture))
-        {
-            ERROR_LOG("Failed to Load Texture.");
-            DeleteTextureReference(name);
-            return INVALID_ID;
-        }
+        LoadTexture(texture);
 
         return texture.handle;
     }
@@ -113,12 +107,7 @@ namespace C3D
         texture.type      = TextureType2DArray;
         texture.arraySize = layerCount;
 
-        if (!LoadArrayTexture(texture, layerTextureNames))
-        {
-            ERROR_LOG("Failed to Load Array Texture.");
-            DeleteTextureReference(name);
-            return INVALID_ID;
-        }
+        LoadArrayTexture(texture, layerTextureNames);
 
         return texture.handle;
     }
@@ -716,90 +705,16 @@ namespace C3D
         texture.generation = INVALID_ID;
     }
 
-    bool TextureSystem::LoadTexture(Texture& texture)
+    void TextureSystem::LoadTexture(Texture& texture)
     {
-        LoadingTexture loadingTexture;
-        loadingTexture.id                    = LOADING_TEXTURE_ID++;
-        loadingTexture.resourceName          = texture.name;
-        loadingTexture.outTexture            = &texture;
-        loadingTexture.currentGeneration     = texture.generation;
-        loadingTexture.tempTexture.arraySize = texture.arraySize;
-
-        u32 loadingTextureIndex = INVALID_ID;
-        for (auto i = 0; i < m_loadingTextures.Size(); i++)
-        {
-            if (m_loadingTextures[i].id == INVALID_ID)
-            {
-                m_loadingTextures[i] = loadingTexture;
-                loadingTextureIndex  = i;
-                break;
-            }
-        }
-
-        if (loadingTextureIndex == INVALID_ID)
-        {
-            ERROR_LOG("Failed to queue texture for loading since there is no space in the loading texture queue.");
-            return false;
-        }
-
-        JobInfo info;
-        info.entryPoint = [this, loadingTextureIndex]() { return LoadTextureEntryPoint(loadingTextureIndex); };
-        info.onSuccess  = [this, loadingTextureIndex]() { LoadTextureSuccess(loadingTextureIndex); };
-        info.onFailure  = [this, loadingTextureIndex]() {
-            const auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
-
-            ERROR_LOG("Failed to load texture '{}'.", loadingTexture.resourceName);
-            CleanupLoadingTexture(loadingTextureIndex);
-        };
-
-        Jobs.Submit(std::move(info));
-        TRACE("Loading job submitted for: '{}'.", name);
-
-        return true;
+        auto load = Memory.New<LoadingTexture>(MemoryType::Job, texture.name, &texture);
+        Jobs.Submit([load]() { return load->Entry(); }, [load]() { load->OnSuccess(); }, [load]() { load->Cleanup(); });
     }
 
-    bool TextureSystem::LoadArrayTexture(Texture& texture, const DynamicArray<String>& layerNames)
+    void TextureSystem::LoadArrayTexture(Texture& texture, const DynamicArray<String>& layerNames)
     {
-        LoadingArrayTexture loadingArrayTexture;
-        loadingArrayTexture.id                    = LOADING_TEXTURE_ID++;
-        loadingArrayTexture.layerCount            = texture.arraySize;
-        loadingArrayTexture.name                  = texture.name;
-        loadingArrayTexture.layerNames            = layerNames;
-        loadingArrayTexture.currentGeneration     = texture.generation;
-        loadingArrayTexture.outTexture            = &texture;
-        loadingArrayTexture.tempTexture.arraySize = texture.arraySize;
-
-        u32 loadingArrayTextureIndex = INVALID_ID;
-        for (auto i = 0; i < m_loadingArrayTextures.Size(); i++)
-        {
-            if (m_loadingArrayTextures[i].id == INVALID_ID)
-            {
-                m_loadingArrayTextures[i] = loadingArrayTexture;
-                loadingArrayTextureIndex  = i;
-                break;
-            }
-        }
-
-        if (loadingArrayTextureIndex == INVALID_ID)
-        {
-            ERROR_LOG("Failed to queue texture for loading since there is no space in the loading texture queue.");
-            return false;
-        }
-
-        JobInfo info;
-        info.entryPoint = [this, loadingArrayTextureIndex]() { return LoadLayeredTextureEntryPoint(loadingArrayTextureIndex); };
-        info.onSuccess  = [this, loadingArrayTextureIndex]() { LoadLayeredTextureSuccess(loadingArrayTextureIndex); };
-        info.onFailure  = [this, loadingArrayTextureIndex]() {
-            const auto& loadingTexture = m_loadingArrayTextures[loadingArrayTextureIndex];
-
-            ERROR_LOG("Failed to load texture '{}'.", loadingTexture.name);
-            CleanupLoadingLayeredTexture(loadingArrayTextureIndex);
-        };
-
-        Jobs.Submit(std::move(info));
-        TRACE("Loading job submitted for: '{}'.", name);
-
-        return true;
+        auto load = Memory.New<LoadingArrayTexture>(MemoryType::Job, layerNames, &texture);
+        Jobs.Submit([load]() { return load->Entry(); }, [load]() { load->OnSuccess(); }, [load]() { load->Cleanup(); });
     }
 
     bool TextureSystem::LoadCubeTexture(const CString<TEXTURE_NAME_MAX_LENGTH>* textureNames, Texture& texture) const
@@ -862,234 +777,5 @@ namespace C3D
         pixels = nullptr;
 
         return true;
-    }
-
-    bool TextureSystem::LoadTextureEntryPoint(u32 loadingTextureIndex)
-    {
-        constexpr ImageLoadParams resourceParams{ true };
-
-        auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
-        const auto result    = Resources.Load(loadingTexture.resourceName.Data(), loadingTexture.imageResource, resourceParams);
-        if (result)
-        {
-            const auto& resourceData = loadingTexture.imageResource;
-
-            // Use our temporary texture to load into
-            loadingTexture.tempTexture.width        = resourceData.width;
-            loadingTexture.tempTexture.height       = resourceData.height;
-            loadingTexture.tempTexture.channelCount = resourceData.channelCount;
-            loadingTexture.tempTexture.mipLevels    = resourceData.mipLevels;
-            loadingTexture.tempTexture.type         = loadingTexture.outTexture->type;
-
-            loadingTexture.currentGeneration      = loadingTexture.outTexture->generation;
-            loadingTexture.outTexture->generation = INVALID_ID;
-            loadingTexture.outTexture->mipLevels  = resourceData.mipLevels;
-
-            const u64 totalSize = static_cast<u64>(loadingTexture.tempTexture.width) * loadingTexture.tempTexture.height *
-                                  loadingTexture.tempTexture.channelCount;
-            // Check for transparency
-            bool hasTransparency = false;
-            for (u64 i = 0; i < totalSize; i += loadingTexture.tempTexture.channelCount)
-            {
-                const u8 a = resourceData.pixels[i + 3];  // Get the alpha channel of this pixel
-                if (a < 255)
-                {
-                    hasTransparency = true;
-                    break;
-                }
-            }
-
-            // Take a copy of the name
-            loadingTexture.tempTexture.name       = loadingTexture.resourceName.Data();
-            loadingTexture.tempTexture.generation = INVALID_ID;
-            loadingTexture.tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
-        }
-
-        return result;
-    }
-
-    struct AsyncResult
-    {
-        Image image;
-        bool success = true;
-    };
-
-    static AsyncResult LoadLayeredTextureLayer(const char* name)
-    {
-        AsyncResult result;
-
-        constexpr ImageLoadParams resourceParams{ true };
-        result.success = Resources.Load(name, result.image, resourceParams);
-        if (!result.success)
-        {
-            Resources.Unload(result.image);
-            ERROR_LOG("Failed to load texture resources for: '{}'.", name);
-        }
-        return result;
-    }
-
-    bool TextureSystem::LoadLayeredTextureEntryPoint(u32 loadingTextureIndex)
-    {
-        auto timer = ScopedTimer("LoadLayeredTexture");
-
-        auto& loadingTexture = m_loadingArrayTextures[loadingTextureIndex];
-
-        bool hasTransparency = false;
-        u32 layerSize        = 0;
-
-        // Load the resources in parallel
-        std::future<AsyncResult> results[12];
-
-        for (u32 i = 0; i < loadingTexture.layerCount; ++i)
-        {
-            results[i] = std::async(LoadLayeredTextureLayer, loadingTexture.layerNames[i].Data());
-        }
-
-        for (u32 layer = 0; layer < loadingTexture.layerCount; ++layer)
-        {
-            auto result = results[layer].get();
-            if (!result.success)
-            {
-                CleanupLoadingLayeredTexture(loadingTextureIndex);
-                return false;
-            }
-
-            if (layer == 0)
-            {
-                // First layer so let's save off the the width and height since all folowing textures must match
-                loadingTexture.tempTexture.generation   = INVALID_ID;
-                loadingTexture.tempTexture.width        = result.image.width;
-                loadingTexture.tempTexture.height       = result.image.height;
-                loadingTexture.tempTexture.channelCount = result.image.channelCount;
-                loadingTexture.tempTexture.mipLevels    = result.image.mipLevels;
-                loadingTexture.tempTexture.arraySize    = loadingTexture.layerCount;
-                loadingTexture.tempTexture.type         = loadingTexture.outTexture->type;
-                loadingTexture.tempTexture.handle       = loadingTexture.outTexture->handle;
-                loadingTexture.tempTexture.flags        = loadingTexture.outTexture->flags;
-
-                constexpr u32 layerChannelCount = 4;
-                layerSize = sizeof(u8) * loadingTexture.tempTexture.width * loadingTexture.tempTexture.height * layerChannelCount;
-                loadingTexture.dataBlockSize = layerSize * loadingTexture.layerCount;
-                loadingTexture.dataBlock     = Memory.Allocate<u8>(MemoryType::Array, loadingTexture.dataBlockSize);
-            }
-            else
-            {
-                if (result.image.width != loadingTexture.tempTexture.width || result.image.height != loadingTexture.tempTexture.height)
-                {
-                    ERROR_LOG("Texture: '{}' dimensions don't match previous texture which is required.", loadingTexture.layerNames[layer]);
-                    CleanupLoadingLayeredTexture(loadingTextureIndex);
-                    return false;
-                }
-            }
-
-            if (!hasTransparency)
-            {
-                // Check for transparency only if we haven't come across a transparent texture yet
-                for (u64 i = 0; i < layerSize; i += loadingTexture.tempTexture.channelCount)
-                {
-                    const u8 a = result.image.pixels[i + 3];  // Get the alpha channel of this pixel
-                    if (a < 255)
-                    {
-                        hasTransparency = true;
-                        break;
-                    }
-                }
-            }
-
-            // Find the location of our current layer in our total texture and copy the pixels over from our resource
-            u8* dataLocation = loadingTexture.dataBlock + (layer * layerSize);
-            std::memcpy(dataLocation, result.image.pixels, layerSize);
-
-            Resources.Unload(result.image);
-        }
-
-        // Ensure we take transparency into account
-        loadingTexture.tempTexture.flags |= hasTransparency ? TextureFlag::HasTransparency : 0;
-        // Copy the name
-        loadingTexture.tempTexture.name  = loadingTexture.name;
-        loadingTexture.currentGeneration = loadingTexture.outTexture->generation;
-
-        return true;
-    }
-
-    void TextureSystem::LoadTextureSuccess(u32 loadingTextureIndex)
-    {
-        // TODO: This still handles the GPU upload. This can't be jobified before our renderer supports multiThreading.
-        auto& loadingTexture     = m_loadingTextures[loadingTextureIndex];
-        const auto& resourceData = loadingTexture.imageResource;
-
-        // Acquire internal texture resources and upload to GPU.
-        Renderer.CreateTexture(loadingTexture.tempTexture, resourceData.pixels);
-        // Take a copy of the old texture.
-        Texture old = *loadingTexture.outTexture;
-        // Assign the temp texture to the pointer
-        *loadingTexture.outTexture = loadingTexture.tempTexture;
-        // Destroy the old texture
-        Renderer.DestroyTexture(old);
-
-        if (loadingTexture.currentGeneration == INVALID_ID)
-        {
-            loadingTexture.outTexture->generation = 0;
-        }
-        else
-        {
-            loadingTexture.outTexture->generation++;
-        }
-
-        INFO_LOG("Successfully loaded texture: '{}'.", loadingTexture.resourceName);
-        CleanupLoadingTexture(loadingTextureIndex);
-    }
-
-    void TextureSystem::LoadLayeredTextureSuccess(u32 loadingTextureIndex)
-    {
-        auto& loadingTexture = m_loadingArrayTextures[loadingTextureIndex];
-
-        // Acquire internal texture resources and upload to GPU.
-        Renderer.CreateTexture(loadingTexture.tempTexture, loadingTexture.dataBlock);
-
-        // Take a copy of the old texture.
-        Texture old = *loadingTexture.outTexture;
-        // Assign the temp texture to the pointer
-        *loadingTexture.outTexture = loadingTexture.tempTexture;
-        // Destroy the old texture
-        Renderer.DestroyTexture(old);
-
-        if (loadingTexture.currentGeneration == INVALID_ID)
-        {
-            loadingTexture.outTexture->generation = 0;
-        }
-        else
-        {
-            loadingTexture.outTexture->generation++;
-        }
-
-        INFO_LOG("Successfully loaded layered texture: '{}'.", loadingTexture.name);
-        CleanupLoadingLayeredTexture(loadingTextureIndex);
-    }
-
-    void TextureSystem::CleanupLoadingTexture(u32 loadingTextureIndex)
-    {
-        auto& loadingTexture = m_loadingTextures[loadingTextureIndex];
-
-        // Unload our image resource
-        Resources.Unload(loadingTexture.imageResource);
-        // Invalidate this loading texture since it is now done
-        loadingTexture.id = INVALID_ID;
-        loadingTexture.resourceName.Destroy();
-    }
-
-    void TextureSystem::CleanupLoadingLayeredTexture(u32 loadingTextureIndex)
-    {
-        auto& loadingTexture = m_loadingArrayTextures[loadingTextureIndex];
-
-        // Unload our image resources
-        loadingTexture.name.Destroy();
-
-        if (loadingTexture.dataBlock)
-        {
-            Memory.Free(loadingTexture.dataBlock);
-            loadingTexture.dataBlock     = nullptr;
-            loadingTexture.dataBlockSize = 0;
-        }
     }
 }  // namespace C3D

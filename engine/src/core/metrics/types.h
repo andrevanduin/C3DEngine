@@ -35,6 +35,7 @@ namespace C3D
         Stack,
         HashTable,
         HashMap,
+        Queue,
         RingQueue,
         Bst,
         String,
