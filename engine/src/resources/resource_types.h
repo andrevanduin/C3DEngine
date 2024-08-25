@@ -19,7 +19,7 @@ namespace C3D
         Shader,
         BitmapFont,
         SystemFont,
-        SimpleScene,
+        Scene,
         Terrain,
         AudioFile,
         Custom,

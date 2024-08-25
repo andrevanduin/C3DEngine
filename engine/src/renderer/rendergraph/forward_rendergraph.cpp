@@ -2,7 +2,7 @@
 #include "forward_rendergraph.h"
 
 #include "memory/allocators/linear_allocator.h"
-#include "resources/scenes/simple_scene.h"
+#include "resources/scenes/scene.h"
 
 namespace C3D
 {
@@ -119,7 +119,7 @@ namespace C3D
     }
 
     bool ForwardRendergraph::OnPrepareRender(FrameData& frameData, const Viewport& currentViewport, Camera* currentCamera,
-                                             const SimpleScene& scene, u32 renderMode, const DynamicArray<DebugLine3D>& debugLines,
+                                             const Scene& scene, u32 renderMode, const DynamicArray<DebugLine3D>& debugLines,
                                              const DynamicArray<DebugBox3D>& debugBoxes)
     {
         m_skyboxPass.Prepare(currentViewport, currentCamera, scene.GetSkybox());

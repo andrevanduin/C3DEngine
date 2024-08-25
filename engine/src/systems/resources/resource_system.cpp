@@ -10,8 +10,8 @@
 #include "resources/managers/image_manager.h"
 #include "resources/managers/material_manager.h"
 #include "resources/managers/mesh_manager.h"
+#include "resources/managers/scene_manager.h"
 #include "resources/managers/shader_manager.h"
-#include "resources/managers/simple_scene_manager.h"
 #include "resources/managers/terrain_manager.h"
 #include "resources/managers/text_manager.h"
 
@@ -19,19 +19,19 @@ namespace C3D
 {
     ResourceSystem::ResourceSystem()
     {
-        m_resourceManagerTypes[ToUnderlying(ResourceType::None)]        = "None";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::Text)]        = "Text";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::Binary)]      = "Binary";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::Image)]       = "Image";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::Material)]    = "Material";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::Mesh)]        = "StaticMesh";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::Shader)]      = "Shader";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::BitmapFont)]  = "BitmapFont";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::SystemFont)]  = "SystemFont";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::SimpleScene)] = "SimpleScene";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::Terrain)]     = "Terrain";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::AudioFile)]   = "Audio";
-        m_resourceManagerTypes[ToUnderlying(ResourceType::Custom)]      = "Custom";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::None)]       = "None";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Text)]       = "Text";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Binary)]     = "Binary";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Image)]      = "Image";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Material)]   = "Material";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Mesh)]       = "StaticMesh";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Shader)]     = "Shader";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::BitmapFont)] = "BitmapFont";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::SystemFont)] = "SystemFont";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Scene)]      = "Scene";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Terrain)]    = "Terrain";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::AudioFile)]  = "Audio";
+        m_resourceManagerTypes[ToUnderlying(ResourceType::Custom)]     = "Custom";
     }
 
     bool ResourceSystem::OnInit(const ResourceSystemConfig& config)
@@ -56,7 +56,7 @@ namespace C3D
         const auto bitmapFontLoader = Memory.New<ResourceManager<BitmapFontResource>>(MemoryType::ResourceLoader);
         const auto terrainLoader    = Memory.New<ResourceManager<TerrainConfig>>(MemoryType::ResourceLoader);
         const auto audioLoader      = Memory.New<ResourceManager<AudioFile>>(MemoryType::ResourceLoader);
-        const auto sceneLoader      = Memory.New<ResourceManager<SimpleSceneConfig>>(MemoryType::ResourceLoader);
+        const auto sceneLoader      = Memory.New<ResourceManager<SceneConfig>>(MemoryType::ResourceLoader);
 
         IResourceManager* managers[10] = { textLoader, binaryLoader,     imageLoader,   materialLoader, shaderLoader,
                                            meshLoader, bitmapFontLoader, terrainLoader, audioLoader,    sceneLoader };

@@ -11,7 +11,7 @@
 #include "resources/debug/debug_grid.h"
 #include "resources/mesh.h"
 #include "resources/terrain/terrain.h"
-#include "simple_scene_config.h"
+#include "scene_config.h"
 
 namespace C3D
 {
@@ -43,10 +43,10 @@ namespace C3D
         Unloaded,
     };
 
-    class C3D_API SimpleScene
+    class C3D_API Scene
     {
     public:
-        SimpleScene();
+        Scene();
 
         /**
          * @brief Creates a new scene with the given config. No resources are allocated yet
@@ -54,7 +54,7 @@ namespace C3D
          * @return True if successful, false otherwise
          */
         bool Create();
-        bool Create(const SimpleSceneConfig& config);
+        bool Create(const SceneConfig& config);
 
         /**
          * @brief Initializes the scene. Processes configuration and sets up the hierarchy
@@ -73,7 +73,7 @@ namespace C3D
 
         /**
          * @brief Saves the scene to a file.
-         * 
+         *
          * @return True if successful; False otherwise
          */
         bool Save();
@@ -152,7 +152,7 @@ namespace C3D
         SceneState m_state = SceneState::Uninitialized;
         bool m_enabled     = false;
 
-        SimpleSceneConfig m_config;
+        SceneConfig m_config;
         String m_name;
         String m_description;
 

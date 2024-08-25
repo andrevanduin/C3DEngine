@@ -20,7 +20,7 @@ namespace C3D
     public:
         bool Create(const String& name, const ForwardRendergraphConfig& config) override;
 
-        bool OnPrepareRender(FrameData& frameData, const Viewport& currentViewport, Camera* currentCamera, const SimpleScene& scene,
+        bool OnPrepareRender(FrameData& frameData, const Viewport& currentViewport, Camera* currentCamera, const Scene& scene,
                              u32 renderMode, const DynamicArray<DebugLine3D>& debugLines, const DynamicArray<DebugBox3D>& debugBoxes);
 
     private:

@@ -17,7 +17,7 @@ namespace C3D
     class Viewport;
     class Camera;
 
-    class SimpleScene;
+    class Scene;
 
     class C3D_API ScenePass : public Renderpass
     {
@@ -26,7 +26,7 @@ namespace C3D
 
         bool Initialize(const LinearAllocator* frameAllocator) override;
         bool LoadResources() override;
-        bool Prepare(const Viewport& viewport, Camera* camera, FrameData& frameData, const SimpleScene& scene, u32 renderMode,
+        bool Prepare(const Viewport& viewport, Camera* camera, FrameData& frameData, const Scene& scene, u32 renderMode,
                      const DynamicArray<DebugLine3D>& debugLines, const DynamicArray<DebugBox3D>& debugBoxes,
                      ShadowMapCascadeData* cascadeData);
         bool Execute(const FrameData& frameData) override;

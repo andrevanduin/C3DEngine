@@ -1,5 +1,5 @@
 
-#include "simple_scene_manager.h"
+#include "scene_manager.h"
 
 #include "core/exceptions.h"
 #include "platform/file_system.h"
@@ -8,13 +8,11 @@
 
 namespace C3D
 {
-    constexpr const char* FILE_EXTENSION = "csimplescenecfg";
+    constexpr const char* FILE_EXTENSION = "scenecfg";
 
-    ResourceManager<SimpleSceneConfig>::ResourceManager()
-        : IResourceManager(MemoryType::Scene, ResourceType::SimpleScene, nullptr, "scenes")
-    {}
+    ResourceManager<SceneConfig>::ResourceManager() : IResourceManager(MemoryType::Scene, ResourceType::Scene, nullptr, "scenes") {}
 
-    bool ResourceManager<SimpleSceneConfig>::Read(const String& name, SimpleSceneConfig& resource) const
+    bool ResourceManager<SceneConfig>::Read(const String& name, SceneConfig& resource) const
     {
         if (name.Empty())
         {
@@ -82,7 +80,7 @@ namespace C3D
         return true;
     }
 
-    bool ResourceManager<SimpleSceneConfig>::Write(const SimpleSceneConfig& resource) const
+    bool ResourceManager<SceneConfig>::Write(const SceneConfig& resource) const
     {
         auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, resource.name, FILE_EXTENSION);
         // auto fileName = String::FromFormat("{}.{}", resource.name, FILE_EXTENSION);
@@ -169,7 +167,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceManager<SimpleSceneConfig>::Cleanup(SimpleSceneConfig& resource) const
+    void ResourceManager<SceneConfig>::Cleanup(SceneConfig& resource) const
     {
         resource.name.Destroy();
         resource.description.Destroy();
@@ -178,8 +176,8 @@ namespace C3D
         resource.meshes.Destroy();
     }
 
-    bool ResourceManager<SimpleSceneConfig>::ParseTagContent(const String& line, const String& fileName, const u32 lineNumber, u32& version,
-                                                             const ParserTagType type, SimpleSceneConfig& cfg) const
+    bool ResourceManager<SceneConfig>::ParseTagContent(const String& line, const String& fileName, const u32 lineNumber, u32& version,
+                                                       const ParserTagType type, SceneConfig& cfg) const
     {
         // Check if we have a '=' symbol
         if (!line.Contains('='))
@@ -243,7 +241,7 @@ namespace C3D
         return true;
     }
 
-    void ResourceManager<SimpleSceneConfig>::ParseScene(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SceneConfig>::ParseScene(const String& name, const String& value, SceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
@@ -259,7 +257,7 @@ namespace C3D
         }
     }
 
-    void ResourceManager<SimpleSceneConfig>::ParseSkybox(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SceneConfig>::ParseSkybox(const String& name, const String& value, SceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
@@ -275,7 +273,7 @@ namespace C3D
         }
     }
 
-    void ResourceManager<SimpleSceneConfig>::ParseDirectionalLight(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SceneConfig>::ParseDirectionalLight(const String& name, const String& value, SceneConfig& cfg) const
     {
         if (name.IEquals("name"))
         {
@@ -307,7 +305,7 @@ namespace C3D
         }
     }
 
-    void ResourceManager<SimpleSceneConfig>::ParsePointLight(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SceneConfig>::ParsePointLight(const String& name, const String& value, SceneConfig& cfg) const
     {
         auto& pointLight = cfg.pointLights.Back();
 
@@ -341,7 +339,7 @@ namespace C3D
         }
     }
 
-    void ResourceManager<SimpleSceneConfig>::ParseMesh(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SceneConfig>::ParseMesh(const String& name, const String& value, SceneConfig& cfg) const
     {
         auto& mesh = cfg.meshes.Back();
 
@@ -367,7 +365,7 @@ namespace C3D
         }
     }
 
-    void ResourceManager<SimpleSceneConfig>::ParseTerrain(const String& name, const String& value, SimpleSceneConfig& cfg) const
+    void ResourceManager<SceneConfig>::ParseTerrain(const String& name, const String& value, SceneConfig& cfg) const
     {
         auto& terrain = cfg.terrains.Back();
 
@@ -389,7 +387,7 @@ namespace C3D
         }
     }
 
-    Transform ResourceManager<SimpleSceneConfig>::ParseTransform(const String& value) const
+    Transform ResourceManager<SceneConfig>::ParseTransform(const String& value) const
     {
         const auto values = value.Split(' ');
         Transform transform;
@@ -418,10 +416,8 @@ namespace C3D
         return transform;
     }
 
-    ResourceManager<SimpleSceneConfig>::ParserTagType ResourceManager<SimpleSceneConfig>::ParseTag(const String& line,
-                                                                                                   const String& fileName,
-                                                                                                   const u32 lineNumber,
-                                                                                                   SimpleSceneConfig& cfg) const
+    ResourceManager<SceneConfig>::ParserTagType ResourceManager<SceneConfig>::ParseTag(const String& line, const String& fileName,
+                                                                                       const u32 lineNumber, SceneConfig& cfg) const
     {
         static bool closeTag = true;
         String name;

@@ -9,13 +9,13 @@
 
 namespace C3D
 {
-    struct SimpleSceneSkyboxConfig
+    struct SceneSkyboxConfig
     {
         String name;
         String cubemapName;
     };
 
-    struct SimpleSceneDirectionalLightConfig
+    struct SceneDirectionalLightConfig
     {
         String name;
         vec4 color                  = vec4(1.0);
@@ -25,14 +25,14 @@ namespace C3D
         float shadowSplitMultiplier = 0.95f;
     };
 
-    struct SimpleSceneTerrainConfig
+    struct SceneTerrainConfig
     {
         String name;
         String resourceName;
         Transform transform;
     };
 
-    struct SimpleScenePointLightConfig
+    struct ScenePointLightConfig
     {
         String name;
         vec4 color;
@@ -42,7 +42,7 @@ namespace C3D
         f32 quadratic;
     };
 
-    struct SimpleSceneMeshConfig
+    struct SceneMeshConfig
     {
         String name;
         String resourceName;
@@ -50,16 +50,16 @@ namespace C3D
         String parentName;  // optional
     };
 
-    struct SimpleSceneConfig final : public IResource
+    struct SceneConfig final : public IResource
     {
-        SimpleSceneConfig() : IResource(ResourceType::SimpleScene) {}
+        SceneConfig() : IResource(ResourceType::Scene) {}
 
         String description;
-        SimpleSceneSkyboxConfig skyboxConfig;
-        SimpleSceneDirectionalLightConfig directionalLightConfig;
+        SceneSkyboxConfig skyboxConfig;
+        SceneDirectionalLightConfig directionalLightConfig;
 
-        DynamicArray<SimpleScenePointLightConfig> pointLights;
-        DynamicArray<SimpleSceneMeshConfig> meshes;
-        DynamicArray<SimpleSceneTerrainConfig> terrains;
+        DynamicArray<ScenePointLightConfig> pointLights;
+        DynamicArray<SceneMeshConfig> meshes;
+        DynamicArray<SceneTerrainConfig> terrains;
     };
 }  // namespace C3D

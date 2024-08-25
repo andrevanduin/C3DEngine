@@ -10,9 +10,9 @@
 #include <core/metrics/metrics.h>
 #include <math/ray.h>
 #include <renderer/renderer_types.h>
-#include <resources/managers/simple_scene_manager.h>
-#include <resources/scenes/simple_scene.h>
-#include <resources/scenes/simple_scene_config.h>
+#include <resources/managers/scene_manager.h>
+#include <resources/scenes/scene.h>
+#include <resources/scenes/scene_config.h>
 #include <resources/skybox.h>
 #include <systems/UI/2D/ui2d_system.h>
 #include <systems/audio/audio_system.h>
@@ -322,7 +322,7 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         }
     }
 
-    if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
+    if (m_state->Scene.GetState() == C3D::SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
     {
         m_state->reloadState = ReloadState::Loading;
         INFO_LOG("Loading Main Scene...");
@@ -333,15 +333,15 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     const auto nearClip = m_state->worldViewport.GetNearClip();
     const auto farClip  = m_state->worldViewport.GetFarClip();
 
-    if (m_state->simpleScene.GetState() >= C3D::SceneState::Loaded)
+    if (m_state->Scene.GetState() >= C3D::SceneState::Loaded)
     {
-        if (!m_state->simpleScene.Update(frameData))
+        if (!m_state->Scene.Update(frameData))
         {
             ERROR_LOG("Failed to update main scene.");
         }
 
         // Update LODs for the scene based on distance from the camera
-        m_state->simpleScene.UpdateLodFromViewPosition(frameData, pos, nearClip, farClip);
+        m_state->Scene.UpdateLodFromViewPosition(frameData, pos, nearClip, farClip);
 
         m_state->gizmo.Update();
 
@@ -436,14 +436,14 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
         line.OnPrepareRender(frameData);
     }
 
-    if (!m_state->mainRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->simpleScene, m_state->renderMode,
+    if (!m_state->mainRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->Scene, m_state->renderMode,
                                                   m_state->testLines, m_state->testBoxes))
     {
         ERROR_LOG("Failed to prepare main rendergraph.");
         return false;
     }
 
-    if (!m_state->editorRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->simpleScene))
+    if (!m_state->editorRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->Scene))
     {
         ERROR_LOG("Failed to prepare editor rendergraph.");
         return false;
@@ -518,7 +518,7 @@ void TestEnv::OnResize(u16 width, u16 height)
 void TestEnv::OnShutdown()
 {
     // Unload our simple scene
-    m_state->simpleScene.Unload(true);
+    m_state->Scene.Unload(true);
 
     // Destroy our Rendergraph
     m_state->mainRendergraph.Destroy();
@@ -639,10 +639,10 @@ void TestEnv::OnLibraryLoad()
     m_pConsole->RegisterCommand("reload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         m_state->reloadState = ReloadState::Unloading;
 
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
+        if (m_state->Scene.GetState() == C3D::SceneState::Loaded)
         {
             INFO_LOG("Unloading models...");
-            m_state->simpleScene.Unload();
+            m_state->Scene.Unload();
         }
         return true;
     });
@@ -740,7 +740,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
     }
 
     // If our scene is not loaded we also ignore everything below
-    if (m_state->simpleScene.GetState() < C3D::SceneState::Loaded)
+    if (m_state->Scene.GetState() < C3D::SceneState::Loaded)
     {
         return false;
     }
@@ -765,7 +765,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
             C3D::Ray ray = C3D::Ray::FromScreen(vec2(x, y), viewport.GetRect2D(), origin, view, viewport.GetProjection());
 
             C3D::RayCastResult result;
-            if (m_state->simpleScene.RayCast(ray, result))
+            if (m_state->Scene.RayCast(ray, result))
             {
                 f32 closestDistance = C3D::F32_MAX;
                 for (auto& hit : result.hits)
@@ -824,7 +824,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                 const auto selectedUUID = m_state->selectedObject.uuid;
                 if (selectedUUID.IsValid())
                 {
-                    m_state->selectedObject.transform = m_state->simpleScene.GetTransformById(selectedUUID);
+                    m_state->selectedObject.transform = m_state->Scene.GetTransformById(selectedUUID);
                     INFO_LOG("Selected object id = {}.", selectedUUID);
                     m_state->gizmo.SetSelectedObjectTransform(m_state->selectedObject.transform);
                 }
@@ -926,7 +926,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 {
     if (code == C3D::EventCodeDebug1)
     {
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized)
+        if (m_state->Scene.GetState() == C3D::SceneState::Uninitialized)
         {
             INFO_LOG("Loading Main Scene...");
             LoadTestScene();
@@ -937,7 +937,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
     if (code == C3D::EventCodeDebug2)
     {
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
+        if (m_state->Scene.GetState() == C3D::SceneState::Loaded)
         {
             UnloadTestScene();
         }
@@ -950,26 +950,26 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
 bool TestEnv::LoadTestScene()
 {
-    C3D::SimpleSceneConfig sceneConfig;
+    C3D::SceneConfig sceneConfig;
     Resources.Read("test_scene", sceneConfig);
 
-    if (!m_state->simpleScene.Create(sceneConfig))
+    if (!m_state->Scene.Create(sceneConfig))
     {
-        ERROR_LOG("Creating SimpleScene failed.");
+        ERROR_LOG("Creating Scene failed.");
         return false;
     }
 
-    if (!m_state->simpleScene.Initialize())
+    if (!m_state->Scene.Initialize())
     {
-        ERROR_LOG("Initializing SimpleScene failed.");
+        ERROR_LOG("Initializing Scene failed.");
         return false;
     }
 
-    m_state->pLights[0] = m_state->simpleScene.GetPointLight("point_light_0");
+    m_state->pLights[0] = m_state->Scene.GetPointLight("point_light_0");
 
-    if (!m_state->simpleScene.Load())
+    if (!m_state->Scene.Load())
     {
-        ERROR_LOG("Loading SimpleScene failed.");
+        ERROR_LOG("Loading Scene failed.");
         return false;
     }
 
@@ -993,7 +993,7 @@ void TestEnv::UnloadTestScene()
     }
     m_state->testBoxes.Destroy();
 
-    m_state->simpleScene.Unload();
+    m_state->Scene.Unload();
 }
 
 C3D::Application* CreateApplication(C3D::ApplicationState* state) { return Memory.New<TestEnv>(C3D::MemoryType::Game, state); }

@@ -19,7 +19,7 @@
 #include <systems/shaders/shader_system.h>
 #include <systems/system_manager.h>
 
-#include "resources/scenes/simple_scene.h"
+#include "resources/scenes/scene.h"
 #include "resources/skybox.h"
 
 namespace C3D
@@ -144,7 +144,7 @@ namespace C3D
         return true;
     }
 
-    bool ScenePass::Prepare(const Viewport& viewport, Camera* camera, FrameData& frameData, const SimpleScene& scene, u32 renderMode,
+    bool ScenePass::Prepare(const Viewport& viewport, Camera* camera, FrameData& frameData, const Scene& scene, u32 renderMode,
                             const DynamicArray<DebugLine3D>& debugLines, const DynamicArray<DebugBox3D>& debugBoxes,
                             ShadowMapCascadeData* cascadeData)
     {

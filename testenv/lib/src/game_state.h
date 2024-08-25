@@ -11,7 +11,7 @@
 #include <renderer/viewport.h>
 #include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
-#include <resources/scenes/simple_scene.h>
+#include <resources/scenes/scene.h>
 #include <systems/events/event_system.h>
 
 #include "editor/editor_gizmo.h"
@@ -48,7 +48,7 @@ struct GameState final : C3D::ApplicationState
     f64 moveSpeed = 25.0, moveSpeedFast = 100.0;
 
     // TEMP
-    C3D::SimpleScene simpleScene;
+    C3D::Scene Scene;
     EditorGizmo gizmo;
     bool dragging = false;
 

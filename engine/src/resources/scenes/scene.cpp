@@ -1,5 +1,5 @@
 
-#include "simple_scene.h"
+#include "scene.h"
 
 #include "core/frame_data.h"
 #include "math/frustum.h"
@@ -33,11 +33,11 @@ namespace C3D
 
     static u32 global_scene_id = 0;
 
-    SimpleScene::SimpleScene() : m_name("NO_NAME"), m_description("NO_DESCRIPTION") {}
+    Scene::Scene() : m_name("NO_NAME"), m_description("NO_DESCRIPTION") {}
 
-    bool SimpleScene::Create() { return Create({}); }
+    bool Scene::Create() { return Create({}); }
 
-    bool SimpleScene::Create(const SimpleSceneConfig& config)
+    bool Scene::Create(const SceneConfig& config)
     {
         m_enabled = false;
         m_state   = SceneState::Uninitialized;
@@ -67,7 +67,7 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::Initialize()
+    bool Scene::Initialize()
     {
         if (!m_config.name.Empty())
         {
@@ -246,7 +246,7 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::Load()
+    bool Scene::Load()
     {
         m_state = SceneState::Loading;
 
@@ -296,10 +296,67 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::Save()
+    bool Scene::Save()
     {
         // Create a config based on the current objects in the scene
-        SimpleSceneConfig config;
+        SceneConfig config;
+        config.name        = m_name;
+        config.description = m_description;
+
+        if (m_skybox)
+        {
+            config.skyboxConfig = m_config.skyboxConfig;
+        }
+
+        if (!m_directionalLight.Empty())
+        {
+            auto dirLight = Lights.GetDirectionalLight();
+
+            config.directionalLightConfig.name                  = m_directionalLight;
+            config.directionalLightConfig.color                 = dirLight->data.color;
+            config.directionalLightConfig.direction             = dirLight->data.direction;
+            config.directionalLightConfig.shadowDistance        = dirLight->data.shadowDistance;
+            config.directionalLightConfig.shadowFadeDistance    = dirLight->data.shadowFadeDistance;
+            config.directionalLightConfig.shadowSplitMultiplier = dirLight->data.shadowSplitMultiplier;
+        }
+
+        for (auto& name : m_pointLights)
+        {
+            auto light = Lights.GetPointLight(name);
+
+            ScenePointLightConfig lightConfig;
+            lightConfig.name      = name;
+            lightConfig.color     = light->data.color;
+            lightConfig.position  = light->data.position;
+            lightConfig.constant  = light->data.fConstant;
+            lightConfig.linear    = light->data.linear;
+            lightConfig.quadratic = light->data.quadratic;
+
+            config.pointLights.PushBack(lightConfig);
+        }
+
+        for (auto& meshCfg : m_config.meshes)
+        {
+            SceneMeshConfig meshConfig;
+
+            meshConfig.name = meshCfg.name;
+            // TODO: Parent could have changed so this is wrong...
+            meshConfig.parentName   = meshCfg.parentName;
+            meshConfig.resourceName = meshCfg.resourceName;
+            meshConfig.transform    = m_meshes[meshCfg.name].transform;
+
+            config.meshes.PushBack(meshConfig);
+        }
+
+        for (auto& terrainCfg : m_config.terrains)
+        {
+            SceneTerrainConfig terrainConfig;
+            terrainConfig.name         = terrainCfg.name;
+            terrainConfig.resourceName = terrainCfg.resourceName;
+            terrainConfig.transform    = *m_terrains[terrainCfg.name].GetTransform();
+
+            config.terrains.PushBack(terrainConfig);
+        }
 
         if (!Resources.Write(config))
         {
@@ -310,7 +367,7 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::Unload(bool immediate /* = false*/)
+    bool Scene::Unload(bool immediate /* = false*/)
     {
         m_state = SceneState::Unloading;
         if (immediate)
@@ -320,7 +377,7 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::Update(FrameData& frameData)
+    bool Scene::Update(FrameData& frameData)
     {
         if (m_state == SceneState::Unloading)
         {
@@ -347,7 +404,7 @@ namespace C3D
         return true;
     }
 
-    void SimpleScene::OnPrepareRender(FrameData& frameData) const
+    void Scene::OnPrepareRender(FrameData& frameData) const
     {
         for (auto& mesh : m_meshes)
         {
@@ -370,7 +427,7 @@ namespace C3D
         }
     }
 
-    void SimpleScene::UpdateLodFromViewPosition(FrameData& frameData, const vec3& viewPosition, f32 nearClip, f32 farClip)
+    void Scene::UpdateLodFromViewPosition(FrameData& frameData, const vec3& viewPosition, f32 nearClip, f32 farClip)
     {
         for (auto& terrain : m_terrains)
         {
@@ -421,8 +478,8 @@ namespace C3D
         }
     }
 
-    void SimpleScene::QueryMeshes(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
-                                  DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
+    void Scene::QueryMeshes(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
+                            DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
     {
         DynamicArray<GeometryDistance, LinearAllocator> transparentGeometries(32, frameData.allocator);
 
@@ -485,8 +542,8 @@ namespace C3D
         }
     }
 
-    void SimpleScene::QueryMeshes(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
-                                  DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
+    void Scene::QueryMeshes(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
+                            DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
 
     {
         DynamicArray<GeometryDistance, LinearAllocator> transparentGeometries(32, frameData.allocator);
@@ -552,8 +609,8 @@ namespace C3D
         }
     }
 
-    void SimpleScene::QueryTerrains(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
-                                    DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
+    void Scene::QueryTerrains(FrameData& frameData, const Frustum& frustum, const vec3& cameraPosition,
+                              DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
     {
         for (auto& terrain : m_terrains)
         {
@@ -602,8 +659,8 @@ namespace C3D
         }
     }
 
-    void SimpleScene::QueryTerrains(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
-                                    DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
+    void Scene::QueryTerrains(FrameData& frameData, const vec3& direction, const vec3& center, f32 radius,
+                              DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
     {
         for (auto& terrain : m_terrains)
         {
@@ -656,7 +713,7 @@ namespace C3D
         }
     }
 
-    void SimpleScene::QueryMeshes(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
+    void Scene::QueryMeshes(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& meshData) const
     {
         C3D::DynamicArray<GeometryDistance, LinearAllocator> transparentGeometries(32, frameData.allocator);
 
@@ -689,7 +746,7 @@ namespace C3D
         }
     }
 
-    void SimpleScene::QueryTerrains(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
+    void Scene::QueryTerrains(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& terrainData) const
     {
         for (auto& terrain : m_terrains)
         {
@@ -720,7 +777,7 @@ namespace C3D
         }
     }
 
-    void SimpleScene::QueryDebugGeometry(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& debugData) const
+    void Scene::QueryDebugGeometry(FrameData& frameData, DynamicArray<GeometryRenderData, LinearAllocator>& debugData) const
     {
         // Grid
         constexpr auto identity = mat4(1.0f);
@@ -763,7 +820,7 @@ namespace C3D
         }
     }
 
-    bool SimpleScene::AddDirectionalLight(const String& name, DirectionalLight& light)
+    bool Scene::AddDirectionalLight(const String& name, DirectionalLight& light)
     {
         if (name.Empty())
         {
@@ -791,7 +848,7 @@ namespace C3D
         return Lights.AddDirectionalLight(light);
     }
 
-    bool SimpleScene::RemoveDirectionalLight(const String& name)
+    bool Scene::RemoveDirectionalLight(const String& name)
     {
         if (name.Empty())
         {
@@ -812,7 +869,7 @@ namespace C3D
         return false;
     }
 
-    bool SimpleScene::AddPointLight(const PointLight& light)
+    bool Scene::AddPointLight(const PointLight& light)
     {
         if (!Lights.AddPointLight(light))
         {
@@ -854,7 +911,7 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::RemovePointLight(const String& name)
+    bool Scene::RemovePointLight(const String& name)
     {
         if (m_pointLights.Contains(name))
         {
@@ -876,9 +933,9 @@ namespace C3D
         return false;
     }
 
-    PointLight* SimpleScene::GetPointLight(const String& name) { return Lights.GetPointLight(name); }
+    PointLight* Scene::GetPointLight(const String& name) { return Lights.GetPointLight(name); }
 
-    bool SimpleScene::AddMesh(const String& name, Mesh& mesh)
+    bool Scene::AddMesh(const String& name, Mesh& mesh)
     {
         if (name.Empty())
         {
@@ -916,7 +973,7 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::RemoveMesh(const String& name)
+    bool Scene::RemoveMesh(const String& name)
     {
         if (name.Empty())
         {
@@ -941,9 +998,9 @@ namespace C3D
         return true;
     }
 
-    Mesh& SimpleScene::GetMesh(const String& name) { return m_meshes.Get(name); }
+    Mesh& Scene::GetMesh(const String& name) { return m_meshes.Get(name); }
 
-    bool SimpleScene::AddTerrain(const String& name, Terrain& terrain)
+    bool Scene::AddTerrain(const String& name, Terrain& terrain)
     {
         if (name.Empty())
         {
@@ -981,7 +1038,7 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::RemoveTerrain(const String& name)
+    bool Scene::RemoveTerrain(const String& name)
     {
         if (name.Empty())
         {
@@ -1006,9 +1063,9 @@ namespace C3D
         return true;
     }
 
-    Terrain& SimpleScene::GetTerrain(const String& name) { return m_terrains.Get(name); }
+    Terrain& Scene::GetTerrain(const String& name) { return m_terrains.Get(name); }
 
-    bool SimpleScene::AddSkybox(const String& name, Skybox* skybox)
+    bool Scene::AddSkybox(const String& name, Skybox* skybox)
     {
         if (name.Empty())
         {
@@ -1049,7 +1106,7 @@ namespace C3D
         return true;
     }
 
-    bool SimpleScene::RemoveSkybox(const String& name)
+    bool Scene::RemoveSkybox(const String& name)
     {
         if (name.Empty())
         {
@@ -1075,7 +1132,7 @@ namespace C3D
         return false;
     }
 
-    bool SimpleScene::RayCast(const Ray& ray, RayCastResult& result)
+    bool Scene::RayCast(const Ray& ray, RayCastResult& result)
     {
         if (m_state < SceneState::Loaded)
         {
@@ -1099,7 +1156,7 @@ namespace C3D
         return !result.hits.Empty();
     }
 
-    Transform* SimpleScene::GetTransformById(UUID id)
+    Transform* Scene::GetTransformById(UUID id)
     {
         for (auto& mesh : m_meshes)
         {
@@ -1120,7 +1177,7 @@ namespace C3D
         return nullptr;
     }
 
-    void SimpleScene::UnloadInternal()
+    void Scene::UnloadInternal()
     {
         if (m_skybox)
         {
