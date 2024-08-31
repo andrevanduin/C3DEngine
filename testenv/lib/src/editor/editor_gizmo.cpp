@@ -1,9 +1,10 @@
 
 #include "editor_gizmo.h"
 
-#include <core/colors.h>
+#include <colors.h>
 #include <renderer/renderer_frontend.h>
 #include <systems/system_manager.h>
+#include <systems/transforms/transform_system.h>
 
 namespace
 {
@@ -25,7 +26,8 @@ namespace
 
 bool EditorGizmo::Create()
 {
-    m_mode = EditorGizmoMode::None;
+    m_mode      = EditorGizmoMode::None;
+    m_transform = Transforms.Acquire();
     return true;
 }
 
@@ -88,29 +90,39 @@ void EditorGizmo::OnPrepareRender(C3D::FrameData& frameData)
     }
 }
 
-void EditorGizmo::Update() {}
+void EditorGizmo::Update()
+{
+    if (Transforms.UpdateLocal(m_transform))
+    {
+        const auto& local = Transforms.GetLocal(m_transform);
+        Transforms.SetWorld(m_transform, local);
+    }
+}
 
 void EditorGizmo::Refresh()
 {
-    if (m_selectedObjectTransform)
+    if (m_selectedObjectTransform.IsValid())
     {
         // Set the position of our transform
-        m_transform.SetPosition(m_selectedObjectTransform->GetPosition());
+        const auto& pos = Transforms.GetPosition(m_selectedObjectTransform);
+        Transforms.SetPosition(m_transform, pos);
+
         // If we are using local mode we set the rotation also
         if (m_orientation == EditorGizmoOrientation::Local)
         {
-            m_transform.SetRotation(m_selectedObjectTransform->GetRotation());
+            const auto& rot = Transforms.GetRotation(m_selectedObjectTransform);
+            Transforms.SetRotation(m_transform, rot);
         }
         else
         {
-            m_transform.SetRotation(quat());
+            Transforms.SetRotation(m_transform, quat());
         }
     }
     else
     {
         // Reset the transform
-        m_transform.SetPosition(vec3(0));
-        m_transform.SetRotation(quat());
+        Transforms.SetPosition(m_transform, vec3(0));
+        Transforms.SetRotation(m_transform, quat());
     }
 }
 
@@ -151,8 +163,8 @@ void EditorGizmo::BeginInteraction(EditorGizmoInteractionType interactionType, c
         return;
     }
 
-    mat4 world       = m_transform.GetWorld();
-    vec3 origin      = m_transform.GetPosition();
+    mat4 world       = Transforms.GetWorld(m_transform);
+    vec3 origin      = Transforms.GetPosition(m_transform);
     vec3 planeNormal = {};
 
     if (m_interaction == EditorGizmoInteractionType::MouseDrag)
@@ -239,7 +251,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
         }
 
         // Drag state
-        mat4 world = m_transform.GetWorld();
+        mat4 world = Transforms.GetWorld(m_transform);
         // Get the initial intersection point of the ray on the plane
         vec3 intersection = {};
         f32 distance      = 0.0f;
@@ -296,12 +308,12 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
             }
 
             // Apply the translation to our gizmo's transform
-            m_transform.Translate(translation);
+            Transforms.Translate(m_transform, translation);
             data.interactionLastPos = intersection;
             // If we have access to the selected object's transform we also apply the translation there
-            if (m_selectedObjectTransform)
+            if (m_selectedObjectTransform.IsValid())
             {
-                m_selectedObjectTransform->Translate(translation);
+                Transforms.Translate(m_selectedObjectTransform, translation);
             }
         }
         else if (m_mode == EditorGizmoMode::Scale)
@@ -318,7 +330,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
 
             vec3 direction = {};
             vec3 scale     = {};
-            vec3 origin    = m_transform.GetPosition();
+            vec3 origin    = Transforms.GetPosition(m_transform);
 
             // Scale along the current axis's line in local space.
             // We will transform this to global later if it's needed
@@ -393,9 +405,9 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
             // to the scale to make sure we are scaling based on global (absolute) axis instead of the local ones.
             if (m_orientation == EditorGizmoOrientation::Global)
             {
-                if (m_selectedObjectTransform)
+                if (m_selectedObjectTransform.IsValid())
                 {
-                    quat q = glm::inverse(m_selectedObjectTransform->GetRotation());
+                    quat q = glm::inverse(Transforms.GetRotation(m_selectedObjectTransform));
                     scale  = q * scale;
                 }
             }
@@ -403,7 +415,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
             INFO_LOG("scale (diff) = [{:.4f}, {:.4f}, {:.4f}].", scale.x, scale.y, scale.z);
 
             // Apply the scale to the selected object
-            if (m_selectedObjectTransform)
+            if (m_selectedObjectTransform.IsValid())
             {
                 for (u8 i = 0; i < 3; i++)
                 {
@@ -412,13 +424,13 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
                 }
 
                 INFO_LOG("Applying scale: [{:.4f}, {:.4f}, {:.4f}].", scale.x, scale.y, scale.z);
-                m_selectedObjectTransform->Scale(scale);
+                Transforms.Scale(m_selectedObjectTransform, scale);
             }
             data.interactionLastPos = intersection;
         }
         else if (m_mode == EditorGizmoMode::Rotate)
         {
-            vec3 origin         = m_transform.GetPosition();
+            vec3 origin         = Transforms.GetPosition(m_transform);
             vec3 interactionPos = {};
             f32 distance        = 0.0f;
 
@@ -466,13 +478,13 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
             // Get the final rotation as a quaternion
             quat rotation = glm::normalize(glm::angleAxis(angle, direction));
             // Apply the rotation to the gizmo
-            m_transform.Rotate(rotation);
+            Transforms.Rotate(m_transform, rotation);
             data.interactionLastPos = interactionPos;
 
             // Apply the rotation to the selected object
-            if (m_selectedObjectTransform)
+            if (m_selectedObjectTransform.IsValid())
             {
-                m_selectedObjectTransform->Rotate(rotation);
+                Transforms.Rotate(m_selectedObjectTransform, rotation);
             }
         }
     }
@@ -480,7 +492,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
     {
         // Hover state
         f32 dist;
-        mat4 model = m_transform.GetWorld();
+        mat4 model = Transforms.GetWorld(m_transform);
         u8 hitAxis = INVALID_ID_U8;
 
         if (m_mode == EditorGizmoMode::Move || m_mode == EditorGizmoMode::Scale)
@@ -646,7 +658,7 @@ void EditorGizmo::HandleInteraction(const C3D::Ray& ray)
                 vec3 aaNormal = {};
                 aaNormal[i]   = 1.0f;
                 aaNormal      = model * vec4(aaNormal, 0.0f);
-                vec3 center   = m_transform.GetPosition();
+                vec3 center   = Transforms.GetPosition(m_transform);
 
                 C3D::Disc3D disc = { center, aaNormal, DISC_RADIUS + 0.05f, DISC_RADIUS - 0.05f };
                 if (ray.TestAgainstDisc3D(disc, point, dist))
@@ -712,7 +724,7 @@ void EditorGizmo::EndInteraction()
         if (m_orientation == EditorGizmoOrientation::Global)
         {
             // Reset our orientation when we are in global orientation mode
-            m_transform.SetRotation(quat());
+            Transforms.SetRotation(m_transform, quat());
         }
     }
 
@@ -725,7 +737,7 @@ void EditorGizmo::SetOrientation(const EditorGizmoOrientation orientation)
     Refresh();
 }
 
-void EditorGizmo::SetSelectedObjectTransform(C3D::Transform* selected)
+void EditorGizmo::SetSelectedObjectTransform(C3D::Handle<C3D::Transform> selected)
 {
     m_selectedObjectTransform = selected;
     Refresh();
@@ -972,10 +984,4 @@ void EditorGizmo::CreateRotateMode()
     // NOTE: We do not need extents for the rotate mode since we are using discs
 }
 
-C3D::UUID EditorGizmo::GetId() const { return m_id; }
-
 C3D::Geometry* EditorGizmo::GetGeometry() { return &m_modeData[ToUnderlying(m_mode)].geometry; }
-
-vec3 EditorGizmo::GetPosition() const { return m_transform.GetPosition(); }
-
-mat4 EditorGizmo::GetModel() const { return m_transform.GetWorld(); }

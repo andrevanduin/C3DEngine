@@ -1,7 +1,7 @@
 
 #include "vulkan_instance.h"
 
-#include <core/string_utils.h>
+#include <string/string_utils.h>
 
 #include <algorithm>
 

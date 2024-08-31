@@ -1,14 +1,15 @@
 
 #pragma once
 #include <containers/dynamic_array.h>
-#include <core/logger.h>
-#include <core/uuid.h>
+#include <identifiers/uuid.h>
+#include <logger/logger.h>
 #include <math/math_types.h>
 #include <math/ray.h>
 #include <renderer/camera.h>
 #include <renderer/geometry.h>
-#include <renderer/transform.h>
 #include <renderer/vertex.h>
+#include <systems/system_manager.h>
+#include <systems/transforms/transform_system.h>
 
 enum class EditorGizmoMode
 {
@@ -84,16 +85,16 @@ public:
     EditorGizmoInteractionType GetCurrentInteractionType() const { return m_interaction; }
     EditorGizmoOrientation GetOrientation() const { return m_orientation; }
 
-    C3D::UUID GetId() const;
-    vec3 GetPosition() const;
-    mat4 GetModel() const;
+    C3D::UUID GetId() const { return m_id; }
+    vec3 GetPosition() const { return Transforms.GetPosition(m_transform); }
+    mat4 GetModel() const { return Transforms.GetWorld(m_transform); }
     C3D::Geometry* GetGeometry();
 
     void SetMode(const EditorGizmoMode mode) { m_mode = mode; }
     void SetScale(const f32 scale) { m_scale = scale; }
     void SetOrientation(const EditorGizmoOrientation orientation);
 
-    void SetSelectedObjectTransform(C3D::Transform* selected);
+    void SetSelectedObjectTransform(C3D::Handle<C3D::Transform> selected);
 
 private:
     void CreateNoneMode();
@@ -101,8 +102,8 @@ private:
     void CreateScaleMode();
     void CreateRotateMode();
 
-    C3D::Transform m_transform;
-    C3D::Transform* m_selectedObjectTransform = nullptr;
+    C3D::Handle<C3D::Transform> m_transform;
+    C3D::Handle<C3D::Transform> m_selectedObjectTransform;
 
     /** @brief Used to keep the gizmo a consistent size on the screen despite camera distance. */
     f32 m_scale = 0.0f;

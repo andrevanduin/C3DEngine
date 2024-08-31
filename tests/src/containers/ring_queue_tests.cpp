@@ -2,8 +2,8 @@
 #include "ring_queue_tests.h"
 
 #include <containers/ring_queue.h>
-#include <core/defines.h>
-#include <core/metrics/metrics.h>
+#include <defines.h>
+#include <metrics/metrics.h>
 
 #include "../expect.h"
 

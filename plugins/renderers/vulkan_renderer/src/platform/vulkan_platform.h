@@ -1,7 +1,18 @@
-
 #pragma once
-#ifdef C3D_PLATFORM_WINDOWS
-#include "windows/vulkan_platform_win32.h"
-#elif defined(C3D_PLATFORM_LINUX)
-#include "linux/vulkan_platform_linux.h"
-#endif
+#include <containers/dynamic_array.h>
+#include <defines.h>
+#include <string/string.h>
+
+namespace C3D
+{
+    struct VulkanContext;
+    class SystemManager;
+
+    namespace VulkanPlatform
+    {
+        bool CreateSurface(VulkanContext& context);
+
+        DynamicArray<const char*> GetRequiredExtensionNames();
+    }  // namespace VulkanPlatform
+
+}  // namespace C3D

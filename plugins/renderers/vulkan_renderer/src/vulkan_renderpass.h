@@ -1,7 +1,7 @@
 
 #pragma once
-#include <core/defines.h>
-#include <core/frame_data.h>
+#include <defines.h>
+#include <frame_data.h>
 #include <math/math_types.h>
 #include <renderer/rendergraph/rendergraph_types.h>
 

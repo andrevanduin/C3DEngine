@@ -1,0 +1,48 @@
+
+#include "system_manager.h"
+
+#include "logger/logger.h"
+
+namespace C3D
+{
+    SystemManager SystemManager::m_instance;
+    SystemManager& SystemManager::GetInstance() { return m_instance; }
+
+    void SystemManager::OnInit()
+    {
+        INFO_LOG("Initializing Systems Manager.");
+
+        // 8 mb of total space for all our systems
+        constexpr u64 systemsAllocatorTotalSize = MebiBytes(8);
+        m_allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
+    }
+
+    bool SystemManager::OnPrepareRender(FrameData& frameData)
+    {
+        for (const auto system : m_systems)
+        {
+            if (!system->OnPrepareRender(frameData))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void SystemManager::OnShutdown()
+    {
+        INFO_LOG("Shutting down all Systems.");
+
+        for (const auto system : m_systems)
+        {
+            if (system)
+            {
+                system->OnShutdown();
+                m_allocator.Delete(system);
+            }
+        }
+
+        m_allocator.Destroy();
+    }
+}  // namespace C3D

@@ -2,9 +2,9 @@
 #include "stack_allocator_tests.h"
 
 #include <containers/dynamic_array.h>
-#include <core/defines.h>
-#include <core/random.h>
+#include <defines.h>
 #include <memory/allocators/stack_allocator.h>
+#include <random/random.h>
 
 #include "../expect.h"
 #include "../test_manager.h"

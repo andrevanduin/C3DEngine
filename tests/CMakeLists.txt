@@ -13,18 +13,18 @@ add_executable (Tests "src/expect.h" "src/test_manager.h" "src/test_manager.cpp"
 	"src/containers/stack_tests.h" "src/containers/stack_tests.cpp"
 	"src/containers/ring_queue_tests.h" "src/containers/ring_queue_tests.cpp"
 	"src/containers/queue_tests.h" "src/containers/queue_tests.cpp"
-	"src/containers/string_tests.h" "src/containers/string_tests.cpp"
-	"src/containers/cstring_tests.h" "src/containers/cstring_tests.cpp"
+	"src/string/string_tests.h" "src/string/string_tests.cpp"
+	"src/string/cstring_tests.h" "src/string/cstring_tests.cpp"
 	"src/platform/file_system.h" "src/platform/file_system.cpp"
-	"src/core/stack_function_tests.h" "src/core/stack_function_tests.cpp"
+	"src/function/stack_function_tests.h" "src/function/stack_function_tests.cpp"
 )
 
-target_link_libraries(Tests PUBLIC C3DEngine)
+target_link_libraries(Tests PUBLIC C3DEngineCore)
 
 add_custom_target(CopyDLLTests
 	COMMAND ${CMAKE_COMMAND} -E copy 
-	"${CMAKE_BINARY_DIR}/engine/${CMAKE_SHARED_LIBRARY_PREFIX}C3DEngine${CMAKE_SHARED_LIBRARY_SUFFIX}" 
-	"${CMAKE_BINARY_DIR}/tests" DEPENDS C3DEngine
+	"${CMAKE_BINARY_DIR}/engine.core/${CMAKE_SHARED_LIBRARY_PREFIX}C3DEngineCore${CMAKE_SHARED_LIBRARY_SUFFIX}" 
+	"${CMAKE_BINARY_DIR}/tests" DEPENDS C3DEngineCore
 )
 
 add_dependencies(Tests CopyDLLTests)

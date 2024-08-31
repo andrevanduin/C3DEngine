@@ -1,23 +1,23 @@
 
 #include "game.h"
 
-#include <containers/cstring.h>
-#include <core/colors.h>
-#include <core/console/console.h>
-#include <core/events/event_context.h>
-#include <core/frame_data.h>
-#include <core/logger.h>
-#include <core/metrics/metrics.h>
+#include <colors.h>
+#include <console/console.h>
+#include <frame_data.h>
+#include <logger/logger.h>
 #include <math/ray.h>
+#include <metrics/metrics.h>
 #include <renderer/renderer_types.h>
 #include <resources/managers/scene_manager.h>
 #include <resources/scenes/scene.h>
 #include <resources/scenes/scene_config.h>
 #include <resources/skybox.h>
+#include <string/cstring.h>
 #include <systems/UI/2D/ui2d_system.h>
 #include <systems/audio/audio_system.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/cvars/cvar_system.h>
+#include <systems/events/event_context.h>
 #include <systems/events/event_system.h>
 #include <systems/geometry/geometry_system.h>
 #include <systems/input/input_system.h>
@@ -98,10 +98,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     m_state->wireframeCamera->SetPosition({ 8.0f, 0.0f, 10.0f });
     m_state->wireframeCamera->SetEulerRotation({ 0.0f, -90.0f, 0.0f });
 
-    // Set the allocator for the dynamic array that contains our world geometries to our frame allocator
-    auto gameFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
-    gameFrameData->worldGeometries.SetAllocator(frameData.allocator);
-
     // Create, initialize and load our editor gizmo
     if (!m_state->gizmo.Create())
     {
@@ -171,9 +167,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 
 void TestEnv::OnUpdate(C3D::FrameData& frameData)
 {
-    // Get our application specific frame data
-    auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
-
     static u64 allocCount    = 0;
     const u64 prevAllocCount = allocCount;
     allocCount               = Metrics.GetAllocCount();
@@ -348,7 +341,7 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         // Rotate
         quat rotation = angleAxis(0.2f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
 
-        const auto absTime  = OS.GetAbsoluteTime();
+        const auto absTime  = Platform::GetAbsoluteTime();
         const auto sinTime  = (C3D::Sin(absTime) + 1) / 2;  // 0  -> 1
         const auto sinTime2 = C3D::Sin(absTime);            // -1 -> 1
 
@@ -420,9 +413,6 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
 
 bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 {
-    // Get our application specific frame data
-    auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
-
     auto camera = m_state->camera;
 
     // Prepare debug boxes and lines for rendering
@@ -772,7 +762,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                 {
                     // Create a debug line
                     C3D::DebugLine3D line;
-                    if (!line.Create(ray.origin, hit.position, nullptr))
+                    if (!line.Create(ray.origin, hit.position))
                     {
                         ERROR_LOG("Failed to create debug line.");
                         return false;
@@ -793,7 +783,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                     m_state->testLines.PushBack(line);
 
                     C3D::DebugBox3D box;
-                    if (!box.Create(vec3(0.1f), nullptr))
+                    if (!box.Create(vec3(0.1f)))
                     {
                         ERROR_LOG("Failed to create debug box.");
                         return false;
@@ -816,16 +806,16 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                     // Keep track of the hit that is closest
                     if (hit.distance < closestDistance)
                     {
-                        closestDistance              = hit.distance;
-                        m_state->selectedObject.uuid = hit.uuid;
+                        closestDistance            = hit.distance;
+                        m_state->selectedObject.id = hit.id;
                     }
                 }
 
-                const auto selectedUUID = m_state->selectedObject.uuid;
-                if (selectedUUID.IsValid())
+                const auto selectedId = m_state->selectedObject.id;
+                if (selectedId != INVALID_ID)
                 {
-                    m_state->selectedObject.transform = m_state->Scene.GetTransformById(selectedUUID);
-                    INFO_LOG("Selected object id = {}.", selectedUUID);
+                    m_state->selectedObject.transform = m_state->Scene.GetTransformById(selectedId);
+                    INFO_LOG("Selected object id = {}.", selectedId);
                     m_state->gizmo.SetSelectedObjectTransform(m_state->selectedObject.transform);
                 }
             }
@@ -833,13 +823,13 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
             {
                 INFO_LOG("Ray MISSED!");
 
-                m_state->selectedObject.transform = nullptr;
-                m_state->selectedObject.uuid      = INVALID_ID;
-                m_state->gizmo.SetSelectedObjectTransform(nullptr);
+                m_state->selectedObject.transform.Invalidate();
+                m_state->selectedObject.id = INVALID_ID;
+                m_state->gizmo.SetSelectedObjectTransform(C3D::Handle<C3D::Transform>());
 
                 // Create a debug line
                 C3D::DebugLine3D line;
-                if (!line.Create(origin, origin + (ray.direction * 100.0f), nullptr))
+                if (!line.Create(origin, origin + (ray.direction * 100.0f)))
                 {
                     ERROR_LOG("Failed to create debug line.");
                     return false;
@@ -1006,6 +996,5 @@ C3D::ApplicationState* CreateApplicationState()
     state->windowConfig.height = 720;
     state->windowConfig.flags  = C3D::WindowFlagCenter;
     state->frameAllocatorSize  = MebiBytes(8);
-    state->appFrameDataSize    = sizeof(GameFrameData);
     return state;
 }

@@ -1,7 +1,7 @@
 
 #pragma once
-#include <core/asserts.h>
-#include <core/defines.h>
+#include <asserts/asserts.h>
+#include <defines.h>
 #include <vulkan/vulkan.h>
 
 #include "vulkan_buffer.h"

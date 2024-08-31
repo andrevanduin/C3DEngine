@@ -1,8 +1,8 @@
 
 #pragma once
-#include <core/defines.h>
-#include <core/random.h>
+#include <defines.h>
 #include <memory/global_memory_system.h>
+#include <random/random.h>
 
 namespace C3D
 {

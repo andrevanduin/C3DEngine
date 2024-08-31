@@ -1,7 +1,7 @@
 
 #pragma once
 #include <containers/dynamic_array.h>
-#include <core/defines.h>
+#include <defines.h>
 #include <memory/allocators/linear_allocator.h>
 #include <renderer/renderer_types.h>
 #include <renderer/rendergraph/renderpass.h>

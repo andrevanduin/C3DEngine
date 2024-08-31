@@ -1,6 +1,6 @@
 
 #pragma once
-#include <core/defines.h>
+#include <defines.h>
 #include <renderer/render_buffer.h>
 #include <vulkan/vulkan.h>
 

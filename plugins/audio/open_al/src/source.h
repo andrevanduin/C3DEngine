@@ -2,7 +2,7 @@
 #pragma once
 #include <AL/al.h>
 #include <AL/alc.h>
-#include <core/audio/audio_file.h>
+#include <audio/audio_file.h>
 #include <math/math_types.h>
 
 #include <mutex>

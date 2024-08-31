@@ -1,7 +1,7 @@
 
 #include "vulkan_allocator.h"
 
-#include <core/metrics/metrics.h>
+#include <metrics/metrics.h>
 #include <memory/global_memory_system.h>
 #include <platform/platform.h>
 

@@ -1,9 +1,9 @@
 
 #pragma once
 #include <containers/dynamic_array.h>
-#include <containers/string.h>
-#include <core/defines.h>
-#include <core/logger.h>
+#include <defines.h>
+#include <logger/logger.h>
+#include <string/string.h>
 #include <vulkan/vulkan_core.h>
 
 namespace C3D

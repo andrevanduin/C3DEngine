@@ -1,8 +1,8 @@
 
 #include "file_system.h"
 
-#include <containers/string.h>
 #include <platform/file_system.h>
+#include <string/string.h>
 
 #include "../expect.h"
 

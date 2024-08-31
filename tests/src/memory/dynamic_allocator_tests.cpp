@@ -1,16 +1,16 @@
 
 #include "dynamic_allocator_tests.h"
 
-#include <core/defines.h>
-#include <core/random.h>
+#include <defines.h>
 #include <memory/allocators/dynamic_allocator.h>
 #include <memory/global_memory_system.h>
+#include <metrics/metrics.h>
+#include <random/random.h>
 
 #include <algorithm>
 #include <array>
 
 #include "../expect.h"
-#include "core/metrics/metrics.h"
 
 struct AllocStruct
 {

@@ -1,10 +1,9 @@
 
 #include "vulkan_renderer_plugin.h"
 
-#include <core/engine.h>
-#include <core/events/event_context.h>
-#include <core/logger.h>
-#include <core/metrics/metrics.h>
+#include <engine.h>
+#include <metrics/metrics.h>
+#include <logger/logger.h>
 #include <platform/platform.h>
 #include <renderer/geometry.h>
 #include <renderer/renderer_frontend.h>
@@ -15,6 +14,7 @@
 #include <resources/textures/texture.h>
 #include <shaderc/shaderc.h>
 #include <shaderc/status.h>
+#include <systems/events/event_context.h>
 #include <systems/events/event_system.h>
 #include <systems/resources/resource_system.h>
 #include <systems/system_manager.h>
@@ -119,7 +119,7 @@ namespace C3D
             m_context.imagesInFlight[i] = nullptr;
         }
 
-        constexpr u64 stagingBufferSize = MebiBytes(256);
+        constexpr u64 stagingBufferSize = MebiBytes(512);
         if (!m_context.stagingBuffer.Create(RenderBufferType::Staging, stagingBufferSize, RenderBufferTrackType::Linear))
         {
             ERROR_LOG("Error creating staging buffer.");

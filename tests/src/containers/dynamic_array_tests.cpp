@@ -1,13 +1,10 @@
 
 #include <containers/dynamic_array.h>
-#include <containers/string.h>
-#include <core/defines.h>
-#include <core/logger.h>
-#include <core/metrics/metrics.h>
-#include <core/random.h>
-#include <renderer/vertex.h>
-
-#include <iostream>
+#include <defines.h>
+#include <logger/logger.h>
+#include <metrics/metrics.h>
+#include <random/random.h>
+#include <string/string.h>
 
 #include "../expect.h"
 #include "../test_manager.h"
@@ -103,15 +100,24 @@ namespace DynamicArray
         ExpectEqual(0, Metrics.GetMemoryUsage(C3D::MemoryType::DynamicArray));
     }
 
+    struct TestVertex
+    {
+        vec3 position;
+        vec3 normal;
+        vec2 texture;
+        vec4 color;
+        vec4 tangent;
+    };
+
     TEST(DynamicArrayShouldAllocateLargeBlocks)
     {
-        C3D::DynamicArray<C3D::Vertex3D> array(32768);
+        C3D::DynamicArray<TestVertex> array(32768);
 
         ExpectEqual(32768, array.Capacity());
         ExpectEqual(0, array.Size());
-        ExpectEqual(sizeof(C3D::Vertex3D) * 32768, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
+        ExpectEqual(sizeof(TestVertex) * 32768, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
-        constexpr auto element = C3D::Vertex3D{ vec3(0), vec3(0), vec2(1), vec4(1), vec4(4) };
+        constexpr auto element = TestVertex{ vec3(0), vec3(0), vec2(1), vec4(1), vec4(4) };
         array.PushBack(element);
 
         ExpectEqual(element.position, array[0].position);
@@ -130,13 +136,13 @@ namespace DynamicArray
 
     TEST(DynamicArrayShouldAllocateLargeBlocksAndCopyOverElementsOnResize)
     {
-        C3D::DynamicArray<C3D::Vertex3D> array(4);
+        C3D::DynamicArray<TestVertex> array(4);
 
         ExpectEqual(4, array.Capacity());
         ExpectEqual(0, array.Size());
-        ExpectEqual(sizeof(C3D::Vertex3D) * 4, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
+        ExpectEqual(sizeof(TestVertex) * 4, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
-        constexpr auto element = C3D::Vertex3D{ vec3(0), vec3(0), vec2(1), vec4(1), vec4(4) };
+        constexpr auto element = TestVertex{ vec3(0), vec3(0), vec2(1), vec4(1), vec4(4) };
         array.PushBack(element);
 
         ExpectEqual(element.position, array[0].position);
@@ -149,7 +155,7 @@ namespace DynamicArray
 
         ExpectEqual(32768, array.Capacity());
         ExpectEqual(1, array.Size());
-        ExpectEqual(sizeof(C3D::Vertex3D) * 32768, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
+        ExpectEqual(sizeof(TestVertex) * 32768, Metrics.GetRequestedMemoryUsage(C3D::MemoryType::DynamicArray));
 
         ExpectEqual(element.position, array[0].position);
         ExpectEqual(element.normal, array[0].normal);

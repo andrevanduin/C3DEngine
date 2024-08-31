@@ -2,10 +2,10 @@
 #include "hash_map_tests.h"
 
 #include <containers/hash_map.h>
-#include <containers/string.h>
-#include <core/defines.h>
-#include <core/metrics/metrics.h>
-#include <core/random.h>
+#include <defines.h>
+#include <metrics/metrics.h>
+#include <random/random.h>
+#include <string/string.h>
 
 #include "../expect.h"
 #include "../utilities/non_trivial_destructor_object.h"

@@ -1,8 +1,8 @@
 
 #include "vulkan_debugger.h"
 
-#include <core/defines.h>
-#include <core/logger.h>
+#include <defines.h>
+#include <logger/logger.h>
 #include <vulkan/vulkan_core.h>
 
 #include "vulkan_utils.h"

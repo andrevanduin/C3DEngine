@@ -1,7 +1,7 @@
 
-#include <containers/string.h>
-#include <core/logger.h>
+#include <logger/logger.h>
 #include <math/c3d_math.h>
+#include <string/string.h>
 
 class ExpectException : public std::exception
 {

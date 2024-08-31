@@ -2,10 +2,10 @@
 #include "hash_table_tests.h"
 
 #include <containers/hash_table.h>
-#include <core/defines.h>
+#include <defines.h>
+#include <metrics/metrics.h>
 
 #include "../expect.h"
-#include "core/metrics/metrics.h"
 
 TEST(HashTableShouldCreateAndDestroy)
 {

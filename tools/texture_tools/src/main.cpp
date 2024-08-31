@@ -1,7 +1,7 @@
 
-#include <containers/string.h>
-#include <core/defines.h>
-#include <core/logger.h>
+#include <defines.h>
+#include <logger/logger.h>
+#include <string/string.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"

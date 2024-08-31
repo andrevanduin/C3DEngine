@@ -1,6 +1,6 @@
 
 #pragma once
-#include <containers/string.h>
+#include <string/string.h>
 
 namespace C3D
 {

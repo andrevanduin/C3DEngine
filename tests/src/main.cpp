@@ -1,20 +1,20 @@
 
-#include <core/logger.h>
+#include <logger/logger.h>
 
 #include "containers/array_tests.h"
-#include "containers/cstring_tests.h"
 #include "containers/dynamic_array_tests.h"
 #include "containers/hash_map_tests.h"
 #include "containers/hash_table_tests.h"
 #include "containers/queue_tests.h"
 #include "containers/ring_queue_tests.h"
 #include "containers/stack_tests.h"
-#include "containers/string_tests.h"
-#include "core/stack_function_tests.h"
+#include "function/stack_function_tests.h"
 #include "memory/dynamic_allocator_tests.h"
 #include "memory/linear_allocator_tests.h"
 #include "memory/stack_allocator_tests.h"
 #include "platform/file_system.h"
+#include "string/cstring_tests.h"
+#include "string/string_tests.h"
 #include "test_manager.h"
 
 int main(int argc, char** argv)

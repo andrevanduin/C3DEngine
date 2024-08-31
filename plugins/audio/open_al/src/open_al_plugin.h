@@ -1,9 +1,9 @@
 
 #pragma once
+#include <audio/audio_plugin.h>
 #include <containers/dynamic_array.h>
 #include <containers/queue.h>
-#include <core/audio/audio_plugin.h>
-#include <core/defines.h>
+#include <defines.h>
 
 #include "audio_data.h"
 #include "source.h"

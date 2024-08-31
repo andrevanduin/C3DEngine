@@ -1,8 +1,8 @@
 
 #pragma once
 #include "containers/dynamic_array.h"
-#include "containers/string.h"
 #include "resources/shaders/shader_types.h"
+#include "string/string.h"
 #include "vulkan_types.h"
 
 namespace C3D
