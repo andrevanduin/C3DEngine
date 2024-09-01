@@ -13,7 +13,7 @@ namespace C3D
 
     static SystemManagerState state;
 
-    void SystemManager::OnInit()
+    bool SystemManager::OnInit()
     {
         INFO_LOG("Initializing Systems Manager.");
 

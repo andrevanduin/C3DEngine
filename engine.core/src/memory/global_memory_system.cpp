@@ -55,11 +55,5 @@ namespace C3D
         }
     }
 
-    void* GlobalMemorySystem::Zero(void* block, const u64 size) { return std::memset(block, 0, size); }
-
-    void* GlobalMemorySystem::MemCopy(void* dest, const void* source, const u64 size) { return std::memcpy(dest, source, size); }
-
-    void* GlobalMemorySystem::SetMemory(void* dest, const i32 value, const u64 size) { return std::memset(dest, value, size); }
-
     DynamicAllocator& GlobalMemorySystem::GetAllocator() { return *BaseAllocator<DynamicAllocator>::GetDefault(); }
 }  // namespace C3D
