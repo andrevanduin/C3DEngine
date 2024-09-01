@@ -8,7 +8,6 @@
 namespace C3D
 {
     class RendererPlugin;
-    class SystemManager;
     class Skybox;
     struct TextureMap;
 

@@ -1,7 +1,5 @@
 
 #pragma once
-#include <type_traits>
-
 #include "defines.h"
 #include "memory/allocators/linear_allocator.h"
 #include "system.h"
@@ -46,12 +44,18 @@ namespace C3D
         MaxKnownSystemType
     };
 
-    class C3D_API SystemManager
+    namespace SystemManager
     {
-    public:
-        SystemManager() = default;
+        C3D_API bool OnInit();
 
-        void OnInit();
+        C3D_API void RegisterSystem(const u16 type, ISystem* system);
+
+        C3D_API LinearAllocator& GetAllocator();
+        C3D_API C3D_INLINE ISystem* GetSystem(u16 type);
+
+        C3D_API bool OnPrepareRender(FrameData& frameData);
+
+        C3D_API void OnShutdown();
 
         template <class System>
         bool RegisterSystem(const u16 systemType)
@@ -64,14 +68,15 @@ namespace C3D
                 return false;
             }
 
-            auto s = m_allocator.New<System>(MemoryType::CoreSystem);
-            if (!s->OnInit())
+            auto& allocator = GetAllocator();
+            auto system     = allocator.New<System>(MemoryType::CoreSystem);
+            if (!system->OnInit())
             {
                 FATAL_LOG("Failed to initialize system.");
                 return false;
             }
 
-            m_systems[systemType] = s;
+            RegisterSystem(systemType, system);
             return true;
         }
 
@@ -87,39 +92,23 @@ namespace C3D
                 return false;
             }
 
-            auto s = m_allocator.New<System>(MemoryType::CoreSystem);
-            if (!s->OnInit(config))
+            auto& allocator = GetAllocator();
+            auto system     = allocator.New<System>(MemoryType::CoreSystem);
+            if (!system->OnInit(config))
             {
                 FATAL_LOG("Failed to initialize system.");
                 return false;
             }
 
-            m_systems[systemType] = s;
+            RegisterSystem(systemType, system);
             return true;
         }
 
         template <class SystemType>
-        static SystemType& GetSystem(const u16 type)
+        inline SystemType& GetSystem(const u16 type)
         {
-            return *reinterpret_cast<SystemType*>(GetInstance().m_systems[type]);
+            return *reinterpret_cast<SystemType*>(GetSystem(type));
         }
 
-        template <class SystemType>
-        static SystemType* GetSystemPtr(const u16 type)
-        {
-            return reinterpret_cast<SystemType*>(GetInstance().m_systems[type]);
-        }
-
-        bool OnPrepareRender(FrameData& frameData);
-
-        void OnShutdown();
-
-        static SystemManager& GetInstance();
-
-    private:
-        Array<ISystem*, MaxKnownSystemType> m_systems = {};
-        LinearAllocator m_allocator;
-
-        static SystemManager m_instance;
-    };
+    };  // namespace SystemManager
 }  // namespace C3D

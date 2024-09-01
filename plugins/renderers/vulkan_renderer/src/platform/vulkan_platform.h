@@ -6,7 +6,6 @@
 namespace C3D
 {
     struct VulkanContext;
-    class SystemManager;
 
     namespace VulkanPlatform
     {

@@ -8,7 +8,6 @@
 
 namespace C3D
 {
-    class SystemManager;
     class Mesh;
     class DebugBox3D;
     class Geometry;

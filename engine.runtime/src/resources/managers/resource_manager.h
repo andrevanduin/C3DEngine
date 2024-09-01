@@ -5,8 +5,6 @@
 
 namespace C3D
 {
-    class SystemManager;
-
     class C3D_API IResourceManager
     {
     public:

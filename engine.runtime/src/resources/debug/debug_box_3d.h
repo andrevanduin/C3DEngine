@@ -11,8 +11,6 @@
 
 namespace C3D
 {
-    class SystemManager;
-
     class C3D_API DebugBox3D
     {
     public:

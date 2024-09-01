@@ -17,8 +17,6 @@ namespace C3D
     using ArgName         = CString<128>;
     using CommandCallback = StackFunction<bool(const DynamicArray<ArgName>&, String&), 16>;
 
-    class SystemManager;
-
     class C3D_API UIConsole
     {
         enum class LogType

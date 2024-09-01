@@ -10,7 +10,6 @@
 namespace C3D
 {
     class Shader;
-    class SystemManager;
     class Camera;
 }  // namespace C3D
 

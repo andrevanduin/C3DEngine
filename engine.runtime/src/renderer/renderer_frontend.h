@@ -9,7 +9,6 @@
 
 namespace C3D
 {
-    class SystemManager;
     class Shader;
 
     struct Texture;

@@ -18,7 +18,6 @@
 
 namespace C3D
 {
-    class SystemManager;
     struct FrameData;
     struct RenderPacket;
 

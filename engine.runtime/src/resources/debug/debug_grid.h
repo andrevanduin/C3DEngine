@@ -10,8 +10,6 @@
 
 namespace C3D
 {
-    class SystemManager;
-
     enum class DebugGridOrientation
     {
         XZ = 0,

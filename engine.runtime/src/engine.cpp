@@ -53,8 +53,7 @@ namespace C3D
             INFO_LOG("System reported: {} threads (including main thread).", threadCount);
         }
 
-        auto& systemsManager = SystemManager::GetInstance();
-        systemsManager.OnInit();
+        SystemManager::OnInit();
 
         constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
         constexpr ShaderSystemConfig shaderSystemConfig;
@@ -70,12 +69,12 @@ namespace C3D
         Platform::SetOnResizeCallback([this](u16 width, u16 height) { OnResizeEvent(width, height); });
 
         // Init before boot systems
-        systemsManager.RegisterSystem<EventSystem>(EventSystemType);                                 // Event System
-        systemsManager.RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);                 // CVar System
-        systemsManager.RegisterSystem<InputSystem>(InputSystemType);                                 // Input System
-        systemsManager.RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);     // Resource System
-        systemsManager.RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);           // Shader System
-        systemsManager.RegisterSystem<TransformSystem>(TransformSystemType, transformSystemConfig);  // Transform System
+        SystemManager::RegisterSystem<EventSystem>(EventSystemType);                                 // Event System
+        SystemManager::RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);                 // CVar System
+        SystemManager::RegisterSystem<InputSystem>(InputSystemType);                                 // Input System
+        SystemManager::RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);     // Resource System
+        SystemManager::RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);           // Shader System
+        SystemManager::RegisterSystem<TransformSystem>(TransformSystemType, transformSystemConfig);  // Transform System
 
         // After the Event system is up and running we register an OnQuit event
         Event.Register(EventCodeApplicationQuit, [this](u16 code, void* sender, const EventContext& context) {
@@ -99,14 +98,14 @@ namespace C3D
         }
 
         // We must initialize the Texture system first since our RenderSystem depends on it
-        systemsManager.RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
-        systemsManager.RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);     // Render System
+        SystemManager::RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
+        SystemManager::RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);     // Render System
 
         // But we can only create default textures once we have our RenderSystem running
         Textures.CreateDefaultTextures();
 
-        systemsManager.RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);     // UI2D System
-        systemsManager.RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);  //  Audio System
+        SystemManager::RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);     // UI2D System
+        SystemManager::RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);  //  Audio System
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
@@ -148,16 +147,16 @@ namespace C3D
         const JobSystemConfig jobSystemConfig{ static_cast<u8>(threadCount - 1), jobThreadTypes };
         constexpr CameraSystemConfig cameraSystemConfig{ 61 };
 
-        systemsManager.RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);           // Job System
-        systemsManager.RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);    // Font System
-        systemsManager.RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);  // Camera System
+        SystemManager::RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);           // Job System
+        SystemManager::RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);    // Font System
+        SystemManager::RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);  // Camera System
 
         constexpr MaterialSystemConfig materialSystemConfig{ 4077 };
         constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
 
-        systemsManager.RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System
-        systemsManager.RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig);  // Geometry System
-        systemsManager.RegisterSystem<LightSystem>(LightSystemType);                              // Light System
+        SystemManager::RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System
+        SystemManager::RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig);  // Geometry System
+        SystemManager::RegisterSystem<LightSystem>(LightSystemType);                              // Light System
 
         m_state.initialized = true;
         m_state.lastTime    = 0;
@@ -260,7 +259,7 @@ namespace C3D
 
                 Renderer.BeginDebugLabel("PrepareRender", vec3(1.0f, 1.0f, 0.0f));
 
-                SystemManager::GetInstance().OnPrepareRender(m_frameData);
+                SystemManager::OnPrepareRender(m_frameData);
 
                 // Let the application prepare all the data for the next frame
                 bool prepareFrameResult = m_application->OnPrepareRender(m_frameData);
@@ -357,8 +356,7 @@ namespace C3D
         m_console.OnShutDown();
 
         // Finally our systems manager can be shut down
-        auto& systemsManager = SystemManager::GetInstance();
-        systemsManager.OnShutdown();
+        SystemManager::OnShutdown();
 
         m_state.initialized = false;
     }

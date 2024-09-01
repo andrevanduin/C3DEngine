@@ -13,7 +13,6 @@
 
 namespace C3D
 {
-    class SystemManager;
     class Terrain;
 
     struct Material;

@@ -5,8 +5,6 @@
 
 namespace C3D
 {
-    class SystemManager;
-
     /** @brief A scoped timer that starts on creation and prints the elapsed time on destruction.
      * Requires Platform to be initialized fully in order to work properly.
      */

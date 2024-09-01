@@ -9,7 +9,6 @@
 namespace C3D
 {
     class Application;
-    class SystemManager;
 
     template <class ConfigType>
     class C3D_API Rendergraph

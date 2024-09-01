@@ -4,7 +4,6 @@
 
 namespace C3D
 {
-    class SystemManager;
     struct FrameData;
 
     class ISystem

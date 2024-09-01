@@ -56,11 +56,6 @@ struct EditorGizmoModeData
     C3D::Geometry geometry;
 };
 
-namespace C3D
-{
-    class SystemManager;
-}
-
 class EditorGizmo
 {
 public:

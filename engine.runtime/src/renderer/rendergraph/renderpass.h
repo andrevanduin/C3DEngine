@@ -8,7 +8,6 @@ namespace C3D
 {
     class Viewport;
     class Camera;
-    class SystemManager;
 
     class C3D_API Renderpass
     {

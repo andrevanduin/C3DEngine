@@ -5,8 +5,13 @@
 
 namespace C3D
 {
-    SystemManager SystemManager::m_instance;
-    SystemManager& SystemManager::GetInstance() { return m_instance; }
+    struct SystemManagerState
+    {
+        Array<ISystem*, MaxKnownSystemType> systems = {};
+        LinearAllocator allocator;
+    };
+
+    static SystemManagerState state;
 
     void SystemManager::OnInit()
     {
@@ -14,12 +19,20 @@ namespace C3D
 
         // 8 mb of total space for all our systems
         constexpr u64 systemsAllocatorTotalSize = MebiBytes(8);
-        m_allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
+        state.allocator.Create("LINEAR_SYSTEM_ALLOCATOR", systemsAllocatorTotalSize);
+
+        return true;
     }
+
+    void SystemManager::RegisterSystem(const u16 type, ISystem* system) { state.systems[type] = system; }
+
+    LinearAllocator& SystemManager::GetAllocator() { return state.allocator; }
+
+    ISystem* SystemManager::GetSystem(u16 type) { return state.systems[type]; }
 
     bool SystemManager::OnPrepareRender(FrameData& frameData)
     {
-        for (const auto system : m_systems)
+        for (const auto system : state.systems)
         {
             if (!system->OnPrepareRender(frameData))
             {
@@ -34,15 +47,15 @@ namespace C3D
     {
         INFO_LOG("Shutting down all Systems.");
 
-        for (const auto system : m_systems)
+        for (const auto system : state.systems)
         {
             if (system)
             {
                 system->OnShutdown();
-                m_allocator.Delete(system);
+                state.allocator.Delete(system);
             }
         }
 
-        m_allocator.Destroy();
+        state.allocator.Destroy();
     }
 }  // namespace C3D
