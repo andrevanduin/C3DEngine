@@ -80,11 +80,10 @@ namespace C3D
             return true;
         }
 
-        template <class System, typename Config>
-        bool RegisterSystem(const u16 systemType, const Config& config)
+        template <class System>
+        bool RegisterSystem(const u16 systemType, const CSONObject& config)
         {
-            static_assert(std::is_base_of_v<SystemWithConfig<Config>, System>,
-                          "The provided system does not derive from the ISystem class.");
+            static_assert(std::is_base_of_v<ISystem, System>, "The provided system does not derive from the ISystem class.");
 
             if (systemType > MaxKnownSystemType)
             {

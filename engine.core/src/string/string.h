@@ -1002,6 +1002,15 @@ namespace C3D
             return sub;
         }
 
+        /** @brief Converts string to a i64. */
+        [[nodiscard]] i64 ToI64(const i32 base = 10) const { return std::strtoll(m_data, nullptr, base); }
+
+        /** @brief Converts string to a u64. */
+        [[nodiscard]] u64 ToU64(const i32 base = 10) const { return std::strtoull(m_data, nullptr, base); }
+
+        /** @brief Converts string to a f64. */
+        [[nodiscard]] f64 ToF64() const { return std::strtod(m_data, nullptr); }
+
         /** @brief Converts string to a f32. */
         [[nodiscard]] f32 ToF32() const { return std::strtof(m_data, nullptr); }
 

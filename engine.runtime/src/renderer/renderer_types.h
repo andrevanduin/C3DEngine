@@ -29,7 +29,7 @@ namespace C3D
         Wireframe = 4,
     };
 
-    enum RendererConfigFlagBits : u8
+    enum RendererConfigFlag : u8
     {
         /** @brief Sync frame rate to monitor refresh rate. */
         FlagVSyncEnabled = 0x1,

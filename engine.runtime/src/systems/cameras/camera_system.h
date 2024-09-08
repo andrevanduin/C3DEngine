@@ -11,7 +11,7 @@ namespace C3D
 
     struct CameraSystemConfig
     {
-        u16 maxCameraCount;
+        u16 maxCameras;
     };
 
     struct CameraReference
@@ -23,7 +23,7 @@ namespace C3D
     class C3D_API CameraSystem final : public SystemWithConfig<CameraSystemConfig>
     {
     public:
-        bool OnInit(const CameraSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         Camera* Acquire(const char* name);

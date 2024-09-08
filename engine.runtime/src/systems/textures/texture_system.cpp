@@ -17,20 +17,27 @@
 
 namespace C3D
 {
-    bool TextureSystem::OnInit(const TextureSystemConfig& config)
+    bool TextureSystem::OnInit(const CSONObject& config)
     {
         INFO_LOG("Initializing.");
 
-        if (config.maxTextureCount == 0)
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("maxTextures"))
+            {
+                m_config.maxTextureCount = prop.GetI64();
+            }
+        }
+
+        if (m_config.maxTextureCount == 0)
         {
             ERROR_LOG("config.maxTextureCount must be > 0.");
             return false;
         }
 
-        m_config = config;
-
         // Ensure that we have enough space for all our textures
-        m_textures.Reserve(config.maxTextureCount);
+        m_textures.Reserve(m_config.maxTextureCount);
         m_nameToTextureIndexMap.Create();
 
         m_initialized = true;

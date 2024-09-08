@@ -16,9 +16,30 @@
 
 namespace C3D
 {
-    bool RenderSystem::OnInit(const RenderSystemConfig& config)
+    bool RenderSystem::OnInit(const CSONObject& config)
     {
-        m_config = config;
+        INFO_LOG("Initializing.");
+
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("backend"))
+            {
+                m_config.rendererPlugin = prop.GetString();
+            }
+            else if (prop.name.IEquals("vsync"))
+            {
+                if (prop.GetBool()) m_config.flags |= FlagVSyncEnabled;
+            }
+            else if (prop.name.IEquals("powersaving"))
+            {
+                if (prop.GetBool()) m_config.flags |= FlagPowerSavingEnabled;
+            }
+            else if (prop.name.IEquals("validationlayers"))
+            {
+                if (prop.GetBool()) m_config.flags |= FlagUseValidationLayers;
+            }
+        }
 
         // Load the backend plugin
         m_backendDynamicLibrary.Load(m_config.rendererPlugin);
@@ -31,8 +52,7 @@ namespace C3D
         }
 
         RendererPluginConfig rendererPluginConfig{};
-        rendererPluginConfig.applicationName = m_config.applicationName;
-        rendererPluginConfig.flags           = m_config.flags;
+        rendererPluginConfig.flags = m_config.flags;
 
         if (!m_backendPlugin->Init(rendererPluginConfig, &m_windowRenderTargetCount))
         {
@@ -660,10 +680,10 @@ namespace C3D
 
     bool RenderSystem::IsMultiThreaded() const { return m_backendPlugin->IsMultiThreaded(); }
 
-    void RenderSystem::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled) const
+    void RenderSystem::SetFlagEnabled(const RendererConfigFlag flag, const bool enabled) const
     {
         m_backendPlugin->SetFlagEnabled(flag, enabled);
     }
 
-    bool RenderSystem::IsFlagEnabled(const RendererConfigFlagBits flag) const { return m_backendPlugin->IsFlagEnabled(flag); }
+    bool RenderSystem::IsFlagEnabled(const RendererConfigFlag flag) const { return m_backendPlugin->IsFlagEnabled(flag); }
 }  // namespace C3D

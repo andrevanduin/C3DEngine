@@ -9,7 +9,7 @@ namespace C3D
 {
     struct TransformSystemConfig
     {
-        u32 initialSlots = 64;
+        u32 initialTransforms = 64;
     };
 
     // Keep a struct simply to indentify handles of the Transform type
@@ -20,7 +20,7 @@ namespace C3D
     class C3D_API TransformSystem final : public SystemWithConfig<TransformSystemConfig>
     {
     public:
-        bool OnInit(const TransformSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         Handle<Transform> Acquire();

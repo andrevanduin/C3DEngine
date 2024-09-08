@@ -208,6 +208,16 @@ namespace C3D
         }
 
         /**
+         * @brief Gets a reference to the top element of the stack.
+         */
+        Type& Peek() { return m_elements[m_size]; }
+
+        /**
+         * @brief Gets a const-reference to the top element of the stack.
+         */
+        const Type& Peek() const { return m_elements[m_size]; }
+
+        /**
          * @brief Copies over the elements from the provided Stack
          * This is a destructive operation that will first delete all the memory in the
          * stack if there is any and resize the stack to the capacity and size of the provided stack
@@ -280,6 +290,8 @@ namespace C3D
         [[nodiscard]] const_iterator cend() const noexcept { return const_iterator(m_elements + m_size); }
 
     private:
+        Type operator[](u64 index) const { return m_elements[index]; }
+
         /**
          * @brief Copies over the provided amount of elements from the provided pointer
          * This is a destructive operation that will first delete all the memory in the

@@ -1054,14 +1054,6 @@ namespace C3D
         light.data.linear    = config.linear;
         light.data.quadratic = config.quadratic;
 
-        // Add the resource to our array
-        object.resourceIndex = m_pointLights.Size();
-        m_pointLights.PushBack(light);
-
-        // Add the metadata to our array
-        object.metadataIndex = m_metadatas.Size();
-        m_metadatas.PushBack(metadata);
-
         // Add a debug box
         light.debugData = Memory.New<LightDebugData>(MemoryType::Resource);
         auto debug      = static_cast<LightDebugData*>(light.debugData);
@@ -1089,6 +1081,14 @@ namespace C3D
                 return false;
             }
         }
+
+        // Add the resource to our array
+        object.resourceIndex = m_pointLights.Size();
+        m_pointLights.PushBack(light);
+
+        // Add the metadata to our array
+        object.metadataIndex = m_metadatas.Size();
+        m_metadatas.PushBack(metadata);
 
         // Finally store the object in our scene
         m_objects.PushBack(object);
@@ -1229,9 +1229,9 @@ namespace C3D
                 // We have found our Mesh
                 // Get the mesh and unload it
                 auto& mesh = m_meshes[object.resourceIndex];
-                if (!mesh.Unload())
+                if (!mesh.Destroy())
                 {
-                    ERROR_LOG("Failed to unload Mesh: '{}'.", name);
+                    ERROR_LOG("Failed to destroy Mesh: '{}'.", name);
                 }
                 // Destroy the object
                 object.Destroy();
@@ -1333,10 +1333,7 @@ namespace C3D
                 // We have found our Terrain
                 // Get the terrain and unload it
                 auto& terrain = m_terrains[object.resourceIndex];
-                if (!terrain.Unload())
-                {
-                    ERROR_LOG("Failed to unload Terrain: '{}'.", name);
-                }
+                terrain.Destroy();
                 // Destroy the object
                 object.Destroy();
                 return true;

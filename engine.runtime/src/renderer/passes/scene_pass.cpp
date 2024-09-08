@@ -361,4 +361,18 @@ namespace C3D
 
         return true;
     }
+
+    void ScenePass::Destroy()
+    {
+        INFO_LOG("Destroying ShadowMaps.")
+        // Release all our shadow maps
+        for (auto& shadowMap : m_shadowMaps)
+        {
+            Renderer.ReleaseTextureMapResources(shadowMap);
+        }
+        m_shadowMaps.Destroy();
+
+        INFO_LOG("Destroying internals.");
+        Renderpass::Destroy();
+    }
 }  // namespace C3D

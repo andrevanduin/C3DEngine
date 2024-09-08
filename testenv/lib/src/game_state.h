@@ -48,7 +48,7 @@ struct GameState final : C3D::ApplicationState
     f64 moveSpeed = 25.0, moveSpeedFast = 100.0;
 
     // TEMP
-    C3D::Scene Scene;
+    C3D::Scene scene;
     EditorGizmo gizmo;
     bool dragging = false;
 

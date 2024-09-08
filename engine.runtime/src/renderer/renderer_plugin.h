@@ -162,8 +162,8 @@ namespace C3D
 
         [[nodiscard]] virtual bool IsMultiThreaded() const = 0;
 
-        virtual void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled)      = 0;
-        [[nodiscard]] virtual bool IsFlagEnabled(RendererConfigFlagBits flag) const = 0;
+        virtual void SetFlagEnabled(RendererConfigFlag flag, bool enabled)      = 0;
+        [[nodiscard]] virtual bool IsFlagEnabled(RendererConfigFlag flag) const = 0;
 
         RendererPluginType type = RendererPluginType::Unknown;
         u64 frameNumber         = INVALID_ID_U64;

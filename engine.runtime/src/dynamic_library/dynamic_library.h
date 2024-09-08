@@ -11,13 +11,13 @@ namespace C3D
     public:
         ~DynamicLibrary();
 
-        bool Load(const char* name);
+        bool Load(const String& name);
         bool Unload();
 
         template <typename Signature>
-        Signature LoadFunction(const char* name)
+        Signature LoadFunction(const String& name)
         {
-            return reinterpret_cast<Signature>(Platform::LoadDynamicLibraryFunction(name, m_data));
+            return reinterpret_cast<Signature>(Platform::LoadDynamicLibraryFunction(name.Data(), m_data));
         }
 
         template <typename Plugin, typename... Args>

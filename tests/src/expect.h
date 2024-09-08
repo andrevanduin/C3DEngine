@@ -18,7 +18,7 @@ public:
         auto _act = (actual);                                                                                                         \
         if (_exp != _act)                                                                                                             \
         {                                                                                                                             \
-            auto msg = C3D::String::FromFormat("Expected {} == {}, but expected was: {} and actual was: {}. File: {}:{}.", #expected, \
+            auto msg = C3D::String::FromFormat("Expected: {} == {}, but expected was: {} and actual was: {}. File: {}:{}.", #expected, \
                                                #actual, _exp, _act, __FILE__, __LINE__);                                              \
             throw ExpectException(msg.Data());                                                                                        \
         }                                                                                                                             \
@@ -33,7 +33,7 @@ public:
         auto _act = (actual);                                                                                                         \
         if (_exp == _act)                                                                                                             \
         {                                                                                                                             \
-            auto msg = C3D::String::FromFormat("Expected {} != {}, but expected was: {} and actual was: {}. File: {}:{}.", #expected, \
+            auto msg = C3D::String::FromFormat("Expected: {} != {}, but expected was: {} and actual was: {}. File: {}:{}.", #expected, \
                                                #actual, _exp, _act, __FILE__, __LINE__);                                              \
             throw(msg.Data());                                                                                                        \
         }                                                                                                                             \
@@ -44,11 +44,11 @@ public:
  */
 #define ExpectFloatEqual(expected, actual)                                                                                            \
     {                                                                                                                                 \
-        auto e = (expected);                                                                                                          \
-        auto a = (actual);                                                                                                            \
-        if (kabs(_exp - _act) > 0.001f)                                                                                               \
+        auto _exp = (expected);                                                                                                       \
+        auto _act = (actual);                                                                                                         \
+        if (C3D::Abs(_exp - _act) > 0.001f)                                                                                           \
         {                                                                                                                             \
-            auto msg = C3D::String::FromFormat("Expected {} == {}, but expected was: {} and actual was: {}. File: {}:{}.", #expected, \
+            auto msg = C3D::String::FromFormat("Expected: {} == {}, but expected was: {} and actual was: {}. File: {}:{}.", #expected, \
                                                #actual, _exp, _act, __FILE__, __LINE__);                                              \
             throw(msg.Data());                                                                                                        \
         }                                                                                                                             \
@@ -63,7 +63,7 @@ public:
         if (!_act)                                                                                                                      \
         {                                                                                                                               \
             auto msg =                                                                                                                  \
-                C3D::String::FromFormat("Expected {} to be true but it evaluated to false. File: {}:{}.", #actual, __FILE__, __LINE__); \
+                C3D::String::FromFormat("Expected: {} to be true but it evaluated to false. File: {}:{}.", #actual, __FILE__, __LINE__); \
             throw(msg.Data());                                                                                                          \
         }                                                                                                                               \
     }
@@ -77,7 +77,7 @@ public:
         if (_act)                                                                                                                       \
         {                                                                                                                               \
             auto msg =                                                                                                                  \
-                C3D::String::FromFormat("Expected {} to be false but it evaluated to true. File: {}:{}.", #actual, __FILE__, __LINE__); \
+                C3D::String::FromFormat("Expected: {} to be false but it evaluated to true. File: {}:{}.", #actual, __FILE__, __LINE__); \
             throw(msg.Data());                                                                                                          \
         }                                                                                                                               \
     }

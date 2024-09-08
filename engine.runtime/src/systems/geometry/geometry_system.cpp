@@ -2,6 +2,7 @@
 #include "geometry_system.h"
 
 #include "logger/logger.h"
+#include "parsers/cson_types.h"
 #include "renderer/geometry_utils.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"
@@ -10,14 +11,28 @@
 
 namespace C3D
 {
-    bool GeometrySystem::OnInit(const GeometrySystemConfig& config)
+    bool GeometrySystem::OnInit(const CSONObject& config)
     {
         INFO_LOG("Initializing.");
-        m_config = config;
 
-        m_registeredGeometries = Memory.Allocate<GeometryReference>(MemoryType::Geometry, m_config.maxGeometryCount);
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("maxGeometries"))
+            {
+                m_config.maxGeometries = prop.GetI64();
+            }
+        }
 
-        const u32 count = m_config.maxGeometryCount;
+        if (m_config.maxGeometries < 32)
+        {
+            ERROR_LOG("maxGeometries must be >= 32.");
+            return false;
+        }
+
+        m_registeredGeometries = Memory.Allocate<GeometryReference>(MemoryType::Geometry, m_config.maxGeometries);
+
+        const u32 count = m_config.maxGeometries;
         for (u32 i = 0; i < count; i++)
         {
             m_registeredGeometries[i].geometry.id         = INVALID_ID;

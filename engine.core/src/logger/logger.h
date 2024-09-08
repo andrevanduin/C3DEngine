@@ -75,58 +75,52 @@ namespace C3D
     };
 
 #ifdef C3D_LOG_DEBUG
-#define DEBUG_LOG(format, ...)                                                                         \
-    {                                                                                                  \
-        const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(__FUNCTION__, format)); \
-        C3D::Logger::Debug(formatStr.data(), __VA_ARGS__);                                             \
+#define DEBUG_LOG(format, ...)                                           \
+    {                                                                    \
+        C3D::Logger::Debug("[" __FUNCTION__ "] - " format, __VA_ARGS__); \
     }
 #else
 #define DEBUG_LOG(format, ...)
 #endif
 
 #ifdef C3D_LOG_TRACE
-#define TRACE(format, ...)                                                                             \
-    {                                                                                                  \
-        const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(__FUNCTION__, format)); \
-        C3D::Logger::Trace(formatStr.data(), __VA_ARGS__);                                             \
+#define TRACE(format, ...)                                               \
+    {                                                                    \
+        C3D::Logger::Trace("[" __FUNCTION__ "] - " format, __VA_ARGS__); \
     }
 #else
 #define TRACE(format, ...)
 #endif
 
 #ifdef C3D_LOG_ERROR
-#define ERROR_LOG(format, ...)                                                                         \
-    {                                                                                                  \
-        const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(__FUNCTION__, format)); \
-        C3D::Logger::Error(formatStr.data(), ##__VA_ARGS__);                                           \
+#define ERROR_LOG(format, ...)                                           \
+    {                                                                    \
+        C3D::Logger::Error("[" __FUNCTION__ "] - " format, __VA_ARGS__); \
     }
 #else
 #define ERROR_LOG(format, ...)
 #endif
 
 #ifdef C3D_LOG_WARN
-#define WARN_LOG(format, ...)                                                                          \
-    {                                                                                                  \
-        const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(__FUNCTION__, format)); \
-        C3D::Logger::Warn(formatStr.data(), __VA_ARGS__);                                              \
+#define WARN_LOG(format, ...)                                           \
+    {                                                                   \
+        C3D::Logger::Warn("[" __FUNCTION__ "] - " format, __VA_ARGS__); \
     }
 #else
 #define WARN_LOG(format, ...)
 #endif
 
 #ifdef C3D_LOG_INFO
-#define INFO_LOG(format, ...)                                                                          \
-    {                                                                                                  \
-        const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(__FUNCTION__, format)); \
-        C3D::Logger::Info(formatStr.data(), __VA_ARGS__);                                              \
+#define INFO_LOG(format, ...)                                           \
+    {                                                                   \
+        C3D::Logger::Info("[" __FUNCTION__ "] - " format, __VA_ARGS__); \
     }
 #else
 #define INFO_LOG(format, ...)
 #endif
 
-#define FATAL_LOG(format, ...)                                                                         \
-    {                                                                                                  \
-        const auto formatStr = fmt::vformat("[{}] - {}", fmt::make_format_args(__FUNCTION__, format)); \
-        C3D::Logger::Fatal(formatStr.data(), __VA_ARGS__);                                             \
+#define FATAL_LOG(format, ...)                                           \
+    {                                                                    \
+        C3D::Logger::Fatal("[" __FUNCTION__ "] - " format, __VA_ARGS__); \
     }
 }  // namespace C3D

@@ -22,7 +22,7 @@ namespace C3D
         // NOTE: Should be significantly greater than the number of static meshes
         // because there can and will be more than one of these per mesh
         // take other systems into account as well
-        u32 maxGeometryCount;
+        u32 maxGeometries;
     };
 
     struct GeometryReference
@@ -37,7 +37,7 @@ namespace C3D
     class C3D_API GeometrySystem final : public SystemWithConfig<GeometrySystemConfig>
     {
     public:
-        bool OnInit(const GeometrySystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         [[nodiscard]] Geometry* AcquireById(u32 id) const;
@@ -82,7 +82,7 @@ namespace C3D
     Geometry* GeometrySystem::AcquireFromConfig(const IGeometryConfig<VertexType, IndexType>& config, const bool autoRelease) const
     {
         Geometry* g = nullptr;
-        for (u32 i = 0; i < m_config.maxGeometryCount; i++)
+        for (u32 i = 0; i < m_config.maxGeometries; i++)
         {
             if (m_registeredGeometries[i].geometry.id == INVALID_ID)
             {

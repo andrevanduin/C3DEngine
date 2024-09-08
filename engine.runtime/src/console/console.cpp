@@ -95,7 +95,6 @@ namespace C3D
         if (Input.IsKeyPressed(KeyGrave))
         {
             m_isOpen ^= true;
-            INFO_LOG(m_isOpen ? "Opened" : "Closed");
 
             UI2D.MakeVisible(m_text, m_isOpen);
             UI2D.MakeVisible(m_entry, m_isOpen);
@@ -306,7 +305,7 @@ namespace C3D
             if (!output.Empty())
             {
                 const char* msg = output.Data();
-                ERROR_LOG(msg);
+                Logger::Error(msg);
             }
         }
         else
@@ -315,7 +314,7 @@ namespace C3D
             if (!output.Empty())
             {
                 const char* msg = output.Data();
-                INFO_LOG(msg);
+                Logger::Error(msg);
             }
         }
 
@@ -343,6 +342,6 @@ namespace C3D
             output += "Shutting down";
             return true;
         });
-        CVars.RegisterDefaultCommands();
+        CVars.RegisterDefaultCommands(this);
     }
 }  // namespace C3D

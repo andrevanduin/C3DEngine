@@ -40,8 +40,7 @@ namespace C3D
         requiredExtensions.EmplaceBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
 
-        Logger::Info("[VULKAN_INSTANCE] - Create() - Required instance extensions that need to be loaded: {}.",
-                     StringUtils::Join(requiredExtensions, ", "));
+        INFO_LOG("Required instance extensions that need to be loaded: {}.", StringUtils::Join(requiredExtensions, ", "));
 
         // Check if all our required instance extensions are available
         u32 availableExtensionCount = 0;
@@ -60,14 +59,14 @@ namespace C3D
                                       });
             if (index == availableExtensions.end())
             {
-                Logger::Error("[VULKAN_INSTANCE] - Create() - Required extension: '{}' is not available.", requiredExtension);
+                ERROR_LOG("Required extension: '{}' is not available.", requiredExtension);
                 return false;
             }
 
-            Logger::Info("[VULKAN_INSTANCE] - Create() - Required extension: '{}' was found.", requiredExtension);
+            INFO_LOG("Required extension: '{}' was found.", requiredExtension);
         }
 
-        Logger::Info("[VULKAN_INSTANCE] - Create() - All required extensions are present.");
+        INFO_LOG("All required extensions are present.");
 
         createInfo.enabledExtensionCount   = requiredExtensions.Size();
         createInfo.ppEnabledExtensionNames = requiredExtensions.GetData();
@@ -77,13 +76,12 @@ namespace C3D
         if (context.useValidationLayers)
         {
             // If we are require validation layers we add them here
-            Logger::Info("[VULKAN_INSTANCE] - Create() - Validation layers are enabled.");
+            INFO_LOG("Validation layers are enabled.");
             requiredValidationLayerNames.EmplaceBack("VK_LAYER_KHRONOS_validation");
             // NOTE: If needed for debugging we can enable this validation layer
             // requiredValidationLayerNames.EmplaceBack("VK_LAYER_LUNARG_api_dump");
 
-            Logger::Info("[VULKAN_INSTANCE] - Create() - Required instance layers that need to be loaded: {}.",
-                         StringUtils::Join(requiredValidationLayerNames, ", "));
+            INFO_LOG("Required instance layers that need to be loaded: {}.", StringUtils::Join(requiredValidationLayerNames, ", "));
 
             // Check if all our required validation layers are available
             u32 availableLayerCount = 0;
@@ -102,14 +100,14 @@ namespace C3D
                                           });
                 if (index == availableLayers.end())
                 {
-                    Logger::Error("[VULKAN_INSTANCE] - Create() - Required layer: '{}' is not available.", requiredValidationLayerName);
+                    ERROR_LOG("Required layer: '{}' is not available.", requiredValidationLayerName);
                     return false;
                 }
 
-                Logger::Info("[VULKAN_INSTANCE] - Create() - Required layer: '{}' was found.", requiredValidationLayerName);
+                INFO_LOG("Required layer: '{}' was found.", requiredValidationLayerName);
             }
 
-            Logger::Info("[VULKAN_INSTANCE] - Create() - All required layers are present.");
+            INFO_LOG("All required layers are present.");
         }
 
         createInfo.enabledLayerCount   = requiredValidationLayerNames.Size();
@@ -123,11 +121,11 @@ namespace C3D
         if (!VulkanUtils::IsSuccess(result))
         {
             auto resultString = VulkanUtils::ResultString(result);
-            Logger::Error("[VULKAN_INSTANCE] - Create() - vkCreateInstance failed with the following error: '{}'.", resultString);
+            ERROR_LOG("vkCreateInstance failed with the following error: '{}'.", resultString);
             return false;
         }
 
-        Logger::Info("[VULKAN_INSTANCE] - Create() - Vulkan Instance created.");
+        INFO_LOG("Vulkan Instance created.");
         return true;
     }
 

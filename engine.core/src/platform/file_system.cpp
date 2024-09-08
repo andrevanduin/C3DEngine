@@ -139,6 +139,11 @@ namespace C3D
         outChars.PrepareForReadFromFile(m_size + 1);
         // Read the data
         m_file.read(outChars.Data(), static_cast<std::streamsize>(m_size));
+        // Strip any ending null-bytes from our string
+        while (outChars.Last() == '\0')
+        {
+            outChars.RemoveLast();
+        }
 
         return true;
     }

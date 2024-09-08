@@ -106,8 +106,8 @@ namespace C3D
 
         [[nodiscard]] bool IsMultiThreaded() const override;
 
-        void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) override;
-        [[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const override;
+        void SetFlagEnabled(RendererConfigFlag flag, bool enabled) override;
+        [[nodiscard]] bool IsFlagEnabled(RendererConfigFlag flag) const override;
 
     private:
         void CreateCommandBuffers();

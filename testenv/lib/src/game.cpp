@@ -38,25 +38,6 @@ bool TestEnv::OnBoot()
 {
     INFO_LOG("Booting TestEnv.");
 
-    m_state->fontConfig.autoRelease = false;
-
-    // Default bitmap font config
-    C3D::BitmapFontConfig bmpFontConfig;
-    bmpFontConfig.name         = "Ubuntu Mono 21px";
-    bmpFontConfig.resourceName = "UbuntuMono21px";
-    bmpFontConfig.size         = 21;
-    m_state->fontConfig.bitmapFontConfigs.PushBack(bmpFontConfig);
-
-    // Default system font config
-    C3D::SystemFontConfig systemFontConfig;
-    systemFontConfig.name         = "Noto Sans";
-    systemFontConfig.resourceName = "NotoSansCJK";
-    systemFontConfig.defaultSize  = 20;
-    m_state->fontConfig.systemFontConfigs.PushBack(systemFontConfig);
-
-    m_state->fontConfig.maxBitmapFontCount = 101;
-    m_state->fontConfig.maxSystemFontCount = 101;
-
     if (!CreateRendergraphs())
     {
         ERROR_LOG("Failed to create Rendergraphs.");
@@ -315,7 +296,7 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         }
     }
 
-    if (m_state->Scene.GetState() == C3D::SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
+    if (m_state->scene.GetState() == C3D::SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
     {
         m_state->reloadState = ReloadState::Loading;
         INFO_LOG("Loading Main Scene...");
@@ -326,15 +307,15 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     const auto nearClip = m_state->worldViewport.GetNearClip();
     const auto farClip  = m_state->worldViewport.GetFarClip();
 
-    if (m_state->Scene.GetState() >= C3D::SceneState::Loaded)
+    if (m_state->scene.GetState() >= C3D::SceneState::Loaded)
     {
-        if (!m_state->Scene.Update(frameData))
+        if (!m_state->scene.Update(frameData))
         {
             ERROR_LOG("Failed to update main scene.");
         }
 
         // Update LODs for the scene based on distance from the camera
-        m_state->Scene.UpdateLodFromViewPosition(frameData, pos, nearClip, farClip);
+        m_state->scene.UpdateLodFromViewPosition(frameData, pos, nearClip, farClip);
 
         m_state->gizmo.Update();
 
@@ -426,14 +407,14 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
         line.OnPrepareRender(frameData);
     }
 
-    if (!m_state->mainRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->Scene, m_state->renderMode,
+    if (!m_state->mainRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->scene, m_state->renderMode,
                                                   m_state->testLines, m_state->testBoxes))
     {
         ERROR_LOG("Failed to prepare main rendergraph.");
         return false;
     }
 
-    if (!m_state->editorRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->Scene))
+    if (!m_state->editorRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->scene))
     {
         ERROR_LOG("Failed to prepare editor rendergraph.");
         return false;
@@ -508,7 +489,7 @@ void TestEnv::OnResize(u16 width, u16 height)
 void TestEnv::OnShutdown()
 {
     // Unload our simple scene
-    m_state->Scene.Unload(true);
+    m_state->scene.Unload(true);
 
     // Destroy our Rendergraph
     m_state->mainRendergraph.Destroy();
@@ -629,10 +610,10 @@ void TestEnv::OnLibraryLoad()
     m_pConsole->RegisterCommand("reload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         m_state->reloadState = ReloadState::Unloading;
 
-        if (m_state->Scene.GetState() == C3D::SceneState::Loaded)
+        if (m_state->scene.GetState() == C3D::SceneState::Loaded)
         {
             INFO_LOG("Unloading models...");
-            m_state->Scene.Unload();
+            m_state->scene.Unload();
         }
         return true;
     });
@@ -730,7 +711,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
     }
 
     // If our scene is not loaded we also ignore everything below
-    if (m_state->Scene.GetState() < C3D::SceneState::Loaded)
+    if (m_state->scene.GetState() < C3D::SceneState::Loaded)
     {
         return false;
     }
@@ -755,7 +736,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
             C3D::Ray ray = C3D::Ray::FromScreen(vec2(x, y), viewport.GetRect2D(), origin, view, viewport.GetProjection());
 
             C3D::RayCastResult result;
-            if (m_state->Scene.RayCast(ray, result))
+            if (m_state->scene.RayCast(ray, result))
             {
                 f32 closestDistance = C3D::F32_MAX;
                 for (auto& hit : result.hits)
@@ -814,7 +795,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                 const auto selectedId = m_state->selectedObject.id;
                 if (selectedId != INVALID_ID)
                 {
-                    m_state->selectedObject.transform = m_state->Scene.GetTransformById(selectedId);
+                    m_state->selectedObject.transform = m_state->scene.GetTransformById(selectedId);
                     INFO_LOG("Selected object id = {}.", selectedId);
                     m_state->gizmo.SetSelectedObjectTransform(m_state->selectedObject.transform);
                 }
@@ -916,7 +897,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 {
     if (code == C3D::EventCodeDebug1)
     {
-        if (m_state->Scene.GetState() == C3D::SceneState::Uninitialized)
+        if (m_state->scene.GetState() == C3D::SceneState::Uninitialized)
         {
             INFO_LOG("Loading Main Scene...");
             LoadTestScene();
@@ -927,7 +908,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
     if (code == C3D::EventCodeDebug2)
     {
-        if (m_state->Scene.GetState() == C3D::SceneState::Loaded)
+        if (m_state->scene.GetState() == C3D::SceneState::Loaded)
         {
             UnloadTestScene();
         }
@@ -943,21 +924,21 @@ bool TestEnv::LoadTestScene()
     C3D::SceneConfig sceneConfig;
     Resources.Read("test_scene", sceneConfig);
 
-    if (!m_state->Scene.Create(sceneConfig))
+    if (!m_state->scene.Create(sceneConfig))
     {
         ERROR_LOG("Creating Scene failed.");
         return false;
     }
 
-    if (!m_state->Scene.Initialize())
+    if (!m_state->scene.Initialize())
     {
         ERROR_LOG("Initializing Scene failed.");
         return false;
     }
 
-    m_state->pLights[0] = m_state->Scene.GetPointLight("point_light_0");
+    m_state->pLights[0] = m_state->scene.GetPointLight("point_light_0");
 
-    if (!m_state->Scene.Load())
+    if (!m_state->scene.Load())
     {
         ERROR_LOG("Loading Scene failed.");
         return false;
@@ -983,18 +964,9 @@ void TestEnv::UnloadTestScene()
     }
     m_state->testBoxes.Destroy();
 
-    m_state->Scene.Unload();
+    m_state->scene.Unload();
 }
 
 C3D::Application* CreateApplication(C3D::ApplicationState* state) { return Memory.New<TestEnv>(C3D::MemoryType::Game, state); }
 
-C3D::ApplicationState* CreateApplicationState()
-{
-    const auto state           = Memory.New<GameState>(C3D::MemoryType::Game);
-    state->name                = "TestEnv";
-    state->windowConfig.width  = 1280;
-    state->windowConfig.height = 720;
-    state->windowConfig.flags  = C3D::WindowFlagCenter;
-    state->frameAllocatorSize  = MebiBytes(8);
-    return state;
-}
+C3D::ApplicationState* CreateApplicationState() { return Memory.New<GameState>(C3D::MemoryType::Game); }

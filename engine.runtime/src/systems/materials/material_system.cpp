@@ -19,20 +19,27 @@
 
 namespace C3D
 {
-    bool MaterialSystem::OnInit(const MaterialSystemConfig& config)
+    bool MaterialSystem::OnInit(const CSONObject& config)
     {
         INFO_LOG("Initializing.");
 
-        if (config.maxMaterials == 0)
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("maxMaterials"))
+            {
+                m_config.maxMaterials = prop.GetI64();
+            }
+        }
+
+        if (m_config.maxMaterials == 0)
         {
             ERROR_LOG("config.maxTextureCount must be > 0.");
             return false;
         }
 
-        m_config = config;
-
         // Reserve enough space to store our materials
-        m_materials.Reserve(config.maxMaterials);
+        m_materials.Reserve(m_config.maxMaterials);
 
         // Create our HashMap to store Name to index mappings
         m_nameToMaterialIndexMap.Create();

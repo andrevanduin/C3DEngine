@@ -41,7 +41,7 @@ namespace C3D
     class C3D_API TextureSystem final : public SystemWithConfig<TextureSystemConfig>
     {
     public:
-        bool OnInit(const TextureSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         /**

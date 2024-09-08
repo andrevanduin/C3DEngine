@@ -11,8 +11,8 @@ namespace C3D
 {
     struct ResourceSystemConfig
     {
-        u32 maxLoaderCount;
-        const char* assetBasePath;  // Relative base path
+        u32 maxLoaderCount = 32;
+        String assetBasePath;  // Relative base path
     };
 
     class ResourceSystem final : public SystemWithConfig<ResourceSystemConfig>
@@ -20,7 +20,7 @@ namespace C3D
     public:
         ResourceSystem();
 
-        bool OnInit(const ResourceSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
 
         void OnShutdown() override;
 
@@ -62,7 +62,7 @@ namespace C3D
             manager->Cleanup(resource);
         }
 
-        C3D_API const char* GetBasePath() const;
+        C3D_API const String& GetBasePath() const;
 
     private:
         DynamicArray<IResourceManager*> m_registeredManagers;

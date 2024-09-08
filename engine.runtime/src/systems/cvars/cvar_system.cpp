@@ -1,26 +1,22 @@
 
 #include "cvar_system.h"
 
-#define IMPLEMENT_CVAR_CREATE_FUNC(TypeName)                                              \
-    bool CVarSystem::Create(const CVarName& name, TypeName value)                         \
-    {                                                                                     \
-        if (Exists(name))                                                                 \
-        {                                                                                 \
-            ERROR_LOG("Failed to create CVar. A CVar named: '{}' already exists!", name); \
-            return false;                                                                 \
-        }                                                                                 \
-        m_cVars.Set(name, CVar(CVarType::T##TypeName, name, value));                      \
-        return true;                                                                      \
-    }
+#include "parsers/cson_types.h"
 
 namespace C3D
 {
-    bool CVarSystem::OnInit(const CVarSystemConfig& config)
+    bool CVarSystem::OnInit(const CSONObject& config)
     {
         INFO_LOG("Initializing.");
 
-        m_config   = config;
-        m_pConsole = config.pConsole;
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("maxCVars"))
+            {
+                m_config.maxCVars = prop.GetI64();
+            }
+        }
 
         m_cVars.Create();
 
@@ -83,10 +79,10 @@ namespace C3D
         return vars;
     }
 
-    void CVarSystem::RegisterDefaultCommands()
+    void CVarSystem::RegisterDefaultCommands(UIConsole* pConsole)
     {
-        m_pConsole->RegisterCommand("cvar",
-                                    [this](const DynamicArray<ArgName>& args, String& output) { return OnCVarCommand(args, output); });
+        pConsole->RegisterCommand("cvar",
+                                  [this](const DynamicArray<ArgName>& args, String& output) { return OnCVarCommand(args, output); });
     }
 
     bool CVarSystem::OnCVarCommand(const DynamicArray<ArgName>& args, String& output)

@@ -29,8 +29,8 @@ namespace C3D
         DynamicArray<SystemFontConfig> systemFontConfigs;
         DynamicArray<BitmapFontConfig> bitmapFontConfigs;
 
-        u8 maxSystemFontCount;
-        u8 maxBitmapFontCount;
+        u8 maxSystemFonts;
+        u8 maxBitmapFonts;
         bool autoRelease;
     };
 
@@ -45,7 +45,7 @@ namespace C3D
     class C3D_API FontSystem final : public SystemWithConfig<FontSystemConfig>
     {
     public:
-        bool OnInit(const FontSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         bool LoadSystemFont(const FontSystemConfig& config) const;

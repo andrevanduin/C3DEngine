@@ -3,23 +3,57 @@
 
 #include "audio/audio_plugin.h"
 #include "math/c3d_math.h"
+#include "parsers/cson_types.h"
 #include "resources/managers/audio_manager.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
 
 namespace C3D
 {
-    bool AudioSystem::OnInit(const AudioSystemConfig& config)
+    bool AudioSystem::OnInit(const CSONObject& config)
     {
-        m_config = config;
+        INFO_LOG("Initializing.");
 
-        if (config.numAudioChannels < 4)
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("backend"))
+            {
+                m_config.pluginName = prop.GetString();
+            }
+            else if (prop.name.IEquals("frequency"))
+            {
+                m_config.frequency = prop.GetI64();
+            }
+            else if (prop.name.IEquals("channelType"))
+            {
+                const auto& type = prop.GetString();
+                if (type.IEquals("Mono"))
+                {
+                    m_config.channelType = ChannelType::Mono;
+                }
+                else
+                {
+                    m_config.channelType = ChannelType::Stereo;
+                }
+            }
+            else if (prop.name.IEquals("chunkSize"))
+            {
+                m_config.chunkSize = prop.GetI64();
+            }
+            else if (prop.name.IEquals("numAudioChannels"))
+            {
+                m_config.numAudioChannels = prop.GetI64();
+            }
+        }
+
+        if (m_config.numAudioChannels < 4)
         {
             ERROR_LOG("Number of audio channels should be >= 4.");
             return false;
         }
 
-        if (config.chunkSize == 0)
+        if (m_config.chunkSize == 0)
         {
             ERROR_LOG("Please provided a valid chunk size.");
             return false;

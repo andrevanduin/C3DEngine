@@ -30,30 +30,46 @@ namespace C3D
     constexpr const char* SHADER_NAME = "Shader.Builtin.UI2D";
     constexpr u16vec2 atlasSize       = u16vec2(512, 512);  // Size of the entire UI atlas
 
-    bool UI2DSystem::OnInit(const UI2DSystemConfig& config)
+    bool UI2DSystem::OnInit(const CSONObject& config)
     {
         INFO_LOG("Initializing.");
 
-        if (config.maxControlCount == 0)
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("initialTransforms"))
+            {
+                m_config.maxControls = prop.GetI64();
+            }
+            else if (prop.name.IEquals("memory"))
+            {
+                m_config.memorySize = MebiBytes(prop.GetI64());
+            }
+        }
+
+        if (m_config.maxControls == 0)
         {
             ERROR_LOG("Maximum amount of UI2D controls must be > 0.");
             return false;
         }
 
-        if (config.memorySize == 0)
+        if (m_config.memorySize == 0)
         {
             ERROR_LOG("Allocator size must be > 0.");
             return false;
         }
 
-        if (config.memorySize < MebiBytes(8))
+        if (m_config.memorySize < MebiBytes(8))
         {
             ERROR_LOG("UI2D requires at least 8 MebiBytes of memory.");
             return false;
         }
 
-        // Store off our config
-        m_config = config;
+        if (m_config.memorySize > MebiBytes(1024))
+        {
+            ERROR_LOG("UI2D can use at most 1024 MebiBytes of memory.");
+            return false;
+        }
 
         // Allocate enough space for our control allocator
         u64 neededMemory = DynamicAllocator::GetMemoryRequirements(m_config.memorySize);
@@ -67,9 +83,9 @@ namespace C3D
         }
 
         // Use our own allocator to allocate components
-        m_components = m_allocator.Allocate<Component>(MemoryType::UI, m_config.maxControlCount);
+        m_components = m_allocator.Allocate<Component>(MemoryType::UI, m_config.maxControls);
         // Initially invalidate all components
-        for (u32 i = 0; i < m_config.maxControlCount; ++i)
+        for (u32 i = 0; i < m_config.maxControls; ++i)
         {
             m_components[i].uuid.Invalidate();
         }
@@ -423,7 +439,7 @@ namespace C3D
     Handle<UI_2D::Component> UI2DSystem::MakeHandle(UI_2D::Component&& component)
     {
         // Iterate over our items and find an empty slot
-        for (u32 i = 0; i < m_config.maxControlCount; ++i)
+        for (u32 i = 0; i < m_config.maxControls; ++i)
         {
             auto& c = m_components[i];
 
@@ -675,7 +691,7 @@ namespace C3D
         }
 
         // Destroy all our components
-        for (u32 i = 0; i < m_config.maxControlCount; ++i)
+        for (u32 i = 0; i < m_config.maxControls; ++i)
         {
             if (m_components[i].IsValid())
             {

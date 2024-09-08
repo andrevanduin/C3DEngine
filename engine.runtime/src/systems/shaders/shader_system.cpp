@@ -1,6 +1,7 @@
 
 #include "shader_system.h"
 
+#include "parsers/cson_types.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/renderer_utils.h"
 #include "resources/textures/texture_map.h"
@@ -10,21 +11,45 @@
 
 namespace C3D
 {
-    bool ShaderSystem::OnInit(const ShaderSystemConfig& config)
+    bool ShaderSystem::OnInit(const CSONObject& config)
     {
         INFO_LOG("Initializing.");
 
-        if (config.maxShaders == 0)
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("maxShaders"))
+            {
+                m_config.maxShaders = prop.GetI64();
+            }
+            else if (prop.name.IEquals("maxUniforms"))
+            {
+                m_config.maxUniforms = prop.GetI64();
+            }
+            else if (prop.name.IEquals("maxAttributes"))
+            {
+                m_config.maxAttributes = prop.GetI64();
+            }
+            else if (prop.name.IEquals("maxGlobalTextures"))
+            {
+                m_config.maxGlobalTextures = prop.GetI64();
+            }
+            else if (prop.name.IEquals("maxInstanceTextures"))
+            {
+                m_config.maxInstanceTextures = prop.GetI64();
+            }
+        }
+
+        if (m_config.maxShaders == 0)
         {
             ERROR_LOG("config.maxShaderCount must be greater than 0.");
             return false;
         }
 
-        m_config          = config;
         m_currentShaderId = INVALID_ID;
 
-        // Initially we reserve room for 32 shaders
-        m_shaders.Reserve(config.maxShaders);
+        // Initially we reserve room for the user provided amount of shaders
+        m_shaders.Reserve(m_config.maxShaders);
         // We also create our name to index map so we can find shaders by name
         m_shaderNameToIndexMap.Create();
 

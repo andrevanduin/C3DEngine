@@ -30,6 +30,7 @@ namespace C3D
                      const DynamicArray<DebugLine3D>& debugLines, const DynamicArray<DebugBox3D>& debugBoxes,
                      ShadowMapCascadeData* cascadeData);
         bool Execute(const FrameData& frameData) override;
+        void Destroy() override;
 
     private:
         Shader* m_pbrShader     = nullptr;

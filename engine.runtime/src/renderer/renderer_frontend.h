@@ -21,15 +21,14 @@ namespace C3D
 
     struct RenderSystemConfig
     {
-        const char* applicationName;
-        const char* rendererPlugin;
+        String rendererPlugin;
         RendererConfigFlags flags;
     };
 
     class C3D_API RenderSystem final : public SystemWithConfig<RenderSystemConfig>
     {
     public:
-        bool OnInit(const RenderSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         void OnResize(u32 width, u32 height);
@@ -224,8 +223,8 @@ namespace C3D
 
         [[nodiscard]] bool IsMultiThreaded() const;
 
-        void SetFlagEnabled(RendererConfigFlagBits flag, bool enabled) const;
-        [[nodiscard]] bool IsFlagEnabled(RendererConfigFlagBits flag) const;
+        void SetFlagEnabled(RendererConfigFlag flag, bool enabled) const;
+        [[nodiscard]] bool IsFlagEnabled(RendererConfigFlag flag) const;
 
         [[nodiscard]] TextureHandle GetWindowAttachment(u8 index) const;
         [[nodiscard]] TextureHandle GetDepthAttachment(u8 index) const;

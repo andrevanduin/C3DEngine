@@ -1,8 +1,8 @@
 
 #pragma once
+#include "console/console.h"
 #include "containers/dynamic_array.h"
 #include "containers/hash_map.h"
-#include "console/console.h"
 #include "cvars/cvar.h"
 #include "string/string.h"
 #include "systems/system.h"
@@ -15,14 +15,13 @@ namespace C3D
 
     struct CVarSystemConfig
     {
-        u32 maxCVars        = 0;
-        UIConsole* pConsole = nullptr;
+        u32 maxCVars = 0;
     };
 
     class C3D_API CVarSystem final : public SystemWithConfig<CVarSystemConfig>
     {
     public:
-        bool OnInit(const CVarSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
 
         /**
          * @brief Creates a new CVar with the specified name and value.
@@ -36,11 +35,11 @@ namespace C3D
         {
             if (Exists(name))
             {
-                ERROR_LOG("CVAR_SYSTEM", "A CVar named: '{}' already exists.", name);
+                ERROR_LOG("A CVar named: '{}' already exists.", name);
                 return false;
             }
 
-            INFO_LOG("CVAR_SYSTEM", "Successfully created CVar: '{}'.", name);
+            INFO_LOG("Successfully created CVar: '{}'.", name);
             m_cVars.Set(name, CVar(name, value));
             return true;
         }
@@ -71,7 +70,7 @@ namespace C3D
 
         [[nodiscard]] String PrintAll() const;
 
-        void RegisterDefaultCommands();
+        void RegisterDefaultCommands(UIConsole* pConsole);
 
         void OnShutdown() override;
 
@@ -79,7 +78,5 @@ namespace C3D
         bool OnCVarCommand(const DynamicArray<ArgName>& args, String& output);
 
         HashMap<CVarName, CVar> m_cVars;
-
-        UIConsole* m_pConsole;
     };
 }  // namespace C3D

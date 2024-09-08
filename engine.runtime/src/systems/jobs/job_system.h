@@ -8,24 +8,24 @@
 
 namespace C3D
 {
-    /* @brief The maximum amount of job threads that can be used by the system.
+    /** @brief The maximum amount of job threads that can be used by the system.
      * This is the upper-limit regardless of what the user provides in the config. */
     constexpr auto MAX_JOB_THREADS = 32;
-    /* @brief The maximum amount of job results that can be stored at once (per frame). */
+    /** @brief The maximum amount of job results that can be stored at once (per frame). */
     constexpr auto MAX_JOB_RESULTS = 512;
 
     struct JobSystemConfig
     {
-        /* @brief The amount of threads that the job system may use. */
+        /** @brief The amount of threads that the job system may use. */
         u8 threadCount;
-        /* @brief A collection of type masks for each job thread. The amount of elements must match maxJobThreads. */
+        /** @brief A collection of type masks for each job thread. The amount of elements must match maxJobThreads. */
         u32* typeMasks;
     };
 
     class JobSystem final : public SystemWithConfig<JobSystemConfig>
     {
     public:
-        bool OnInit(const JobSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         bool OnUpdate(const FrameData& frameData) override;

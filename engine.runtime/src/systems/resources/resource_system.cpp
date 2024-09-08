@@ -2,6 +2,7 @@
 #include "resource_system.h"
 
 #include "logger/logger.h"
+#include "parsers/cson_types.h"
 
 // Default loaders
 #include "resources/managers/audio_manager.h"
@@ -34,17 +35,25 @@ namespace C3D
         m_resourceManagerTypes[ToUnderlying(ResourceType::Custom)]     = "Custom";
     }
 
-    bool ResourceSystem::OnInit(const ResourceSystemConfig& config)
+    bool ResourceSystem::OnInit(const CSONObject& config)
     {
-        INFO_LOG("Started.");
+        INFO_LOG("Initializing.");
 
-        if (config.maxLoaderCount == 0)
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("assetBasePath"))
+            {
+                m_config.assetBasePath = prop.GetString();
+            }
+        }
+
+        if (m_config.maxLoaderCount == 0)
         {
             FATAL_LOG("Failed because config.maxLoaderCount == 0.");
             return false;
         }
 
-        m_config      = config;
         m_initialized = true;
 
         const auto textLoader       = Memory.New<ResourceManager<TextResource>>(MemoryType::ResourceLoader);
@@ -111,7 +120,7 @@ namespace C3D
         return true;
     }
 
-    const char* ResourceSystem::GetBasePath() const
+    const String& ResourceSystem::GetBasePath() const
     {
         if (m_initialized) return m_config.assetBasePath;
 

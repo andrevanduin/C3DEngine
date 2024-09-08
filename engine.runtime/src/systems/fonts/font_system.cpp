@@ -2,6 +2,7 @@
 #include "font_system.h"
 
 #include "math/c3d_math.h"
+#include "parsers/cson_types.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"
@@ -9,15 +10,80 @@
 
 namespace C3D
 {
-    bool FontSystem::OnInit(const FontSystemConfig& config)
+    bool FontSystem::OnInit(const CSONObject& config)
     {
-        if (config.maxBitmapFontCount == 0 || config.maxSystemFontCount == 0)
+        INFO_LOG("Initialzing");
+
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("maxBitmapFonts"))
+            {
+                m_config.maxBitmapFonts = prop.GetI64();
+            }
+            else if (prop.name.IEquals("maxSystemFonts"))
+            {
+                m_config.maxSystemFonts = prop.GetI64();
+            }
+            else if (prop.name.IEquals("bitmapFontConfigs"))
+            {
+                const auto& bitmapConfigsArray = prop.GetArray();
+                for (const auto& bitmapConfigProp : bitmapConfigsArray.properties)
+                {
+                    BitmapFontConfig cfg;
+
+                    const auto& bitmapConfig = bitmapConfigProp.GetObject();
+                    for (const auto& p : bitmapConfig.properties)
+                    {
+                        if (p.name.IEquals("name"))
+                        {
+                            cfg.name = p.GetString();
+                        }
+                        else if (p.name.IEquals("resource"))
+                        {
+                            cfg.resourceName = p.GetString();
+                        }
+                        else if (p.name.IEquals("size"))
+                        {
+                            cfg.size = p.GetI64();
+                        }
+                    }
+                    m_config.bitmapFontConfigs.PushBack(cfg);
+                }
+            }
+            else if (prop.name.IEquals("systemFontConfigs"))
+            {
+                const auto& systemConfigsArray = prop.GetArray();
+                for (const auto& systemConfigProp : systemConfigsArray.properties)
+                {
+                    SystemFontConfig cfg;
+
+                    const auto& systemConfig = systemConfigProp.GetObject();
+                    for (const auto& p : systemConfig.properties)
+                    {
+                        if (p.name.IEquals("name"))
+                        {
+                            cfg.name = p.GetString();
+                        }
+                        else if (p.name.IEquals("resource"))
+                        {
+                            cfg.resourceName = p.GetString();
+                        }
+                        else if (p.name.IEquals("size"))
+                        {
+                            cfg.defaultSize = p.GetI64();
+                        }
+                    }
+                    m_config.systemFontConfigs.PushBack(cfg);
+                }
+            }
+        }
+
+        if (m_config.maxBitmapFonts == 0 || m_config.maxSystemFonts == 0)
         {
             ERROR_LOG("Config.maxBitmapFontCount and Config.maxSystemFontCount must be > 0.");
             return false;
         }
-
-        m_config = config;
 
         m_bitmapFonts.Create();
         m_bitmapNameLookup.Create();

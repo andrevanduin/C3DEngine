@@ -27,7 +27,7 @@ namespace C3D
     class C3D_API ShaderSystem final : public SystemWithConfig<ShaderSystemConfig>
     {
     public:
-        bool OnInit(const ShaderSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         bool Create(void* pass, const ShaderConfig& config);

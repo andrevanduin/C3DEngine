@@ -205,6 +205,26 @@ namespace C3D
         }
 
         /**
+         * @brief Gets a reference to the first element in the queue.
+         */
+        Type& PeekHead() { return m_elements[m_head]; }
+
+        /**
+         * @brief Gets a reference to the last element in the queue.
+         */
+        Type& PeekTail() { return m_elements[m_tail]; }
+
+        /**
+         * @brief Gets a const-reference to the first element in the queue.
+         */
+        const Type& PeekHead() const { return m_elements[m_head]; }
+
+        /**
+         * @brief Gets a const-reference to the last element in the queue.
+         */
+        const Type& PeekTail() const { return m_elements[m_tail]; }
+
+        /**
          * @brief Clears all elements in the stack (calling the destructor for every element)
          * Does not delete the memory and the capacity will remain the same.
          */

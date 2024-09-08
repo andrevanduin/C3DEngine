@@ -39,8 +39,10 @@ namespace C3D
 
     struct WindowConfig
     {
-        /** @brief The name of the window / application. */
+        /** @brief The name of the window. */
         String name;
+        /** @brief The title of the window. */
+        String title;
         /** @brief The horizontal position of the window (can be negative for multi monitor setups). */
         i32 x = 0;
         /** @brief The vertical position of the window (can be negative for multi monitor setups). */

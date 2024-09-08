@@ -1,5 +1,6 @@
 
 #pragma once
+#include "parsers/cson_types.h"
 #include "platform/platform_types.h"
 #include "renderer/renderer_plugin.h"
 #include "string/string.h"
@@ -18,28 +19,29 @@ namespace C3D
 
     using ApplicationFlagBits = u8;
 
-    struct ApplicationState
+    struct ApplicationConfig
     {
         /** @brief The name of the application. */
         String name;
-        /** @brief The configuration for the window. */
-        WindowConfig windowConfig;
-        /** @brief Flags that indicate certain properties about this application. */
-        ApplicationFlagBits flags = ApplicationFlagNone;
-        /** @brief The name of the Rendering plugin that you want to use. */
-        const char* rendererPlugin;
-        FontSystemConfig fontConfig;
-
         /** @brief The size that should be allocated for the per-frame allocator. */
         u64 frameAllocatorSize = 0;
-        /** @brief The size required from the application-specific frame data. */
-        u64 appFrameDataSize = 0;
+        /** @brief Flags that indicate certain properties about this application. */
+        ApplicationFlagBits flags = ApplicationFlagNone;
+        /** @brief An array of window configs. */
+        DynamicArray<WindowConfig> windowConfigs;
+        /** @brief A Hashmap containing CSONObjects with the configuration for a system. Indexable by the name of the system. */
+        HashMap<String, CSONObject> systemConfigs;
     };
 
-    class Application
+    /** @brief An empty struct to hold the ApplicationState that can be defined by the user. */
+    struct ApplicationState
+    {
+    };
+
+    class C3D_API Application
     {
     public:
-        explicit Application(ApplicationState* appState) : m_appState(appState) {}
+        Application(ApplicationState* state);
 
         Application(const Application&) = delete;
         Application(Application&&)      = delete;
@@ -65,8 +67,11 @@ namespace C3D
 
         friend Engine;
 
+    private:
+        void ParseWindowConfig(const CSONObject& config);
+
     protected:
-        ApplicationState* m_appState = nullptr;
+        ApplicationConfig m_appConfig;
 
         UIConsole* m_pConsole   = nullptr;
         const Engine* m_pEngine = nullptr;

@@ -93,7 +93,7 @@ namespace C3D
     class C3D_API MaterialSystem final : public SystemWithConfig<MaterialSystemConfig>
     {
     public:
-        bool OnInit(const MaterialSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
 
         void OnShutdown() override;
 

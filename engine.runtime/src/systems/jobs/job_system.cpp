@@ -3,37 +3,71 @@
 
 #include "formatters.h"
 #include "frame_data.h"
+#include "parsers/cson_types.h"
 #include "platform/platform.h"
+#include "renderer/renderer_frontend.h"
 
 namespace C3D
 {
-    bool JobSystem::OnInit(const JobSystemConfig& config)
+    bool JobSystem::OnInit(const CSONObject& config)
     {
-        if (config.threadCount == 0)
+        INFO_LOG("Initializing.");
+
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("threadCount"))
+            {
+                m_config.threadCount = prop.GetI64();
+            }
+        }
+
+        if (m_config.threadCount == 0)
         {
             ERROR_LOG("maxJobThreads must be > 0.");
             return false;
         }
 
-        if (config.threadCount > MAX_JOB_THREADS)
+        if (m_config.threadCount > MAX_JOB_THREADS)
         {
             ERROR_LOG("maxJobThreads must be <= {}.", MAX_JOB_THREADS);
             return false;
         }
 
-        m_threadCount = config.threadCount;
+        m_threadCount = m_config.threadCount;
 
         m_pendingResults.Reserve(100);
 
         INFO_LOG("Main thread id is: {}.", Platform::GetThreadId());
         INFO_LOG("Spawning {} job threads.", m_threadCount);
 
+        // Prepare the job thread types
+        u32 jobThreadTypes[15];
+        for (u32& jobThreadType : jobThreadTypes) jobThreadType = JobTypeGeneral;
+
+        if (m_config.threadCount == 1 || !Renderer.IsMultiThreaded())
+        {
+            jobThreadTypes[0] |= (JobTypeGpuResource | JobTypeResourceLoad);
+        }
+        else if (m_config.threadCount == 2)
+        {
+            jobThreadTypes[0] |= JobTypeGpuResource;
+            jobThreadTypes[1] |= JobTypeResourceLoad;
+        }
+        else
+        {
+            jobThreadTypes[0] = JobTypeGpuResource;
+            jobThreadTypes[1] = JobTypeResourceLoad;
+        }
+
+        // Set the system to running
         m_running = true;
 
+        // Spawn and start running all threads
         for (u8 i = 0; i < m_threadCount; i++)
         {
             m_jobThreads[i].index    = i;
-            m_jobThreads[i].typeMask = config.typeMasks[i];
+            m_jobThreads[i].typeMask = jobThreadTypes[i];
             m_jobThreads[i].thread   = std::thread([this, i] { Runner(i); });
             m_jobThreads[i].ClearInfo();
         }

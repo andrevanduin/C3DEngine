@@ -94,8 +94,7 @@ C3D::Application* C3D::CreateApplication()
     }
 
     // On the first start we need to create our state
-    applicationState                 = applicationLib.CreateState();
-    applicationState->rendererPlugin = "C3DVulkanRenderer";
+    applicationState = applicationLib.CreateState();
 
     application = applicationLib.Create(applicationState);
     return application;

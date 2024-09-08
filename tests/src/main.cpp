@@ -12,6 +12,7 @@
 #include "memory/dynamic_allocator_tests.h"
 #include "memory/linear_allocator_tests.h"
 #include "memory/stack_allocator_tests.h"
+#include "parsers/cson_parser_tests.h"
 #include "platform/file_system.h"
 #include "string/cstring_tests.h"
 #include "string/string_tests.h"
@@ -43,6 +44,8 @@ int main(int argc, char** argv)
     Queue::RegisterTests(manager);
 
     FileSystem::RegisterTests(manager);
+
+    CSONParser::RegisterTests(manager);
 
     C3D::Logger::Debug("------ Starting tests... ------");
     manager.RunTests();

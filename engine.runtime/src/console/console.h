@@ -61,11 +61,11 @@ namespace C3D
         {
             if (type == LogType::Info)
             {
-                INFO_LOG(format, args...);
+                Logger::Info(format, args...);
             }
             else
             {
-                ERROR_LOG(format, args...);
+                Logger::Error(format, args...);
             }
         }
 

@@ -1,6 +1,7 @@
 
 #pragma once
 #include "logger/logger.h"
+#include "parsers/cson_types.h"
 
 namespace C3D
 {
@@ -51,13 +52,7 @@ namespace C3D
     class SystemWithConfig : public ISystem
     {
     public:
-        virtual bool OnInit(const T& config = {})
-        {
-            INFO_LOG("SYSTEM", "Initializing.");
-            m_initialized = true;
-            m_config      = config;
-            return true;
-        }
+        virtual bool OnInit(const CSONObject& config) = 0;
 
         void OnShutdown() override
         {

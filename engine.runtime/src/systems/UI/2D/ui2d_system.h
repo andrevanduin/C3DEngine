@@ -23,14 +23,14 @@ namespace C3D
 
     struct UI2DSystemConfig
     {
-        u64 maxControlCount = 1024;
-        u64 memorySize      = MebiBytes(8);
+        u64 maxControls = 1024;
+        u64 memorySize  = MebiBytes(8);
     };
 
     class C3D_API UI2DSystem final : public SystemWithConfig<UI2DSystemConfig>
     {
     public:
-        bool OnInit(const UI2DSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
 
         bool OnRun();
 

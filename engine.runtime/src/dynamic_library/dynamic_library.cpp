@@ -10,9 +10,9 @@ namespace C3D
         if (m_data && !m_name.Empty()) Unload();
     }
 
-    bool DynamicLibrary::Load(const char* name)
+    bool DynamicLibrary::Load(const String& name)
     {
-        if (!Platform::LoadDynamicLibrary(name, &m_data, m_dataSize))
+        if (!Platform::LoadDynamicLibrary(name.Data(), &m_data, m_dataSize))
         {
             ERROR_LOG("Failed for: '{}'.", name);
             return false;

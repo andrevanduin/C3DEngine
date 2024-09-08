@@ -2,21 +2,30 @@
 #include "camera_system.h"
 
 #include "memory/global_memory_system.h"
+#include "parsers/cson_types.h"
 #include "string/string_utils.h"
 
 namespace C3D
 {
-    bool CameraSystem::OnInit(const CameraSystemConfig& config)
+    bool CameraSystem::OnInit(const CSONObject& config)
     {
         INFO_LOG("Initializing.");
 
-        if (config.maxCameraCount == 0)
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
+        {
+            if (prop.name.IEquals("maxCameras"))
+            {
+                m_config.maxCameras = prop.GetI64();
+            }
+        }
+
+        if (m_config.maxCameras == 0)
         {
             ERROR_LOG("config.maxCameraCount must be > 0.");
             return false;
         }
 
-        m_config = config;
         m_cameraMap.Create();
 
         return true;

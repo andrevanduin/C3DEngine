@@ -1,0 +1,121 @@
+{
+    "ApplicationName": "C3DEngine Testenv",
+    "FrameAllocatorSize": 16, # Size in MebiBytes
+    "Windows": [
+        {
+            "width": 1280,
+            "height": 720,
+            "position": "center",
+            "name": "MainWindow",
+            "title": "Testenv Main Window",
+            "fullscreen": false
+        }
+    ],
+    "SystemConfigs": [
+        {
+            "name": "Resource",
+            "config": {
+                "assetBasePath": "../../../testenv/assets"
+            }
+        },
+        {
+            "name": "Renderer",
+            "config": {
+                "backend": "C3DVulkanRenderer",
+                "Vsync": true,
+                "PowerSaving": true,
+                "ValidationLayers": true
+            }
+        },
+        {
+            "name": "Audio",
+            "config": {
+                "backend": "C3DOpenAL",
+                "frequency": 0,
+                "channelType": "Stereo",
+                "chunkSize": 65536,
+                "numAudioChannels": 8
+            }
+        },
+        {
+            "name": "UI2D",
+            "config": {
+                "maxControls": 1024,
+                "memory": 16 # Size in MebiBytes
+            }
+        },
+        {
+            "name": "Font",
+            "config": {
+                "maxBitmapFonts": 8,
+                "maxSystemFonts": 8,
+                "bitmapFontConfigs": [
+                    {
+                        "name": "Ubuntu Mono 21px",
+                        "resource": "UbuntuMono21px",
+                        "size": 21
+                    }
+                ],
+                "systemFontConfigs": [
+                    {
+                        "name": "Noto Sans",
+                        "resource": "NotoSansCJK",
+                        "defaultSize": 20
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Shader",
+            "config": {
+                "maxShaders": 128,
+                "maxUniforms": 64,
+                "maxAttributes": 64,
+                "maxGlobaltextures": 32,
+                "maxInstanceTetures": 32
+            }
+        },
+        {
+            "name": "Texture",
+            "config": {
+                "maxTextures": 128,
+            }
+        },
+        {
+            "name": "CVar",
+            "config": {
+                "maxCVars": 32,
+            }
+        },
+        {
+            "name": "Transform",
+            "config": {
+                "initialTransforms": 64,
+            }
+        },
+        {
+            "name": "Job",
+            "config": {
+                "threadCount": 15 # Total number of threads - 1
+            }
+        },
+        {
+            "name": "Camera",
+            "config": {
+                "maxCameras": 64
+            }
+        },
+        {
+            "name": "Material",
+            "config": {
+                "maxMaterials": 64
+            }
+        },
+        {
+            "name": "Geometry",
+            "config": {
+                "maxGeometries": 512
+            }
+        }
+    ]
+}

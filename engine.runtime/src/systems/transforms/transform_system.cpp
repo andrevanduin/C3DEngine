@@ -2,21 +2,30 @@
 #include "transform_system.h"
 
 #include "memory/global_memory_system.h"
+#include "parsers/cson_parser.h"
 
 namespace C3D
 {
-    bool TransformSystem::OnInit(const TransformSystemConfig& config)
+    bool TransformSystem::OnInit(const CSONObject& config)
     {
-        // Copy the config
-        m_config = config;
+        INFO_LOG("Initializing.");
 
-        if (m_config.initialSlots < 32)
+        // Parse the user provided config
+        for (const auto& prop : config.properties)
         {
-            WARN_LOG("Initial slots < 32, which is not recommended. Defaulting to 32.");
-            m_config.initialSlots = 32;
+            if (prop.name.IEquals("initialTransforms"))
+            {
+                m_config.initialTransforms = prop.GetI64();
+            }
         }
 
-        if (!Allocate(m_config.initialSlots))
+        if (m_config.initialTransforms < 32)
+        {
+            WARN_LOG("Initial transforms < 32, which is not recommended. Defaulting to 32.");
+            m_config.initialTransforms = 32;
+        }
+
+        if (!Allocate(m_config.initialTransforms))
         {
             ERROR_LOG("Failed to create HandleTable.");
             return false;

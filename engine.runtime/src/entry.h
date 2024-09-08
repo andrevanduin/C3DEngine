@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     // Initialize our engine
     if (engine->Init())
     {
-        // Init our application
+        // Init the user's application
         InitApplication(engine);
 
         // Run our engine's game loop

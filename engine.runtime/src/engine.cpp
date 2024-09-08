@@ -37,44 +37,42 @@ namespace C3D
     {
         C3D_ASSERT_MSG(!m_state.initialized, "Tried to initialize the engine twice");
 
-        const auto appState = m_application->m_appState;
+        INFO_LOG("Initializing.");
 
-        // Setup our frame allocator
-        m_frameAllocator.Create("FRAME_ALLOCATOR", appState->frameAllocatorSize);
-        m_frameData.allocator = &m_frameAllocator;
+        // Get a quick reference to our app config
+        const auto& appConfig = m_application->m_appConfig;
 
         auto threadCount = Platform::GetProcessorCount();
         if (threadCount <= 1)
         {
-            FATAL_LOG("System reported: {} threads. C3DEngine requires at least 1 thread besides the main thread.", threadCount);
+            ERROR_LOG("System reported: {} threads. C3DEngine requires at least 1 thread besides the main thread.", threadCount);
+            return false;
         }
-        else
+
+        INFO_LOG("System reported: {} threads (including main thread).", threadCount);
+
+        // Setup our frame allocator
+        if (appConfig.frameAllocatorSize < MebiBytes(8))
         {
-            INFO_LOG("System reported: {} threads (including main thread).", threadCount);
+            ERROR_LOG("Frame allocator must be >= 8 Mebibytes.");
+            return false;
         }
+
+        m_frameAllocator.Create("FRAME_ALLOCATOR", appConfig.frameAllocatorSize);
+        m_frameData.allocator = &m_frameAllocator;
 
         SystemManager::OnInit();
-
-        constexpr ResourceSystemConfig resourceSystemConfig{ 32, "../../../assets" };
-        constexpr ShaderSystemConfig shaderSystemConfig;
-        constexpr TextureSystemConfig textureSystemConfig{ 65536 };
-        const CVarSystemConfig cVarSystemConfig{ 31, &m_console };
-        const RenderSystemConfig renderSystemConfig{ "TestEnv", appState->rendererPlugin,
-                                                     FlagVSyncEnabled | FlagPowerSavingEnabled | FlagUseValidationLayers };
-        constexpr UI2DSystemConfig ui2dSystemConfig{ 1024, MebiBytes(16) };
-        constexpr AudioSystemConfig audioSystemConfig{ "C3DOpenAL", 0, ChannelType::Stereo, 4096 * 16, 8 };
-        constexpr TransformSystemConfig transformSystemConfig;
 
         Platform::SetOnQuitCallback([this]() { Quit(); });
         Platform::SetOnResizeCallback([this](u16 width, u16 height) { OnResizeEvent(width, height); });
 
         // Init before boot systems
-        SystemManager::RegisterSystem<EventSystem>(EventSystemType);                                 // Event System
-        SystemManager::RegisterSystem<CVarSystem>(CVarSystemType, cVarSystemConfig);                 // CVar System
-        SystemManager::RegisterSystem<InputSystem>(InputSystemType);                                 // Input System
-        SystemManager::RegisterSystem<ResourceSystem>(ResourceSystemType, resourceSystemConfig);     // Resource System
-        SystemManager::RegisterSystem<ShaderSystem>(ShaderSystemType, shaderSystemConfig);           // Shader System
-        SystemManager::RegisterSystem<TransformSystem>(TransformSystemType, transformSystemConfig);  // Transform System
+        SystemManager::RegisterSystem<EventSystem>(EventSystemType);                                                // Event System
+        SystemManager::RegisterSystem<CVarSystem>(CVarSystemType, appConfig.systemConfigs["CVar"]);                 // CVar System
+        SystemManager::RegisterSystem<InputSystem>(InputSystemType);                                                // Input System
+        SystemManager::RegisterSystem<ResourceSystem>(ResourceSystemType, appConfig.systemConfigs["Resource"]);     // Resource System
+        SystemManager::RegisterSystem<ShaderSystem>(ShaderSystemType, appConfig.systemConfigs["Shader"]);           // Shader System
+        SystemManager::RegisterSystem<TransformSystem>(TransformSystemType, appConfig.systemConfigs["Transform"]);  // Transform System
 
         // After the Event system is up and running we register an OnQuit event
         Event.Register(EventCodeApplicationQuit, [this](u16 code, void* sender, const EventContext& context) {
@@ -82,81 +80,45 @@ namespace C3D
             return true;
         });
 
-        // TODO: Allow for multiple windows
-        // We should also create a window
-        WindowConfig windowConfig;
-        // 1280x720 window centered in the screen
-        windowConfig.name   = String::FromFormat("C3DEngine - {}", appState->name);
-        windowConfig.width  = 1280;
-        windowConfig.height = 720;
-        windowConfig.flags  = WindowFlag::WindowFlagCenter;
-
-        if (!Platform::CreateWindow(windowConfig))
+        // Create all the requested windows
+        for (const auto& windowConfig : appConfig.windowConfigs)
         {
-            ERROR_LOG("Failed to create a window.");
-            return false;
+            if (!Platform::CreateWindow(windowConfig))
+            {
+                ERROR_LOG("Failed to create a window.");
+                return false;
+            }
         }
 
         // We must initialize the Texture system first since our RenderSystem depends on it
-        SystemManager::RegisterSystem<TextureSystem>(TextureSystemType, textureSystemConfig);  // Texture System
-        SystemManager::RegisterSystem<RenderSystem>(RenderSystemType, renderSystemConfig);     // Render System
+        SystemManager::RegisterSystem<TextureSystem>(TextureSystemType, appConfig.systemConfigs["Texture"]);  // Texture System
+        SystemManager::RegisterSystem<RenderSystem>(RenderSystemType, appConfig.systemConfigs["Renderer"]);   // Render System
 
         // But we can only create default textures once we have our RenderSystem running
         Textures.CreateDefaultTextures();
 
-        SystemManager::RegisterSystem<UI2DSystem>(UI2DSystemType, ui2dSystemConfig);     // UI2D System
-        SystemManager::RegisterSystem<AudioSystem>(AudioSystemType, audioSystemConfig);  //  Audio System
+        SystemManager::RegisterSystem<UI2DSystem>(UI2DSystemType, appConfig.systemConfigs["UI2D"]);     // UI2D System
+        SystemManager::RegisterSystem<AudioSystem>(AudioSystemType, appConfig.systemConfigs["Audio"]);  //  Audio System
 
         const auto rendererMultiThreaded = Renderer.IsMultiThreaded();
 
         // Ensure the application can access the engine before we start calling into application code
         m_application->m_pEngine = this;
 
+        // Try to boot the application
         if (!m_application->OnBoot())
         {
             ERROR_LOG("Application failed to boot!");
             return false;
         }
 
-        constexpr auto maxThreadCount = 15;
-        if (threadCount - 1 > maxThreadCount)
-        {
-            INFO_LOG("Available threads on this system is > {}. Capping used threads at {}.", maxThreadCount, (threadCount - 1),
-                     maxThreadCount);
-            threadCount = maxThreadCount;
-        }
+        SystemManager::RegisterSystem<JobSystem>(JobSystemType, appConfig.systemConfigs["Job"]);           // Job System
+        SystemManager::RegisterSystem<FontSystem>(FontSystemType, appConfig.systemConfigs["Font"]);        // Font System
+        SystemManager::RegisterSystem<CameraSystem>(CameraSystemType, appConfig.systemConfigs["Camera"]);  // Camera System
 
-        u32 jobThreadTypes[15];
-        for (u32& jobThreadType : jobThreadTypes) jobThreadType = JobTypeGeneral;
-
-        if (threadCount == 1 || !rendererMultiThreaded)
-        {
-            jobThreadTypes[0] |= (JobTypeGpuResource | JobTypeResourceLoad);
-        }
-        else if (threadCount == 2)
-        {
-            jobThreadTypes[0] |= JobTypeGpuResource;
-            jobThreadTypes[1] |= JobTypeResourceLoad;
-        }
-        else
-        {
-            jobThreadTypes[0] = JobTypeGpuResource;
-            jobThreadTypes[1] = JobTypeResourceLoad;
-        }
-
-        const JobSystemConfig jobSystemConfig{ static_cast<u8>(threadCount - 1), jobThreadTypes };
-        constexpr CameraSystemConfig cameraSystemConfig{ 61 };
-
-        SystemManager::RegisterSystem<JobSystem>(JobSystemType, jobSystemConfig);           // Job System
-        SystemManager::RegisterSystem<FontSystem>(FontSystemType, appState->fontConfig);    // Font System
-        SystemManager::RegisterSystem<CameraSystem>(CameraSystemType, cameraSystemConfig);  // Camera System
-
-        constexpr MaterialSystemConfig materialSystemConfig{ 4077 };
-        constexpr GeometrySystemConfig geometrySystemConfig{ 4096 };
-
-        SystemManager::RegisterSystem<MaterialSystem>(MaterialSystemType, materialSystemConfig);  // Material System
-        SystemManager::RegisterSystem<GeometrySystem>(GeometrySystemType, geometrySystemConfig);  // Geometry System
-        SystemManager::RegisterSystem<LightSystem>(LightSystemType);                              // Light System
+        SystemManager::RegisterSystem<MaterialSystem>(MaterialSystemType, appConfig.systemConfigs["Material"]);  // Material System
+        SystemManager::RegisterSystem<GeometrySystem>(GeometrySystemType, appConfig.systemConfigs["Geometry"]);  // Geometry System
+        SystemManager::RegisterSystem<LightSystem>(LightSystemType);                                             // Light System
 
         m_state.initialized = true;
         m_state.lastTime    = 0;
@@ -166,12 +128,17 @@ namespace C3D
         m_state.windowWidth  = size.x;
         m_state.windowHeight = size.y;
 
+        // Initialize our console
         m_console.OnInit();
+
+        INFO_LOG("Successfully initialized.");
         return true;
     }
 
     void Engine::Run()
     {
+        INFO_LOG("Started.");
+
         m_state.running  = true;
         m_state.lastTime = Platform::GetAbsoluteTime();
 
@@ -213,7 +180,6 @@ namespace C3D
 
                     if (m_state.framesSinceResize >= 5)
                     {
-                        const auto appState = m_application->m_appState;
                         OnResize(m_state.windowWidth, m_state.windowHeight);
                     }
                     else
@@ -309,6 +275,8 @@ namespace C3D
         }
 
         Shutdown();
+
+        INFO_LOG("Finished.");
     }
 
     void Engine::Quit() { m_state.running = false; }

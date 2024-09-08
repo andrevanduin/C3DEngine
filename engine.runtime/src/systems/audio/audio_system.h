@@ -27,7 +27,7 @@ namespace C3D
     struct AudioSystemConfig
     {
         /** @brief Which plugin should be used under the hood to play audio. */
-        const char* pluginName;
+        String pluginName;
         /** @brief The frequency to output audio at. */
         u32 frequency;
         /** @brief The type of audio channel to use (mono vs stereo). */
@@ -43,7 +43,7 @@ namespace C3D
     class C3D_API AudioSystem final : public SystemWithConfig<AudioSystemConfig>
     {
     public:
-        bool OnInit(const AudioSystemConfig& config) override;
+        bool OnInit(const CSONObject& config) override;
         void OnShutdown() override;
 
         bool OnUpdate(const FrameData& frameData) override;

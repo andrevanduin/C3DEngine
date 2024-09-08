@@ -2,8 +2,8 @@
 #include "vulkan_renderer_plugin.h"
 
 #include <engine.h>
-#include <metrics/metrics.h>
 #include <logger/logger.h>
+#include <metrics/metrics.h>
 #include <platform/platform.h>
 #include <renderer/geometry.h>
 #include <renderer/renderer_frontend.h>
@@ -52,7 +52,7 @@ namespace C3D
         m_context.allocator = nullptr;
 #endif
 
-        if (config.flags & RendererConfigFlagBits::FlagUseValidationLayers)
+        if (config.flags & FlagUseValidationLayers)
         {
             m_context.useValidationLayers = true;
             INFO_LOG("Validation layers are requested.");
@@ -712,13 +712,13 @@ namespace C3D
 
     bool VulkanRendererPlugin::IsMultiThreaded() const { return m_context.multiThreadingEnabled; }
 
-    void VulkanRendererPlugin::SetFlagEnabled(const RendererConfigFlagBits flag, const bool enabled)
+    void VulkanRendererPlugin::SetFlagEnabled(const RendererConfigFlag flag, const bool enabled)
     {
         m_config.flags              = enabled ? (m_config.flags | flag) : (m_config.flags & ~flag);
         m_context.renderFlagChanged = true;
     }
 
-    bool VulkanRendererPlugin::IsFlagEnabled(const RendererConfigFlagBits flag) const { return m_config.flags & flag; }
+    bool VulkanRendererPlugin::IsFlagEnabled(const RendererConfigFlag flag) const { return m_config.flags & flag; }
 
     void VulkanRendererPlugin::BeginRenderpass(void* pass, const Viewport* viewport, const RenderTarget& target)
     {
@@ -1170,6 +1170,10 @@ namespace C3D
                     vkDestroyDescriptorSetLayout(logicalDevice, vulkanShader->descriptorSetLayouts[i], vkAllocator);
                     vulkanShader->descriptorSetLayouts[i] = nullptr;
                 }
+
+                // Cleanup the descriptor set bindings array
+                auto& set = vulkanShader->descriptorSets[i];
+                set.bindings.Destroy();
             }
 
             // Cleanup descriptor pool
@@ -1185,6 +1189,12 @@ namespace C3D
             vulkanShader->uniformBuffer.UnMapMemory(0, VK_WHOLE_SIZE);
             vulkanShader->mappedUniformBufferBlock = nullptr;
             vulkanShader->uniformBuffer.Destroy();
+
+            // Cleanup Push Constant block
+            if (vulkanShader->localPushConstantBlock)
+            {
+                Memory.Free(vulkanShader->localPushConstantBlock);
+            }
 
             // Cleanup Pipelines
             for (const auto pipeline : vulkanShader->pipelines)
