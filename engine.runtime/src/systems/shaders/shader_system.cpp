@@ -1,7 +1,7 @@
 
 #include "shader_system.h"
 
-#include "parsers/cson_types.h"
+#include "cson/cson_types.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/renderer_utils.h"
 #include "resources/textures/texture_map.h"

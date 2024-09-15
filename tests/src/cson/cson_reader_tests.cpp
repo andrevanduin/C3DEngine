@@ -1,36 +1,18 @@
 
-#include "cson_parser_tests.h"
+#include "cson_reader_tests.h"
 
-#include <parsers/cson_parser.h>
+#include <cson/cson_reader.h>
 #include <platform/file_system.h>
 #include <string/string.h>
 
 #include "../expect.h"
 
-namespace CSONParser
+namespace CSONReader
 {
-    C3D::String GetFileContent(const char* name)
+    TEST(CSONReaderShouldParseBasicObjects)
     {
-        C3D::File file;
-        C3D::String input;
-        if (!file.Open(name, C3D::FileModeRead))
-        {
-            AssertFail("Failed to open file.");
-        }
-        if (!file.ReadAll(input))
-        {
-            AssertFail("Failed to ReadAll() from file.");
-        }
-        return input;
-    }
-
-    TEST(CSONParserShouldParseBasicObjects)
-    {
-        const char* fileName = "basic_object.cson";
-        auto input           = GetFileContent(fileName);
-
-        C3D::CSONParser parser;
-        auto actual = parser.Parse(input);
+        C3D::CSONReader reader;
+        auto actual = reader.ReadFromFile("basic_object.cson");
 
         // We expect 4 preoperties in the root object
         ExpectEqual(4, actual.properties.Size());
@@ -72,13 +54,10 @@ namespace CSONParser
         }
     }
 
-    TEST(CSONParserShouldParseObjectsWithArrays)
+    TEST(CSONReaderShouldParseObjectsWithArrays)
     {
-        const char* fileName = "object_with_arrays.cson";
-        auto input           = GetFileContent(fileName);
-
-        C3D::CSONParser parser;
-        auto actual = parser.Parse(input);
+        C3D::CSONReader reader;
+        auto actual = reader.ReadFromFile("object_with_arrays.cson");
 
         // We expect 4 preoperties in the root object
         ExpectEqual(4, actual.properties.Size());
@@ -100,13 +79,10 @@ namespace CSONParser
         ExpectTrue(actual.properties[3].GetArray().IsEmpty());
     }
 
-    TEST(CSONParserShouldParseNestedObjects)
+    TEST(CSONReaderShouldParseNestedObjects)
     {
-        const char* fileName = "nested_objects.cson";
-        auto input           = GetFileContent(fileName);
-
-        C3D::CSONParser parser;
-        auto actual = parser.Parse(input);
+        C3D::CSONReader reader;
+        auto actual = reader.ReadFromFile("nested_objects.cson");
 
         // We expect 2 properties in the root object
         ExpectEqual(2, actual.properties.Size());
@@ -126,13 +102,10 @@ namespace CSONParser
         VerifyIntArray({ 1, 2, 3 }, nestedObject2.properties[0].GetArray());
     }
 
-    TEST(CSONParserArrayOfObjects)
+    TEST(CSONReaderArrayOfObjects)
     {
-        const char* fileName = "array_of_objects.cson";
-        auto input           = GetFileContent(fileName);
-
-        C3D::CSONParser parser;
-        auto actual = parser.Parse(input);
+        C3D::CSONReader reader;
+        auto actual = reader.ReadFromFile("array_of_objects.cson");
 
         // We expect 1 property in the root object
         ExpectEqual(1, actual.properties.Size());
@@ -157,13 +130,10 @@ namespace CSONParser
         ExpectEqual(C3D::String("value2"), obj2.properties[0].GetString());
     }
 
-    TEST(CSONParserRootArray)
+    TEST(CSONReaderRootArray)
     {
-        const char* fileName = "root_array.cson";
-        auto input           = GetFileContent(fileName);
-
-        C3D::CSONParser parser;
-        auto actual = parser.Parse(input);
+        C3D::CSONReader reader;
+        auto actual = reader.ReadFromFile("root_array.cson");
 
         ExpectEqual(C3D::CSONObjectType::Array, actual.type);
         ExpectEqual(4, actual.properties.Size());
@@ -176,11 +146,11 @@ namespace CSONParser
 
     void RegisterTests(TestManager& manager)
     {
-        manager.StartType("CSONParser");
-        REGISTER_TEST(CSONParserShouldParseBasicObjects, "Parsing of basic CSON objects should work.");
-        REGISTER_TEST(CSONParserShouldParseObjectsWithArrays, "Parsing of CSON objects with arrays should work.");
-        REGISTER_TEST(CSONParserShouldParseNestedObjects, "Parsing of nested CSON objects should work.");
-        REGISTER_TEST(CSONParserArrayOfObjects, "Parsing of array of CSON objects should work.");
-        REGISTER_TEST(CSONParserRootArray, "Parsing should also work when the root is a CSON array.");
+        manager.StartType("CSONReader");
+        REGISTER_TEST(CSONReaderShouldParseBasicObjects, "Parsing of basic CSON objects should work.");
+        REGISTER_TEST(CSONReaderShouldParseObjectsWithArrays, "Parsing of CSON objects with arrays should work.");
+        REGISTER_TEST(CSONReaderShouldParseNestedObjects, "Parsing of nested CSON objects should work.");
+        REGISTER_TEST(CSONReaderArrayOfObjects, "Parsing of array of CSON objects should work.");
+        REGISTER_TEST(CSONReaderRootArray, "Parsing should also work when the root is a CSON array.");
     }
-}  // namespace CSONParser
+}  // namespace CSONReader

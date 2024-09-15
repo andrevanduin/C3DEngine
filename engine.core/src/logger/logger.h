@@ -52,6 +52,12 @@ namespace C3D
             GetCoreLogger()->warn(str);
         }
 
+        static void Error(const char* str)
+        {
+            ASSERT_INIT;
+            GetCoreLogger()->error(str);
+        }
+
         template <class... Args>
         static void Error(const char* format, Args&&... args)
         {

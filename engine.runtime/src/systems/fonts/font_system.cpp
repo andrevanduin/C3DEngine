@@ -1,8 +1,8 @@
 
 #include "font_system.h"
 
+#include "cson/cson_types.h"
 #include "math/c3d_math.h"
-#include "parsers/cson_types.h"
 #include "renderer/renderer_frontend.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"

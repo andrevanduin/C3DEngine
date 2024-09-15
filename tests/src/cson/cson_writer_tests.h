@@ -1,9 +1,8 @@
 
-
 #pragma once
 #include "../test_manager.h"
 
-namespace CSONParser
+namespace CSONWriter
 {
     void RegisterTests(TestManager& manager);
 }

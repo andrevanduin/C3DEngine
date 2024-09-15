@@ -1,5 +1,5 @@
 
-#include "cson_parser.h"
+#include "cson_reader.h"
 
 #include "asserts/asserts.h"
 #include "platform/file_system.h"
@@ -7,7 +7,7 @@
 
 namespace C3D
 {
-    CSONObject CSONParser::Parse(const String& input)
+    CSONObject CSONReader::Read(const String& input)
     {
         // Take a pointer to the input string
         m_pInput = &input;
@@ -17,7 +17,7 @@ namespace C3D
         return ParseTokens();
     }
 
-    CSONObject CSONParser::ParseFile(const String& path)
+    CSONObject CSONReader::ReadFromFile(const String& path)
     {
         File file;
         if (!file.Open(path, FileModeRead))
@@ -32,10 +32,10 @@ namespace C3D
             ERROR_LOG("Failed to read CSON file: '{}'.", path);
             return CSONObject(CSONObjectType::Object);
         }
-        return Parse(input);
+        return Read(input);
     }
 
-    CSONToken CSONParser::TokenizeDefault(char c, u32& index, u32& line)
+    CSONToken CSONReader::TokenizeDefault(char c, u32& index, u32& line)
     {
         switch (c)
         {
@@ -114,7 +114,7 @@ namespace C3D
         return CSONToken();
     }
 
-    void CSONParser::Tokenize()
+    void CSONReader::Tokenize()
     {
         // We start in default tokenize mode
         m_tokenizeMode = CSONTokenizeMode::Default;
@@ -210,7 +210,7 @@ namespace C3D
         m_tokens.Enqueue({ CSONTokenType::EndOfFile, index, index });
     }
 
-    bool CSONParser::ParseKeyOrEndOfObject(const CSONToken& token)
+    bool CSONReader::ParseKeyOrEndOfObject(const CSONToken& token)
     {
         if (token.type == CSONTokenType::StringLiteral)
         {
@@ -242,7 +242,7 @@ namespace C3D
         return ParseError(token, "string literal key or }");
     }
 
-    bool CSONParser::ParseColon(const CSONToken& token)
+    bool CSONReader::ParseColon(const CSONToken& token)
     {
         if (token.type == CSONTokenType::Colon)
         {
@@ -254,7 +254,7 @@ namespace C3D
         return ParseError(token, ":");
     }
 
-    bool CSONParser::ParseValue(const CSONToken& token)
+    bool CSONReader::ParseValue(const CSONToken& token)
     {
         switch (token.type)
         {
@@ -323,7 +323,7 @@ namespace C3D
         }
     }
 
-    bool CSONParser::ParseCommaOrEndOfObject(const CSONToken& token)
+    bool CSONReader::ParseCommaOrEndOfObject(const CSONToken& token)
     {
         if (token.type == CSONTokenType::Comma)
         {
@@ -362,7 +362,7 @@ namespace C3D
         return ParseError(token, ",");
     }
 
-    bool CSONParser::ParseArrayOrObject(const CSONToken& token)
+    bool CSONReader::ParseArrayOrObject(const CSONToken& token)
     {
         if (token.type == CSONTokenType::OpenCurlyBrace)
         {
@@ -385,7 +385,7 @@ namespace C3D
         return ParseError(token, "{ or [");
     }
 
-    bool CSONParser::ParseArrayValue(const CSONToken& token)
+    bool CSONReader::ParseArrayValue(const CSONToken& token)
     {
         switch (token.type)
         {
@@ -448,7 +448,7 @@ namespace C3D
         return ParseError(token, "a valid value");
     }
 
-    bool CSONParser::ParseArraySeparatorOrEnd(const CSONToken& token)
+    bool CSONReader::ParseArraySeparatorOrEnd(const CSONToken& token)
     {
         if (token.type == CSONTokenType::Comma)
         {
@@ -469,7 +469,7 @@ namespace C3D
         return ParseError(token, "',' or ']'");
     }
 
-    bool CSONParser::ParseEndOfFile(const CSONToken& token)
+    bool CSONReader::ParseEndOfFile(const CSONToken& token)
     {
         if (token.type == CSONTokenType::EndOfFile)
         {
@@ -480,14 +480,14 @@ namespace C3D
         return ParseError(token, "end of file");
     }
 
-    bool CSONParser::ParseError(const CSONToken& token, const char* expected)
+    bool CSONReader::ParseError(const CSONToken& token, const char* expected)
     {
         ERROR_LOG("Parsing error on line: {}. Expected: '{}' but found: '{}'.", token.line, expected,
                   m_pInput->SubStr(token.start, token.end + 1));
         return false;
     }
 
-    CSONObject CSONParser::ParseTokens()
+    CSONObject CSONReader::ParseTokens()
     {
         // Initially we always expect an object or an array
         m_parseMode = CSONParseMode::ObjectOrArray;
