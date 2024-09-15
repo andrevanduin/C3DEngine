@@ -516,7 +516,7 @@ namespace C3D
             fmt::format_to(std::back_inserter(*this), format, std::forward<Args>(args)...);
         }
 
-        /* @brief Builds a string from the format and the provided arguments.
+        /** @brief Builds a string from the format and the provided arguments.
          * Internally uses fmt::format to build out the string.
          */
         template <typename... Args>
@@ -525,6 +525,15 @@ namespace C3D
             BasicString<DynamicAllocator> buffer;
             fmt::vformat_to(std::back_inserter(buffer), format, fmt::make_format_args(args...));
             return buffer;
+        }
+
+        /** @brief Returns a string made from count * character */
+        static BasicString<DynamicAllocator> Repeat(char c, u32 count)
+        {
+            BasicString<DynamicAllocator> str;
+            str.Reserve(count);
+            for (u32 i = 0; i < count; ++i) str.Append(c);
+            return str;
         }
 
         /* @brief Append the provided string to the end of this string. */

@@ -6,11 +6,11 @@
 
 namespace C3D
 {
-    class C3D_API CSONParser
+    class C3D_API CSONReader
     {
     public:
-        CSONObject Parse(const String& input);
-        CSONObject ParseFile(const String& path);
+        CSONObject Read(const String& input);
+        CSONObject ReadFromFile(const String& path);
 
     private:
         CSONToken TokenizeDefault(char c, u32& index, u32& line);

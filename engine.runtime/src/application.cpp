@@ -1,7 +1,7 @@
 
 #include "application.h"
 
-#include "parsers/cson_parser.h"
+#include "cson/cson_reader.h"
 
 namespace C3D
 {
@@ -47,8 +47,8 @@ namespace C3D
 
     Application::Application(ApplicationState* state)
     {
-        CSONParser parser;
-        auto config = parser.ParseFile("../../../testenv/assets/application_config.cson");
+        CSONReader reader;
+        auto config = reader.ReadFromFile("../../../testenv/assets/application_config.cson");
 
         // Initialize our SystemConfigs HashMap
         m_appConfig.systemConfigs.Create();

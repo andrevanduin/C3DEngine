@@ -2,8 +2,8 @@
 #include "audio_system.h"
 
 #include "audio/audio_plugin.h"
+#include "cson/cson_types.h"
 #include "math/c3d_math.h"
-#include "parsers/cson_types.h"
 #include "resources/managers/audio_manager.h"
 #include "systems/resources/resource_system.h"
 #include "systems/system_manager.h"

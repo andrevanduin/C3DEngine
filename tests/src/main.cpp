@@ -8,11 +8,12 @@
 #include "containers/queue_tests.h"
 #include "containers/ring_queue_tests.h"
 #include "containers/stack_tests.h"
+#include "cson/cson_reader_tests.h"
+#include "cson/cson_writer_tests.h"
 #include "function/stack_function_tests.h"
 #include "memory/dynamic_allocator_tests.h"
 #include "memory/linear_allocator_tests.h"
 #include "memory/stack_allocator_tests.h"
-#include "parsers/cson_parser_tests.h"
 #include "platform/file_system.h"
 #include "string/cstring_tests.h"
 #include "string/string_tests.h"
@@ -45,7 +46,8 @@ int main(int argc, char** argv)
 
     FileSystem::RegisterTests(manager);
 
-    CSONParser::RegisterTests(manager);
+    CSONReader::RegisterTests(manager);
+    CSONWriter::RegisterTests(manager);
 
     C3D::Logger::Debug("------ Starting tests... ------");
     manager.RunTests();

@@ -7,6 +7,13 @@ namespace C3D
     const static CSONObject emptyObject(CSONObjectType::Object);
     const static CSONArray emptyArray(CSONObjectType::Array);
 
+    u32 CSONProperty::GetType() const { return value.index(); }
+
+    bool CSONProperty::IsBasicType() const
+    {
+        return value.index() == PropertyTypeBool || value.index() == PropertyTypeF64 || value.index() == PropertyTypeI64;
+    }
+
     bool CSONProperty::GetBool() const
     {
         if (std::holds_alternative<bool>(value))

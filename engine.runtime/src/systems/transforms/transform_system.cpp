@@ -1,8 +1,8 @@
 
 #include "transform_system.h"
 
+#include "cson/cson_reader.h"
 #include "memory/global_memory_system.h"
-#include "parsers/cson_parser.h"
 
 namespace C3D
 {

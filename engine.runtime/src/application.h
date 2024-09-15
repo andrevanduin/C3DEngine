@@ -1,6 +1,6 @@
 
 #pragma once
-#include "parsers/cson_types.h"
+#include "cson/cson_types.h"
 #include "platform/platform_types.h"
 #include "renderer/renderer_plugin.h"
 #include "string/string.h"

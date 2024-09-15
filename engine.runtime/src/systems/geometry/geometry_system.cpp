@@ -1,8 +1,8 @@
 
 #include "geometry_system.h"
 
+#include "cson/cson_types.h"
 #include "logger/logger.h"
-#include "parsers/cson_types.h"
 #include "renderer/geometry_utils.h"
 #include "renderer/renderer_frontend.h"
 #include "renderer/vertex.h"

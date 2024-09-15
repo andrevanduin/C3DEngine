@@ -77,21 +77,21 @@ void TestManager::RunTests()
         if (test.result.code == PASSED)
         {
             passed++;
-            C3D::Logger::Info("Result: SUCCESS (Ran in {:.4f} sec)", testTime.GetElapsed());
+            C3D::Logger::Info("Result: SUCCESS (Ran in {:.4f} ms)", testTime.GetElapsedMs());
         }
         else if (test.result.code == SKIPPED)
         {
-            C3D::Logger::Warn("Result: SKIPPED (Ran in {:.4f} sec)", testTime.GetElapsed());
+            C3D::Logger::Warn("Result: SKIPPED (Ran in {:.4f} ms)", testTime.GetElapsedMs());
             m_skipped.push_back(test);
         }
         else if (test.result.code == FAILED)
         {
-            C3D::Logger::Error("Result: FAILED (Ran in {:.4f} sec)", testTime.GetElapsed());
+            C3D::Logger::Error("Result: FAILED (Ran in {:.4f} ms)", testTime.GetElapsedMs());
             m_failures.push_back(test);
         }
     }
 
-    INFO_LOG("Results: {} passed, {} failed and {} skipped. Total runtime {:.4f} sec.", passed, m_failures.size(), m_skipped.size(),
+    INFO_LOG("Results: {} passed, {} failed and {} skipped. Total runtime {:.4f} seconds.", passed, m_failures.size(), m_skipped.size(),
              testTime.GetTotalElapsed());
 
     if (!m_skipped.empty())

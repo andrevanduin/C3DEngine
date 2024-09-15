@@ -1,7 +1,7 @@
 
 #include "cvar_system.h"
 
-#include "parsers/cson_types.h"
+#include "cson/cson_types.h"
 
 namespace C3D
 {

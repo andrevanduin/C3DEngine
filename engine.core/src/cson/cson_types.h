@@ -93,12 +93,24 @@ namespace C3D
     /** @brief Describes a value of something in a CSON file. Can also be another CSON object. */
     using CSONValue = std::variant<i64, f64, bool, String, CSONObject>;
 
+    enum CSONPropertyValueType
+    {
+        PropertyTypeI64 = 0,
+        PropertyTypeF64,
+        PropertyTypeBool,
+        PropertyTypeString,
+        PropertyTypeObject
+    };
+
     /** @brief Describes a property in a CSON file. For objects the name field will be populated.
      * For properties of an array the name field will be empty. */
     struct C3D_API CSONProperty
     {
         String name;
         CSONValue value;
+
+        u32 GetType() const;
+        bool IsBasicType() const;
 
         bool GetBool() const;
         i64 GetI64() const;
