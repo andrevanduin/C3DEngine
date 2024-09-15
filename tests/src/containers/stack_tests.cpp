@@ -1,9 +1,10 @@
 
 #include "stack_tests.h"
 
+#include <containers/stack.h>
+#include <metrics/metrics.h>
+
 #include "../expect.h"
-#include "containers/stack.h"
-#include "core/metrics/metrics.h"
 
 TEST(StackShouldCreateEmptyWithDefaultCtor)
 {

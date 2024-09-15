@@ -1,6 +1,6 @@
 
 #pragma once
-#include <core/defines.h>
+#include <defines.h>
 #include <resources/shaders/shader_types.h>
 
 #include "vulkan_buffer.h"

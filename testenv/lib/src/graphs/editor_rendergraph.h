@@ -9,7 +9,7 @@ using namespace C3D;
 namespace C3D
 {
     class LinearAllocator;
-    class SimpleScene;
+    class Scene;
 }  // namespace C3D
 
 struct EditorRendergraphConfig
@@ -22,7 +22,7 @@ class EditorRendergraph : public Rendergraph<EditorRendergraphConfig>
 public:
     bool Create(const C3D::String& name, const EditorRendergraphConfig& config) override;
 
-    bool OnPrepareRender(FrameData& frameData, const Viewport& currentViewport, Camera* currentCamera, const C3D::SimpleScene& scene);
+    bool OnPrepareRender(FrameData& frameData, const Viewport& currentViewport, Camera* currentCamera, const C3D::Scene& scene);
 
     void SetGizmo(EditorGizmo* gizmo);
 

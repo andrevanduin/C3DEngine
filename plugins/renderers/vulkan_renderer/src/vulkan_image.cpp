@@ -1,8 +1,8 @@
 
 #include "vulkan_image.h"
 
-#include <core/logger.h>
-#include <core/metrics/metrics.h>
+#include <metrics/metrics.h>
+#include <logger/logger.h>
 #include <platform/platform.h>
 #include <systems/system_manager.h>
 

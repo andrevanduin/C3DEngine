@@ -1,19 +1,23 @@
 
 #include "game.h"
 
-#include <containers/cstring.h>
-#include <core/colors.h>
-#include <core/console/console.h>
-#include <core/events/event_context.h>
-#include <core/frame_data.h>
-#include <core/logger.h>
-#include <core/metrics/metrics.h>
+#include <colors.h>
+#include <console/console.h>
+#include <frame_data.h>
+#include <logger/logger.h>
+#include <math/ray.h>
+#include <metrics/metrics.h>
 #include <renderer/renderer_types.h>
+#include <resources/managers/scene_manager.h>
+#include <resources/scenes/scene.h>
+#include <resources/scenes/scene_config.h>
 #include <resources/skybox.h>
+#include <string/cstring.h>
 #include <systems/UI/2D/ui2d_system.h>
 #include <systems/audio/audio_system.h>
 #include <systems/cameras/camera_system.h>
 #include <systems/cvars/cvar_system.h>
+#include <systems/events/event_context.h>
 #include <systems/events/event_system.h>
 #include <systems/geometry/geometry_system.h>
 #include <systems/input/input_system.h>
@@ -24,38 +28,15 @@
 
 #include <glm/gtx/matrix_decompose.hpp>
 
-#include "math/ray.h"
 #include "passes/editor_pass.h"
 #include "resources/debug/debug_box_3d.h"
 #include "resources/debug/debug_line_3d.h"
-#include "resources/loaders/simple_scene_loader.h"
-#include "resources/scenes/simple_scene.h"
-#include "resources/scenes/simple_scene_config.h"
 
 TestEnv::TestEnv(C3D::ApplicationState* state) : Application(state), m_state(reinterpret_cast<GameState*>(state)) {}
 
 bool TestEnv::OnBoot()
 {
     INFO_LOG("Booting TestEnv.");
-
-    m_state->fontConfig.autoRelease = false;
-
-    // Default bitmap font config
-    C3D::BitmapFontConfig bmpFontConfig;
-    bmpFontConfig.name         = "Ubuntu Mono 21px";
-    bmpFontConfig.resourceName = "UbuntuMono21px";
-    bmpFontConfig.size         = 21;
-    m_state->fontConfig.bitmapFontConfigs.PushBack(bmpFontConfig);
-
-    // Default system font config
-    C3D::SystemFontConfig systemFontConfig;
-    systemFontConfig.name         = "Noto Sans";
-    systemFontConfig.resourceName = "NotoSansCJK";
-    systemFontConfig.defaultSize  = 20;
-    m_state->fontConfig.systemFontConfigs.PushBack(systemFontConfig);
-
-    m_state->fontConfig.maxBitmapFontCount = 101;
-    m_state->fontConfig.maxSystemFontCount = 101;
 
     if (!CreateRendergraphs())
     {
@@ -97,10 +78,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     m_state->wireframeCamera = Cam.Acquire("WIREFRAME_CAM");
     m_state->wireframeCamera->SetPosition({ 8.0f, 0.0f, 10.0f });
     m_state->wireframeCamera->SetEulerRotation({ 0.0f, -90.0f, 0.0f });
-
-    // Set the allocator for the dynamic array that contains our world geometries to our frame allocator
-    auto gameFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
-    gameFrameData->worldGeometries.SetAllocator(frameData.allocator);
 
     // Create, initialize and load our editor gizmo
     if (!m_state->gizmo.Create())
@@ -171,9 +148,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
 
 void TestEnv::OnUpdate(C3D::FrameData& frameData)
 {
-    // Get our application specific frame data
-    auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
-
     static u64 allocCount    = 0;
     const u64 prevAllocCount = allocCount;
     allocCount               = Metrics.GetAllocCount();
@@ -322,7 +296,7 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
         }
     }
 
-    if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
+    if (m_state->scene.GetState() == C3D::SceneState::Uninitialized && m_state->reloadState == ReloadState::Unloading)
     {
         m_state->reloadState = ReloadState::Loading;
         INFO_LOG("Loading Main Scene...");
@@ -333,22 +307,22 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
     const auto nearClip = m_state->worldViewport.GetNearClip();
     const auto farClip  = m_state->worldViewport.GetFarClip();
 
-    if (m_state->simpleScene.GetState() >= C3D::SceneState::Loaded)
+    if (m_state->scene.GetState() >= C3D::SceneState::Loaded)
     {
-        if (!m_state->simpleScene.Update(frameData))
+        if (!m_state->scene.Update(frameData))
         {
             ERROR_LOG("Failed to update main scene.");
         }
 
         // Update LODs for the scene based on distance from the camera
-        m_state->simpleScene.UpdateLodFromViewPosition(frameData, pos, nearClip, farClip);
+        m_state->scene.UpdateLodFromViewPosition(frameData, pos, nearClip, farClip);
 
         m_state->gizmo.Update();
 
         // Rotate
         quat rotation = angleAxis(0.2f * static_cast<f32>(deltaTime), vec3(0.0f, 1.0f, 0.0f));
 
-        const auto absTime  = OS.GetAbsoluteTime();
+        const auto absTime  = Platform::GetAbsoluteTime();
         const auto sinTime  = (C3D::Sin(absTime) + 1) / 2;  // 0  -> 1
         const auto sinTime2 = C3D::Sin(absTime);            // -1 -> 1
 
@@ -420,9 +394,6 @@ void TestEnv::OnUpdate(C3D::FrameData& frameData)
 
 bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
 {
-    // Get our application specific frame data
-    auto appFrameData = static_cast<GameFrameData*>(frameData.applicationFrameData);
-
     auto camera = m_state->camera;
 
     // Prepare debug boxes and lines for rendering
@@ -436,14 +407,14 @@ bool TestEnv::OnPrepareRender(C3D::FrameData& frameData)
         line.OnPrepareRender(frameData);
     }
 
-    if (!m_state->mainRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->simpleScene, m_state->renderMode,
+    if (!m_state->mainRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->scene, m_state->renderMode,
                                                   m_state->testLines, m_state->testBoxes))
     {
         ERROR_LOG("Failed to prepare main rendergraph.");
         return false;
     }
 
-    if (!m_state->editorRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->simpleScene))
+    if (!m_state->editorRendergraph.OnPrepareRender(frameData, m_state->worldViewport, camera, m_state->scene))
     {
         ERROR_LOG("Failed to prepare editor rendergraph.");
         return false;
@@ -518,7 +489,7 @@ void TestEnv::OnResize(u16 width, u16 height)
 void TestEnv::OnShutdown()
 {
     // Unload our simple scene
-    m_state->simpleScene.Unload(true);
+    m_state->scene.Unload(true);
 
     // Destroy our Rendergraph
     m_state->mainRendergraph.Destroy();
@@ -639,10 +610,10 @@ void TestEnv::OnLibraryLoad()
     m_pConsole->RegisterCommand("reload_scene", [this](const C3D::DynamicArray<C3D::ArgName>&, C3D::String&) {
         m_state->reloadState = ReloadState::Unloading;
 
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
+        if (m_state->scene.GetState() == C3D::SceneState::Loaded)
         {
             INFO_LOG("Unloading models...");
-            m_state->simpleScene.Unload();
+            m_state->scene.Unload();
         }
         return true;
     });
@@ -740,7 +711,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
     }
 
     // If our scene is not loaded we also ignore everything below
-    if (m_state->simpleScene.GetState() < C3D::SceneState::Loaded)
+    if (m_state->scene.GetState() < C3D::SceneState::Loaded)
     {
         return false;
     }
@@ -765,14 +736,14 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
             C3D::Ray ray = C3D::Ray::FromScreen(vec2(x, y), viewport.GetRect2D(), origin, view, viewport.GetProjection());
 
             C3D::RayCastResult result;
-            if (m_state->simpleScene.RayCast(ray, result))
+            if (m_state->scene.RayCast(ray, result))
             {
                 f32 closestDistance = C3D::F32_MAX;
                 for (auto& hit : result.hits)
                 {
                     // Create a debug line
                     C3D::DebugLine3D line;
-                    if (!line.Create(ray.origin, hit.position, nullptr))
+                    if (!line.Create(ray.origin, hit.position))
                     {
                         ERROR_LOG("Failed to create debug line.");
                         return false;
@@ -793,7 +764,7 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                     m_state->testLines.PushBack(line);
 
                     C3D::DebugBox3D box;
-                    if (!box.Create(vec3(0.1f), nullptr))
+                    if (!box.Create(vec3(0.1f)))
                     {
                         ERROR_LOG("Failed to create debug box.");
                         return false;
@@ -816,16 +787,16 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
                     // Keep track of the hit that is closest
                     if (hit.distance < closestDistance)
                     {
-                        closestDistance              = hit.distance;
-                        m_state->selectedObject.uuid = hit.uuid;
+                        closestDistance            = hit.distance;
+                        m_state->selectedObject.id = hit.id;
                     }
                 }
 
-                const auto selectedUUID = m_state->selectedObject.uuid;
-                if (selectedUUID.IsValid())
+                const auto selectedId = m_state->selectedObject.id;
+                if (selectedId != INVALID_ID)
                 {
-                    m_state->selectedObject.transform = m_state->simpleScene.GetTransformById(selectedUUID);
-                    INFO_LOG("Selected object id = {}.", selectedUUID);
+                    m_state->selectedObject.transform = m_state->scene.GetTransformById(selectedId);
+                    INFO_LOG("Selected object id = {}.", selectedId);
                     m_state->gizmo.SetSelectedObjectTransform(m_state->selectedObject.transform);
                 }
             }
@@ -833,13 +804,13 @@ bool TestEnv::OnButtonUp(u16 code, void* sender, const C3D::EventContext& contex
             {
                 INFO_LOG("Ray MISSED!");
 
-                m_state->selectedObject.transform = nullptr;
-                m_state->selectedObject.uuid      = INVALID_ID;
-                m_state->gizmo.SetSelectedObjectTransform(nullptr);
+                m_state->selectedObject.transform.Invalidate();
+                m_state->selectedObject.id = INVALID_ID;
+                m_state->gizmo.SetSelectedObjectTransform(C3D::Handle<C3D::Transform>());
 
                 // Create a debug line
                 C3D::DebugLine3D line;
-                if (!line.Create(origin, origin + (ray.direction * 100.0f), nullptr))
+                if (!line.Create(origin, origin + (ray.direction * 100.0f)))
                 {
                     ERROR_LOG("Failed to create debug line.");
                     return false;
@@ -926,7 +897,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 {
     if (code == C3D::EventCodeDebug1)
     {
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Uninitialized)
+        if (m_state->scene.GetState() == C3D::SceneState::Uninitialized)
         {
             INFO_LOG("Loading Main Scene...");
             LoadTestScene();
@@ -937,7 +908,7 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
     if (code == C3D::EventCodeDebug2)
     {
-        if (m_state->simpleScene.GetState() == C3D::SceneState::Loaded)
+        if (m_state->scene.GetState() == C3D::SceneState::Loaded)
         {
             UnloadTestScene();
         }
@@ -950,26 +921,26 @@ bool TestEnv::OnDebugEvent(const u16 code, void*, const C3D::EventContext&)
 
 bool TestEnv::LoadTestScene()
 {
-    C3D::SimpleSceneConfig sceneConfig;
-    Resources.Load("test_scene", sceneConfig);
+    C3D::SceneConfig sceneConfig;
+    Resources.Read("test_scene", sceneConfig);
 
-    if (!m_state->simpleScene.Create(sceneConfig))
+    if (!m_state->scene.Create(sceneConfig))
     {
-        ERROR_LOG("Creating SimpleScene failed.");
+        ERROR_LOG("Creating Scene failed.");
         return false;
     }
 
-    if (!m_state->simpleScene.Initialize())
+    if (!m_state->scene.Initialize())
     {
-        ERROR_LOG("Initializing SimpleScene failed.");
+        ERROR_LOG("Initializing Scene failed.");
         return false;
     }
 
-    m_state->pLights[0] = m_state->simpleScene.GetPointLight("point_light_0");
+    m_state->pLights[0] = m_state->scene.GetPointLight("point_light_0");
 
-    if (!m_state->simpleScene.Load())
+    if (!m_state->scene.Load())
     {
-        ERROR_LOG("Loading SimpleScene failed.");
+        ERROR_LOG("Loading Scene failed.");
         return false;
     }
 
@@ -993,19 +964,9 @@ void TestEnv::UnloadTestScene()
     }
     m_state->testBoxes.Destroy();
 
-    m_state->simpleScene.Unload();
+    m_state->scene.Unload();
 }
 
 C3D::Application* CreateApplication(C3D::ApplicationState* state) { return Memory.New<TestEnv>(C3D::MemoryType::Game, state); }
 
-C3D::ApplicationState* CreateApplicationState()
-{
-    const auto state           = Memory.New<GameState>(C3D::MemoryType::Game);
-    state->name                = "TestEnv";
-    state->windowConfig.width  = 1280;
-    state->windowConfig.height = 720;
-    state->windowConfig.flags  = C3D::WindowFlagCenter;
-    state->frameAllocatorSize  = MebiBytes(8);
-    state->appFrameDataSize    = sizeof(GameFrameData);
-    return state;
-}
+C3D::ApplicationState* CreateApplicationState() { return Memory.New<GameState>(C3D::MemoryType::Game); }

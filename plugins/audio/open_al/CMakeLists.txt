@@ -9,7 +9,7 @@ add_library(C3DOpenAL SHARED ${C3DOpenAL_SRC})
 
 target_compile_definitions(C3DOpenAL PUBLIC C3D_EXPORT)
 
-target_link_libraries(C3DOpenAL PUBLIC C3DEngine)
+target_link_libraries(C3DOpenAL PUBLIC C3DEngineRuntime)
 target_link_libraries(C3DOpenAL PUBLIC OpenAL)
 
 target_include_directories(C3DOpenAL PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")

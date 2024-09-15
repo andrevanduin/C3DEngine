@@ -1,15 +1,17 @@
 
 #include "test_manager.h"
 
-#include <core/clock.h>
-#include <core/logger.h>
-#include <systems/system_manager.h>
+#include <logger/logger.h>
+#include <platform/platform.h>
+#include <time/clock.h>
 
 #include "expect.h"
 
 TestManager::TestManager(const u64 memorySize)
 {
+    // Intialize our logger, platform, metrics and global memory system
     C3D::Logger::Init();
+    C3D::Platform::Init();
     Metrics.Init();
     C3D::GlobalMemorySystem::Init({ memorySize });
 }
@@ -33,14 +35,6 @@ void TestManager::RunTests()
     using namespace C3D;
 
     u32 passed = 0;
-
-    PlatformSystemConfig config;
-    config.applicationName           = "Tests";
-    config.windowConfig.shouldCreate = false;
-
-    auto& systemsManager = SystemManager::GetInstance();
-    systemsManager.OnInit();
-    systemsManager.RegisterSystem<Platform>(PlatformSystemType, config);
 
     Clock testTime;
 
@@ -119,6 +113,4 @@ void TestManager::RunTests()
             C3D::Logger::Error(test.result.message.data());
         }
     }
-
-    systemsManager.OnShutdown();
 }

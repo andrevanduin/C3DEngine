@@ -1,8 +1,8 @@
 
 #include "vulkan_buffer.h"
 
-#include <core/logger.h>
-#include <core/metrics/metrics.h>
+#include <logger/logger.h>
+#include <metrics/metrics.h>
 #include <platform/platform.h>
 
 #include "vulkan_command_buffer.h"

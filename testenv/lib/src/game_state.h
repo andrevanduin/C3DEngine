@@ -1,17 +1,17 @@
 
 #pragma once
 #include <UI/2D/internal/ui_rendergraph.h>
-#include <core/application.h>
-#include <core/audio/audio_types.h>
-#include <core/ecs/entity.h>
-#include <core/frame_data.h>
-#include <core/uuid.h>
+#include <application.h>
+#include <audio/audio_types.h>
+#include <ecs/entity.h>
+#include <frame_data.h>
+#include <identifiers/uuid.h>
 #include <renderer/passes/shadow_map_pass.h>
 #include <renderer/rendergraph/forward_rendergraph.h>
 #include <renderer/viewport.h>
 #include <resources/debug/debug_line_3d.h>
 #include <resources/mesh.h>
-#include <resources/scenes/simple_scene.h>
+#include <resources/scenes/scene.h>
 #include <systems/events/event_system.h>
 
 #include "editor/editor_gizmo.h"
@@ -34,8 +34,8 @@ enum class ReloadState
 
 struct SelectedObject
 {
-    C3D::UUID uuid;
-    C3D::Transform* transform = nullptr;
+    u32 id = INVALID_ID;
+    C3D::Handle<C3D::Transform> transform;
 };
 
 struct GameState final : C3D::ApplicationState
@@ -48,7 +48,7 @@ struct GameState final : C3D::ApplicationState
     f64 moveSpeed = 25.0, moveSpeedFast = 100.0;
 
     // TEMP
-    C3D::SimpleScene simpleScene;
+    C3D::Scene scene;
     EditorGizmo gizmo;
     bool dragging = false;
 
@@ -70,16 +70,11 @@ struct GameState final : C3D::ApplicationState
 
     C3D::PointLight* pLights[4];
 
-    C3D::Handle debugInfoPanel, debugInfoLabel;
-    C3D::Handle textbox;
+    C3D::Handle<C3D::UI_2D::Component> debugInfoPanel, debugInfoLabel;
+    C3D::Handle<C3D::UI_2D::Component> textbox;
 
     u32 hoveredObjectId = INVALID_ID;
 
     C3D::DynamicArray<C3D::RegisteredEventCallback> registeredCallbacks;
     // TEMP
-};
-
-struct GameFrameData final : C3D::ApplicationFrameData
-{
-    C3D::DynamicArray<C3D::GeometryRenderData, C3D::LinearAllocator> worldGeometries;
 };

@@ -1,8 +1,8 @@
 
 #include "vulkan_swapchain.h"
 
-#include <core/engine.h>
-#include <core/logger.h>
+#include <engine.h>
+#include <logger/logger.h>
 #include <math/c3d_math.h>
 #include <systems/system_manager.h>
 #include <systems/textures/texture_system.h>

@@ -1,10 +1,9 @@
 
-#include <core/exceptions.h>
+#include <dynamic_library/game_library.h>
 #include <entry.h>
+#include <exceptions.h>
 #include <math/frustum.h>
 #include <resources/mesh.h>
-
-#include "core/dynamic_library/game_library.h"
 
 namespace C3D
 {
@@ -95,8 +94,7 @@ C3D::Application* C3D::CreateApplication()
     }
 
     // On the first start we need to create our state
-    applicationState                 = applicationLib.CreateState();
-    applicationState->rendererPlugin = "C3DVulkanRenderer";
+    applicationState = applicationLib.CreateState();
 
     application = applicationLib.Create(applicationState);
     return application;
@@ -108,8 +106,9 @@ void C3D::InitApplication(Engine* engine)
     Event.Register(EventCodeWatchedFileChanged,
                    [engine](const u16 code, void*, const EventContext& context) { return OnWatchedFileChanged(code, engine, context); });
 
-    const auto libraryName = C3D::String::FromFormat("{}{}{}", OS.GetDynamicLibraryPrefix(), "TestEnvLib", OS.GetDynamicLibraryExtension());
-    applicationLibraryFile = OS.WatchFile(libraryName.Data());
+    const auto libraryName =
+        C3D::String::FromFormat("{}{}{}", Platform::GetDynamicLibraryPrefix(), "TestEnvLib", Platform::GetDynamicLibraryExtension());
+    applicationLibraryFile = Platform::WatchFile(libraryName.Data());
     application->OnLibraryLoad();
 }
 

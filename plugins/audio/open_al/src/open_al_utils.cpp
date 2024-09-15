@@ -3,7 +3,7 @@
 
 #include <AL/al.h>
 #include <AL/alc.h>
-#include <core/logger.h>
+#include <logger/logger.h>
 
 namespace C3D::OpenAL
 {

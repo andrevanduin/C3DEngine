@@ -53,7 +53,8 @@ target_include_directories(spdlog PUBLIC "${fmt_SOURCE_DIR}/include")
 
 # Include sub-projects.
 add_subdirectory ("tools")
-add_subdirectory ("engine")
+add_subdirectory ("engine.core")
+add_subdirectory ("engine.runtime")
 add_subdirectory ("plugins")
 add_subdirectory ("testenv")
 add_subdirectory ("tests")

@@ -1,10 +1,10 @@
 
 #include "vulkan_renderpass.h"
 
-#include <core/frame_data.h>
-#include <core/logger.h>
-#include <core/random.h>
+#include <frame_data.h>
+#include <logger/logger.h>
 #include <platform/platform.h>
+#include <random/random.h>
 #include <renderer/renderer_frontend.h>
 #include <renderer/viewport.h>
 #include <systems/system_manager.h>

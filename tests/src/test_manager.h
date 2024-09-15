@@ -1,12 +1,11 @@
 
 #pragma once
-#include <containers/string.h>
-#include <core/defines.h>
+#include <defines.h>
+#include <logger/logger.h>
+#include <string/string.h>
 
 #include <string>
 #include <vector>
-
-#include "core/logger.h"
 
 #define REGISTER_TEST(name, description) manager.Register(name, #name, description)
 

@@ -1,7 +1,7 @@
 
 #include "vulkan_pipeline.h"
 
-#include <core/logger.h>
+#include <logger/logger.h>
 #include <resources/shaders/shader.h>
 
 #include "vulkan_utils.h"

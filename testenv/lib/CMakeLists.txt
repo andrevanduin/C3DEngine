@@ -14,7 +14,7 @@ endif()
 
 target_compile_definitions(TestEnvLib PUBLIC C3D_EXPORT)
 
-target_link_libraries(TestEnvLib PUBLIC C3DEngine)
+target_link_libraries(TestEnvLib PUBLIC C3DEngineRuntime)
 
 target_include_directories(TestEnvLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 

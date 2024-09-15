@@ -7,7 +7,6 @@
 
 namespace C3D
 {
-    class SystemManager;
     struct VulkanContext;
     struct Texture;
 

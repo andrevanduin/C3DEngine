@@ -2,7 +2,7 @@
 #include "array_tests.h"
 
 #include <containers/array.h>
-#include <core/defines.h>
+#include <defines.h>
 
 #include "../expect.h"
 

@@ -2,7 +2,7 @@
 #include "editor_rendergraph.h"
 
 #include "editor/editor_gizmo.h"
-#include "resources/scenes/simple_scene.h"
+#include "resources/scenes/scene.h"
 
 bool EditorRendergraph::Create(const String& name, const EditorRendergraphConfig& config)
 {
@@ -67,8 +67,7 @@ bool EditorRendergraph::Create(const String& name, const EditorRendergraphConfig
     return true;
 }
 
-bool EditorRendergraph::OnPrepareRender(FrameData& frameData, const Viewport& currentViewport, Camera* currentCamera,
-                                        const SimpleScene& scene)
+bool EditorRendergraph::OnPrepareRender(FrameData& frameData, const Viewport& currentViewport, Camera* currentCamera, const Scene& scene)
 {
     // Only when the scene is loaded we prepare the editor pass
     if (scene.GetState() == C3D::SceneState::Loaded)
