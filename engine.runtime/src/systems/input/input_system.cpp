@@ -39,6 +39,12 @@ namespace C3D
         return true;
     }
 
+    void InputSystem::OnShutdown()
+    {
+        INFO_LOG("Shutting down.");
+        m_initialized = false;
+    }
+
     bool InputSystem::OnUpdate(const FrameData& frameData)
     {
         if (!m_initialized) return true;

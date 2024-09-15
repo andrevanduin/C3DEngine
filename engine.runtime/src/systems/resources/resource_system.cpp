@@ -18,6 +18,8 @@
 
 namespace C3D
 {
+    const static String empty = "";
+
     ResourceSystem::ResourceSystem()
     {
         m_resourceManagerTypes[ToUnderlying(ResourceType::None)]       = "None";
@@ -125,6 +127,6 @@ namespace C3D
         if (m_initialized) return m_config.assetBasePath;
 
         ERROR_LOG("Called before initialization. Returning empty string.");
-        return "";
+        return empty;
     }
 }  // namespace C3D

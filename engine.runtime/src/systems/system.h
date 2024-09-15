@@ -31,21 +31,11 @@ namespace C3D
     class BaseSystem : public ISystem
     {
     public:
-        virtual bool OnInit()
-        {
-            INFO_LOG("SYSTEM", "Initializing.");
-            m_initialized = true;
-            return true;
-        }
+        virtual bool OnInit()     = 0;
+        virtual void OnShutdown() = 0;
 
-        void OnShutdown() override
-        {
-            INFO_LOG("SYSTEM", "Shutting down.");
-            m_initialized = false;
-        }
-
-        bool OnUpdate(const FrameData& frameData) override { return true; }
-        bool OnPrepareRender(FrameData& frameData) { return true; }
+        virtual bool OnUpdate(const FrameData& frameData) override { return true; }
+        virtual bool OnPrepareRender(FrameData& frameData) { return true; }
     };
 
     template <typename T>
@@ -53,15 +43,10 @@ namespace C3D
     {
     public:
         virtual bool OnInit(const CSONObject& config) = 0;
+        virtual void OnShutdown() override            = 0;
 
-        void OnShutdown() override
-        {
-            INFO_LOG("SYSTEM", "Shutting down.");
-            m_initialized = false;
-        }
-
-        bool OnUpdate(const FrameData& frameData) override { return true; }
-        bool OnPrepareRender(FrameData& frameData) override { return true; }
+        virtual bool OnUpdate(const FrameData& frameData) override { return true; }
+        virtual bool OnPrepareRender(FrameData& frameData) override { return true; }
 
     protected:
         T m_config;

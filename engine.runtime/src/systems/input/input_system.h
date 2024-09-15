@@ -47,6 +47,7 @@ namespace C3D
     {
     public:
         bool OnInit() override;
+        void OnShutdown() override;
 
         bool OnUpdate(const FrameData& frameData) override;
 
