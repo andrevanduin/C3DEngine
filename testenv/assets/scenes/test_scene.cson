@@ -1,0 +1,70 @@
+{
+    "name": "Test Scene",
+    "description": "A simple test scene.",
+    "skyboxes": [
+        {
+            "name": "skybox",
+            "cubemapName": "skybox"
+        }
+    ],
+    "directionalLights": [
+        {
+            "name": "sun",
+            "color": [ 30.0, 30.0, 25.0, 1.0 ],
+            "direction": [ 0.1, -1.0, 0.1, 1.0 ],
+            "shadowDistance": 150.0,
+            "shadowFadeDistance": 5.0,
+            "shadowSplitMultiplier": 0.6
+        }
+    ],
+    "pointLights": [
+        {
+            "name": "point_light_0",
+            "color": [ 100.0, 0.0, 0.0, 1.0 ],
+            "position": [ 7.5, 1.25, 14.0, 0.0 ],
+            "constant": 1.0,
+            "linear": 0.35,
+            "quadratic": 0.44
+        },
+        {
+            "name": "point_light_1",
+            "color": [ 0.0, 100.0, 0.0, 1.0 ],
+            "position": [ 7.0, 1.25, 20.0, 0.0 ],
+            "constant": 1.0,
+            "linear": 0.35,
+            "quadratic": 0.44
+        },
+        {
+            "name": "point_light_2",
+            "color": [ 0.0, 0.0, 100.0, 1.0 ],
+            "position": [ 7.0, 1.25, 22.0, 0.0 ],
+            "constant": 1.0,
+            "linear": 0.35,
+            "quadratic": 0.44
+        }
+    ],
+    "meshes": [
+        {
+            "name": "sponza",
+            "resourceName": "sponza",
+            "transform": [ 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.01, 0.01, 0.01 ]
+        },
+        {
+            "name": "falcon",
+            "resourceName": "falcon",
+            "transform": [ 10.0, 0.8, 20.0, 0.0, 0.0, 0.0, 1.0, -0.35, 0.35, 0.35 ]
+        },
+        {
+            "name": "tree",
+            "resourceName": "tree",
+            "transform": [ 7.4, 0.8, 14.0, 0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 2.0 ]
+        }
+    ],
+    "terrains": [
+        {
+            "name": "Test Terrain",
+            "resourceName": "test_terrain",
+            "transform": [ -50.0, -3.9, -50.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0 ]
+        }
+    ]
+}

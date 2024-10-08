@@ -333,7 +333,7 @@ namespace C3D
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
 
-    bool Platform::CreateWindow(WindowConfig config)
+    bool Platform::CreateWindow(const WindowConfig& config)
     {
         if (!state.initialized)
         {

@@ -8,6 +8,8 @@
 #include <math/ray.h>
 #include <metrics/metrics.h>
 #include <renderer/renderer_types.h>
+#include <resources/debug/debug_box_3d.h>
+#include <resources/debug/debug_line_3d.h>
 #include <resources/managers/scene_manager.h>
 #include <resources/scenes/scene.h>
 #include <resources/scenes/scene_config.h>
@@ -29,8 +31,6 @@
 #include <glm/gtx/matrix_decompose.hpp>
 
 #include "passes/editor_pass.h"
-#include "resources/debug/debug_box_3d.h"
-#include "resources/debug/debug_line_3d.h"
 
 TestEnv::TestEnv(C3D::ApplicationState* state) : Application(state), m_state(reinterpret_cast<GameState*>(state)) {}
 
@@ -74,10 +74,6 @@ bool TestEnv::OnRun(C3D::FrameData& frameData)
     m_state->camera = Cam.Acquire("WORLD_CAM");
     m_state->camera->SetPosition({ 5.83f, 4.35f, 18.68f });
     m_state->camera->SetEulerRotation({ -29.43f, -42.41f, 0.0f });
-
-    m_state->wireframeCamera = Cam.Acquire("WIREFRAME_CAM");
-    m_state->wireframeCamera->SetPosition({ 8.0f, 0.0f, 10.0f });
-    m_state->wireframeCamera->SetEulerRotation({ 0.0f, -90.0f, 0.0f });
 
     // Create, initialize and load our editor gizmo
     if (!m_state->gizmo.Create())

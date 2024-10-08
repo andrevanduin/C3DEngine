@@ -2457,7 +2457,7 @@ namespace C3D
         u64 warningCount = shaderc_result_get_num_warnings(compilationResult);
         if (warningCount > 0)
         {
-            // NOTE: Not sure this it the correct way to obtain warnings.
+            // NOTE: Not sure if this is the correct way to obtain warnings.
             const char* warnings = shaderc_result_get_error_message(compilationResult);
             WARN_LOG("Found: {} warnings while compiling ShaderModule: '{}':\n{}", warningCount, config.fileName, warnings);
         }
