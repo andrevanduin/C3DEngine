@@ -9,11 +9,11 @@
 
 namespace C3D
 {
-    constexpr const char* FILE_EXTENSION = "scenecfg";
+    constexpr const char* FILE_EXTENSION = "cson";
 
     ResourceManager<SceneConfig>::ResourceManager() : IResourceManager(MemoryType::Scene, ResourceType::Scene, nullptr, "scenes") {}
 
-    bool ResourceManager<SceneConfig>::Read(const String& name, SceneConfig& resource) const
+    bool ResourceManager<SceneConfig>::Read(const String& name, SceneConfig& resource)
     {
         if (name.Empty())
         {
@@ -24,12 +24,7 @@ namespace C3D
         auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, name, FILE_EXTENSION);
         auto fileName = String::FromFormat("{}.{}", name, FILE_EXTENSION);
 
-        File file;
-        if (!file.Open(fullPath, FileModeRead))
-        {
-            ERROR_LOG("Failed to open simple scene config file for reading: '{}'.", fullPath);
-            return false;
-        }
+        auto object = m_reader.ReadFromFile(fullPath);
 
         // TODO: Make this not hardcoded!
         resource.version     = 1;
@@ -37,134 +32,121 @@ namespace C3D
         resource.name        = name;
         resource.description = "";
 
-        String line;
-        u32 lineNumber     = 1;
-        u32 version        = 0;
-        ParserTagType type = ParserTagType::Invalid;
-
-        while (file.ReadLine(line))
+        for (const auto& prop : object.properties)
         {
-            // Trim the line
-            line.Trim();
-
-            // Skip Blank lines and comments
-            if (line.Empty() || line.First() == '#')
+            if (prop.name.IEquals("name"))
             {
-                lineNumber++;
-                continue;
+                resource.name = prop.GetString();
             }
-
-            if (version == 0 && !line.StartsWith("!version"))
+            else if (prop.name.IEquals("description"))
             {
-                ERROR_LOG("Failed to load file: '{}'. Simple scene config should start with !version = <parser version>.", fullPath);
-                return false;
+                resource.description = prop.GetString();
             }
-
-            if (line.StartsWith("["))
+            else if (prop.name.IEquals("skyboxes"))
             {
-                type = ParseTag(line, fileName, lineNumber, resource);
-                if (type == ParserTagType::Invalid)
+                const auto& skyboxes = prop.GetArray();
+                ParseSkyboxes(resource, skyboxes);
+            }
+            else if (prop.name.IEquals("directionalLights"))
+            {
+                const auto& directionalLights = prop.GetArray();
+                ParseDirectionalLights(resource, directionalLights);
+            }
+            else if (prop.name.IEquals("pointLights"))
+            {
+                const auto& pointLights = prop.GetArray();
+                ParsePointLights(resource, pointLights);
+            }
+            else if (prop.name.IEquals("meshes"))
+            {
+                const auto& meshes = prop.GetArray();
+                if (!ParseMeshes(resource, meshes))
                 {
-                    ERROR_LOG("Failed to load file: '{}'. Unknown tag: '{}' found on line: {}.", fileName, line, lineNumber);
+                    ERROR_LOG("Failed to parse meshes.");
                     return false;
                 }
             }
-            else
+            else if (prop.name.IEquals("terrains"))
             {
-                if (!ParseTagContent(line, fileName, lineNumber, version, type, resource)) return false;
+                const auto& terrains = prop.GetArray();
+                ParseTerrains(resource, terrains);
             }
-
-            lineNumber++;
         }
 
-        file.Close();
         return true;
     }
 
-    bool ResourceManager<SceneConfig>::Write(const SceneConfig& resource) const
+    bool ResourceManager<SceneConfig>::Write(const SceneConfig& resource)
     {
         auto fullPath = String::FromFormat("{}/{}/{}.{}", Resources.GetBasePath(), typePath, resource.name, FILE_EXTENSION);
-        // auto fileName = String::FromFormat("{}.{}", resource.name, FILE_EXTENSION);
 
-        File file;
-        if (!file.Open(fullPath, FileModeWrite))
+        CSONObject object(CSONObjectType::Object);
+        object.properties.EmplaceBack("name", resource.name);
+        object.properties.EmplaceBack("description", resource.description);
+
+        CSONObject skybox(CSONObjectType::Object);
+        skybox.properties.EmplaceBack("name", resource.skyboxConfig.name);
+        skybox.properties.EmplaceBack("cubemapName", resource.skyboxConfig.cubemapName);
+
+        CSONArray skyboxes(CSONObjectType::Array);
+        skyboxes.properties.EmplaceBack(skybox);
+
+        object.properties.EmplaceBack("skyboxes", skyboxes);
+
+        CSONObject directionalLight(CSONObjectType::Object);
+        directionalLight.properties.EmplaceBack("name", resource.directionalLightConfig.name);
+        directionalLight.properties.EmplaceBack("color", resource.directionalLightConfig.color);
+        directionalLight.properties.EmplaceBack("direction", resource.directionalLightConfig.direction);
+        directionalLight.properties.EmplaceBack("shadowDistance", resource.directionalLightConfig.shadowDistance);
+        directionalLight.properties.EmplaceBack("shadowFadeDistance", resource.directionalLightConfig.shadowFadeDistance);
+        directionalLight.properties.EmplaceBack("shadowSplitMultiplier", resource.directionalLightConfig.shadowSplitMultiplier);
+
+        CSONObject directionalLights(CSONObjectType::Array);
+        directionalLights.properties.EmplaceBack(directionalLight);
+
+        CSONProperty directionalLightsProperty("directionalLights", directionalLights);
+
+        CSONArray pointLights(CSONObjectType::Array);
+        for (const auto& p : resource.pointLights)
         {
-            ERROR_LOG("Failed to open simple scene config file for reading: '{}'.", fullPath);
+            CSONObject pointLight(CSONObjectType::Object);
+            pointLight.properties.EmplaceBack("name", p.name);
+            pointLight.properties.EmplaceBack("color", p.color);
+            pointLight.properties.EmplaceBack("position", p.position);
+            pointLight.properties.EmplaceBack("constant", p.constant);
+            pointLight.properties.EmplaceBack("linear", p.linear);
+            pointLight.properties.EmplaceBack("quadratic", p.quadratic);
+
+            pointLights.properties.EmplaceBack(pointLight);
+        }
+        object.properties.EmplaceBack("pointLights", pointLights);
+
+        CSONArray meshes(CSONObjectType::Array);
+        for (const auto& m : resource.meshes)
+        {
+            CSONObject mesh(CSONObjectType::Object);
+            mesh.properties.EmplaceBack("name", m.name);
+            mesh.properties.EmplaceBack("resourceName", m.resourceName);
+            mesh.properties.EmplaceBack("transform", m.transform);
+        }
+        object.properties.EmplaceBack("meshes", meshes);
+
+        CSONArray terrains(CSONObjectType::Array);
+        for (const auto& t : resource.terrains)
+        {
+            CSONObject terrain(CSONObjectType::Object);
+            terrain.properties.EmplaceBack("name", t.name);
+            terrain.properties.EmplaceBack("resourceName", t.resourceName);
+            terrain.properties.EmplaceBack("transform", t.transform);
+        }
+        object.properties.EmplaceBack("terrains", terrains);
+
+        if (!m_writer.WriteToFile(object, fullPath))
+        {
+            ERROR_LOG("Failed to write: '{}' scene to a file.", resource.name);
             return false;
         }
 
-        String buffer;
-        buffer.Reserve(256);
-
-        // TODO: Replace this non-hardcoded version
-        file.WriteLine("!version = {}", resource.version);
-
-        // Scene block
-        file.WriteLine("[Scene]");
-        file.WriteLine("name = {}", resource.name);
-        file.WriteLine("description = {}", resource.description);
-        file.WriteLine("[/Scene]");
-
-        // Skybox block
-        if (!resource.skyboxConfig.name.Empty() && !resource.skyboxConfig.cubemapName.Empty())
-        {
-            file.WriteLine("[Skybox]");
-            file.WriteLine("name = {}", resource.skyboxConfig.name);
-            file.WriteLine("cubemapName = {}", resource.skyboxConfig.cubemapName);
-            file.WriteLine("[/Skybox]");
-        }
-
-        // Directional light block
-        if (!resource.directionalLightConfig.name.Empty())
-        {
-            file.WriteLine("[DirectionalLight]");
-            file.WriteLine("name = {}", resource.directionalLightConfig.name);
-            file.WriteLine("color = {}", resource.directionalLightConfig.color);
-            file.WriteLine("direction = {}", resource.directionalLightConfig.direction);
-            file.WriteLine("shadowDistance = {}", resource.directionalLightConfig.shadowDistance);
-            file.WriteLine("shadowFadeDistance = {}", resource.directionalLightConfig.shadowFadeDistance);
-            file.WriteLine("shadowSplitMultiplier = {}", resource.directionalLightConfig.shadowSplitMultiplier);
-            file.WriteLine("[DirectionalLight]");
-        }
-
-        // Meshes
-        for (const auto& mesh : resource.meshes)
-        {
-            file.WriteLine("[Mesh]");
-            file.WriteLine("name = {}", mesh.name);
-            file.WriteLine("resourceName = {}", mesh.resourceName);
-            file.WriteLine("transform = {}", mesh.transform);
-            if (!mesh.parentName.Empty())
-            {
-                file.WriteLine("parent = {}", mesh.parentName);
-            }
-            file.WriteLine("[/Mesh]");
-        }
-
-        // Point lights
-        for (const auto& light : resource.pointLights)
-        {
-            file.WriteLine("[PointLight]");
-            file.WriteLine("name = {}", light.name);
-            file.WriteLine("color = {}", light.color);
-            file.WriteLine("position = {}", light.position);
-            file.WriteLine("constant = {}", light.constant);
-            file.WriteLine("linear = {}", light.linear);
-            file.WriteLine("quadratic = {}", light.quadratic);
-            file.WriteLine("[/PointLight]");
-        }
-
-        // Terrains
-        for (const auto& terrain : resource.terrains)
-        {
-            file.WriteLine("[Terrain]");
-            file.WriteLine("name = {}", terrain.name);
-            file.WriteLine("resourceName = {}", terrain.resourceName);
-            file.WriteLine("transform = {}", terrain.transform);
-            file.WriteLine("[/Terrain]");
-        }
-
-        file.Close();
         return true;
     }
 
@@ -177,303 +159,185 @@ namespace C3D
         resource.meshes.Destroy();
     }
 
-    bool ResourceManager<SceneConfig>::ParseTagContent(const String& line, const String& fileName, const u32 lineNumber, u32& version,
-                                                       const ParserTagType type, SceneConfig& cfg) const
+    void ResourceManager<SceneConfig>::ParseSkyboxes(SceneConfig& resource, const CSONArray& skyboxes)
     {
-        // Check if we have a '=' symbol
-        if (!line.Contains('='))
+        for (const auto& skyboxProp : skyboxes.properties)
         {
-            WARN_LOG("Potential formatting issue found in file: '{}', '=' token not found. Skipping line: {}.", fileName, lineNumber);
-            return false;
-        }
-
-        auto parts = line.Split('=');
-        if (parts.Size() != 2)
-        {
-            WARN_LOG("Potential formatting issue found in file: '{}', too many '=' tokens found. Skipping line: {}.", fileName, lineNumber);
-            return false;
-        }
-
-        // Get the variable name (which is all the characters up to the '=')
-        auto varName = parts.Front();
-
-        // Get the value (which is all the characters after the '=')
-        auto value = parts.Back();
-
-        if (varName.IEquals("!version"))
-        {
-            version = value.ToU32();
-            return true;
-        }
-
-        try
-        {
-            switch (type)
+            const auto& skyboxObj = skyboxProp.GetObject();
+            for (const auto& prop : skyboxObj.properties)
             {
-                case ParserTagType::Mesh:
-                    ParseMesh(varName, value, cfg);
-                    break;
-                case ParserTagType::PointLight:
-                    ParsePointLight(varName, value, cfg);
-                    break;
-                case ParserTagType::Scene:
-                    ParseScene(varName, value, cfg);
-                    break;
-                case ParserTagType::Skybox:
-                    ParseSkybox(varName, value, cfg);
-                    break;
-                case ParserTagType::DirectionalLight:
-                    ParseDirectionalLight(varName, value, cfg);
-                    break;
-                case ParserTagType::Terrain:
-                    ParseTerrain(varName, value, cfg);
-                    break;
-                default:
-                    throw Exception("Unknown ParserTageType: '{}'.", ToUnderlying(type));
-                    break;
+                if (prop.name.IEquals("name"))
+                {
+                    resource.skyboxConfig.name = prop.GetString();
+                }
+                else if (prop.name.IEquals("cubemapname"))
+                {
+                    resource.skyboxConfig.cubemapName = prop.GetString();
+                }
             }
         }
-        catch (const std::exception& exc)
+    }
+
+    void ResourceManager<SceneConfig>::ParseDirectionalLights(SceneConfig& resource, const CSONArray& lights)
+    {
+        for (const auto& lightProp : lights.properties)
         {
-            ERROR_LOG("Failed to load file: '{}'. Error found on line: {} - {}.", fileName, lineNumber, exc.what());
-            return false;
+            const auto& lightObj = lightProp.GetObject();
+            for (const auto& prop : lightObj.properties)
+            {
+                if (prop.name.IEquals("name"))
+                {
+                    resource.directionalLightConfig.name = prop.GetString();
+                }
+                else if (prop.name.IEquals("color"))
+                {
+                    resource.directionalLightConfig.color = prop.GetVec4();
+                }
+                else if (prop.name.IEquals("direction"))
+                {
+                    resource.directionalLightConfig.direction = prop.GetVec4();
+                }
+                else if (prop.name.IEquals("shadowDistance"))
+                {
+                    resource.directionalLightConfig.shadowDistance = prop.GetF64();
+                }
+                else if (prop.name.IEquals("shadowFadeDistance"))
+                {
+                    resource.directionalLightConfig.shadowFadeDistance = prop.GetF64();
+                }
+                else if (prop.name.IEquals("shadowSplitMultiplier"))
+                {
+                    resource.directionalLightConfig.shadowSplitMultiplier = prop.GetF64();
+                }
+            }
+        }
+    }
+
+    void ResourceManager<SceneConfig>::ParsePointLights(SceneConfig& resource, const CSONArray& lights)
+    {
+        for (const auto& lightProp : lights.properties)
+        {
+            const auto& lightObj = lightProp.GetObject();
+
+            auto pointLight = ScenePointLightConfig();
+
+            for (const auto& prop : lightObj.properties)
+            {
+                if (prop.name.IEquals("name"))
+                {
+                    pointLight.name = prop.GetString();
+                }
+                else if (prop.name.IEquals("color"))
+                {
+                    pointLight.color = prop.GetVec4();
+                }
+                else if (prop.name.IEquals("position"))
+                {
+                    pointLight.position = prop.GetVec4();
+                }
+                else if (prop.name.IEquals("constant"))
+                {
+                    pointLight.constant = prop.GetF64();
+                }
+                else if (prop.name.IEquals("linear"))
+                {
+                    pointLight.linear = prop.GetF64();
+                }
+                else if (prop.name.IEquals("quadratic"))
+                {
+                    pointLight.quadratic = prop.GetF64();
+                }
+            }
+
+            resource.pointLights.PushBack(pointLight);
+        }
+    }
+
+    bool ResourceManager<SceneConfig>::ParseMeshes(SceneConfig& resource, const CSONArray& meshes)
+    {
+        for (const auto& meshProp : meshes.properties)
+        {
+            const auto& meshObj = meshProp.GetObject();
+
+            auto mesh = SceneMeshConfig();
+
+            for (const auto& prop : meshObj.properties)
+            {
+                if (prop.name.IEquals("name"))
+                {
+                    mesh.name = prop.GetString();
+                }
+                else if (prop.name.IEquals("resourceName"))
+                {
+                    mesh.resourceName = prop.GetString();
+                }
+                else if (prop.name.IEquals("parent"))
+                {
+                    mesh.parentName = prop.GetString();
+                }
+                else if (prop.name.IEquals("transform"))
+                {
+                    const auto& transform = prop.GetArray();
+                    const auto& props     = transform.properties;
+                    if (props.Size() != 10)
+                    {
+                        ERROR_LOG("Transform for: '{}' does not contain 10 floats.", mesh.name);
+                        return false;
+                    }
+
+                    vec3 pos   = { props[0].GetF32(), props[1].GetF32(), props[2].GetF32() };
+                    quat rot   = { props[6].GetF32(), props[3].GetF32(), props[4].GetF32(), props[5].GetF32() };
+                    vec3 scale = { props[7].GetF32(), props[8].GetF32(), props[9].GetF32() };
+
+                    mesh.transform = Transforms.Acquire(pos, rot, scale);
+                }
+            }
+
+            resource.meshes.PushBack(mesh);
         }
 
         return true;
     }
 
-    void ResourceManager<SceneConfig>::ParseScene(const String& name, const String& value, SceneConfig& cfg) const
+    bool ResourceManager<SceneConfig>::ParseTerrains(SceneConfig& resource, const CSONArray& terrains)
     {
-        if (name.IEquals("name"))
+        for (const auto& terrainProp : terrains.properties)
         {
-            cfg.name = value;
-        }
-        else if (name.IEquals("description"))
-        {
-            cfg.description = value;
-        }
-        else
-        {
-            throw Exception("Unknown element: '{}' specified for Scene", name);
-        }
-    }
+            const auto& terrainObj = terrainProp.GetObject();
 
-    void ResourceManager<SceneConfig>::ParseSkybox(const String& name, const String& value, SceneConfig& cfg) const
-    {
-        if (name.IEquals("name"))
-        {
-            cfg.skyboxConfig.name = value;
-        }
-        else if (name.IEquals("cubemapName"))
-        {
-            cfg.skyboxConfig.cubemapName = value;
-        }
-        else
-        {
-            throw Exception("Unknown element: '{}' specified for Skybox", name);
-        }
-    }
+            auto terrain = SceneTerrainConfig();
 
-    void ResourceManager<SceneConfig>::ParseDirectionalLight(const String& name, const String& value, SceneConfig& cfg) const
-    {
-        if (name.IEquals("name"))
-        {
-            cfg.directionalLightConfig.name = value;
-        }
-        else if (name.IEquals("direction"))
-        {
-            cfg.directionalLightConfig.direction = value.ToVec4();
-        }
-        else if (name.IEquals("color"))
-        {
-            cfg.directionalLightConfig.color = value.ToVec4();
-        }
-        else if (name.IEquals("shadowDistance"))
-        {
-            cfg.directionalLightConfig.shadowDistance = value.ToF32();
-        }
-        else if (name.IEquals("shadowFadeDistance"))
-        {
-            cfg.directionalLightConfig.shadowFadeDistance = value.ToF32();
-        }
-        else if (name.IEquals("shadowSplitMultiplier"))
-        {
-            cfg.directionalLightConfig.shadowSplitMultiplier = value.ToF32();
-        }
-        else
-        {
-            throw Exception("Unknown element: '{}' specified for Directional Light", name);
-        }
-    }
-
-    void ResourceManager<SceneConfig>::ParsePointLight(const String& name, const String& value, SceneConfig& cfg) const
-    {
-        auto& pointLight = cfg.pointLights.Back();
-
-        if (name.IEquals("name"))
-        {
-            pointLight.name = value;
-        }
-        else if (name.IEquals("color"))
-        {
-            pointLight.color = value.ToVec4();
-        }
-        else if (name.IEquals("position"))
-        {
-            pointLight.position = value.ToVec4();
-        }
-        else if (name.IEquals("constant"))
-        {
-            pointLight.constant = value.ToF32();
-        }
-        else if (name.IEquals("linear"))
-        {
-            pointLight.linear = value.ToF32();
-        }
-        else if (name.IEquals("quadratic"))
-        {
-            pointLight.quadratic = value.ToF32();
-        }
-        else
-        {
-            throw Exception("Unknown element: '{}' specified for Point Light", name);
-        }
-    }
-
-    void ResourceManager<SceneConfig>::ParseMesh(const String& name, const String& value, SceneConfig& cfg) const
-    {
-        auto& mesh = cfg.meshes.Back();
-
-        if (name.IEquals("name"))
-        {
-            mesh.name = value;
-        }
-        else if (name.IEquals("resourcename"))
-        {
-            mesh.resourceName = value;
-        }
-        else if (name.IEquals("transform"))
-        {
-            mesh.transform = ParseTransform(value);
-        }
-        else if (name.IEquals("parent"))
-        {
-            mesh.parentName = value;
-        }
-        else
-        {
-            throw Exception("Unknown element: '{}' specified for Mesh", name);
-        }
-    }
-
-    void ResourceManager<SceneConfig>::ParseTerrain(const String& name, const String& value, SceneConfig& cfg) const
-    {
-        auto& terrain = cfg.terrains.Back();
-
-        if (name.IEquals("name"))
-        {
-            terrain.name = value;
-        }
-        else if (name.IEquals("transform"))
-        {
-            terrain.transform = ParseTransform(value);
-        }
-        else if (name.IEquals("resourcename"))
-        {
-            terrain.resourceName = value;
-        }
-        else
-        {
-            throw Exception("Unknown element: '{}' specified for Terrain", name);
-        }
-    }
-
-    Handle<Transform> ResourceManager<SceneConfig>::ParseTransform(const String& value) const
-    {
-        const auto values = value.Split(' ');
-
-        Handle<Transform> transform;
-
-        if (values.Size() == 10)
-        {
-            vec3 pos   = { values[0].ToF32(), values[1].ToF32(), values[2].ToF32() };
-            quat rot   = { values[6].ToF32(), values[3].ToF32(), values[4].ToF32(), values[5].ToF32() };
-            vec3 scale = { values[7].ToF32(), values[8].ToF32(), values[9].ToF32() };
-            transform  = Transforms.Acquire(pos, rot, scale);
-        }
-        else if (values.Size() == 9)
-        {
-            vec3 pos   = { values[0].ToF32(), values[1].ToF32(), values[2].ToF32() };
-            vec3 rot   = { values[3].ToF32(), values[4].ToF32(), values[5].ToF32() };
-            vec3 scale = { values[6].ToF32(), values[7].ToF32(), values[8].ToF32() };
-            transform  = Transforms.Acquire(pos, rot, scale);
-        }
-        else
-        {
-            throw Exception(
-                "Transform should have 10 values in the form px py pz qx qy qz qw sx sy sz (quaternion mode) "
-                "or 9 values in the form of px py pz ex ey ez sx sy sz (euler angle mode) but it had {}",
-                values.Size());
-        }
-        return transform;
-    }
-
-    ResourceManager<SceneConfig>::ParserTagType ResourceManager<SceneConfig>::ParseTag(const String& line, const String& fileName,
-                                                                                       const u32 lineNumber, SceneConfig& cfg) const
-    {
-        static bool closeTag = true;
-        String name;
-        if (closeTag)
-        {
-            if (line[1] == '/')
+            for (const auto& prop : terrainObj.properties)
             {
-                ERROR_LOG("Failed to load file: '{}'. Expected an opening tag but found a closing tag at line: {}.", fileName, lineNumber);
-                return ParserTagType::Invalid;
-            }
-            closeTag = false;
-        }
-        else
-        {
-            if (line[1] != '/')
-            {
-                ERROR_LOG("Failed to load file: '{}'. Expected a closing tag but found an opening tag at line: {}.", fileName, lineNumber);
-                return ParserTagType::Invalid;
+                if (prop.name.IEquals("name"))
+                {
+                    terrain.name = prop.GetString();
+                }
+                else if (prop.name.IEquals("resourceName"))
+                {
+                    terrain.resourceName = prop.GetString();
+                }
+                else if (prop.name.IEquals("transform"))
+                {
+                    const auto& transform = prop.GetArray();
+                    const auto& props     = transform.properties;
+                    if (props.Size() != 10)
+                    {
+                        ERROR_LOG("Transform for: '{}' does not contain 10 floats.", terrain.name);
+                        return false;
+                    }
+
+                    vec3 pos   = { props[0].GetF32(), props[1].GetF32(), props[2].GetF32() };
+                    quat rot   = { props[6].GetF32(), props[3].GetF32(), props[4].GetF32(), props[5].GetF32() };
+                    vec3 scale = { props[7].GetF32(), props[8].GetF32(), props[9].GetF32() };
+
+                    terrain.transform = Transforms.Acquire(pos, rot, scale);
+                }
             }
 
-            closeTag = true;
-            return ParserTagType::Closing;
+            resource.terrains.PushBack(terrain);
         }
 
-        name = line.SubStr(1, line.Size() - 1);
-        if (name.IEquals("scene"))
-        {
-            return ParserTagType::Scene;
-        }
-        else if (name.IEquals("skybox"))
-        {
-            return ParserTagType::Skybox;
-        }
-        else if (name.IEquals("directionallight"))
-        {
-            return ParserTagType::DirectionalLight;
-        }
-        else if (name.IEquals("mesh"))
-        {
-            cfg.meshes.EmplaceBack();  // Add a mesh which we will populate in the ParseTagContent method
-            return ParserTagType::Mesh;
-        }
-        else if (name.IEquals("pointlight"))
-        {
-            cfg.pointLights.EmplaceBack();  // Add a point light which we will populate in the ParseTagContent method
-            return ParserTagType::PointLight;
-        }
-        else if (name.IEquals("terrain"))
-        {
-            cfg.terrains.EmplaceBack();  // Add a terrain which we will popluate in the ParseTagContent method
-            return ParserTagType::Terrain;
-        }
-
-        return ParserTagType::Invalid;
+        return true;
     }
-
 }  // namespace C3D

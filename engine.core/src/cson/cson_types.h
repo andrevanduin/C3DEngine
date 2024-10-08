@@ -63,6 +63,7 @@ namespace C3D
         ArrayValueAfterOpen,
         ArrayValueAfterComma,
         ArraySeparatorOrEnd,
+        NegativeArrayValue,
         EndOfFile,
     };
 
@@ -106,8 +107,30 @@ namespace C3D
      * For properties of an array the name field will be empty. */
     struct C3D_API CSONProperty
     {
-        String name;
-        CSONValue value;
+        CSONProperty() = default;
+
+        /** @brief Array properties (so un-named). */
+        CSONProperty(u32 num);
+        CSONProperty(i32 num);
+        CSONProperty(u64 num);
+        CSONProperty(i64 num);
+        CSONProperty(f32 num);
+        CSONProperty(f64 num);
+        CSONProperty(bool b);
+        CSONProperty(const String& str);
+        CSONProperty(const CSONObject& obj);
+
+        /** @brief Object properties (named). */
+        CSONProperty(const String& name, u32 num);
+        CSONProperty(const String& name, i32 num);
+        CSONProperty(const String& name, u64 num);
+        CSONProperty(const String& name, i64 num);
+        CSONProperty(const String& name, f32 num);
+        CSONProperty(const String& name, f64 num);
+        CSONProperty(const String& name, bool b);
+        CSONProperty(const String& name, const String& str);
+        CSONProperty(const String& name, const vec4& v);
+        CSONProperty(const String& name, const CSONObject& obj);
 
         u32 GetType() const;
         bool IsBasicType() const;
@@ -115,13 +138,16 @@ namespace C3D
         bool GetBool() const;
         i64 GetI64() const;
         f64 GetF64() const;
+        f32 GetF32() const;
         const String& GetString() const;
 
         const CSONObject& GetObject() const;
         const CSONArray& GetArray() const;
 
-        CSONProperty(const CSONValue& value) : value(value) {}
-        CSONProperty(const String& name) : name(name) {}
+        vec4 GetVec4() const;
+
+        String name;
+        CSONValue value;
     };
 
 }  // namespace C3D

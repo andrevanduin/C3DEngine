@@ -1,5 +1,7 @@
 
 #pragma once
+#include "cson/cson_reader.h"
+#include "cson/cson_writer.h"
 #include "resource_manager.h"
 #include "resources/scenes/scene_config.h"
 
@@ -23,23 +25,18 @@ namespace C3D
     public:
         ResourceManager();
 
-        bool Read(const String& name, SceneConfig& resource) const;
-        bool Write(const SceneConfig& resource) const;
+        bool Read(const String& name, SceneConfig& resource);
+        bool Write(const SceneConfig& resource);
         void Cleanup(SceneConfig& resource) const;
 
     private:
-        bool ParseTagContent(const String& line, const String& fileName, u32 lineNumber, u32& version, ParserTagType type,
-                             SceneConfig& cfg) const;
+        void ParseSkyboxes(SceneConfig& resource, const CSONArray& skyboxes);
+        void ParseDirectionalLights(SceneConfig& resource, const CSONArray& lights);
+        void ParsePointLights(SceneConfig& resource, const CSONArray& lights);
+        bool ParseMeshes(SceneConfig& resource, const CSONArray& meshes);
+        bool ParseTerrains(SceneConfig& resource, const CSONArray& terrains);
 
-        void ParseScene(const String& name, const String& value, SceneConfig& cfg) const;
-        void ParseSkybox(const String& name, const String& value, SceneConfig& cfg) const;
-        void ParseDirectionalLight(const String& name, const String& value, SceneConfig& cfg) const;
-        void ParsePointLight(const String& name, const String& value, SceneConfig& cfg) const;
-        void ParseMesh(const String& name, const String& value, SceneConfig& cfg) const;
-        void ParseTerrain(const String& name, const String& value, SceneConfig& cfg) const;
-
-        Handle<Transform> ParseTransform(const String& value) const;
-
-        ParserTagType ParseTag(const String& line, const String& fileName, u32 lineNumber, SceneConfig& cfg) const;
+        CSONReader m_reader;
+        CSONWriter m_writer;
     };
 }  // namespace C3D

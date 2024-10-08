@@ -23,6 +23,7 @@ namespace C3D
         bool ParseCommaOrEndOfObject(const CSONToken& token);
         bool ParseArrayOrObject(const CSONToken& token);
         bool ParseArrayValue(const CSONToken& token);
+        bool ParseNegativeArrayValue(const CSONToken& token);
         bool ParseArraySeparatorOrEnd(const CSONToken& token);
         bool ParseEndOfFile(const CSONToken& token);
 

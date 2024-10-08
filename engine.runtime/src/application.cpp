@@ -48,6 +48,7 @@ namespace C3D
     Application::Application(ApplicationState* state)
     {
         CSONReader reader;
+        // TODO: Replace this hardcoded path
         auto config = reader.ReadFromFile("../../../testenv/assets/application_config.cson");
 
         // Initialize our SystemConfigs HashMap

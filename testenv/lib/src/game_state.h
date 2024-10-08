@@ -41,7 +41,6 @@ struct SelectedObject
 struct GameState final : C3D::ApplicationState
 {
     C3D::Camera* camera          = nullptr;
-    C3D::Camera* wireframeCamera = nullptr;
 
     ReloadState reloadState = ReloadState::Done;
 

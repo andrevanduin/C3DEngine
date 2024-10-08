@@ -217,7 +217,9 @@ namespace C3D
             // Next token should be a colon
             m_parseMode = CSONParseMode::Colon;
             // Add a named property to the current object (skip the starting and ending '"')
-            m_pCurrentObject->properties.EmplaceBack(m_pInput->SubStr(token.start + 1, token.end));
+            CSONProperty prop;
+            prop.name = m_pInput->SubStr(token.start + 1, token.end);
+            m_pCurrentObject->properties.EmplaceBack(prop);
             return true;
         }
 
@@ -389,30 +391,36 @@ namespace C3D
     {
         switch (token.type)
         {
+            case CSONTokenType::OperatorMinus:
+            {
+                // We have found a negative sign so we expect a valid number after it
+                m_parseMode = CSONParseMode::NegativeArrayValue;
+                return true;
+            }
             case CSONTokenType::Integer:
             {
-                CSONValue value = m_pInput->SubStr(token.start, token.end + 1).ToI64();
+                auto value = m_pInput->SubStr(token.start, token.end + 1).ToI64();
                 m_pCurrentObject->properties.EmplaceBack(value);
                 m_parseMode = CSONParseMode::ArraySeparatorOrEnd;
                 return true;
             }
             case CSONTokenType::Float:
             {
-                CSONValue value = m_pInput->SubStr(token.start, token.end + 1).ToF64();
+                auto value = m_pInput->SubStr(token.start, token.end + 1).ToF64();
                 m_pCurrentObject->properties.EmplaceBack(value);
                 m_parseMode = CSONParseMode::ArraySeparatorOrEnd;
                 return true;
             }
             case CSONTokenType::Boolean:
             {
-                CSONValue value = m_pInput->SubStr(token.start, token.end + 1).ToBool();
+                auto value = m_pInput->SubStr(token.start, token.end + 1).ToBool();
                 m_pCurrentObject->properties.EmplaceBack(value);
                 m_parseMode = CSONParseMode::ArraySeparatorOrEnd;
                 return true;
             }
             case CSONTokenType::StringLiteral:
             {
-                CSONValue value = m_pInput->SubStr(token.start + 1, token.end);
+                auto value = m_pInput->SubStr(token.start + 1, token.end);
                 m_pCurrentObject->properties.EmplaceBack(value);
                 m_parseMode = CSONParseMode::ArraySeparatorOrEnd;
                 return true;
@@ -423,9 +431,8 @@ namespace C3D
                 auto obj = CSONObject(CSONObjectType::Object);
                 // Set the parent of this object to our current (array)
                 obj.parent      = m_pCurrentObject;
-                CSONValue value = obj;
                 // Add the object to the array
-                m_pCurrentObject->properties.EmplaceBack(value);
+                m_pCurrentObject->properties.EmplaceBack(obj);
                 // Set the current object to the object we just added
                 m_pCurrentObject = &std::get<CSONObject>(m_pCurrentObject->properties.Last().value);
                 // Set the parse mode to start checking for items in the object
@@ -446,6 +453,31 @@ namespace C3D
         }
 
         return ParseError(token, "a valid value");
+    }
+
+    bool CSONReader::ParseNegativeArrayValue(const CSONToken& token)
+    {
+        switch (token.type)
+        {
+            case CSONTokenType::Integer:
+            {
+                // Start the string 1 token earlier to account for the minus sign
+                auto value = m_pInput->SubStr(token.start - 1, token.end + 1).ToI64();
+                m_pCurrentObject->properties.EmplaceBack(value);
+                m_parseMode = CSONParseMode::ArraySeparatorOrEnd;
+                return true;
+            }
+            case CSONTokenType::Float:
+            {
+                // Start the string 1 token earlier to account for the minus sign
+                auto value = m_pInput->SubStr(token.start - 1, token.end + 1).ToF64();
+                m_pCurrentObject->properties.EmplaceBack(value);
+                m_parseMode = CSONParseMode::ArraySeparatorOrEnd;
+                return true;
+            }
+        }
+
+        return ParseError(token, "a valid number");
     }
 
     bool CSONReader::ParseArraySeparatorOrEnd(const CSONToken& token)
@@ -528,6 +560,9 @@ namespace C3D
                 case CSONParseMode::ArrayValueAfterOpen:
                 case CSONParseMode::ArrayValueAfterComma:
                     if (!ParseArrayValue(token)) return root;
+                    break;
+                case CSONParseMode::NegativeArrayValue:
+                    if (!ParseNegativeArrayValue(token)) return root;
                     break;
                 case CSONParseMode::ArraySeparatorOrEnd:
                     if (!ParseArraySeparatorOrEnd(token)) return root;

@@ -40,7 +40,7 @@ namespace C3D
          * @param config The config describing the properties of the window
          * @return True is successful; False otherwise
          */
-        C3D_API bool CreateWindow(WindowConfig config);
+        C3D_API bool CreateWindow(const WindowConfig& config);
 
         /**
          * @brief Performs message pumping which is required to handle windowing and other events OS events.
